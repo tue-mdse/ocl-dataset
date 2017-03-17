@@ -1,0 +1,65 @@
+import ecore : 'http://www.eclipse.org/emf/2002/Ecore#/'
+import 'gemRBAC.ecore'
+package gemRBAC
+
+context Permission
+
+inv AbsoluteBTIPermAssign:
+   if  self.idPermission = 'noBandWithLimit' then
+   let u : RBACUtility = RBACUtility.allInstances()-> any(true) , 
+    r : Role = Role.allInstances() ->select(r : Role | r.idRole = 'missionMember')-> any(true) , 
+    temporalContext: Set(TemporalContext) = self.permissionContextAssignment-> select(c|c.oclIsTypeOf(TemporalContext)), 
+    timeE : Set(AbsoluteTE) = temporalContext.timeexpression.absolute ->flatten()->asSet() , 
+    timeI : Set(AbsoluteTE) = timeE ->select(e | e.oclIsTypeOf(TimeInterval) and e.oclAsType(TimeInterval).end ->notEmpty())
+    in  
+
+    if timeI.oclAsType(TimeInterval)
+	       ->exists(i : TimeInterval | u.getCurrentTime().isContained(i) = true)
+        then self.roles->includes(r)
+        else self.roles ->excludes(r)
+    endif
+   else
+   true
+   endif
+context Session
+
+inv relativeLocationRoleEnablingPL2:
+let r1 : Role = Role.allInstances()
+->select(r : Role | r.idRole = 'agencyAdmin')->any(true) , 
+spatialContext : Set(SpatialContext) = r1.roleContextEnabling->select(c|c.oclIsTypeOf(SpatialContext)),
+loc : Set(Location) = spatialContext.location
+       ->select(l | l.relativelocation->notEmpty())->flatten()->asSet() , 
+       relativeLoc : Set(Location) = loc->collect(l | l.computeRelative(l.relativelocation))->flatten()->asSet()
+in if relativeLoc
+	->exists(l | self.user.userLocation.location
+		->exists(pos | l.contains(pos)))
+then self.enabledRoles
+	->includes(r1) or self.activeRoles
+	->includes(r1)
+else self.enabledRoles
+	->excludes(r1) and self.activeRoles
+	->excludes(r1)
+endif
+
+context Session
+
+inv relativeLocationRoleEnabling:
+
+let r1 : Role = Role.allInstances()
+->select(r : Role | r.idRole = 'missionAdmin')->any(true) , 
+spatialContext : Set(SpatialContext) = r1.roleContextEnabling->select(c|c.oclIsTypeOf(SpatialContext)),
+loc : Set(Location) = spatialContext.location
+       ->select(l | l.relativelocation->notEmpty())->flatten()->asSet() , 
+       relativeLoc : Set(Location) = loc->collect(l | l.computeRelative(l.relativelocation))->flatten()->asSet()
+in if relativeLoc
+	->exists(l | self.user.userLocation.location
+		->exists(pos | l.contains(pos)))
+then self.enabledRoles
+	->includes(r1) or self.activeRoles
+	->includes(r1)
+else self.enabledRoles
+	->excludes(r1) and self.activeRoles
+	->excludes(r1)
+endif
+
+endpackage

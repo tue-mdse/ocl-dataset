@@ -1,0 +1,113 @@
+import  cs : 'generated/Delphi.ecore#/' 
+import  as : 'astm.ecore#/' 
+import 'Lookup.ecore'
+import 'DelphiHelpers.ocl'
+
+package lookup
+-- Some common lookup functionality
+context LookupEnvironment
+def : nestedEnv() : LookupEnvironment[1] =
+	LookupEnvironment {
+		parentEnv = self
+	}
+-- End of common lookup functionality
+endpackage
+
+package as
+
+-- Domain specific default functionality
+context Visitable
+def : unqualified_env_VariableDefinition() : lookup::LookupEnvironment[1] =
+	_unqualified_env_VariableDefinition(null)
+def : unqualified_env_FunctionDefinition() : lookup::LookupEnvironment[1] =
+	_unqualified_env_FunctionDefinition(null)
+
+def : _unqualified_env_VariableDefinition(child : Visitable) : lookup::LookupEnvironment[1] =
+	parentEnv_VariableDefinition()
+def : _unqualified_env_FunctionDefinition(child : Visitable) : lookup::LookupEnvironment[1] =
+	parentEnv_FunctionDefinition()
+
+def : parentEnv_VariableDefinition() : lookup::LookupEnvironment[1] =
+	let parent = oclContainer() in if parent = null then lookup::LookupEnvironment { } else parent.oclAsType(Visitable)._unqualified_env_VariableDefinition(self) endif
+def : parentEnv_FunctionDefinition() : lookup::LookupEnvironment[1] =
+	let parent = oclContainer() in if parent = null then lookup::LookupEnvironment { } else parent.oclAsType(Visitable)._unqualified_env_FunctionDefinition(self) endif
+
+
+-- End of domain specific default functionality
+
+context Visitable
+-- VariableDefinition unqualified lookup
+def : _lookupVariableDefinition(env : lookup::LookupEnvironment, vName : String) : OrderedSet(VariableDefinition) =
+let foundVariableDefinition = env.namedElements->selectByKind(VariableDefinition)->select(identifierName.nameString = vName)
+in  if foundVariableDefinition->isEmpty() and not (env.parentEnv = null)
+   then _lookupVariableDefinition(env.parentEnv, vName)
+   else foundVariableDefinition
+   endif
+   
+-- Note: when calling this method, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupUnqualifiedVariableDefinition(vName : String) : VariableDefinition[?] =
+let foundVariableDefinition = _lookupVariableDefinition(unqualified_env_VariableDefinition(), vName)
+in  if foundVariableDefinition->isEmpty()
+   then null
+   else foundVariableDefinition->first() -- LookupVisitor will report ambiguous result
+   endif
+   
+def : lookupVariableDefinition(vName : String) : VariableDefinition[?] =
+   _lookupUnqualifiedVariableDefinition(vName)
+-- End of VariableDefinition unqualified lookup 
+   
+context Visitable
+-- FunctionDefinition unqualified lookup
+def : _lookupFunctionDefinition(env : lookup::LookupEnvironment, fName : String) : OrderedSet(FunctionDefinition) =
+let foundFunctionDefinition = env.namedElements->selectByKind(FunctionDefinition)->select(identifierName.nameString = fName)
+in  if foundFunctionDefinition->isEmpty() and not (env.parentEnv = null)
+   then _lookupFunctionDefinition(env.parentEnv, fName)
+   else foundFunctionDefinition
+   endif
+   
+-- Note: when calling this method, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupUnqualifiedFunctionDefinition(fName : String) : FunctionDefinition[?] =
+let foundFunctionDefinition = _lookupFunctionDefinition(unqualified_env_FunctionDefinition(), fName)
+in  if foundFunctionDefinition->isEmpty()
+   then null
+   else foundFunctionDefinition->first() -- LookupVisitor will report ambiguous result
+   endif
+   
+def : lookupFunctionDefinition(fName : String) : FunctionDefinition[?] =
+   _lookupUnqualifiedFunctionDefinition(fName)
+-- End of FunctionDefinition unqualified lookup 
+   
+context CompilationUnit
+def : _unqualified_env_VariableDefinition(child : Visitable) : lookup::LookupEnvironment =
+   parentEnv_VariableDefinition().nestedEnv()
+      .addElements(fragments->selectByKind(VariableDefinition))
+      
+def : _unqualified_env_FunctionDefinition(child : Visitable) : lookup::LookupEnvironment =
+   parentEnv_FunctionDefinition().nestedEnv()
+      .addElements(fragments->selectByKind(FunctionDefinition))
+      
+context DelphiBlockStatement
+def : _unqualified_env_VariableDefinition(child : Visitable) : lookup::LookupEnvironment =
+   parentEnv_VariableDefinition().nestedEnv()
+      .addElements(declarations->selectByKind(VariableDefinition))
+      
+def : _unqualified_env_FunctionDefinition(child : Visitable) : lookup::LookupEnvironment =
+   parentEnv_FunctionDefinition().nestedEnv()
+      .addElements(declarations->selectByKind(FunctionDefinition))
+
+endpackage
+
+package cs
+context cs::designator
+def : getDefinition() : astm::Definition =
+	let method  = ast.oclAsType(astm::NameReference).lookupFunctionDefinition(subpart.part.id)
+	in if method <> null then method else ast.oclAsType(astm::NameReference).lookupVariableDefinition(subpart.part.id) endif
+
+context cs::withStmt
+def : getDefinitions() : Sequence(astm::Definition) =
+	self._vars.ids->collect(x |
+   		let method  = ast.oclAsType(astm::DelphiWithStatement).lookupFunctionDefinition(x.extract())
+		in if method <> null then method else ast.oclAsType(astm::DelphiWithStatement).lookupVariableDefinition(x.extract()) endif)->excluding(null)
+endpackage

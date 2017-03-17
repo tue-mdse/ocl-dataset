@@ -1,0 +1,33 @@
+import 'platform:/resource/ClassModelSlicing/slices/RoyalAndLoyalLeftOver1.ecore'
+
+
+package RoyalAndLoyal
+
+
+context ProgramPartner inv invariant_ProgramPartner1 : self.programs->collect( i_LoyaltyProgram : LoyaltyProgram | i_LoyaltyProgram.partners )->select( p : ProgramPartner | p <> self )->isEmpty()
+
+context ServiceLevel inv invariant_ServiceLevel1 : self.program.partners->isEmpty()
+
+context Customer inv invariant_Customer10 : self.programs->collect( i_LoyaltyProgram : LoyaltyProgram | i_LoyaltyProgram.partners )->collectNested( i_ProgramPartner : ProgramPartner | i_ProgramPartner.deliveredServices )->isEmpty()
+
+context Customer inv invariant_sizesAgree : self.programs->size() = self.cards->select( i_CustomerCard : CustomerCard | i_CustomerCard.valid = true )->size()
+
+context ProgramPartner inv invariant_nrOfParticipants : self.numberOfCustomers = self.programs->collect( i_LoyaltyProgram : LoyaltyProgram | i_LoyaltyProgram.participants )->size()
+
+context LoyaltyProgram::enroll(c:Customer) : OclVoid  
+pre:	not self.participants->includes(c)
+post:	self.participants = self.participants->including(c)
+
+
+context Customer inv invariant_Customer1 : (self.cards->select( i_CustomerCard : CustomerCard | i_CustomerCard.valid = true )->size()) > 1
+
+context CustomerCard inv invariant_CustomerCard3 : self.owner.programs->size() > 0
+
+context LoyaltyProgram::addService(s:Service, l:ServiceLevel, p:ProgramPartner) : 
+pre levelsIncludesArgL:	self.levels->includes(l)
+pre partnersIncludesP:	self.partners->includes(p)
+post servicesIncludesArgS:	self.levels->collect( i_ServiceLevel : ServiceLevel | i_ServiceLevel.availableServices )->includes(s)
+post servicesIncludesP:	self.partners->collect( i_ProgramPartner : ProgramPartner | i_ProgramPartner.deliveredServices )->includes(s)
+
+
+endpackage

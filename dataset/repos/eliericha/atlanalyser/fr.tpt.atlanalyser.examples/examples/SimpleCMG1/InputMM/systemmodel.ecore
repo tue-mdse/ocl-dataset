@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="systemmodel" nsURI="http://systemmodel/1.0" nsPrefix="systemmodel">
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="invocationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="settingDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="SMElement" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SystemModel" eSuperTypes="#//SMElement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="blocks" upperBound="-1"
+        eType="#//Block" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="signals" upperBound="-1"
+        eType="#//Signal" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Block" abstract="true" eSuperTypes="#//SMElement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="inports" upperBound="-1"
+        eType="#//Inport" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="outports" upperBound="-1"
+        eType="#//Outport" containment="true" eOpposite="#//Outport/parentBlock"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Signal" eSuperTypes="#//SMElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="SrcAndDstInSameSubSystem SrcAndDstSameDataType"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="SrcAndDstInSameSubSystem" value="srcPort.parentBlock.parentBlock = dstPort.parentBlock.parentBlock and dstPort.parentBlock.parentBlock = self.parentBlock"/>
+      <details key="SrcAndDstSameDataType" value="srcPort.dataType.baseType = dstPort.dataType.baseType and srcPort.dataType.dimensions = dstPort.dataType.dimensions"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="srcPort" lowerBound="1"
+        eType="#//Outport" eOpposite="#//Outport/outSignals"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dstPort" lowerBound="1"
+        eType="#//Inport" eOpposite="#//Inport/inSignal"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Inport" eSuperTypes="#//SMElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="InSystemBlock"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="InSystemBlock" value="not sourceBlock.oclIsUndefined() = parentBlock.oclIsKindOf(SystemBlock)"/>
+      <details key="InSystemBlock$message" value="'Inport ' + name + 'has sourceBlock '"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="inSignal" eType="#//Signal"
+        eOpposite="#//Signal/dstPort"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Outport" eSuperTypes="#//SMElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="InSystemBlock"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="InSystemBlock" value="not sinkBlock.oclIsUndefined() = parentBlock.oclIsKindOf(SystemBlock)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="outSignals" upperBound="-1"
+        eType="#//Signal" eOpposite="#//Signal/srcPort"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parentBlock" lowerBound="1"
+        eType="#//Block" eOpposite="#//Block/outports"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="UnitDelay" eSuperTypes="#//Block"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Sum" eSuperTypes="#//Block"/>
+  <eClassifiers xsi:type="ecore:EClass" name="SrcBlock" eSuperTypes="#//Block"/>
+</ecore:EPackage>

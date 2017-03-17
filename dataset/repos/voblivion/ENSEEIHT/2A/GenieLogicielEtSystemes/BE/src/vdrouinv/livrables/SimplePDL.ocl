@@ -1,0 +1,66 @@
+import ecore : 'http://www.eclipse.org/emf/2002/Ecore' ;
+
+package simplepdl : simplepdl = 'http://simplepdl'
+{
+	enum WorkSequenceType { serializable }
+	{
+		literal startToStart;
+		literal finishToStart = 1;
+		literal startToFinish = 2;
+		literal finishToFinish = 3;
+	}
+	class Process
+	{
+		attribute name : String[1];
+		property processElements#process : ProcessElement[*] { ordered composes };
+		invariant nameForbidden: 
+        	(name <> 'Process' and name <> '');
+		invariant distinctNamesForWorkDefinitions: 
+            self.processElements
+            ->select(p | p.oclIsTypeOf(WorkDefinition))
+            ->collect(p | p.oclAsType(WorkDefinition))
+            ->forAll(wd1, wd2 | wd1 <> wd2 implies wd1.name <> wd2.name);
+	}
+	class WorkDefinition extends ProcessElement
+	{
+		property linksToPredecessors#successor : WorkSequence[*] { ordered };
+		property linksToSuccessors#predecessor : WorkSequence[*] { ordered };
+		attribute name : String[1];
+		property allocations#workDefinition : Allocation[*] { ordered composes };
+		invariant nameForbidden: 
+        	self.name <> '';
+	}
+	class WorkSequence extends ProcessElement
+	{
+		attribute linkType : WorkSequenceType[1];
+		property predecessor#linksToSuccessors : WorkDefinition[1];
+		property successor#linksToPredecessors : WorkDefinition[1];
+		invariant predecessorInSameProcess: 
+        	self.process = self.predecessor.process;
+		invariant successorInSameProcess: 
+        	self.process = self.successor.process;
+		invariant noReflexiveDependancy: 
+            self.successor <> self.predecessor;
+	}
+	abstract class ProcessElement
+	{
+		property process#processElements : Process[1];
+	}
+	class Guidance extends ProcessElement
+	{
+		property processElements : ProcessElement[*] { ordered };
+		attribute text : String[?];
+	}
+	class Ressource extends ProcessElement
+	{
+		attribute count : ecore::EInt[1] = '1';
+		attribute name : String[1];
+		property allocations#ressource : Allocation[*] { ordered };
+	}
+	class Allocation
+	{
+		attribute count : ecore::EInt[1] = '1';
+		property workDefinition#allocations : WorkDefinition[1];
+		property ressource#allocations : Ressource[1];
+	}
+}

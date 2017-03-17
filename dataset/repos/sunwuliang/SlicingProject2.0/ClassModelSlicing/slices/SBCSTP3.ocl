@@ -1,0 +1,45 @@
+import 'platform:/resource/ClassModelSlicing/slices/SBCSTP3.ecore'
+
+
+package SBCS
+
+
+context PumpController_ClosePump inv ClosePump : 
+PCPre.PumpControlerPump.mode = State::On implies PCPost.PumpControlerPump.mode = State::Off
+
+
+context SteamBoiler inv TP3: 
+let CS:Snapshot = self.SnapshotSteamBoiler in let NS: Snapshot= CS.getNext() 
+ in (self.SteamBoilerWLMD.waterLevel > self.maximalNormal or self.SteamBoilerWLMD.waterLevel < self.minimalNormal) 
+implies NS.ControlProgramSnapshot.mode= Mode::EmergencyStop
+
+
+context Snapshot::getNext() : Snapshot
+body : self.AfterTrans.AfterTrans
+
+
+context SteamBoiler_OpenValve inv OpenValve: 
+SBPre.valveOpen = ValveState::Closed implies SBPost.valveOpen = ValveState::Open 
+
+
+context WaterLevelMeasurementDevice inv WMD: 
+self.waterLevel < self.WLMDSteamBoiler.capacity
+
+
+context ControlProgram_Start inv Start: 
+CPPost.mode = Mode::Normal
+
+
+context WaterLevelMeaurementDevice_getLevel inv getLevel: 
+wlmdPost.waterLevel = ret
+
+
+context SteamBoiler inv SB: 
+self.valveOpen=ValveState::Open implies self.SteamBoilerControlProgram.mode=Mode::Initialization
+
+
+context PumpController_OpenPump inv OpenPump : 
+PCPre.PumpControlerPump.mode = State::Off implies PCPost.PumpControlerPump.mode = State::On
+
+
+endpackage

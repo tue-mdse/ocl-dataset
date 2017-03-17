@@ -1,0 +1,91 @@
+import 'platform:/resource/ClassModelSlicing/slices/SlicedUML2InsER2MOF.ecore'
+
+
+package UML2
+
+
+context StructuralFeatureAction inv sfa1: not self.structuralFeature.isStatic
+
+context CreateObjectAction inv coa1: not self.classifier.isAbstract
+
+context Association inv onlyBinaryAssociationCanBeAggregations: self.memberEnd->exists(temp1:Property | temp1.aggregation <> AggregationKind::none) implies self.memberEnd->size() = 2
+
+context OpaqueExpression inv oe1: self.behavior->notEmpty() implies (self.behavior.ownedParameterSet->select( p : Parameter | p.direction <> ParameterDirectionKind::return)->isEmpty())
+
+context OpaqueExpression inv oe2: self.behavior->notEmpty() implies (self.behavior.ownedParameterSet->select( p : Parameter | p.direction = ParameterDirectionKind::return)->size() = 1)
+
+context Property inv isCompositeIsValid: self.isComposite = (self.aggregation = AggregationKind::composite)
+
+context InstanceSpecification inv oneStructuralFeatureDefinesAtMostOneSlotPerInstance: self.classifier->forAll(c:Classifier| c.member->select(oclIsKindOf(Feature)).oclAsType(Feature)->asSet()->forAll(f:Feature| self.slot->select(s:Slot |  s.definingFeature = f)->size() <= 1))
+
+context Classifier inv isAbstractDefined: not self.isAbstract.oclIsUndefined()
+
+context Association inv nAryAssociationsOwnTheirEnds: if self.memberEnd->size() > 2then self.ownedEnd->includesAll(self.memberEnd) else true endif
+
+context CreateObjectAction inv coa3: self.result.type = self.classifier
+
+context Element inv mustBeOwnedHasOwner: self.owner->notEmpty()
+
+context BehavioredClassifier inv bc1: not self.classifierBehavior.oclIsUndefined() implies self.ownedBehavior->forAll(temp1 : Behavior | temp1.specification.oclIsUndefined())
+
+context Property inv subsetRequiresDifferentName: self.subsettedProperty->notEmpty() implies self.subsettedProperty->forAll(sp: Property | sp.name <> self.name)
+
+context CreateObjectAction inv coa2: not self.classifier.oclIsKindOf(AssociationClass)
+
+context Interface inv interfaceFeaturesArePublic: self.feature->forAll(f:Feature |  f.visibility = VisibilityKind::public)
+
+context TestIdentityAction inv tia1: self.first.type->size() = 0 and self.second.type->size() = 0
+
+context Operation inv typeIsValid: self.type = ( if self.ownedParameter->select(par | par.direction = ParameterDirectionKind::return)->asSet()->notEmpty() then self.ownedParameter->select(par | par.direction = ParameterDirectionKind::return)->asSet()->any(true).type else null endif)
+
+context LinkEndData inv led3: self.qualifier->collect(temp1: QualifierValue | temp1.qualifier) = self.end.qualifier->asBag()
+
+context DestroyObjectAction inv doa1: self.target.type->size() = 0 
+
+context StructuralFeatureAction inv sfa2: self.structuralFeature.featuringClassifier->size() = 1
+
+context Classifier inv inheritedMemberIsValid: self.inheritedMember->includesAll( self.generalization.general->asSet()->collect(p | p.member->select(m | if self.inheritedMember->includes(m) then m.visibility <> VisibilityKind::private else true endif ) ) )
+
+context WriteStructuralFeatureAction inv wsfa1: self.value.type->asSet() = self.structuralFeature.featuringClassifier
+
+context Property inv derivedUnionIsDerived: self.isDerivedUnion implies self.isDerived
+
+context Operation inv upperIsValid: self.upper = ( if self.ownedParameter->select(par | par.direction = ParameterDirectionKind::return)->asSet()->notEmpty() then self.ownedParameter->select(par | par.direction = ParameterDirectionKind::return)->asSet()->any(true).upper else null endif)
+
+context ElementImport inv importedVisibilityValid: not self.importedElement.visibility.oclIsUndefined() implies self.importedElement.visibility = VisibilityKind::public
+
+context InstanceSpecification inv definingFeaturIsFeatureOfClassifier: self.slot->forAll(s:Slot | self.classifier->exists(c:Classifier |  c.member->select(oclIsKindOf(Feature)).oclAsType(Feature)->asSet()->includes(s.definingFeature)))
+
+context Class inv class1: not self.isActive implies self.ownedReception->isEmpty()
+
+context Operation inv isOrderedIsValid: self.isOrdered = ( if self.ownedParameter->select(par | par.direction = ParameterDirectionKind::return)->asSet()->notEmpty() then self.ownedParameter->select(par | par.direction = ParameterDirectionKind::return)->asSet()->any(true).isOrdered else false endif)
+
+context LinkEndData inv led1: self.end.association->size() = 1
+
+context Operation inv lowerIsValid: self.lower = ( if self.ownedParameter->select(par | par.direction = ParameterDirectionKind::return)->asSet()->notEmpty() then self.ownedParameter->select(par | par.direction = ParameterDirectionKind::return)->asSet()->any(true).lower else null endif)
+
+context Operation inv operationHasOnlyOneReturnParameter: self.ownedParameter->select(par:Parameter | par.direction = ParameterDirectionKind::return)->size() <= 1
+
+context Package inv ownedElementHasVisibility: self.member->forAll(e:NamedElement| e.visibility->notEmpty() implies e.visibility = VisibilityKind::public or e.visibility = VisibilityKind::private)
+
+context ReadSelfAction inv rsa2: self.result.type = context_ 
+
+context GeneralizationSet inv sameGeneralClassifier: self.generalization.general->asSet()->size() <= 1
+
+context Property inv derivedUnionIsReadOnly: self.isDerivedUnion implies self.isReadOnly
+
+context LinkEndData inv led2: self.value.type = self.end.type
+
+context Operation inv isUniqueIsValid: self.isUnique = ( if self.ownedParameter->select(par | par.direction = ParameterDirectionKind::return)->asSet()->notEmpty() then self.ownedParameter->select(par | par.direction = ParameterDirectionKind::return)->asSet()->any(true).isUnique else true endif)
+
+context Association inv specializedAssociationsHasSameNumberOfEnds: self.generalization.general->asSet()->forAll(p : Classifier | p.oclAsType(Association).memberEnd->size() = self.memberEnd->size()) 
+
+context Constraint inv notConstrainingSelf: self.constrainedElement->excludes(self)
+
+context Operation inv bodyConditionOnlyIfIsQuery: self.bodyCondition->notEmpty() implies self.isQuery
+
+context ReadSelfAction inv rsa1: self.context_->size() = 1
+
+context Component inv noNestedClassifiers: self.nestedClassifier->isEmpty()
+
+endpackage

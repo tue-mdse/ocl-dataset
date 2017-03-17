@@ -1,0 +1,62 @@
+import 'KennedyWarrenCS.ecore'
+import 'KennedyWarrenAS.ecore'
+
+
+package ocl
+
+context OclElement
+def : parentLabelI() : String =
+	let parent = self.oclContainer()
+	in 	if parent =  null then '' else parent._labelI(self)  endif
+ 
+def : _labelI(child : OclElement) : String =
+	parentLabelI()
+
+endpackage
+ 
+
+package kwcs
+
+context TopCS
+def : ast() : kwas::Top =
+	kwas::Top {
+		node = node.ast()
+	}
+	
+context TreeCS
+def : ast() : kwas::Tree =
+	invalid -- to be overriden
+	
+context BinCS
+def : ast() : kwas::Bin =
+	kwas::Bin {	
+		left = left.ast(),
+		right = right.ast(),
+		labelS = right.ast().labelS,
+		labelI = ast()._labelI(null) 
+	}
+
+context LeafCS
+def : ast() : kwas::Leaf = 
+	kwas::Leaf {
+		val = val,
+		labelS = self.toString() + ast().labelI,
+		labelI = ast()._labelI(null)
+	}
+	
+endpackage
+
+package kwas
+
+context Bin
+def : _labelI(child : ocl::OclElement) : String =
+	right_labelI(child)
+	.concat( -- FIXME check by containment ref ?		
+	left_labelI(child))
+				
+def : right_labelI(child : ocl::OclElement) : String =
+	left.labelS
+	
+def : left_labelI(child : ocl::OclElement) : String =
+	parentLabelI()
+endpackage

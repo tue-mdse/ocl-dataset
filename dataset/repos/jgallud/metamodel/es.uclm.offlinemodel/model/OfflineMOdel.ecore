@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="offlinemodel" nsURI="http://offlinemodel/1.0" nsPrefix="offlinemodel">
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="invocationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="settingDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="OfflineModel">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="IncrementalScheme MandatoryScheme FreeScheme"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="IncrementalScheme" value="&#x9;&#x9;&#x9;&#xA;&#x9;&#x9;&#x9;self.rootNodes()->forAll(n:Node| self.incremental(n))"/>
+      <details key="MandatoryScheme" value="&#xA;&#x9;&#x9;&#x9;self.rootNodes()->forAll(n:Node| self.mandatory(n))"/>
+      <details key="FreeScheme" value="&#x9;&#x9;&#x9;&#xA;&#x9;&#x9;&#x9;self.rootNodes()->forAll(n:Node| self.free(n))"/>
+    </eAnnotations>
+    <eOperations name="rootNodes" ordered="false" upperBound="-1" eType="#//Node">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="&#xA;&#x9;&#x9;&#x9;&#x9;nodes->select(parent.oclIsUndefined())"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="incremental" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="&#xA;&#x9;&#x9;&#x9;scheme=Scheme::Incremental implies n.existeNodoPreCache() and n.existeNodoDefault()"/>
+      </eAnnotations>
+      <eParameters name="n" lowerBound="1" eType="#//Node"/>
+    </eOperations>
+    <eOperations name="mandatory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="&#xA;&#x9;&#x9;&#x9;scheme=Scheme::Mandatory implies n.existeNodoPreCache() and not n.existeNodoDefault()"/>
+      </eAnnotations>
+      <eParameters name="n" lowerBound="1" eType="#//Node"/>
+    </eOperations>
+    <eOperations name="free" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="&#xA;&#x9;&#x9;&#x9;scheme=Scheme::Free implies not n.existeNodoPreCache() and n.existeNodoDefault()"/>
+      </eAnnotations>
+      <eParameters name="n" lowerBound="1" eType="#//Node"/>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="nodes" upperBound="-1"
+        eType="#//AbstractNode" containment="true" eOpposite="#//AbstractNode/root"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mode" lowerBound="1" eType="#//Mode"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scheme" lowerBound="1"
+        eType="#//Scheme"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AbstractNode" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parent" eType="#//Node"
+        eOpposite="#//Node/children"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="root" eType="#//OfflineModel"
+        eOpposite="#//OfflineModel/nodes"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Node" eSuperTypes="#//AbstractNode">
+    <eOperations name="existeNodoPreCache" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.children->closure(ch:AbstractNode | if (ch.oclIsTypeOf(Node)) then (ch.oclAsType(Node).children->including(self)) else Set(AbstractNode){} endif)->including(self)->select( oclIsTypeOf(Node))->collect(oclAsType(Node))->exists(v:Node | v.type.oclIsTypeOf(PreCache))"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="existeNodoDefault" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.children->closure(ch:AbstractNode | if (ch.oclIsTypeOf(Node)) then (ch.oclAsType(Node).children->including(self)) else Set(AbstractNode){} endif)->including(self)->select( oclIsTypeOf(Node))->collect(oclAsType(Node))->exists(v:Node | v.type.oclIsTypeOf(Default))"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="existeNodoNoCache" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.children->closure(ch:AbstractNode | if (ch.oclIsTypeOf(Node)) then (ch.oclAsType(Node).children->including(self)) else Set(AbstractNode){} endif)->including(self)->select( oclIsTypeOf(Node))->collect(oclAsType(Node))->exists(v:Node | v.type.oclIsTypeOf(NoCache))"/>
+      </eAnnotations>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="children" upperBound="-1"
+        eType="#//AbstractNode" containment="true" eOpposite="#//AbstractNode/parent"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="type" eType="#//Type" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="composite" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isInitial" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isAvailableOffline" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        volatile="true" transient="true" derived="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="derivation" value="if (self.type.oclIsTypeOf(PreCache)) then true else false endif"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Element" eSuperTypes="#//AbstractNode">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="ForceParentNode"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="ForceParentNode" value="&#xA;&#x9;&#x9;&#x9;not self.parent.oclIsUndefined()"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="facets" lowerBound="1"
+        upperBound="-1" eType="#//Facet" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Type" abstract="true"/>
+  <eClassifiers xsi:type="ecore:EClass" name="NoCache" eSuperTypes="#//Type"/>
+  <eClassifiers xsi:type="ecore:EClass" name="PreCache" eSuperTypes="#//Type"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Default" eSuperTypes="#//Type"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Facet" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="EnabledOnline" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="storage" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="update" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="EnabledOffline" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Input" eSuperTypes="#//Facet"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Output" eSuperTypes="#//Facet"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Control" eSuperTypes="#//Facet"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Navigation" abstract="true" eSuperTypes="#//Facet">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dest" lowerBound="1" eType="#//Node"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Mode">
+    <eLiterals name="Offline"/>
+    <eLiterals name="Online" value="1"/>
+    <eLiterals name="Edition" value="2"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Scheme">
+    <eLiterals name="Mandatory"/>
+    <eLiterals name="Free" value="1"/>
+    <eLiterals name="Incremental" value="2"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Offline" eSuperTypes="#//Navigation"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Online" eSuperTypes="#//Navigation"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Normal" eSuperTypes="#//Navigation"/>
+</ecore:EPackage>

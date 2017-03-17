@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="gmf_relational_model" nsURI="http://gmf_relational_model/1.0"
+    nsPrefix="gmf_relational_model">
+  <eClassifiers xsi:type="ecore:EClass" name="Schema">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="relationNameUnique"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="relationNameUnique" value="if (self.ScontainsRelations -> size() > 0) then&#xA;&#x9;&#x9;&#x9;self.ScontainsRelations -> forAll(r1,r2 | r1 &lt;> r2 implies r1.name &lt;> r2.name)&#xA;&#x9;&#x9;else&#xA;&#x9;&#x9;&#x9;true&#xA;&#x9;&#x9;endif"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ScontainsRelations" upperBound="-1"
+        eType="#//Relation" containment="true" eOpposite="#//Relation/isContained"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ScontainsLinksFK" upperBound="-1"
+        eType="#//LinkFK" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="LinkFK">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="unCompleteLink invalidTargetRelation"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="unCompleteLink" value="&#xA;&#x9;&#x9;if(((self.target.oclIsUndefined())or not(self.source -> size() > 0)))then&#xA;&#x9;&#x9;&#x9;false&#xA;&#x9;&#x9;else&#xA;&#x9;&#x9;&#x9;true&#xA;&#x9;&#x9;endif"/>
+      <details key="invalidTargetRelation" value="&#xA;&#x9;&#x9;if(self.target.oclIsUndefined())then&#xA;&#x9;&#x9;&#x9;false&#xA;&#x9;&#x9;else&#xA;&#x9;&#x9;&#x9;if (self.target.containsAttributes -> size()>0)then&#xA;&#x9;&#x9;&#x9;&#x9;if (self.target.containsAttributes -> exists(isPK &lt;> null))then&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;true&#xA;&#x9;&#x9;&#x9;&#x9;else&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;if (self.target.containsAttributes -> exists(isUN = true))then&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;true&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;else&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;false&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;endif&#xA;&#x9;&#x9;&#x9;&#x9;endif&#xA;&#x9;&#x9;&#x9;else&#xA;&#x9;&#x9;&#x9;&#x9;false&#xA;&#x9;&#x9;&#x9;endif&#xA;&#x9;&#x9;endif"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" upperBound="-1"
+        eType="#//Attribute" eOpposite="#//Attribute/isFK"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" eType="#//Relation"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="delete" eType="#//EDMPolicy"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="modify" eType="#//EDMPolicy"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Relation">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="almostOneAttribute relationHasPK attributeNameUnique relationNameDefined"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="almostOneAttribute" value="self.containsAttributes -> size() >= 1"/>
+      <details key="relationHasPK" value="not self.hasPK -> isEmpty()"/>
+      <details key="attributeNameUnique" value="if (self.containsAttributes -> size() > 0) then&#xA;&#x9;&#x9;&#x9;self.containsAttributes -> forAll(a1,a2 | a1 &lt;> a2 implies a1.name &lt;> a2.name)&#xA;&#x9;&#x9;else&#xA;&#x9;&#x9;&#x9;true&#xA;&#x9;&#x9;endif"/>
+      <details key="relationNameDefined" value="not self.name.oclIsUndefined()"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="containsAttributes" upperBound="-1"
+        eType="#//Attribute" containment="true" eOpposite="#//Attribute/isContained"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="hasPK" upperBound="-1"
+        eType="#//Attribute" eOpposite="#//Attribute/pkReference"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="isContained" eType="#//Schema"
+        eOpposite="#//Schema/ScontainsRelations"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Attribute">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="attributeNameDefined pkWellFormed undefinedType"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="attributeNameDefined" value="not self.name.oclIsUndefined()"/>
+      <details key="pkWellFormed" value="&#xA;&#x9;&#x9;&#x9;if (self.isPK.oclIsUndefined())then&#xA;&#x9;&#x9;&#x9;&#x9;true&#xA;&#x9;&#x9;&#x9;else&#xA;&#x9;&#x9;&#x9;&#x9;if (self.isNN and self.isUN)then&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;true&#xA;&#x9;&#x9;&#x9;&#x9;else&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;false&#xA;&#x9;&#x9;&#x9;&#x9;endif&#xA;&#x9;&#x9;&#x9;endif"/>
+      <details key="undefinedType" value="self.type &lt;>  EGenericType::UNDEFINED"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//EGenericType"
+        defaultValueLiteral="UNDEFINED"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="pkReference" eType="#//Relation"
+        eOpposite="#//Relation/hasPK"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="isFK" eType="#//LinkFK"
+        eOpposite="#//LinkFK/source"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isUN" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isNN" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="isContained" lowerBound="1"
+        eType="#//Relation" eOpposite="#//Relation/containsAttributes"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="labelWidth" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isPK" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="false"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="EGenericType">
+    <eLiterals name="UNDEFINED" value="1"/>
+    <eLiterals name="VARCHAR" value="2"/>
+    <eLiterals name="NUMERIC" value="3"/>
+    <eLiterals name="TIME" value="4"/>
+    <eLiterals name="DATE" value="5"/>
+    <eLiterals name="FLOAT" value="5"/>
+    <eLiterals name="CHAR" value="6"/>
+    <eLiterals name="BOOLEAN" value="7"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="EDMPolicy">
+    <eLiterals name="CASCADE" value="1"/>
+    <eLiterals name="RESTRICT" value="2"/>
+    <eLiterals name="SETNULL" value="3"/>
+    <eLiterals name="SETDEFAUL" value="4"/>
+  </eClassifiers>
+</ecore:EPackage>

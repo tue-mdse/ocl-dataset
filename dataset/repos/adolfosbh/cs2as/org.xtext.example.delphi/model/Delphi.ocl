@@ -1,0 +1,266 @@
+import  cs : 'generated/Delphi.ecore#/' 
+import  as : 'astm.ecore#/' 
+import 'DelphiHelpers.ocl'
+import 'DelphiLookup.ocl'
+import 'DelphiDisambiguation.ocl'
+package cs
+
+context mainRule
+def : ast() : as::Project =
+as::Project {
+	files = OrderedSet { self.file.ast()} 
+}
+
+context file
+def : ast() : as::CompilationUnit =
+	null -- to be overriden 
+
+context unit
+def : ast() : as::DelphiUnit =
+as::DelphiUnit {
+	name = as::Name {
+				nameString = id.extract()
+			}, 
+language = 'Delphi' , 
+interface = interfaceSect.ast(), 
+implementation = implementationSect.ast(), 
+locationInfo = as::SourceLocation {
+				inSourceFile = as::SourceFile {
+						}
+			} 
+}
+context interfaceSection
+def : ast() : as::DelphiInterfaceSection =
+as::DelphiInterfaceSection {
+	fragments = self.interfaceDecl.getFragments() 
+}
+context constantDecl
+def : ast() : as::VariableDefinition =
+as::VariableDefinition {
+	identifierName = as::Name {
+				nameString = id.extract()
+			}, 
+initialValue = const.ast() 
+}
+context implementationSection
+def : ast() : as::DelphiImplementationSection =
+as::DelphiImplementationSection {
+	fragments = self.declSect.getFragments() 
+}
+context labelDeclSection
+def : ast() : as::LabelDefinition =
+as::LabelDefinition {
+	}
+context expression
+def : ast() : as::Expression =
+	null -- to be overriden
+
+context constExpr
+def : ast() : as::Expression =
+	null -- to be overriden
+	
+context ConstExp
+def : ast() : as::Expression =
+exp.ast()
+context MultipleConstExp
+def : ast() : as::Expression =
+exps.ast()->first()
+context RecordConstExp
+def : ast() : as::Expression =
+exps.constExp.ast()->first()
+context typeDecl
+def : ast() : as::TypeDefinition =
+as::TypeDefinition {
+	name = as::Name {
+				nameString = id.extract()
+			} 
+}
+context varDecl
+def : ast() : as::VariableDefinition =
+as::VariableDefinition {
+	identifierName = as::Name {
+				nameString = idList.extract()
+			}, 
+definitionType = self.type.ast(), 
+isMutable = true 
+}
+
+context type
+def : ast() : as::TypeReference =
+	null -- to be overriden
+
+context procedureDecl
+def : ast() : as::FunctionDefinition =
+as::FunctionDefinition {
+	identifierName = as::Name {
+				nameString = heading.id.extract()
+			}, 
+_body = OrderedSet { self.block.ast()} 
+}
+context functionDecl
+def : ast() : as::FunctionDefinition =
+as::FunctionDefinition {
+	identifierName = as::Name {
+				nameString = heading.id.extract()
+			}, 
+_body = OrderedSet { self.block.ast()} 
+}
+context block
+def : ast() : as::DelphiBlockStatement =
+as::DelphiBlockStatement {
+	declarations = declSect->asSequence() ?-> collect(getFragments()), 
+subStatements = OrderedSet { compound.ast()} 
+}
+context statement
+def : ast() : as::Statement =
+self.statement.ast()
+	
+context unlabelledStatement
+def : ast() : as::Statement =
+	null -- to be overriden
+
+context compoundStmt
+def : ast() : as::BlockStatement =
+as::BlockStatement {
+	subStatements = stamtList.statments.ast() 
+}
+context assignmentStmnt
+def : ast() : as::ExpressionStatement =
+as::ExpressionStatement {
+	expression = as::BinaryExpression {
+				leftOperand = self.designator.ast(),
+				operator = as::Assign {
+						},
+				rightOperand = exp.ast()
+			} 
+}
+context callStmnt
+def : ast() : as::ExpressionStatement =
+as::ExpressionStatement {
+	expression = as::FunctionCallExpression {
+				calledFunction = self.designator.ast(),
+				actualParams = args->asSequence() ?-> collect(createActualParams())
+			} 
+}
+context withStmt
+def : ast() : as::DelphiWithStatement =
+as::DelphiWithStatement {
+	withs = getDefinitions(), 
+subStatements = OrderedSet { stmt.ast()} 
+}
+context ifStmt
+def : ast() : as::IfStatement =
+as::IfStatement {
+	condition = condition.ast(), 
+thenBody = _then.ast(), 
+elseBody = _else ?. ast() 
+}
+context caseStmt
+def : ast() : as::SwitchStatement =
+as::SwitchStatement {
+	switchExpression = self.expression.ast(), 
+cases = cases.ast() 
+}
+context caseSelector
+def : ast() : as::CaseBlock =
+as::CaseBlock {
+	caseExpressions = labels->collect(x | x.first.ast()->including(x.last.ast())), 
+_body = OrderedSet { stmt.ast()} 
+}
+context tryStmt
+def : ast() : as::TryStatement =
+as::TryStatement {
+	guardedStatement = as::BlockStatement {
+				subStatements = self.stmtList.statments.ast()
+			}, 
+finalStatement = if final = null then null else final.statments->first().ast() endif, 
+catchBlocks = OrderedSet { exception.ast()} 
+}
+context exceptionBlock
+def : ast() : as::CatchBlock =
+as::CatchBlock {
+	_body = as::BlockStatement {
+				subStatements = self.elseStmts.statments.ast()
+			} 
+}
+context designator
+def : ast() : as::NameReference =
+if isIdentifierRef()
+then as::IdentifierReference {
+	name = as::Name {
+				nameString = subpart.part.extract()
+			}, 
+refersTo = getDefinition() 
+}
+else
+	if isQualifiedOverData()
+	then as::QualifiedOverData {
+		name = as::Name {
+					nameString = subpart.part.extract()
+				}, 
+	member = self.designator.ast().oclAsType(as::IdentifierReference), 
+	refersTo = getDefinition() 
+	}
+	else
+		invalid
+	endif
+endif
+context relExp
+def : ast() : as::BinaryExpression =
+as::BinaryExpression {
+	leftOperand = left.ast(), 
+rightOperand = right.ast(), 
+operator = if self.relOp.op = '='  then as::Equal {
+			} else null endif 
+}
+context multExp
+def : ast() : as::BinaryExpression =
+as::BinaryExpression {
+	leftOperand = left.ast(), 
+operator = as::Multiply {
+			}, 
+rightOperand = right.ast() 
+}
+context addExp
+def : ast() : as::BinaryExpression =
+as::BinaryExpression {
+	leftOperand = left.ast(), 
+operator = astm::Add {
+			}, 
+rightOperand = right.ast() 
+}
+context simpleFactor
+def : ast() : as::Expression =
+self.designator.ast()
+context factor
+def : ast() : as::Expression =
+if isANumber()
+then as::IntegerLiteral {
+	value = number 
+}
+else
+	if isAString()
+	then as::StringLiteral {
+		value = string 
+	}
+	else
+		if isAFunctionCall()
+		then as::DelphiFunctionCallExpression {
+			calledFunction = self.designator.ast(), 
+		actualParams = expList.createActualParams() 
+		}
+		else
+			if isNotExp()
+			then as::UnaryExpression {
+				operator = as::Not {
+						}, 
+			operand = exp.ast() 
+			}
+			else
+				as::NewExpression {
+					}
+			endif
+		endif
+	endif
+endif
+endpackage

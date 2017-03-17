@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="realtimescheduling" nsURI="ensma.fr" nsPrefix="ensma.fr">
+  <eAnnotations source="http://www.eclipse.org/OCL/Import">
+    <details key="ecore" value="http://www.eclipse.org/emf/2002/Ecore"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="invocationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="settingDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="HardwareResource">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="modules" upperBound="-1"
+        eType="#//Module" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="network" eType="#//Network"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Task">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="PositiveWCET ExecutionAndDeadlineAllowsCompletion ExecutionAndPeriodAllowsCompletion DeadlineLessThanPeriod PositivePeriod"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="PositiveWCET" value="worstCaseExecTime > 0"/>
+      <details key="ExecutionAndDeadlineAllowsCompletion" value="worstCaseExecTime &lt;= implicitDeadline"/>
+      <details key="ExecutionAndPeriodAllowsCompletion" value="&#xA;&#x9;&#x9;if (periodicity &lt;> Periodicity::Aperiodic)&#xA;&#x9;&#x9;&#x9;then worstCaseExecTime &lt;= characteristicPeriod&#xA;&#x9;&#x9;&#x9;else true&#xA;&#x9;&#x9;&#x9;endif"/>
+      <details key="DeadlineLessThanPeriod" value="implicitDeadline &lt;= characteristicPeriod"/>
+      <details key="PositivePeriod" value="characteristicPeriod > 0"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="worstCaseExecTime" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="0"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="implicitDeadline" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="priority" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="responseTime" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scheduleable" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="criticalInstance" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="periodicity" lowerBound="1"
+        eType="#//Periodicity" defaultValueLiteral="Periodic"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="characteristicPeriod" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="This field only has 'meaning' if a task is not aperiodic."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="partition" lowerBound="1"
+        eType="#//Partition" eOpposite="#//Partition/tasks"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Periodicity">
+    <eLiterals name="Periodic"/>
+    <eLiterals name="Sporadic" value="1"/>
+    <eLiterals name="Aperiodic" value="2"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Module">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="PositiveDelay NonZeroPeriod NonOverlappingPartitions"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="PositiveDelay" value="delay > 0"/>
+      <details key="NonZeroPeriod" value="period > 0"/>
+      <details key="NonOverlappingPartitions" value="let allIntervals : Sequence(Interval) = partition.executionIntervals&#xA;&#x9;&#x9;->flatten()&#xA;&#x9;&#x9;->sortedBy(i : Interval | i.start)&#xA;&#x9;in if (allIntervals&#xA;&#x9;&#x9;&#x9;->size() &lt;= 1)&#xA;&#x9;&#x9;then true&#xA;&#x9;&#x9;else allIntervals&#xA;&#x9;&#x9;&#x9;->subSequence(1, allIntervals&#xA;&#x9;&#x9;&#x9;&#x9;->size() - 1)&#xA;&#x9;&#x9;&#x9;->forAll(i : Interval | i.end &lt;= allIntervals&#xA;&#x9;&#x9;&#x9;&#x9;->at(1 + allIntervals&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;->indexOf(i)).start)&#xA;&#x9;&#x9;endif"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="utilization" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble" defaultValueLiteral="0"
+        derived="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="derivation" value="if (partition&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;->size() > 0)&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;then partition&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;->collect(p | p.availabilityFactor)&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;->sum()&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;else 0.0&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;endif"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="period" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The period of all partitions running on this module. It is easier to guarantee non-overlapping&#xA;partitions if they are all forced to run with the same period."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="partition" upperBound="-1"
+        eType="#//Partition" eOpposite="#//Partition/module"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processors" lowerBound="1"
+        upperBound="-1" eType="#//Processor" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="modulePorts" upperBound="-1"
+        eType="#//EndSystemPort" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="delay" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Partition">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="PositivePeriod AvailibilityFactorLessThanOrEqualToOne PeriodSpansIntervals NonOverlappingIntervals"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="PositivePeriod" value="period > 0"/>
+      <details key="AvailibilityFactorLessThanOrEqualToOne" value="availabilityFactor &lt;= 1"/>
+      <details key="PeriodSpansIntervals" value="&#xA;&#x9;&#x9;let sortedIntervals : Sequence(Interval) = executionIntervals->sortedBy(start) in&#xA;&#x9;&#x9;if (sortedIntervals->size() > 1)&#xA;&#x9;&#x9;then sortedIntervals->last().end &lt;= period&#xA;&#x9;&#x9;else true&#xA;&#x9;endif"/>
+      <details key="NonOverlappingIntervals" value="&#xA;&#x9;&#x9;if (executionIntervals->size() &lt;= 1)&#xA;&#x9;&#x9;then true -- Nothing can overlap if there is only one or none!&#xA;&#x9;&#x9;else&#xA;&#x9;&#x9;let sortedIntervals : Sequence(Interval) = executionIntervals->sortedBy(i : Interval | i.start) in&#xA;&#x9;&#x9;&#x9;sortedIntervals->&#xA;&#x9;&#x9;&#x9;&#x9;subSequence(1, sortedIntervals->size() - 1)->&#xA;&#x9;&#x9;&#x9;&#x9;forAll(i : Interval | i.end &lt;= sortedIntervals->at(1 + sortedIntervals->indexOf(i)).start)&#xA;&#x9;&#x9;endif"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        defaultValueLiteral="0" iD="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="period" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"
+        changeable="false" defaultValueLiteral="0" derived="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="derivation" value="if (module->oclIsInvalid() or module->oclIsUndefined() or module = null)&#xA;&#x9;&#x9;then 0.0&#xA;&#x9;&#x9;else self.module.period&#xA;&#x9;&#x9;endif"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="executionIntervals" upperBound="-1"
+        eType="#//Interval" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="virtualProcessorUtilization"
+        lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"
+        defaultValueLiteral="0"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="availabilityFactor" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble" defaultValueLiteral="0"
+        derived="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="derivation" value="&#xA;&#x9;&#x9;--check for divide by zero!&#xA;&#x9;&#x9;if (period &lt;> 0)&#xA;&#x9;&#x9;then executionIntervals->collect(i : Interval | i.end - i.start)->sum() / period&#xA;&#x9;&#x9;else 0.0&#xA;&#x9;&#x9;endif"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="schedulingAlgorithm" lowerBound="1"
+        eType="#//SchedulingAlgorithm"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="tasks" upperBound="-1"
+        eType="#//Task" eOpposite="#//Task/partition"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="module" lowerBound="1"
+        eType="#//Module" eOpposite="#//Module/partition"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Interval">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="EndAfterStart NonZeroLength"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="EndAfterStart" value="end >= start"/>
+      <details key="NonZeroLength" value="end &lt;> start"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="start" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="end" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Network">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="PositiveNetworkLatency PositiveNetworkBandwith"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="PositiveNetworkLatency" value="latency > 0"/>
+      <details key="PositiveNetworkBandwith" value="networkBandwidth > 0"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="switches" upperBound="-1"
+        eType="#//Switch" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="networkBandwidth" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The forward analysis algorithm expects that all frames in a virtual link will have the same transmission time.&#xA;This attribute will be used by the FA algorithm to force all ports on the network to have the same bandwidth.&#xA;"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="connections" upperBound="-1"
+        eType="#//Connection" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="latency" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Technological latency at each switch of forwarding a frame."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="System">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="hardware" lowerBound="1"
+        eType="#//HardwareResource" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="software" lowerBound="1"
+        eType="#//SoftwareResource" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="SchedulingAlgorithm">
+    <eLiterals name="FixedPriority"/>
+    <eLiterals name="RateMonotonic" value="1"/>
+    <eLiterals name="DeadlineMonotonic" value="2"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SoftwareResource">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="executedTasks" upperBound="-1"
+        eType="#//Task" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="containedPartitions" lowerBound="1"
+        upperBound="-1" eType="#//Partition" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="virtualLinks" upperBound="-1"
+        eType="#//VirtualLink" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Processor">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Switch">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="AtleastTwoSwitchPorts"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="AtleastTwoSwitchPorts" value="switchPorts->size() > 1"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="switchPorts" lowerBound="1"
+        upperBound="-1" eType="#//SwitchPort" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="VirtualLink">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="DestinationsCannotIncludeSource PositiveBAG PositiveMaxFrameSize PathExists RoutesConnectSourceToDestinations NoCycles"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="DestinationsCannotIncludeSource" value="&#xA;&#x9;&#x9;&#x9;&#x9;destinations->forAll(dest : Module | dest &lt;> source)"/>
+      <details key="PositiveBAG" value="BAG > 0"/>
+      <details key="PositiveMaxFrameSize" value="maxFrameSize > 0"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="BAG" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Bandwith allocation gap. Minimum time between two consecutive frames."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="routes" lowerBound="1"
+        upperBound="-1" eType="#//Route" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//Module"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="destinations" lowerBound="1"
+        upperBound="-1" eType="#//Module"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="maxFrameSize" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Maximum frame size in bytes."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Port" abstract="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="PositiveBandwidth UtilizationSumLessThanOne"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="PositiveBandwidth" value="Bandwidth > 0"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="order" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        derived="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="Bandwidth" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble" defaultValueLiteral="0.0"
+        derived="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="connection" lowerBound="1"
+        eType="#//Connection"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Connection">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="routes" upperBound="-1"
+        eType="#//Route" eOpposite="#//Route/connections"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="B" lowerBound="1" eType="#//Port"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="A" lowerBound="1" eType="#//Port"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Route">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="connections" upperBound="-1"
+        eType="#//Connection" eOpposite="#//Connection/routes"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="endToEndDelay" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="End to end delay for a frame on this route of a virtual link"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SwitchPort" eSuperTypes="#//Port"/>
+  <eClassifiers xsi:type="ecore:EClass" name="EndSystemPort" eSuperTypes="#//Port"/>
+</ecore:EPackage>

@@ -1,0 +1,37 @@
+import 'platform:/resource/ClassModelSlicing/ecores/Projects.ecore'
+
+package Projects
+
+context Company::hire(w : Worker) :
+    pre OnlyNonEmployeesCanBeHired: employees->excludes(w)
+    post Hired: employees->includes(w)
+
+context Company::fire(w : Worker) :
+    pre OnlyEmployeesCanBeFired: employees->includes(w)
+    post Fired: employees->excludes(w)
+
+context Company::start(p : Project) :
+	pre AllPredecessorsFinished: p.predecessors->forAll(s|s.status = ProjectStatus::finished)
+    	and p.status = ProjectStatus::suspended or p.status = ProjectStatus::planned
+    post ProjectIsActive: p.status = ProjectStatus::active
+
+context Company::finish(p : Project) :
+    pre ProjectIsActive: p.status = ProjectStatus::active
+    post ProjectIsFinished: p.status = ProjectStatus::finished
+    	and p.members->isEmpty()
+
+context Company
+  inv OnlyOwnEmployeesInProjects: 
+    employees->includesAll(projects.members->asSet())
+
+context Worker
+  inv notOverloaded: not (
+     projects->select(p|p.status = ProjectStatus::active)->select(p|p.size=ProjectSize::big)->size() * 2 + 
+     projects->select(p|p.status = ProjectStatus::active)->select(p|p.size=ProjectSize::medium)->size() > 3)
+     
+context Project
+  inv AllQualificationsForActiveProject: status = ProjectStatus::active implies 
+  	(requirements->select(q|not members->exists(m | m.qualifications->includes(q))))->isEmpty()
+  	
+ 
+endpackage

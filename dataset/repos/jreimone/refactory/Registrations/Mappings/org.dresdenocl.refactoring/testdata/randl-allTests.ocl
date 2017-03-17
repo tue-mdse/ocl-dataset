@@ -1,0 +1,100 @@
+-- Invariant 15:
+context LoyaltyAccount
+inv: 
+let test : Boolean = true
+in
+ points> 0 implies transactions->exists(test |test.points > 0)
+
+
+-- Invariant 5 - split expression - and chain:
+context Membership
+inv levelAnColor:
+  	(currentLevel.name = 'Silver' implies card.color = Color::silver) 
+  and
+    (currentLevel.name = 'Gold' implies card.color = Color::gold)
+    
+-- Invariant 12 - remove magic literal for transactionPointLimit 
+context ProgramPartner
+inv totalPointsEarning: 
+  deliveredServices.transaction->select(
+	oclIsTypeOf(Earning)).points->sum() < 10000
+
+ 
+-- Invariant 13 redundant brackets:
+context CustomerCard
+inv:
+  if valid then
+	(((self.validFrom.isBefore(Date::now()))) and (self.validThru.isAfter(Date::now()))) = false
+  else
+	((((self.validFrom.isBefore(Date::now())) and ((self.validThru.isAfter((Date::now()))))))) = true
+  endif
+ 
+  
+  
+-- Invariant 13 unused variable and chained letExpressions:
+context CustomerCard
+inv: 
+let correctDate : Boolean =self.validFrom.isBefore(Date::now()) and self.validThru.isAfter(Date::now()),
+	testUnused : Boolean = correctDate
+in
+	let
+		varA : Integer = 1,
+		varB : Integer = 2,
+		varC : Integer = 3
+	in
+		let
+			varD : Integer = 4
+		in
+  			if valid then
+				correctDate = false
+  			else
+				correctDate = true
+  			endif
+  
+  
+-- Invariant 13A extract:
+context CustomerCard
+inv:
+  if valid then
+	((self.validFrom.isBefore(Date::now()) and self.validThru.isAfter(Date::now()))) = false
+  else
+	((self.validFrom.isBefore(Date::now()) and self.validThru.isAfter(Date::now()))) = true
+  endif
+      
+ 
+ 
+-- Invariant 13 integration:
+
+context CustomerCard
+inv: let correctDate : Boolean = 	
+		self.validFrom.isBefore(Date::now()) and self.validThru.isAfter(Date::now())
+in
+  if valid then
+	correctDate = false
+  else
+	correctDate = true
+  endif
+ 
+
+-- Invariant 6:
+context LoyaltyProgram
+inv minServices: partners->forAll(deliveredServices | deliveredServices->size() >= 1)
+  
+  
+-- Invariant 15:
+context LoyaltyAccount
+inv: 
+let test : Boolean = true
+in
+points > 0 implies transactions->exists(test | test.points > 0)
+  
+
+
+
+
+       
+-- Postcondition 9:
+-- Unable to find property 'membership' in type 'root::tudresden::ocl20::pivot::examples::royalsandloyals::CustomerCard' An error occured while building an property call expression. Error occured at line 6 and column 26. The error occured at the token membership.
+context Transaction::getProgram(): LoyaltyProgram
+post: result = card.membership.program  
+

@@ -1,0 +1,65 @@
+import  _source : 'SourceMM1.ecore#/'
+import  _target : 'TargetMM1.ecore#/'
+import 'Source2TargetLookup.ocl'
+import 'Source2TargetDisambiguation.ocl'
+package _source
+
+context SRoot
+def : ast() : _target::TRoot =
+	_target::TRoot {
+		ownedA = ownedX.ast() 
+	}
+context X
+def : ast() : _target::A =
+	if isA1()
+	then _target::A1 {
+		name = name, 
+	ownsB = ownsY.oclAsType(Y1).ast() 
+	}
+	else
+		if isA2()
+		then _target::A2 {
+			name = name, 
+		ownsC = ownsY.oclAsType(Y2).ast() 
+		}
+		else
+			if isA3()
+			then _target::A3 {
+				name = name, 
+			ownsC = ownsY.oclAsType(Y2).ast() 
+			}
+			else
+				invalid
+			endif
+		endif
+	endif
+context Y1
+def : ast() : _target::B =
+	_target::B {
+		name = name, 
+	ownsD = ownsZ.ast() 
+	}
+context Y2
+def : ast() : _target::C =
+	_target::C {
+		name = name, 
+	ownsD = ownsZ.ast() 
+	}
+context Z
+def : ast() : _target::D =
+	if parentIsY1()
+	then _target::D {
+		toA = toY.oclAsType(_'source'::Y1).ast().toA1, 
+	refsB = if refers = null then null else ast().lookupB(refers) endif 
+	}
+	else
+		if parentIsY2()
+		then _target::D {
+			toA = toY.oclAsType(_'source'::Y2).ast().toA2, 
+		refsC = if refers = null then null else ast().lookupC(refers) endif 
+		}
+		else
+			invalid
+		endif
+	endif
+endpackage

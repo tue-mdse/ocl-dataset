@@ -1,0 +1,175 @@
+import 'EssentialOCLCS.ecore'
+import '/resource/org.eclipse.ocl.pivot/model/Pivot.ecore'
+import '/resource/org.eclipse.ocl.pivot/model/PivotNameResolution.ocl'
+
+import '/resource/org.eclipse.ocl.xtext.base/model/BaseCS2AS.ocl' -- To import other OCL definitions
+
+package essentialoclcs
+
+--context AbstractNameExpCS
+--def : ast() : ocl::Element
+--
+--		/*
+--		 * For explicit source invocations, sourceType provides the true source type after resolution of implicit set or implicit collect.
+--		 */
+--		property sourceType : ocl::Type[?] { derived transient !resolve };
+--	}
+/*
+context IfExpCS
+def : cst() : IfExpCS = 
+	if ownedIfThenExpressions->isEmpty()
+	then self
+	else IfExpCS {
+			ownedCondition = ownedCondition,
+			ownedThenExpression = ownedThenExpression,
+			ownedElseExpression = ownedIfThenExpressions->reverse()->iterate(ifThen; elseResult : ExpCS = ownedElseExpression |
+					IfExpCS {
+							ownedCondition = ifThen.ownedCondition,
+							ownedThenExpression = ifThen.ownedThenExpression,
+							ownedThenExpression = elseResult,
+							isImplicit = true
+						}),
+			isImplicit = false
+		}
+	endif
+*/
+/*
+context InfixExpCS
+def : ast() : ocl::OperationCallExp = 
+	let first : ExpCS = ownedExpressions->first(),
+		others : Sequence(ExpCS) = ownedExpressions->excluding(first)
+	in  others->iterate(x : ExpCS; result : ocl::OperationCallExp = null |
+					if result = null
+					then result = ocl::OperationCallExp {
+						name = ownedOperators->at(others->indexOf(x)),
+						source = first.ast(),
+						argument = Sequence(ocl::OperationCallExp) {x.ast()}
+						-- TODO referred operation = name resolution
+					}
+					else result = ocl::OperationCallExp {
+						name = ownedOperators->at(others->indexOf(x)),
+						source = result,
+						argument = Sequence(ocl::OperationCallExp) {x.ast()}
+						-- TODO referredOperation = name resolution
+					}
+					endif)
+*/
+/*
+context LetExpCS
+def : cst() : LetExpCS = 
+	if ownedVariables->size() <= 1
+	then self
+	else let csIn = self, extraVariables = ownedVariables->subOrderedSet(2, ownedVariables->size())
+	     in LetExpCS {
+			ownedVariables = extraVariables->reverse()->iterate(letVar : LetVariableCS; inExp : ocl::LetExp = ownedInExpression |
+				LetExpCS {
+						ownedVariables = letVar->asOrderedSet(),
+						ownedInExpression = inExp,
+						isImplicit = true
+					}
+			)->asOrderedSet(),
+			ownedInExpression = csIn.ownedInExpression,
+			isImplicit = false
+		}
+	endif
+*/
+/*
+context	NameExpCS
+def : cst() : ExpCS =
+	if ownedCurlyBracketedClause <> null then
+		ConstructorExpCS {
+			ownedType = TypeNameExpCS {
+				ownedPathName = ownedPathName
+			},
+			ownedParts = ownedCurlyBracketedClause.ownedParts,
+			value = ownedCurlyBracketedClause.value
+		}
+	else if ownedSquareBracketedClauses->notEmpty() then
+		AssociationClassCallExpCS {
+			referredAssociation = null,
+			isPre = isPre
+		}
+	else if ownedRoundBracketedClause <> null then
+		let exampleOperation = null --lookupExampleOperation(ownedPathName, ownedRoundBracketedClause)
+		in if exampleOperation.oclIsKindOf(ocl::Iteration) then
+				IterationCallExpCS {
+					ownedPathName = ownedPathName,
+					ownedArguments = ownedRoundBracketedClause.ownedArguments,
+					isPre = isPre
+				}
+			else
+				OperationCallExpCS {
+					ownedPathName = ownedPathName,
+					ownedArguments = ownedRoundBracketedClause.ownedArguments,
+					isPre = isPre
+				}
+			endif
+	else
+		let exampleElement = null --lookupExampleElement(ownedPathName)
+		in if exampleElement.oclIsUndefined() then
+			InvalidLiteralExpCS {}
+		else if exampleElement.oclIsKindOf(ocl::VariableDeclaration) then
+			VariableExpCS {
+				ownedPathName = ownedPathName--,
+--				isImplicit = false
+			}
+		else if exampleElement.oclIsKindOf(ocl::Property) then
+			PropertyCallExpCS {
+				ownedPathName = ownedPathName--,
+--				isImplicit = false
+			}
+		else if exampleElement.oclIsKindOf(ocl::Type) then
+			TypeLiteralExpCS {
+				ownedPathName = ownedPathName--,
+--				isImplicit = false
+			}
+/* 		else if exampleElement.oclIsKindOf(ocl::EnumerationLiteral) then
+			EnumerationLiteralExpCS {
+				ownedPathName = ownedPathName,
+				referredEnumerationLiteral = exampleElement--,
+--				isImplicit = false
+			}
+		else if exampleElement.oclIsKindOf(ocl::State) then
+			StateExpCS {
+				ownedPathName = ownedPathName,
+				referredState = exampleElement--,
+--				isImplicit = false
+			} * /
+		else null
+		endif
+		endif
+--		endif
+--		endif
+		endif
+		endif
+	endif
+	endif
+	endif
+	-- env().lookupPathName(pathName)
+--	ownedPathName.ast().oclAsType(ocl::NamedElement) -- FIXME PathNameCS should probably do the conversion
+*/
+--inv PathNameExists: ownedPathName <> null
+--inv ConstructorHasNoFurtherClauses: ownedCurlyBracketedClause <> null implies ownedRoundBracketedClause = null and ownedSquareBracketedClauses->isEmpty()
+--inv AssociationClassCallHasNoFurtherClauses: ownedSquareBracketedClauses->notEmpty() implies ownedRoundBracketedClause = null
+-- TODO	
+--context NavigatingArgCS
+--def : ast() : ocl::Element = -- FIXME
+--	if navigatingExp.oclIsKindOf(OperationCallExpCS)
+--	then name.ast()
+--	else name.ast() -- TODO
+--	endif
+
+-- TODO context NavigationOperatorCS
+
+context NestedExpCS
+def : cst() : ExpCS = self.ownedExpression
+/*	
+context PrefixExpCS
+def : cst() : OperationCallExpCS = 
+	ownedOperators->reverse()->iterate(x : UnaryOperatorCS; result : ExpCS = ownedExpression |
+					OperationCallExpCS {
+							ownedPathName = x.name,
+							ownedSource = result
+						})
+*/
+endpackage

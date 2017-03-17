@@ -1,0 +1,62 @@
+import  cs : './generated/Companies.ecore#/'
+import  as : 'Company.ecore#/'
+import 'Lookup.ecore'
+--import 'companiesHelpers.ocl'
+
+
+package ocl
+---- Default Environment related functionality
+context OclElement
+--	
+def : env_Employee() : lookup::LookupEnvironment[1] =
+	_unqualified_env_Employee(null)
+
+def : _unqualified_env_Employee(child : OclElement) : lookup::LookupEnvironment[1] =
+	parentEnv_Employee()
+	
+def : parentEnv_Employee() : lookup::LookupEnvironment[1] =
+	let parent = oclContainer() in if parent = null then lookup::LookupEnvironment { } else parent._unqualified_env_Employee(self) endif
+
+endpackage 
+
+
+package lookup
+context LookupEnvironment
+def : nestedEnv() : LookupEnvironment[1] = 
+	LookupEnvironment {
+		parentEnv = self
+	}
+endpackage
+
+package as
+	
+context Department
+def : _unqualified_env_Employee(child : ocl::OclElement) : lookup::LookupEnvironment =
+	parentEnv_Employee()
+		.addElements(employees->including(manager))
+
+context Visitable
+-- Employee lookup
+def : _lookupEmployee(env : lookup::LookupEnvironment, eName : String) : OrderedSet(as::Employee) =
+let foundEmployee = env.namedElements->selectByKind(as::Employee)->select(name = eName)
+in  if foundEmployee->isEmpty() and not (env.parentEnv = null)
+	then _lookupEmployee(env.parentEnv, eName)
+	else foundEmployee
+	endif
+	
+-- Note: when calling this method, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupEmployee(eName : String) : as::Employee[?] =
+let foundEmployee = _lookupEmployee(env_Employee(), eName)
+in  if foundEmployee->isEmpty()
+	then null
+	else foundEmployee->first() -- LookupVisitor will report ambiguous result
+	endif
+	
+def : lookupEmployee(eName : String) : as::Employee[?] =
+	if eName = null
+	then null
+   	else _lookupEmployee(eName)
+   	endif
+
+endpackage

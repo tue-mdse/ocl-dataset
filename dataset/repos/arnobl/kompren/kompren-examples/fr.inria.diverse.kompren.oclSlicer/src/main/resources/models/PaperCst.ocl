@@ -1,0 +1,74 @@
+import paper : 'Paper.ecore'
+
+package LRBAC
+
+context User::AssignRole(r : Role): OclVoid
+pre: self.AssignedRoles->excludes(r) and r.AssignLoc->includes(self.UserLoc)
+post: self.AssignedRoles = self.AssignedRoles@pre->including(r) 
+
+context User::UpdateUserID(id : Integer): OclVoid
+pre: self.UserID <> id
+post: self.UserID = id
+
+context User::UpdateLoc(l : Location): OclVoid
+pre: self.UserLoc->excludes(l) and self.AssignedRoles->isEmpty()
+post:self.UserLoc->includes(l)
+
+context User::UpdateAge(age : Integer): OclVoid
+pre: age > 0
+post : self.Age = age
+
+context User::UpdateUserName(name : String) : OclVoid
+pre: self.UserName <> name
+post: self.UserName = name
+
+context Session::UpdateMaxRoles(NoOfRoles : Integer) : OclVoid
+pre: self.MaxRoles <> NoOfRoles
+post: self.MaxRoles = NoOfRoles
+
+context Role::UpdateRoleName(name : String) : OclVoid
+pre: self.RoleName <> name
+post: self.RoleName = name
+
+context Role::AddAssignLoc( l : Location ) : OclVoid
+pre: self.AssignLoc->excludes(l) 
+post: self.AssignLoc = self.AssignLoc@pre->including(l) 
+
+context Location::UpdateLocName(name : String) : OclVoid
+pre: self.LocName <> name
+post: self.LocName = name
+
+context Object::UpdateObjID(id : Integer) : OclVoid
+pre: self.ObjID <> id
+post: self.ObjID = id
+
+context Permission::UpdatePermName(name : String) : OclVoid
+pre: self.PermName <> name
+post: self.PermName = name
+
+context User
+inv NonNegativeAge: 
+self.Age > 0
+
+context User 
+inv UniqueUserID:
+User.allInstances()->forAll(u1, u2 : User | u1.UserID = u2.UserID implies u1 = u2)
+
+context User
+inv GenderConstraint:
+self.Gender='male' or self.Gender = 'female'
+
+context User
+inv CorrectRoleAssignment:
+self.AssignedRoles->forAll(r | r.AssignLoc->includes(self.UserLoc))
+
+context Session
+inv MaxActivatedRoles:
+self.MaxRoles >= self.SessRole->size()
+
+context Object 
+inv UniqueObjectID:
+Object.allInstances()->forAll(o1, o2 : Object | o1.ObjID = o2.ObjID implies o1 = o2)
+
+
+endpackage

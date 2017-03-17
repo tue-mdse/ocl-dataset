@@ -1,0 +1,159 @@
+@"import"("roles"="../../org.emftext.language.refactoring.roles/metamodel/roles.ecore")
+package refactoring_specification refspec "http://www.emftext.org/language/refactoring_specification" {
+
+	class RefactoringSpecification {
+		reference roles::RoleModel usedRoleModel (1..1);
+		containment reference Instruction instructions (0..-1);
+	}
+
+	abstract class Instruction { }
+
+	abstract class ContainmentCommand extends Instruction, ReferenceCommand {
+		reference IndexVariable index (0..1);
+	}
+
+	class CREATE extends ContainmentCommand, VariableDeclarationCommand {
+		reference roles::Role sourceRole (1..1);
+		containment reference TargetContext targetContext (0..1);
+	}
+
+	class MOVE extends ContainmentCommand {
+		containment reference SourceContext source (1..1);
+		containment reference TargetContext target (1..1);
+		containment reference Modifier moveModifier (0..1);
+	}
+
+	class Variable extends AbstractVariable {
+		reference VariableDeclarationCommand containerCommand (1..1) opposite variable;
+	}
+
+	class VariableReference extends SourceContext, TargetContext, ObjectReference {
+		reference Variable variable (1..1);
+	}
+
+	abstract class SourceContext extends Context { }
+
+	class RoleReference extends ObjectAssignmentCommand {
+		reference roles::Role role (1..1);
+		containment reference FromClause from (1..1);
+	}
+
+	class CollaborationReference extends SourceContext, TargetContext, ObjectRemoval, ObjectAssignmentCommand {
+		reference roles::MultiplicityCollaboration collaboration (1..1);
+	}
+
+	abstract class TargetContext extends Context {
+	}
+
+	abstract class ReferenceCommand extends Instruction { }
+
+	class SET extends ReferenceCommand {
+		containment reference SourceContext source (1..1);
+		containment reference TargetContext target (1..1);
+	}
+	
+	class UNSET extends ReferenceCommand {
+		containment reference SourceContext source (1..1);
+		containment reference TargetContext target (1..1);
+	}
+
+	abstract class AttributeCommand extends Instruction { }
+
+	class ASSIGN extends AttributeCommand {
+		reference roles::RoleAttribute sourceAttribute (0..1);
+		reference roles::RoleAttribute targetAttribute (1..1);
+	}
+
+	class FromClause {
+		containment reference FromOperator operator (1..1);
+		containment reference ObjectReference _reference (1..1);
+	}
+
+	abstract class FromOperator { }
+
+	class UPTREE extends FromOperator { }
+
+	serializable enum Constants  {
+		0 : INPUT = "INPUT";
+	}
+
+	class ConstantsReference extends ObjectReference, SourceContext {
+		attribute Constants referencedConstant (1..1);
+		reference roles::Role qualifierRole (0..1);
+	}
+
+	abstract class ObjectReference extends ObjectRemoval { }
+
+	abstract class Context { }
+
+	abstract class IndexAssignmentCommand extends Instruction {
+		containment reference IndexVariable variable (1..1) opposite indexCommand;
+	}
+
+	class IndexVariable extends AbstractVariable {
+		reference IndexAssignmentCommand indexCommand (1..1) opposite variable;
+	}
+
+	class ConcreteIndex extends IndexAssignmentCommand {
+		attribute EInt index (1..1);
+	}
+
+	class FIRST extends ObjectReferenceAssignment { }
+
+	class LAST extends ObjectReferenceAssignment { }
+
+	abstract class ObjectReferenceAssignment extends IndexAssignmentCommand {
+		containment reference ObjectReference _reference (1..1);
+	}
+
+	abstract class ObjectAssignmentCommand {
+		reference VariableAssignment declaration (1..1) opposite assignment;
+	}
+
+	abstract class VariableDeclarationCommand extends Instruction {
+		containment reference Variable variable (1..1) opposite containerCommand;
+	}
+
+	class TRACE extends ObjectAssignmentCommand {
+		containment reference ObjectReference _reference (1..1);
+		reference roles::Role role (1..1);
+	}
+
+	class VariableAssignment extends VariableDeclarationCommand {
+		containment reference ObjectAssignmentCommand assignment (1..1) opposite declaration;
+	}
+
+	class PATH extends FromOperator { }
+
+	class FILTER extends FromOperator { }
+
+	abstract class Modifier { }
+
+	class DISTINCT extends Modifier { }
+
+	abstract class DeleteCommand extends Instruction { }
+
+	class REMOVE extends DeleteCommand, ContainmentCommand {
+		containment reference ObjectRemoval removal (1..1);
+		containment reference RemoveModifier modifier (0..1);
+	}
+
+	abstract class ObjectRemoval { }
+
+	class RoleRemoval extends ObjectRemoval {
+		reference roles::Role role (1..1);
+	}
+
+	abstract class RemoveModifier { }
+
+	class UNUSED extends RemoveModifier { }
+
+	class EMPTY extends RemoveModifier { }
+
+	class AFTER extends ObjectReferenceAssignment { }
+
+	abstract class AbstractVariable {
+		attribute EString name (1..1);
+	}
+
+}

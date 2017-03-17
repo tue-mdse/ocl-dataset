@@ -1,0 +1,222 @@
+import '/resource/org.eclipse.ocl.pivot/model/Pivot.ecore'
+import '/resource/org.eclipse.ocl.pivot/model/Lookup.ecore'
+-- import '/resource/org.eclipse.ocl.pivot/model/PivotLookup.ocl'
+import '/resource/org.eclipse.ocl.xtext.base/model/BaseCS.ecore'
+import '/resource/org.eclipse.ocl.xtext.essentialocl/model/EssentialOCLCS.ecore'
+import 'generated/CS2ASDSL.ecore'
+
+package ocl 
+--
+-- Default Environment related functionality
+--
+context OclElement
+
+def : env() : lookup::LookupEnvironment =
+	_env(null)
+
+def : _env(child : OclElement) : lookup::LookupEnvironment =
+	parentEnv()
+
+def : parentEnv() : lookup::LookupEnvironment =
+	let parent = oclContainer() in if parent = null then lookup::LookupEnvironment { } else parent._env(self) endif
+		
+endpackage 
+
+package lookup
+
+-- Lookup operations
+context LookupEnvironment
+
+-- General Environment configuration operations
+		
+def : nestedEnv() : LookupEnvironment = 
+	LookupEnvironment {
+		parentEnv = self
+	}
+
+-- FIXME do we need this ?	
+def : addElementsOf(element : ocl::OclElement) : LookupEnvironment =
+	let newEnv = element._env(null)
+	in LookupEnvironment {
+		namedElements = self.namedElements->including(newEnv.namedElements)
+	}
+
+def : addElementsOf(elements : Collection(ocl::OclElement)) : LookupEnvironment =
+	elements->iterate(element ; acc : LookupEnvironment = self 
+		| acc.addElementsOf(element))
+
+endpackage
+
+package pivot
+
+context Package
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+--	-- FIXME this doesn't work in the editor. Discuss with ED
+--	--_env_Class(child).mergeEnv(
+--	--_env_Package(child))
+--	let _env_Package = _env_Package(child), _env_Class = _env_Class(child)
+--	in
+--		_env_Package.mergEnv(_env_Class)
+-- FIXME LookupVisitor doesn't handle any other operation called from this one. Inline here, for the time being
+	parentEnv().nestedEnv()
+		.addElements(self.ownedClasses)
+		.addElements(self.ownedPackages)
+		
+
+--def : _env_Class(child : ocl::OclElement) : lookup::LookupEnvironment =
+--	parentEnv().nestedEnv().
+--		addElements(self.ownedClasses)
+--
+--def : _env_Package(child : ocl::OclElement) : lookup::LookupEnvironment =
+--	parentEnv().nestedEnv().
+--		addElements(self.ownedPackages)
+		
+context Model
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+--	_env_Package(child)
+-- FIXME LookupVisitor doesn't handle any other operation called from this one. Inline here, for the time being
+	parentEnv().nestedEnv().
+		addElements(self.ownedPackages)
+--def : _env_Package(child : ocl::OclElement) : lookup::LookupEnvironment =
+--	parentEnv().nestedEnv().
+--		addElements(self.ownedPackages)
+
+context Class
+-- To produce the visit method for Class
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	parentEnv()
+
+context Visitable
+-- Specific Environment access operations	
+def : _lookupPackage(path : basecs::PathElementCS) : ocl::Package =
+	-- namedElements->selectByKind(ocl::Package)->select(name = path.name)->first()
+	let foundPackages = _lookupPackages(env(), path)
+	in
+		if foundPackages->isEmpty()
+		then null
+		else foundPackages->first()
+		endif
+		
+def : _lookupPackages(env : lookup::LookupEnvironment, path : basecs::PathElementCS) : OrderedSet(ocl::Package) =  
+	let 
+		foundPackages = env.namedElements->selectByKind(ocl::Package)->select(name = path.name) 
+	in
+		if foundPackages->isEmpty()
+		then if env.parentEnv.oclIsUndefined()
+			then OrderedSet{}
+			else _lookupPackages(env.parentEnv,path)
+			endif
+		else foundPackages
+		endif
+		
+def : lookupPackage(pathSeq : OrderedSet(basecs::PathElementCS)) : ocl::Package =
+	if pathSeq->size() = 1 
+	then _lookupPackage(pathSeq->first())
+	else lookupPackage(pathSeq->subOrderedSet(1,pathSeq->size()-1))._lookupPackage(pathSeq->last())
+	endif
+
+def : lookupPackage(pathName : basecs::PathNameCS) : ocl::Package = 
+	lookupPackage(pathName.ownedPathElements)
+		
+def : _lookupClass(path : basecs::PathElementCS) : ocl::Class =
+	let foundClasses = _lookupClasses(env(), path)
+	in
+		if foundClasses->isEmpty()
+		then null
+		else foundClasses->first() -- LookupVisitor will report ambiguous result
+		endif
+	
+def : _lookupClasses(env : lookup::LookupEnvironment, path : basecs::PathElementCS) : OrderedSet(ocl::Class) =  
+	
+	let foundClasses = env.namedElements->selectByKind(ocl::Class)->select(name = path.name) 
+	in
+		if foundClasses->isEmpty()
+		then if env.parentEnv.oclIsUndefined()
+			then OrderedSet{}
+			else _lookupClasses(env.parentEnv,path)
+			endif
+		else foundClasses
+		endif
+
+def : lookupClass(pathSeq : OrderedSet(basecs::PathElementCS)) : ocl::Class = 
+	if pathSeq->size() = 1
+	then _lookupClass(pathSeq->first())
+	else lookupPackage(pathSeq->subOrderedSet(1,pathSeq->size()-1))._lookupClass(pathSeq->last())
+	endif
+
+def : lookupClass(pathName : basecs::PathNameCS) : ocl::Class = 
+	lookupClass(pathName.ownedPathElements)
+		
+-- OPERATION TODO arguments match
+def : _lookupOperations(env : lookup::LookupEnvironment, oName : String) : OrderedSet(ocl::Operation) = 
+	let foundOperations = env.namedElements->selectByKind(ocl::Operation)->select(name = oName) 
+	in
+		if foundOperations->isEmpty()
+		then if env.parentEnv.oclIsUndefined()
+			then OrderedSet{}
+			else _lookupOperations(env.parentEnv,oName)
+			endif
+		else foundOperations
+		endif
+		
+def : _lookupOperation(name : String) : ocl::Operation =
+	let foundOperations = _lookupOperations(env(), name)
+	in
+		if foundOperations->isEmpty()
+		then null
+		else foundOperations->first() -- LookupVisitor will report ambiguous result
+		endif
+
+def : lookupOperation(name : String) : ocl::Operation =
+	_lookupOperation(name)
+
+	-- QN lookup 		
+def : lookupOperation(path : basecs::PathElementCS) : ocl::Operation =
+	lookupOperation(path.name)
+
+def : lookupOperation(pathSeq : OrderedSet(basecs::PathElementCS)) : ocl::Operation =
+	if pathSeq->size() = 1
+	then lookupOperation(pathSeq->first())
+	else lookupClass(pathSeq->subOrderedSet(1,pathSeq->size()-1)).lookupOperation(pathSeq->last())
+	endif
+
+def : lookupOperation(pathName : basecs::PathNameCS) : ocl::Operation = 
+	lookupOperation(pathName.ownedPathElements)
+	
+-- PROPERTY 
+def : _lookupProperties(env : lookup::LookupEnvironment, pName : String) : OrderedSet(ocl::Property) = 
+	let foundProperties = env.namedElements->selectByKind(ocl::Property)->select(name = pName) 
+	in
+		if foundProperties->isEmpty()
+		then if env.parentEnv.oclIsUndefined()
+			then OrderedSet{}
+			else _lookupProperties(env.parentEnv,pName)
+			endif
+		else foundProperties
+		endif
+		
+def : _lookupProperty(name : String) : ocl::Property =
+	let foundProperties = _lookupProperties(env(), name)
+	in
+		if foundProperties->isEmpty()
+		then null
+		else foundProperties->first() -- LookupVisitor will report ambiguous result
+		endif
+
+def : lookupProperty(name : String) : ocl::Property =
+	_lookupProperty(name)
+
+	-- QN lookup
+def : lookupProperty(path : basecs::PathElementCS) : ocl::Property =
+	lookupProperty(path.name)
+
+def : lookupProperty(pathSeq : OrderedSet(basecs::PathElementCS)) : ocl::Property =
+	if pathSeq->size() = 1
+	then lookupProperty(pathSeq->first())
+	else lookupClass(pathSeq->subOrderedSet(1,pathSeq->size()-1)).lookupProperty(pathSeq->last())
+	endif
+
+def : lookupProperty(pathName : basecs::PathNameCS) : ocl::Property = 
+	lookupProperty(pathName.ownedPathElements)
+
+endpackage

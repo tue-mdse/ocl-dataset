@@ -1,0 +1,81 @@
+import  cs : 'generated/DDL.ecore#/' 
+import  as : 'astm.ecore#/' 
+import 'plsqlHelpers.ocl'
+import 'plsqlLookup.ocl'
+import 'plsqlDisambiguation.ocl'
+package cs
+
+context Data_definition
+def : ast() : as::Project =
+as::Project {
+	files = as::CompilationUnit {
+				language = 'PL/SQL' ,
+				fragments = definitions.ast()
+			} 
+}
+
+context Definition
+def : ast() : as::Definition = 
+	null -- to be overridden
+	
+context Create_table
+def : ast() : as::RDBTableDefinition =
+as::RDBTableDefinition {
+	identifierName = as::Name {
+				nameString = id
+			}, 
+Column = columns.ast(), 
+PrimKey = constraints->select(oclIsKindOf(Primary_key)).ast(), 
+Constraint = constraints->select(not oclIsKindOf(Primary_key)).ast() 
+}
+context Column
+def : ast() : as::RDBColumnDefinition =
+as::RDBColumnDefinition {
+	identifierName = as::Name {
+				nameString = id
+			}, 
+type = if type.id = 'NUMBER'  then as::RDBNumber {
+			} else if type.id = 'VARCHAR2'  then as::RDBVarchar {
+			} else if type.id = 'DATE'  then as::RDBDate else invalid endif endif endif, 
+NotNull = if isNull.nonNull then 'false'  else 'true'  endif 
+}
+context Constraint
+def : ast() : as::Visitable =
+if isPrimaryKey()
+then as::RDBColumnReference {
+	name = as::Name {
+				nameString = key.oclAsType(Primary_key).colNames->first().id
+			}, 
+refersTo = ast().lookupRDBColumnDefinition(ast().oclAsType(as::RDBColumnReference).name.nameString) 
+}
+else
+	if isUniqueKey()
+	then as::RDBUniqueKey {
+		Column = key.oclAsType(Unique_key).colNames.ast() 
+	}
+	else
+		if isForeignKey()
+		then as::RDBRefIntegrity {
+			ForeignKey = key.colNames->at(1).ast(), 
+		ParentKey = key.colNames->at(2).ast(), 
+		ParentTable = as::RDBTableReference {
+						name = as::Name {
+									nameString = key.oclAsType(Foreign_key).tabname.basename
+								},
+						refersTo = ast().lookupRDBTableDefinition(key.oclAsType(Foreign_key).tabname.basename)
+					} 
+		}
+		else
+			invalid
+		endif
+	endif
+endif
+context Colname
+def : ast() : as::RDBColumnReference =
+as::RDBColumnReference {
+	name = as::Name {
+				nameString = id
+			}, 
+refersTo = ast().lookupRDBColumnDefinition(id) 
+}
+endpackage

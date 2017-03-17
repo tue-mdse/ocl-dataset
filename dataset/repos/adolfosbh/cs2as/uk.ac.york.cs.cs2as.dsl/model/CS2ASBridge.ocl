@@ -1,0 +1,570 @@
+import '/resource/org.eclipse.ocl.pivot/model/Pivot.ecore'
+import '/resource/org.eclipse.ocl.pivot/model/PivotLookup.ocl'
+import '/resource/org.eclipse.ocl.xtext.base/model/BaseCS.ecore'
+import '/resource/org.eclipse.ocl.xtext.essentialocl/model/EssentialOCLCS.ecore'
+import 'generated/CS2ASDSL.ecore'
+--import 'CS2ASDSL_manual.ecore'
+import 'CS2ASBridgeLookup.ocl'
+
+package cs2as_dsl
+
+-- TODO align with last grammar version
+--context Model
+--def : ast() : ocl::Model = 	
+--	ocl::Model {
+--		ownedPackages = 
+--			ocl::Package {
+--				name = csDecl.metamodels.ast().importedNamespace.name,
+--				ownedClasses = mappingSect.mappings->select(unambiguous() or ambiguousFirst())->collect(ast())
+--			},
+--		ownedImports =  csDecl.metamodels.ast()->includingAll(
+--					    asDecl.metamodels.ast())
+--	}
+--
+--context ClassMap
+--def : ast() : ocl::Class =
+--	ocl::Class {
+--			name = from,
+--			ownedOperations = 
+--				ocl::Operation {
+--					name = 'ast',
+--					type = ast().lookupClass(to),
+--					bodyExpression = ocl::ExpressionInOCL {
+--										ownedBody = if unambiguous() then createShadowExp(self)
+--													else if ambiguousFirst() then createNestedIfExp(mappingsSameFrom())
+--													else invalid  -- should not happen
+--													endif endif,
+--										ownedContext = ocl::Variable {
+--											name = 'self',
+--											type = ast().lookupClass(from)
+--										}
+--					}
+--				}
+--		}
+--	
+--def : unambiguous() : Boolean = 
+--	rule = null 
+--	
+--def : ambiguousFirst() : Boolean =
+--	rule <> null and 
+--	mappingsSameFrom()->first() = self
+--		
+--def : mappingsSameFrom() : OrderedSet(ClassMap) = 
+--	oclContainer().oclAsType(MappingSect).mappings
+--		->select(x | x.from = self.from)
+--def : createShadowExp(mapping : ClassMap) : ocl::ShadowExp = 
+--	ocl::ShadowExp {
+--		ownedParts = createSuperClassesShadowParts()->includingAll(mapping.statements.ast())
+--	}
+--	
+--def : createNestedIfExp(mappings : OrderedSet(ClassMap) ) : ocl::IfExp =
+--	let firstMapping : ClassMap = mappings->first(),
+--		remainingMappings : OrderedSet(ClassMap) = mappings->excluding(firstMapping) 
+--	in ocl::IfExp {
+--		ownedCondition = ocl::OperationCallExp {
+--			name = firstMapping.rule,
+--			referredOperation = ast().lookupOperation(firstMapping.rule)
+--		},
+--		ownedThen = createShadowExp(firstMapping),
+--		ownedElse = if remainingMappings->isEmpty() 
+--					then ocl::InvalidLiteralExp  {}
+--					else createNestedIfExp(remainingMappings)
+--					endif
+--	}
+--	
+--def : createSuperClassesShadowParts() : Sequence (ocl::ShadowPart) =
+--	Sequence{} -- TODO
+--
+--context ClassMapStmnt
+--def : ast() : ocl::ShadowPart =
+--	invalid -- to be overriden
+-- 
+--context PropertyMap
+--def : ast() : ocl::ShadowPart =
+--	ocl::ShadowPart {
+--		name = propName,		
+--		ownedInit = propInit.ast(),
+--		referredProperty = ast().lookupProperty(propName)
+--	}
+	
+context TraceExpCS
+def : ast() : ocl::OperationCallExp =
+	ocl::OperationCallExp {
+		name = 'ast',
+		referredOperation = ast().lookupOperation('ast')
+	}
+endpackage
+
+/******** OCL DEFINITIONS *********/
+package basecs
+
+
+context ImportCS
+def : ast() : ocl::Import =
+	ocl::Import {
+		name = name,
+		importedNamespace = referredNamespace
+		-- importedNamespace = ast().lookupNamespace(pathName)
+	}
+
+/* temporarilly out
+context TemplateBindingCS
+def : ast() : ocl::TemplateBinding =
+	ocl::TemplateBinding {
+		ownedSubstitutions = ownedSubstitutions.ast(),
+		templateSignature = owningElement.ast().unspecializedElement.ownedSignature -- REF
+				-- Possible loop with TypedTypeRefCS
+	}
+	
+-- See TypeParameterCS
+context TemplateParameterCS
+def : ast() : ocl::TemplateParameter =
+	invalid -- to be overriden
+
+context TemplateParameterSubstitutionCS
+def : ast() : ocl::TemplateParameterSubstitution = 
+	ocl::TemplateParameterSubstitution {
+		-- ownedActual. It looks like ownedActual is surplus
+		actual = ownedActualParameter.ast(),
+		formal = let elementPosition: Integer = owningBinding.ownedSubstitutions->indexOf(self) 
+				 in owningBinding.owningElement.ast().ownedSignature.ownedParameters->at(elementPosition)
+	}
+	
+context TemplateSignatureCS
+def : ast() : ocl::TemplateSignature =
+	ocl::TemplateSignature {
+		ownedParameters = ownedParameters.ast()
+	}
+
+context TypeRefCS
+def : ast() : ocl::Class =
+	invalid -- to be overriden
+		
+context TypedElementCS
+def : isRequired() : Boolean =
+	let typeMultiplicity = ownedType.ownedMultiplicity
+	in
+		if typeMultiplicity = null
+		then false
+		else
+			if typeMultiplicity.getUpper() = 1 
+			then typeMultiplicity.getLower() = 1
+			else false
+			endif
+		endif
+-- FIXME remove TypedElementCS::optional ?
+
+context TypedRefCS
+def : isMultiple() : Boolean = 
+		ownedMultiplicity.getUpper() > 1
+def : multiplicityType(type : ocl::Type ) : ocl::Type =
+	if not isMultiple()
+	then type
+	else 
+		let ordered = if oclContainer().oclIsKindOf(TypedElementCS)
+					 	then oclContainer().oclAsType(TypedElementCS).qualifiers->includes('ordered')
+					 	else false
+					 	endif,
+			unique = if  oclContainer().oclIsKindOf(TypedElementCS)
+						then oclContainer().oclAsType(TypedElementCS).qualifiers->includes('unique')
+						else false
+						endif,
+			superType = ocl::CollectionType {
+							name = 'Collection',
+							elementType = type,
+							superClasses = OclAny	
+						}
+		in
+			if unique
+			then
+				if ordered
+				then ocl::OrderedSetType {
+						name = 'OrderedSet',
+						elementType = type,
+						superClasses = superType
+					}
+				else ocl::SetType {
+						name = 'Set',
+						elementType = type,
+						superClasses = superType
+					}
+				endif
+			else 
+				if ordered
+				then ocl::SequenceType {
+						name = 'Sequence',
+						elementType = type,
+						superClasses = superType
+					}
+				else ocl::BagType {
+						name = 'Bag',
+						elementType = type,
+						superClasses = superType
+					}
+				endif
+			endif
+			
+	endif
+	 
+--def : ast(unique : Boolean, ordered : Boolean) : ocl::Type =
+--	null -- FIXME
+--	if not isMultiple()
+--	then env().lookupType(pathName)
+--	else 
+--		if unique
+--		then
+--			if ordered
+--			then env().lookupCollectionType('OrderedSet', self)
+--			else env().lookupCollectionType('Set', self)
+--			endif
+--		else
+--			if ordered
+--			then env().lookupCollectionType('Sequence', self)
+--			else env().lookupCollectionType('Bag', self)
+--			endif
+--		endif
+--	endif
+
+context TypedTypeRefCS
+def : ast() : ocl::Class =	
+	let finalType : ocl::Class = 
+		if ownedBinding = null
+		-- then referredType  -- it should return proper type, hand-coded in TypedTypeRefCSImpl
+		then ast().lookupClass(ownedPathName)
+		else ocl::Class {
+				name = referredType.name,
+				unspecializedElement = referredType,
+				ownedBindings = Set{ownedBinding.ast()}
+			}
+		endif
+	in multiplicityType(finalType).isClass() -- FIXME review type/class issue
+	
+context TypeParameterCS 
+def : ast() : ocl::TemplateParameter =
+	let parameteredElement = ocl::Class {
+		name = name,
+		superClasses = ownedExtends.ast()
+	}
+	in	ocl::TemplateParameter {
+		constrainingClasses = parameteredElement		
+	}
+	*/
+endpackage
+
+package essentialoclcs
+	
+context ExpCS
+def : ast() : ocl::OCLExpression =
+	invalid -- to be overriden
+
+/*
+context BooleanLiteralExpCS
+def : ast() : ocl::BooleanLiteralExp = 
+	ocl::BooleanLiteralExp {
+		booleanSymbol =	symbol.toBoolean(),
+		type = Boolean
+	}
+	
+context CollectionLiteralExpCS 
+def : ast() : ocl::CollectionLiteralExp =
+	ocl::CollectionLiteralExp {
+		kind = ocl::CollectionKind.allInstances()->any(name=ownedType.name),
+		ownedParts = ownedParts.ast(),
+		type = ownedType.ast()
+	}
+
+context CollectionLiteralPartCS
+def : ast() : ocl::CollectionLiteralPart = 
+	if ownedLastExpression = null
+	then ocl::CollectionItem {
+			ownedItem = ownedExpression.ast(),	
+			type = ownedExpression.ast().oclAsType(ocl::OCLExpression).type
+		}
+	else ocl::CollectionRange {
+			ownedFirst = ownedExpression.ast(),
+			ownedLast = ownedLastExpression.ast()
+--			type = commonType(ownedExpression.ast().type, ownedLastExpression.ast().type)
+		}
+	endif
+
+context CollectionTypeCS
+def : ast() : ocl::CollectionType =
+	 -- env().lookupCollectionType(name, ownedType)
+	let lower : Integer = 
+			if ownedMultiplicity = null
+			then null
+			else ownedMultiplicity.getLower()
+			endif,
+		upper : UnlimitedNatural =
+			if ownedMultiplicity = null
+			then null
+			else 
+				if ownedMultiplicity.getUpper() = -1
+				then *
+				else ownedMultiplicity.getUpper().toUnlimitedNatural()
+				endif
+			endif
+	in	ocl::CollectionType {
+			name = name,
+			elementType = ownedType.ast(),
+			lower = lower,
+			upper = upper
+		}
+
+-- FIXME probably move this to BaseCS.ocl
+-- TODO 
+--context basecs::ConstraintCS
+--def : ast() : ocl::Constraint =
+--	if messageSpecification = null
+--	then basecs::ConstraintCS.ast()
+--	else ocl::Constraint {
+--		specification = ocl::ExpressionInOCL {
+--			variable = ocl::VariableDeclaration {
+--				name = 'self'
+--			}	
+--		}
+--	} 
+--	endif
+	
+	
+-- TODO special context initializer
+context ContextCS
+def : ast() : ocl::ExpressionInOCL = 
+	ocl::ExpressionInOCL {
+		ownedBody = ownedExpression.ast()
+	}
+
+-- TODO there is a tricky part with respect to the case of having a messageExpression
+context ExpSpecificationCS
+def : ast() : ocl::LanguageExpression =
+	if ownedExpression = null
+	then ocl::LanguageExpression {
+		language = 'OCL',
+		_body = exprString->asSequence()
+	}
+	else ocl::ExpressionInOCL {
+		language = 'OCL',
+		ownedBody = ownedExpression.ast()
+	}
+	endif
+
+context IfExpCS
+def : ast() : ocl::IfExp =
+	ocl::IfExp {
+		ownedCondition = ownedCondition.ast(),
+		ownedThen = ownedThenExpression.ast(),
+		ownedElse = ownedElseExpression.ast()
+--		type = commonType(ownedThenExpression.ast().type, ownedElseExpression.ast().ast)
+--		isImplicit = isImplicit
+	}
+inv ElseIfHasBeenFlattened: ownedIfThenExpressions->isEmpty()
+	
+context InvalidLiteralExpCS
+def : ast() : ocl::InvalidLiteralExp = 
+	ocl::InvalidLiteralExp {
+		type = OclInvalid
+	}
+
+context LetExpCS
+def : ast() : ocl::LetExp = 
+	ocl::LetExp {
+		ownedVariable = ownedVariables->at(1),
+		ownedIn = ownedInExpression.ast(),
+--		isImplicit = isImplicit
+		type = ownedInExpression.ast().oclAsType(ocl::OCLExpression).type
+	}	
+inv LetHasBeenFlattened: ownedVariables->size() = 1
+
+context NameExpCS
+def : ast() : ocl::OCLExpression =
+	if isAssociationClassCallExp() then createAssociationClassCallExp()
+	else if isIterateCallExp() then createIterateCallExp()
+	else if isIterationCallExp() then createIterationCallExp()
+	else if isOperationCallExp() then createOperationCallExp()
+	else if isPropertyCallExp() then createPropertyCallExp()
+	else if isShadowExp() then createShadowExp()
+	else if isVariableExp() then createVariableExp()
+	else null endif endif endif endif endif endif endif
+
+def : isAssociationClassCallExp() : Boolean =
+	ownedCurlyBracketedClause->isEmpty() and ownedRoundBracketedClause->isEmpty() and ownedSquareBracketedClauses->isEmpty() and referredAssociation <> null
+
+def : isIterateCallExp() : Boolean =
+	ownedCurlyBracketedClause->isEmpty() and ownedRoundBracketedClause->notEmpty() and ownedSquareBracketedClauses->isEmpty() and referredIteration <> null
+
+def : isIterationCallExp() : Boolean =
+	ownedCurlyBracketedClause->isEmpty() and ownedRoundBracketedClause->notEmpty() and ownedSquareBracketedClauses->isEmpty() and referredIteration <> null		
+
+def : isOperationCallExp() : Boolean =
+	ownedCurlyBracketedClause->isEmpty() and ownedRoundBracketedClause->notEmpty() and ownedSquareBracketedClauses->isEmpty() and referredOperation <> null
+
+def : isPropertyCallExp() : Boolean =
+	ownedCurlyBracketedClause->isEmpty() and ownedRoundBracketedClause->isEmpty() and ownedSquareBracketedClauses->isEmpty() and referredProperty <> null
+
+def : isShadowExp() : Boolean =
+	ownedCurlyBracketedClause->notEmpty() and ownedRoundBracketedClause->isEmpty() and ownedSquareBracketedClauses->isEmpty()
+
+def : isVariableExp() : Boolean =
+	ownedCurlyBracketedClause->isEmpty() and ownedRoundBracketedClause->isEmpty() and ownedSquareBracketedClauses->isEmpty() and referredVariable <> null	
+
+def : createAssociationClassCallExp() : ocl::AssociationClassCallExp  =
+	ocl::AssociationClassCallExp {
+		name = referredAssociation.name,
+--		type = specialized(referredAssociation.type),
+		ownedSource = source.ast(),
+		referredAssociationClass = referredAssociation,
+		isPre = isPre
+	}
+	
+def : createIterateCallExp() : ocl::IterateExp =
+	let iteration : ocl::Iteration = null in --lookupIteration(ownedPathName, ownedArguments)
+	ocl::IterateExp {
+		name = iteration.name,
+--		type = specialized(iteration.type),
+		ownedSource = source.ast(),
+		ownedIterators = iterators.ast(),
+		ownedResult = accumulators->at(1).ast(),
+		ownedBody = arguments->at(1).ast(),
+		referredIteration = iteration
+	}
+
+def : createIterationCallExp() : ocl::IteratorExp =
+	let iteration : ocl::Iteration = null in --lookupIteration(ownedPathName, ownedArguments)
+	ocl::IteratorExp {
+		name = iteration.name,
+--		type = specialized(iteration.type),
+		ownedSource = source.ast(),
+		ownedIterators = iterators.ast(),
+		ownedBody = arguments->at(1).ast(),
+		referredIteration = iteration
+	}
+
+def : createOperationCallExp() : ocl::OperationCallExp =
+	let operation : ocl::Operation = null in --lookupOperation(ownedPathName, ownedArguments)
+	ocl::OperationCallExp {
+		name = operation.name,
+--		type = specialized(referredOperation.type),
+		ownedSource = source.ast(),
+		ownedArguments = arguments.ast(),
+		referredOperation = operation,
+		isPre = isPre
+	}
+
+def : createPropertyCallExp() : ocl::PropertyCallExp =
+	let property : ocl::Property = null in --lookupProperty(ownedPathName)
+	ocl::PropertyCallExp {
+		name = property.name,
+--		type = specialized(property.type),
+		ownedSource = source.ast(),
+		referredProperty = property,
+		isPre = isPre
+	}
+
+def : createShadowExp() : ocl::ShadowExp =
+	ocl::ShadowExp {
+		value = value,
+		ownedParts = parts.ast(),
+		type = ast().lookupClass(ownedPathName)
+	}
+
+def : createVariableExp() : ocl::VariableExp =
+	let variable : ocl::VariableDeclaration = null in --lookupVariable(ownedPathName)
+	ocl::VariableExp {
+		name = variable.name,
+		type = variable.type,
+		referredVariable = variable
+	}
+
+context NullLiteralExpCS
+def : ast() : ocl::NullLiteralExp = 
+	ocl::NullLiteralExp {
+		type = OclVoid
+	}
+	
+context NumberLiteralExpCS
+def : ast() : ocl::NumericLiteralExp =
+--	if symbol.floor() = symbol then 
+		ocl::IntegerLiteralExp {
+			integerSymbol = symbol,
+			type = Integer
+		}
+--	else 
+--		ocl::RealLiteralExp {
+--			realSymbol = symbol,
+--			type = Real
+--		}
+--	endif 
+
+context SelfExpCS
+def :  ast() : ocl::VariableExp = 
+	let refVariable : ocl::VariableDeclaration = ast().lookupVariable(name)
+	in ocl::VariableExp {
+			referredVariable = refVariable, 
+			type = refVariable.type 
+	}
+
+-- FIXME this invariant should be CS validation
+context ShadowExpCS
+inv : parts->notEmpty() implies value = null
+		and not (value = null) implies parts->isEmpty()
+	
+context ShadowPartCS
+def : ast() :  ocl::ShadowPart =
+	ocl::ShadowPart {
+		ownedInit = ownedInitExpression.ast(),
+		referredProperty = referredProperty -- REF Xtext cross-reference
+	}
+		
+context StringLiteralExpCS
+def : ast() : ocl::StringLiteralExp = 
+	ocl::StringLiteralExp {
+		stringSymbol = segments->iterate(x : String, result : String = '' |
+						result = result.concat(x)),
+		type = String
+	}
+	
+context TupleLiteralExpCS
+def : ast() : ocl::TupleLiteralExp = 
+	ocl::TupleLiteralExp {
+		ownedParts = ownedParts.ast()
+		-- type = env().lookupTuple(ownedParts)
+	}
+
+context TupleLiteralPartCS
+def : ast() : ocl::TupleLiteralPart = 
+	ocl::TupleLiteralPart {
+		name = name,
+		ownedInit = ownedInitExpression,
+		type = ownedType.ast()
+	}
+	
+context TypeLiteralExpCS
+def : ast() : ocl::TypeExp = 
+	let refType : ocl::Type = ownedType.ast()
+	in ocl::TypeExp {
+			referredType = refType,
+			type = refType
+	}
+
+context TypeNameExpCS
+def : ast() : ocl::Type =
+	multiplicityType(element) -- REF element manually hand-coded which returns the proper type  
+	
+-- TODO context UnaryOperatorCS
+context UnlimitedNaturalLiteralExpCS
+def : ast() : ocl::UnlimitedNaturalLiteralExp =
+	ocl::UnlimitedNaturalLiteralExp{
+		name = '*'
+		-- unlimitedNaturalSymbol = ocl::_UnlimitedNatural{'*'} FIXME bug in AS2CG   
+	}
+
+context VariableCS
+def : ast() : ocl::Variable = 
+	ocl::Variable {
+		name = name,
+		ownedInit = ownedInitExpression.ast(),
+		type = ownedType.ast()
+	}
+*/
+
+endpackage

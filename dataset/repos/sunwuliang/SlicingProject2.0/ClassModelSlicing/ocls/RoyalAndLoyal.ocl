@@ -1,0 +1,80 @@
+import 'platform:/resource/ClassModelSlicing/ecores/RoyalAndLoyal.ecore'
+
+package RoyalAndLoyal
+
+context LoyaltyProgram::addService(s:Service, l:ServiceLevel, p:ProgramPartner) :
+pre levelsIncludesArgL:	self.levels->includes(l)
+pre partnersIncludesP:	self.partners->includes(p)
+post servicesIncludesArgS:	self.levels->collect( i_ServiceLevel : ServiceLevel | i_ServiceLevel.availableServices )->includes(s)
+post servicesIncludesP:	self.partners->collect( i_ProgramPartner : ProgramPartner | i_ProgramPartner.deliveredServices )->includes(s)
+
+context LoyaltyProgram::enroll(c:Customer) : OclVoid
+--post:	self.memberships->select( m : Membership | m.participants = c )->forAll( i_Membership : Membership | i_Membership.account.asSet()->notEmpty() and i_Membership.account.points = 0 )
+pre:	not self.participants->includes(c)
+post:	self.participants = self.participants->including(c)
+
+--context LoyaltyProgram::addTransaction(accNr: Integer, pName: String, servId: Integer, 
+--									    amnt: Real, d: Date) : OclVoid
+--post:	let acc : LoyaltyAccount = self.memberships->collect( i_Membership : Membership | i_Membership.account )->select( a : LoyaltyAccount | a.number = accNr )->any( i_LoyaltyAccount : LoyaltyAccount | true ) in let newT : Transaction = self.partners->select( p : ProgramPartner | p.name = pName )->collect( i_ProgramPartner : ProgramPartner | i_ProgramPartner.deliveredServices )->select( s : Service | s.serviceNr = servId )->collect( i_Service : Service | i_Service.transactions )->select( i_Transaction : Transaction | (i_Transaction.date = d) and i_Transaction.amount = amnt )->any( i_Transaction : Transaction | true ) in let card : CustomerCard = self.memberships->select( m : Membership | m.account.number = accNr )->collect( i_Membership : Membership | i_Membership.card )->any( i_CustomerCard : CustomerCard | true ) in acc.points = acc.points + newT.points
+
+context LoyaltyAccount::isEmpty() : Boolean
+post testPostSuggestedName:	self.points = 0
+pre testPreSuggestedName:	true
+
+context Service::upgradePointsEarned(amount:Integer) :
+post:	self.calcPoints() = self.calcPoints() + amount
+
+
+context Customer::birthdayHappens() :
+post:	self.age = self.age + 1
+
+context Customer::updateName(name: String) : 
+pre: self.name <> name
+post: self.name = name
+
+context ServiceLevel
+inv invariant_ServiceLevel1 : self.program.partners->isEmpty()
+
+context ProgramPartner
+inv invariant_nrOfParticipants :
+	self.numberOfCustomers = self.programs->collect( i_LoyaltyProgram : LoyaltyProgram | i_LoyaltyProgram.participants )->size()
+
+context ProgramPartner
+inv invariant_ProgramPartner1 :
+	self.programs->collect( i_LoyaltyProgram : LoyaltyProgram | i_LoyaltyProgram.partners )->select( p : ProgramPartner | p <> self )->isEmpty()
+
+
+context TransactionReport
+inv invariant_cycle :
+	self.card.transactions->includesAll(self.lines->collect( i_TransactionReportLine : TransactionReportLine | i_TransactionReportLine.transaction ))
+
+
+context CustomerCard
+inv invariant_CustomerCard4 :
+	self.transactions->select( i_Transaction : Transaction | i_Transaction.points > 100 )->notEmpty()
+	
+context CustomerCard
+inv invariant_CustomerCard3 :
+	self.owner.programs->size() > 0
+
+context Customer
+inv invariant_UniqueName:
+Customer.allInstances()->forAll(c1, c2 : Customer| c1.name = c2.name implies c1 = c2)
+
+context Customer
+inv invariant_Customer10 :
+	self.programs->collect( i_LoyaltyProgram : LoyaltyProgram | i_LoyaltyProgram.partners )->collectNested( i_ProgramPartner : ProgramPartner | i_ProgramPartner.deliveredServices )->isEmpty()
+
+
+context Customer
+inv invariant_Customer1 :
+	(self.cards->select( i_CustomerCard : CustomerCard | i_CustomerCard.valid = true )->size()) > 1
+
+
+context Customer
+inv invariant_sizesAgree :
+	self.programs->size() = self.cards->select( i_CustomerCard : CustomerCard | i_CustomerCard.valid = true )->size()
+
+
+
+endpackage

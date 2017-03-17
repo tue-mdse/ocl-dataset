@@ -1,0 +1,78 @@
+import 'platform:/resource/ClassModelSlicing/ecores/SteamBoilerSystem.ecore'
+
+
+package SBCS
+
+context Snapshot::getNext() : Snapshot
+body : self.AfterTrans.AfterTrans
+
+context Snapshot::futureClosure(s : Set(Snapshot)) : Set(Snapshot)
+body: if s->includesAll(s.getNext()->asSet()) then s else futureClosure(s->union(s.getNext()->asSet()))endif
+
+context Snapshot::getPost(): Set(Snapshot) 
+body: futureClosure(Set{self.getNext()})
+
+context Snapshot::getPrevious(): Snapshot 
+body: self.BeforeTrans.BeforeTrans
+
+context Snapshot::previousClosure(s : Set(Snapshot)) : Set(Snapshot)
+body: if s->includesAll(s.getPrevious()->asSet()) then s else previousClosure(s->union(s.getPrevious()->asSet()))endif
+
+context Snapshot::getPre(): Set(Snapshot) 
+body: previousClosure(Set{self.getPrevious()})
+
+context ControlProgram
+--inv TP1: self.wlmdFailure implies (self.SnapshotControlProgram.AfterTrans.AfterTrans.ControlProgramSnapshot.mode = Mode::Rescue)
+inv TP1: let CS:Snapshot = self.SnapshotControlProgram in let NS: Snapshot= CS.getNext()
+in self.wlmdFailure implies NS.ControlProgramSnapshot.mode = Mode::Rescue
+
+
+context ControlProgram 
+--inv TP2: (self.smdFailure or self.pumpFailure or self.pumpControlerFailure) implies (self.SnapshotControlProgram.AfterTrans.AfterTrans.ControlProgramSnapshot.mode = Mode::Degraded)
+inv TP2: let CS:Snapshot = self.SnapshotControlProgram in let NS: Snapshot= CS.getNext()
+in (self.smdFailure or self.pumpFailure or self.pumpControlerFailure) implies NS.ControlProgramSnapshot.mode= Mode::Degraded
+
+context SteamBoiler
+--inv TP3: (self.SteamBoilerWLMD.waterLevel > self.maximalNormal or self.SteamBoilerWLMD.waterLevel < self.minimalNormal) implies (self.SnapshotSteamBoiler.AfterTrans.AfterTrans.ControlProgramSnapshot.mode = Mode::EmergencyStop)
+inv TP3: let CS:Snapshot = self.SnapshotSteamBoiler in let NS: Snapshot= CS.getNext()
+in (self.SteamBoilerWLMD.waterLevel > self.maximalNormal or self.SteamBoilerWLMD.waterLevel < self.minimalNormal) implies NS.ControlProgramSnapshot.mode= Mode::EmergencyStop
+
+context SteamBoiler
+inv TP4: let CS:Snapshot = self.SnapshotSteamBoiler in let FS: Set(Snapshot)= CS.getPost()
+in self.valveOpen = ValveState::Open implies FS->exists(s:Snapshot | s.WLMDSnapshot.waterLevel <= maximalNormal)
+
+
+context ControlProgram
+--inv TP5 :(self.mode= Mode::Initialization and self.wlmdFailure) implies (self.SnapshotControlProgram.AfterTrans.AfterTrans.ControlProgramSnapshot.mode =  Mode::EmergencyStop)
+inv  TP5: let CS:Snapshot = self.SnapshotControlProgram in let NS: Snapshot= CS.getNext()
+in (self.mode=Mode::Initialization and self.wlmdFailure) implies NS.ControlProgramSnapshot.mode=Mode::EmergencyStop
+
+
+context WaterLevelMeasurementDevice
+inv WMD: self.waterLevel < self.WLMDSteamBoiler.capacity
+
+context SteamBoiler
+inv SB: self.valveOpen=ValveState::Open implies self.SteamBoilerControlProgram.mode=Mode::Initialization
+
+context PumpController_OpenPump   
+--inv OpenPumpInv: PCPre.PumpControlerPump.mode = State::Off
+--inv OpenPumpPost: PCPost.PumpControlerPump.mode = State::On
+inv OpenPump : PCPre.PumpControlerPump.mode = State::Off implies PCPost.PumpControlerPump.mode = State::On
+
+context PumpController_ClosePump
+--inv ClosePumpPre: PCPre.PumpControlerPump.mode = State::On
+--inv ClosePumpPost: PCPost.PumpControlerPump.mode = State::Off
+inv ClosePump : PCPre.PumpControlerPump.mode = State::On implies PCPost.PumpControlerPump.mode = State::Off
+
+context ControlProgram_Start
+inv Start: CPPost.mode = Mode::Normal
+
+context WaterLevelMeaurementDevice_getLevel
+inv getLevel: wlmdPost.waterLevel = ret
+
+context SteamBoiler_OpenValve
+--inv OpenValvePre: SBPre.valveOpen = ValveState::Closed
+--inv OpenValvePost: SBPost.valveOpen = ValveState::Open 
+inv OpenValve : SBPre.valveOpen = ValveState::Closed implies SBPost.valveOpen = ValveState::Open 
+
+endpackage 

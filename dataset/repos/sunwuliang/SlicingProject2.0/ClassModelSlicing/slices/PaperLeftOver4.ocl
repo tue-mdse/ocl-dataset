@@ -1,0 +1,31 @@
+import 'platform:/resource/ClassModelSlicing/slices/PaperLeftOver4.ecore'
+
+
+package Paper
+
+
+context Role::AddAssignLoc( l : Location ) : OclVoid 
+pre: self.AssignLoc->excludes(l)
+post: self.AssignLoc = self.AssignLoc@pre->including(l)
+
+
+context Session inv MaxActivatedRoles: self.MaxRoles >= self.SessRole->size()
+
+context User::AssignRole(r : Role) : OclVoid 
+pre : self.AssignedRoles->excludes(r) and r.AssignLoc->includes(self.UserLoc)
+post : self.AssignedRoles = self.AssignedRoles@pre->including(r)
+
+
+context Session::UpdateMaxRoles(NoOfRoles : Integer) : OclVoid 
+pre: self.MaxRoles <> NoOfRoles
+post: self.MaxRoles = NoOfRoles
+
+
+context User inv CorrectRoleAssignment: self.AssignedRoles->forAll(r | r.AssignLoc->includes(self.UserLoc))
+
+context User::UpdateLoc(l : Location) : OclVoid 
+pre: self.UserLoc->excludes(l) and self.AssignedRoles->isEmpty()
+post:self.UserLoc->includes(l)
+
+
+endpackage

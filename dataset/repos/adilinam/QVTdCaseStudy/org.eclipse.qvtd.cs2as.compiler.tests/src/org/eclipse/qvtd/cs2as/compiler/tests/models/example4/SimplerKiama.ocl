@@ -1,0 +1,36 @@
+import 'SimplerKiamaCS.ecore'
+import 'SimplerKiamaAS.ecore'
+
+package kiamacs
+
+context TopCS
+def : ast() : kiamaas::Top =
+	kiamaas::Top {
+		node = node.ast()
+	}
+	
+context NodeCS
+def : ast() : kiamaas::Node =
+	invalid -- to be overriden
+	
+context CompositeCS
+def : ast() : kiamaas::Composite =
+	kiamaas::Composite {	
+		child = child.ast(),
+		depth = let container = ast().oclContainer() in 
+				-- if container.oclIsKindOf(kiamaas::Node)  then container.oclAsType(kiamaas::Node).depth + 1 else 0 endif,
+				if container.oclIsKindOf(kiamaas::Top)  then 0 else container.oclAsType(kiamaas::Composite).depth + 1 endif,
+		height = ast().child.height + 1
+		--height = child.ast().height + 1
+	}
+
+context LeafCS
+def : ast() : kiamaas::Leaf = 
+	kiamaas::Leaf {
+		depth = let container = ast().oclContainer() in 
+				-- if container.oclIsKindOf(kiamaas::Node)  then container.oclAsType(kiamaas::Node).depth + 1 else 0 endif,
+				if container.oclIsKindOf(kiamaas::Top)  then 0 else container.oclAsType(kiamaas::Composite).depth +1 endif,
+		height = 0
+	}
+	
+endpackage

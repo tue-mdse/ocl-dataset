@@ -1,0 +1,61 @@
+import ecore : 'http://www.eclipse.org/emf/2002/Ecore#/'
+import 'gemRBAC.ecore'
+package gemRBAC
+
+
+
+
+ context Role
+inv logicalLocationRoleAssign:
+let u1 : User = User.allInstances()
+->select(m : User | m.idUser = 'u2')
+->any(true),
+spatialContext: Set(RBACContext) = self.roleContextAssignment-> select(c|c.oclIsTypeOf(SpatialContext)),
+loc: Set(LogicalLocation) =  spatialContext.oclAsType(SpatialContext).location.oclAsType(LogicalLocation)->flatten() -> asSet()
+in
+if self.idRole= 'r2' then
+	if  loc->exists(l|l.contains(u1.userLocation.location.oclAsType(PhysicalLocation)-> any(true))) then
+  		self.users -> includes(u1)
+	else
+  		self.users -> excludes(u1)
+  	endif
+else
+	true
+endif
+
+
+
+context Role
+inv physicalLocationRoleAssign:
+let  u1 : User = User.allInstances()
+->select(m : User | m.idUser = 'u1')
+->any(true),
+spatialContext: Set(RBACContext) = self.roleContextAssignment-> select(c|c.oclIsTypeOf(SpatialContext)),
+locPh: Set(PhysicalLocation) = spatialContext.oclAsType(SpatialContext).location.oclAsType(PhysicalLocation)->flatten() -> asSet()
+in
+if self.idRole= 'r1' then
+	if locPh->exists(l|l.contains(u1.userLocation.location.oclAsType(PhysicalLocation)-> any(true))) then
+  		self.users -> includes(u1)
+	else
+  		self.users -> excludes(u1)
+	endif
+else
+	true
+endif
+
+
+context Session inv relativeLocationEnabling: 
+let r1 : Role = Role.allInstances() ->
+select(r : Role| r.idRole = 'r5')->any(true),
+spatialContext: Set(RBACContext) = r1.roleContextEnabling-> select(c|c.oclIsTypeOf(SpatialContext)),
+loc: Set(Location)=
+spatialContext.oclAsType(SpatialContext).location
+->select(l|l.relativelocation->notEmpty())->flatten() -> asSet(), 
+relativeLoc: Set(Location)= loc -> collect(l|
+l.computeRelative(l.relativelocation))->flatten() -> asSet() in 
+if relativeLoc -> exists(l|self.user.userLocation.location -> exists(pos| l.contains(pos))) then
+	self.enabledRoles -> includes(r1) or self.activeRoles -> includes(r1)
+else
+		self.enabledRoles -> excludes(r1) and self.activeRoles -> excludes(r1)
+endif 
+endpackage

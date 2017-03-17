@@ -1,0 +1,57 @@
+import ecore : 'http://www.eclipse.org/emf/2002/Ecore#/' ;
+
+package petrinet : petrinet = 'https://petrinet'
+{
+	class Network
+	{
+		attribute name : String[1];
+		property nodes#reseau : Node[*] { ordered composes };
+		property arcs#reseau : Arc[*] { ordered composes };
+		invariant nameForbidden: 
+			self.name <> '';
+	}
+	class Node
+	{
+		attribute name : String[1];
+		property reseau#nodes : Network[1];
+		property predecessors#target : Arc[*] { ordered };
+		property successors#source : Arc[*] { ordered };
+		invariant nameForbidden: 
+        	self.name <> '';
+		invariant noIsolatedNode: 
+            self.predecessors->size() > 0 or self.successors->size() > 0;
+	}
+	enum ArcKind { serializable }
+	{
+		literal normal;
+		literal read_arc;
+	}
+	class Arc
+	{
+		attribute readOnly : Boolean[1];
+		attribute kind : ArcKind[1];
+		attribute tokensCount : ecore::EInt[1] = '1';
+		property reseau#arcs : Network[1];
+		property source#successors : Node[1];
+		property target#predecessors : Node[1];
+		invariant tokensCountNotNull: 
+			self.tokensCount > 0;
+	}
+	class Transition extends Node
+	{
+		invariant existArcs: 
+			self.successors->size() > 0;
+		invariant onlyArcsToPlaces: 
+			self.successors
+			->forAll(s | s.target.oclIsKindOf(Place));
+	}
+	class Place extends Node
+	{
+		attribute tokensCount : ecore::EInt[1] = '0';
+		invariant validTokensCount: 
+			self.tokensCount >= 0;
+		invariant onlyArcToTransitions: 
+			self.successors
+			->forAll(s | s.target.oclIsKindOf(Transition));
+	}
+}

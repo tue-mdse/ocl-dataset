@@ -1,0 +1,128 @@
+import  cs : 'generated/DDL.ecore#/' 
+import  as : 'astm.ecore#/' 
+import 'Lookup.ecore'
+import 'plsqlHelpers.ocl'
+
+package ocl
+
+-- Domain specific default functionality
+context OclElement
+def : unqualified_env_Definition() : lookup::LookupEnvironment[1] =
+	_unqualified_env_Definition(null)
+def : unqualified_env_RDBColumnDefinition() : lookup::LookupEnvironment[1] =
+	_unqualified_env_RDBColumnDefinition(null)
+def : unqualified_env_RDBTableDefinition() : lookup::LookupEnvironment[1] =
+	_unqualified_env_RDBTableDefinition(null)
+
+def : _unqualified_env_Definition(child : OclElement) : lookup::LookupEnvironment[1] =
+	parentEnv_Definition()
+def : _unqualified_env_RDBColumnDefinition(child : OclElement) : lookup::LookupEnvironment[1] =
+	parentEnv_RDBColumnDefinition()
+def : _unqualified_env_RDBTableDefinition(child : OclElement) : lookup::LookupEnvironment[1] =
+	parentEnv_RDBTableDefinition()
+
+def : parentEnv_Definition() : lookup::LookupEnvironment[1] =
+	let parent = oclContainer() in if parent = null then lookup::LookupEnvironment { } else parent._unqualified_env_Definition(self) endif
+def : parentEnv_RDBColumnDefinition() : lookup::LookupEnvironment[1] =
+	let parent = oclContainer() in if parent = null then lookup::LookupEnvironment { } else parent._unqualified_env_RDBColumnDefinition(self) endif
+def : parentEnv_RDBTableDefinition() : lookup::LookupEnvironment[1] =
+	let parent = oclContainer() in if parent = null then lookup::LookupEnvironment { } else parent._unqualified_env_RDBTableDefinition(self) endif
+
+
+-- End of domain specific default functionality
+endpackage 
+
+package lookup
+-- Some common lookup functionality
+context LookupEnvironment
+def : nestedEnv() : LookupEnvironment[1] =
+	LookupEnvironment {
+		parentEnv = self
+	}
+-- End of common lookup functionality
+endpackage
+
+package as
+
+context Visitable
+-- Definition unqualified lookup
+def : _lookupDefinition(env : lookup::LookupEnvironment, dName : String) : OrderedSet(Definition) =
+let foundDefinition = env.namedElements->selectByKind(Definition)->select(identifierName = dName)
+in  if foundDefinition->isEmpty() and not (env.parentEnv = null)
+   then _lookupDefinition(env.parentEnv, dName)
+   else foundDefinition
+   endif
+   
+-- Note: when calling this method, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupUnqualifiedDefinition(dName : String) : Definition[?] =
+let foundDefinition = _lookupDefinition(unqualified_env_Definition(), dName)
+in  if foundDefinition->isEmpty()
+   then null
+   else foundDefinition->first() -- LookupVisitor will report ambiguous result
+   endif
+   
+def : lookupDefinition(dName : String) : Definition[?] =
+   _lookupUnqualifiedDefinition(dName)
+-- End of Definition unqualified lookup 
+   
+context Visitable
+-- RDBTableDefinition unqualified lookup
+def : _lookupRDBTableDefinition(env : lookup::LookupEnvironment, rName : String) : OrderedSet(RDBTableDefinition) =
+let foundRDBTableDefinition = env.namedElements->selectByKind(RDBTableDefinition)->select(identifierName = rName)
+in  if foundRDBTableDefinition->isEmpty() and not (env.parentEnv = null)
+   then _lookupRDBTableDefinition(env.parentEnv, rName)
+   else foundRDBTableDefinition
+   endif
+   
+-- Note: when calling this method, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupUnqualifiedRDBTableDefinition(rName : String) : RDBTableDefinition[?] =
+let foundRDBTableDefinition = _lookupRDBTableDefinition(unqualified_env_RDBTableDefinition(), rName)
+in  if foundRDBTableDefinition->isEmpty()
+   then null
+   else foundRDBTableDefinition->first() -- LookupVisitor will report ambiguous result
+   endif
+   
+def : lookupRDBTableDefinition(rName : String) : RDBTableDefinition[?] =
+   _lookupUnqualifiedRDBTableDefinition(rName)
+-- End of RDBTableDefinition unqualified lookup 
+   
+context Visitable
+-- RDBColumnDefinition unqualified lookup
+def : _lookupRDBColumnDefinition(env : lookup::LookupEnvironment, rName : String) : OrderedSet(RDBColumnDefinition) =
+let foundRDBColumnDefinition = env.namedElements->selectByKind(RDBColumnDefinition)->select(identifierName = rName)
+in  if foundRDBColumnDefinition->isEmpty() and not (env.parentEnv = null)
+   then _lookupRDBColumnDefinition(env.parentEnv, rName)
+   else foundRDBColumnDefinition
+   endif
+   
+-- Note: when calling this method, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupUnqualifiedRDBColumnDefinition(rName : String) : RDBColumnDefinition[?] =
+let foundRDBColumnDefinition = _lookupRDBColumnDefinition(unqualified_env_RDBColumnDefinition(), rName)
+in  if foundRDBColumnDefinition->isEmpty()
+   then null
+   else foundRDBColumnDefinition->first() -- LookupVisitor will report ambiguous result
+   endif
+   
+def : lookupRDBColumnDefinition(rName : String) : RDBColumnDefinition[?] =
+   _lookupUnqualifiedRDBColumnDefinition(rName)
+-- End of RDBColumnDefinition unqualified lookup 
+   
+context CompilationUnit
+def : _unqualified_env_RDBTableDefinition(child : ocl::OclElement) : lookup::LookupEnvironment =
+   parentEnv_RDBTableDefinition().nestedEnv()
+      .addElements(fragments->selectByKind(RDBTableDefinition))
+      
+def : _unqualified_env_RDBColumnDefinition(child : ocl::OclElement) : lookup::LookupEnvironment =
+   parentEnv_RDBColumnDefinition().nestedEnv()
+      .addElements(fragments->selectByKind(RDBTableDefinition).Column)
+      
+context RDBTableDefinition
+def : _unqualified_env_RDBColumnDefinition(child : ocl::OclElement) : lookup::LookupEnvironment =
+   parentEnv_RDBColumnDefinition().nestedEnv()
+      .addElements(Column)
+      
+
+endpackage

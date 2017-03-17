@@ -1,0 +1,108 @@
+import Hotel: '../model/Hotel.ecore'
+
+package Hotel
+
+
+context Hotel
+  inv: self.nombre<>''
+ 
+
+
+--  pre: getHabitacionDisponible()
+  
+context Habitacion::reservar(fechaInicio:ecore::EDate):Boolean
+  post: self.disponible and 
+  		self.listadoReservas->select(resv| resv.fechaFin='')->size()=1
+
+ 
+context Habitacion
+def: getHabitacionDisponible() : Boolean = 
+		self.disponible and 
+			self.listadoReservas->select(resv| resv.fechaFin='')->size()=0
+
+context Habitacion :: disponible : Boolean
+  init : true
+	
+context Habitacion::getNumero(habitacion:Habitacion) : Integer
+   body: habitacion.numero
+
+context Hotel :: getCantidadHabitaciones() : Integer
+    pre: self.listadoHabitaciones<>null
+    body: self.listadoHabitaciones->size()
+    
+context Habitacion
+	inv : let libre:Boolean = (self.listadoReservas -> 
+					select(p1| p1.fechaFin=null))->size()=0 in
+	if libre then 
+		true
+	else 
+	 	false
+	endif	
+	
+
+context Habitacion inv:
+	let estaReservado : Boolean = self.disponible
+		in estaReservado implies (self.listadoReservas -> 
+							select(p1| p1.fechaFin=null))->size()=1	
+  
+context Hotel 
+inv:self.listadoHabitaciones-> forAll(h:Habitacion | h.disponible)
+  
+context Habitacion 
+inv:self.numero>0
+  
+context Habitacion 
+inv:self.listadoReservas->select(r: Reserva | r.fechaFin='')->size()>0
+
+context Habitacion 
+inv:self.listadoReservas->select(r| r.fechaFin = '')->size()>0
+
+context Habitacion 
+inv:self.listadoReservas->select(fechaFin = '')->size()>0
+
+context Hotel:: numeroHabitacion(): Collection
+	body:self.listadoHabitaciones->collect(h| h.numero)->asSet()
+
+context Hotel:: numeroHabitacion():Collection
+	body:self.listadoHabitaciones->collect(numero)->asSet()
+
+context Hotel:: numeroHabitacion():Collection
+	body:self.listadoHabitaciones.numero	
+
+
+context Hotel 
+	inv:self.listadoHabitaciones->
+		forAll(h1,h2 | h1 <> h2 implies h1.numero<>h2.numero)
+
+context Hotel 
+	inv:self.listadoHabitaciones->forAll(h:Habitacion | h.disponible)
+
+context Habitacion:: reservar(fechaInicio:ecore::EDate):
+	post:self.listadoReservas->exists(r | r.fechaFin=null)
+
+
+context Hotel 
+	inv:self.listadoHabitaciones->exists(h:Habitacion| h.disponible=false)  
+
+context Habitacion
+	inv: self.categoria.nombre<>''
+ 
+context Hotel
+	inv: self.listadoHabitaciones->notEmpty()
+
+context Habitacion 
+	inv:self.categoria->size()=1
+
+context Habitacion 
+	inv: Habitacion.allInstances()-> 
+		forAll(h1 , h2| h1<>h2 implies h1.numero<>h2.numero)
+
+context Habitacion
+	inv: self.oclIsTypeOf(Habitacion) -- is true
+	inv: self.oclIsTypeOf(Hotel) -- is false
+	
+	
+	
+	
+endpackage
+

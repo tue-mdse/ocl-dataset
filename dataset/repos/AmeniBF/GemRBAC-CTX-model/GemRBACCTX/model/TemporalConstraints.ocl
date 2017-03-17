@@ -1,0 +1,254 @@
+import ecore : 'http://www.eclipse.org/emf/2002/Ecore#/'
+import 'gemRBAC.ecore'
+package gemRBAC
+
+
+
+context Permission inv AbsoluteBTIPermAssign:
+if self.idPermission = 'p1' then
+let u: RBACUtility = RBACUtility.allInstances()-> any(true) -> any(true),
+    r : Role = Role.allInstances() -> select(r : Role|r.idRole = 'r1')-> any(true),
+    temporalContext: Set(RBACContext) = self.permissionContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)),
+    timeE: Set (AbsoluteTE) = temporalContext.oclAsType (TemporalContext).timeexpression.absolute -> flatten() -> asSet(),
+    timeI: Set(AbsoluteTE) = timeE -> select(e | e.oclIsTypeOf(TimeInterval) and e.oclAsType(TimeInterval).end->notEmpty())
+in 
+  /*if timeI.oclAsType(TimeInterval)-> notEmpty() then*/
+   if timeI.oclAsType(TimeInterval) ->exists(i:TimeInterval|u.getCurrentTime().
+        isContained(i)= true) then 
+        self.roles->includes(r)
+    else 
+		self.roles->excludes(r)
+		
+	endif
+  else
+     true
+  endif
+
+context Session inv AbsoluteBTIRoleEnab:
+let u : RBACUtility = RBACUtility.allInstances()-> any(true),
+    r : Role = Role.allInstances() -> select(r : Role|r.idRole = 'r1')-> any(true),
+    temporalContext: Set(RBACContext) = r.roleContextEnabling -> select(c |c.oclIsTypeOf(TemporalContext)),
+    timeE: Set(AbsoluteTE) =temporalContext.oclAsType(TemporalContext).timeexpression. absolute -> flatten() -> asSet(),
+    timeI: Set(AbsoluteTE) = timeE -> select(e | e.oclIsTypeOf(TimeInterval)
+    and e.oclAsType(TimeInterval).end ->notEmpty())
+in if timeI.oclAsType(TimeInterval) -> exists(i:TimeInterval | u.getCurrentTime(). isContained(i)= true) then
+    self.enabledRoles -> includes(r) or self.activeRoles -> includes(r)
+else 
+     true
+endif
+
+
+context Role
+inv AbsoluteTPRoleAssign:
+    let u : RBACUtility = RBACUtility.allInstances()
+	->any(true),
+	 u1: User = User.allInstances()
+	     ->select(m : User | m.idUser = 'u1')
+	     ->any(true),
+	temporalContext: Set(RBACContext) = self.roleContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)) 
+    in  self.idRole = 'r2' and  self.users -> includes (u1) implies
+    temporalContext.oclAsType(TemporalContext).timeexpression 
+    -> exists (e: TimeExpression | e.absolute.oclAsType(TimePoint) 
+    -> exists( a: TimePoint| a.equalTo (u.getCurrentTime()) = true)) 
+    
+    
+context Role
+inv AbsoluteUBIRoleAssign:	 
+let u : RBACUtility = RBACUtility.allInstances() -> any(true) , 
+    temporalContext: Set(RBACContext) = self.roleContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)),
+ 	timeE: Set (AbsoluteTE) = temporalContext.oclAsType(TemporalContext).timeexpression.absolute->flatten() ->asSet(),
+  	timeIntervals: Set(AbsoluteTE) = timeE-> select (e | e.oclIsTypeOf(TimeInterval)and e.oclAsType(TimeInterval).end = null ) in 
+  	if timeIntervals->notEmpty() then
+ 		if timeIntervals.oclAsType(TimeInterval) -> exists (t:TimeInterval| ( t.start.equalTo (u.getCurrentTime()) or 
+ 			t.start.isBefore (u.getCurrentTime()))) then 
+          self.users.sessions ->flatten() -> forAll (s: Session| s.enabledRoles -> includes (self) or s.activeRoles -> includes (self) )
+       	else
+       	  self.users.sessions ->flatten() -> forAll (s: Session| s.enabledRoles -> excludes (self) and s.activeRoles -> excludes (self) )
+       endif
+      else
+       true
+      endif
+
+context Role
+inv DayOfMonthHoursRoleAssign:	
+let  u : RBACUtility = RBACUtility.allInstances() ->any(true),
+     /*month :ecore::EInt = u.getCurrentTime().month,*/
+     /*day :ecore::EInt = u.getCurrentTime().day,*/
+	 u1: User = User.allInstances()
+	     ->select(m : User | m.idUser = 'u1')
+	     ->any(true),
+	 temporalContext: Set(RBACContext) = self.roleContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)),    
+ timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet()
+ in	 
+ self.idRole = 'r4' and  self.users -> includes (u1) implies  
+       timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(DayOfMonth) = true
+ 	                             and t.oclAsType(DayOfMonth).month  = u.getCurrentTime().month and  t.oclAsType(DayOfMonth).day  = u.getCurrentTime().day and t.checkHours(u)= true) or
+ 	    timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(RelativeTimeInterval) = true 
+ 	    	    and t.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(DayOfMonth) = true
+ 	    	    and t.oclAsType(RelativeTimeInterval).end.oclIsTypeOf(DayOfMonth) = true and 
+ 	    	   ( t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfMonth).month < u.getCurrentTime().month or  (t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfMonth).month = u.getCurrentTime().month) and 
+ 	    	     t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfMonth).day <= u.getCurrentTime().day)   and
+ 	    	  (t.oclAsType(RelativeTimeInterval).end.oclAsType(DayOfMonth).month > u.getCurrentTime().month or ( t.oclAsType(RelativeTimeInterval).end.oclAsType(DayOfMonth).month = u.getCurrentTime().month    and
+ 	    	    t.oclAsType(RelativeTimeInterval).end.oclAsType(DayOfMonth).day >= u.getCurrentTime().day))  and
+ 	    	    t.checkHours(u)= true )
+
+context Permission
+inv DayOfMonthHoursPermAssign:	
+let  u : RBACUtility = RBACUtility.allInstances() ->any(true),
+     /*month :ecore::EInt = u.getCurrentTime().month,*/
+     /*day :ecore::EInt = u.getCurrentTime().day,*/
+	 r: Role = Role.allInstances()
+	     ->select(r : Role | r.idRole = 'r4')
+	     ->any(true),
+	 temporalContext: Set(RBACContext) = self.permissionContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)),    
+ timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet()
+ in	 
+ self.idPermission = 'p5' and  self.roles -> includes (r) implies  
+       timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(DayOfMonth) = true
+ 	                             and t.oclAsType(DayOfMonth).month  = u.getCurrentTime().month and  t.oclAsType(DayOfMonth).day  = u.getCurrentTime().day and t.checkHours(u)= true) or
+ 	    timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(RelativeTimeInterval) = true 
+ 	    	    and t.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(DayOfMonth) = true
+ 	    	    and t.oclAsType(RelativeTimeInterval).end.oclIsTypeOf(DayOfMonth) = true and 
+ 	    	   ( t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfMonth).month < u.getCurrentTime().month or  (t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfMonth).month = u.getCurrentTime().month) and 
+ 	    	     t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfMonth).day <= u.getCurrentTime().day)   and
+ 	    	  (t.oclAsType(RelativeTimeInterval).end.oclAsType(DayOfMonth).month > u.getCurrentTime().month or ( t.oclAsType(RelativeTimeInterval).end.oclAsType(DayOfMonth).month = u.getCurrentTime().month    and
+ 	    	    t.oclAsType(RelativeTimeInterval).end.oclAsType(DayOfMonth).day >= u.getCurrentTime().day))  and
+ 	    	    t.checkHours(u)= true )
+
+context Role
+inv DayOfWeekHoursRoleAssign:	
+let  u : RBACUtility = RBACUtility.allInstances() ->any(true),
+     /*hour :ecore::EInt = u.getCurrentTime().hour,*/
+     day:RelativeTimePoint =  u.getDayOfWeek(),
+	 u2: User = User.allInstances()
+	     ->select(m : User | m.idUser = 'u2')
+	     ->any(true),
+	 temporalContext: Set(RBACContext) = self.roleContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)), 
+ timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet()
+ in	 
+ self.idRole = 'r1'  and self.users -> includes (u2) implies
+       timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(RelativeTimeInterval) = true and t.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(DayOfWeek)= true and
+       	day.isContained(t.oclAsType(RelativeTimeInterval))  = true 
+       	and t.checkHours(u)= true)  
+       	or   timeE -> exists (t:ComposedRelativeTE|t.oclIsTypeOf(DayOfWeek) = true and  day.equalTo (t.oclAsType(DayOfWeek)) = true 
+       		and t.checkHours(u)= true) 
+       		
+context Role
+inv indexRoleAssign:	
+let  u: RBACUtility = RBACUtility.allInstances() -> any(true),
+    /*  month :ecore::EInt = u.getCurrentTime().month,*/
+    temporalContext: Set(RBACContext) = self.roleContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)), 
+     day:RelativeTimePoint =  u.getDayOfWeek(),
+     u1: User = User.allInstances()
+	     ->select(m : User | m.idUser = 'u1')
+	     ->any(true),
+	 timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet() in
+     self.idRole = 'r7' and self.users -> includes (u1)
+     implies     
+      timeE-> exists(t: ComposedRelativeTE|t.oclIsTypeOf(MonthOfYear) = true and
+ 	                              t.oclAsType(MonthOfYear).month  = u.getCurrentTime().month and
+ 	    	                      t.checkDaysRank(u)= true ) 
+context Role 
+inv MonthDayOfWeekHourRoleAssign:
+let  u : RBACUtility = RBACUtility.allInstances() ->any(true),
+     /*month :ecore::EInt = u.getCurrentTime().month,*/
+	 u1: User = User.allInstances()
+	     ->select(m : User | m.idUser = 'u3')
+	     ->any(true),
+ temporalContext: Set(RBACContext) =
+   self.roleContextAssignment
+-> select(c |c.oclIsTypeOf(TemporalContext)),
+ timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet(), months: Set (ComposedRelativeTE) = timeE -> select (e |e.oclIsTypeOf(MonthOfYear) or (e.oclIsTypeOf(RelativeTimeInterval)
+and e.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(MonthOfYear)))
+ in	
+if  self.idRole = 'r6' then months -> exists (t: ComposedRelativeTE|
+t.checkMonth(u)= true
+and t.checkDays(u)= true)  else true endif
+
+context Role inv periodicUnboundTIRoleAssign:
+let
+u: RBACUtility = RBACUtility.allInstances()-> any(true), 
+u1: User = User.allInstances() ->
+select(m : User | m.idUser = 'u1')-> any(true), 
+ temporalContext: Set(RBACContext) =
+   self.roleContextAssignment
+-> select(c |c.oclIsTypeOf(TemporalContext)),
+timeE: Set (TimeExpression) = temporalContext.oclAsType
+(TemporalContext).timeexpression -> flatten() -> asSet(),
+absoluteE: Set (TimeExpression) = timeE ->
+select (t: TimeExpression| t.absolute. oclAsType(TimeInterval) -> exists (a| a.start.equalTo (u.getCurrentTime()) = true
+or a.start.isBefore(u.getCurrentTime())=true)),
+periodicE: Set(PeriodicTime)= absoluteE. relative.oclAsType(PeriodicTime) ->flatten() -> asSet()
+in self.idRole= 'r8' and self.users->includes(u1) implies periodicE.nextStart->select( a |
+a.equalTo(u.getCurrentTime())=true)->notEmpty()
+
+
+context Role
+inv RelativeHoursRoleAssign:	
+let  u : RBACUtility = RBACUtility.allInstances() ->any(true),
+    /*  hour :ecore::EInt = u.getCurrentTime().hour,*/
+	 u1: User = User.allInstances()
+	     ->select(m : User | m.idUser = 'u2')
+	     ->any(true),
+  temporalContext: Set(RBACContext) =
+   self.roleContextAssignment
+-> select(c |c.oclIsTypeOf(TemporalContext)),	     
+ timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet()
+ in	 
+ self.idRole = 'r9' and  self.users -> includes (u1) implies
+       timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(HourOfDay) = true
+ 	                             and t.oclAsType(HourOfDay).hour = u.getCurrentTime().hour) or
+ 	    timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(RelativeTimeInterval) = true 
+ 	    	    and t.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(HourOfDay) = true
+ 	    	    and t.oclAsType(RelativeTimeInterval).end.oclIsTypeOf(HourOfDay) = true and 
+ 	    	    t.oclAsType(RelativeTimeInterval).start.oclAsType(HourOfDay).hour <= u.getCurrentTime().hour   and
+ 	    	    (t.oclAsType(RelativeTimeInterval).end.oclAsType(HourOfDay).hour > u.getCurrentTime().hour or
+ 	    	    	(t.oclAsType(RelativeTimeInterval).end.oclAsType(HourOfDay).hour = u.getCurrentTime().hour and u.getCurrentTime().minute = 0 ))
+ 	    ) 
+ 
+
+context Permission inv DayOfWeekHourPermAssign: 
+if self.idPermission = 'p4' then
+let u: RBACUtility = RBACUtility.allInstances() ->any(true), 
+   day: RelativeTimePoint = u.getDayOfWeek(),
+r: Role = Role.allInstances() ->
+select(r : Role | r.idRole = 'r1') ->any(true), 
+temporalContext: Set(RBACContext) =
+self.permissionContextAssignment -> select(c |
+c.oclIsTypeOf(TemporalContext)),
+timeE: Set (ComposedRelativeTE) = temporalContext.
+oclAsType(TemporalContext).timeexpression. relative.oclAsType(ComposedRelativeTE)
+-> flatten() -> asSet(),
+days: Set (ComposedRelativeTE) = 
+
+timeE ->select(t| 
+	(t.oclIsTypeOf(RelativeTimeInterval) and
+    t.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(DayOfWeek) 
+    and day.isContained (t.oclAsType(RelativeTimeInterval)))
+    or 
+    (t.oclIsTypeOf(DayOfWeek) 
+    and day.equalTo(t.oclAsType(DayOfWeek)))
+    
+    )
+in 
+
+if days -> exists (t| t.checkHours(u)) then 
+self.roles -> includes (r)
+else
+self.roles -> excludes (r)
+endif 
+else
+true
+endif
+ 
+ 
+ 	    
+context Session inv DurationAbsoluteBTIRoleEnab:
+let u : RBACUtility = RBACUtility.allInstances()-> any(true), 
+rolesA: Set(Role) = self.enabledRoles ->  select (r:Role| r.getCurrentAbsoluteTE(u)
+-> notEmpty() and
+r.getCurrentAbsoluteTE(u).hasDuration())  
+in rolesA -> forAll(r: Role |
+r.getCurrentAbsoluteTE(u).duration.greaterThan(u.getCumulativeActiveDuration(r,self.user, r.getCurrentAbsoluteTE(u).
+ duration)))
+endpackage

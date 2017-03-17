@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="deui" nsURI="http://deui/1.0" nsPrefix="deui">
+  <eAnnotations source="http://www.eclipse.org/OCL/Import">
+    <details key="deuiCommon" value="deui-common.ecore#/"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="invocationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="settingDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="UISystem" eSuperTypes="deui-common.ecore#//NamedElement">
+    <eOperations name="isDivisible" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.interactionObjects->exists(io : InteractionObject | io.interactionSurfaces->size() > 1)"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="hasDividedState" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.interactionObjects->select(isInteractionSurface)->size() > 1"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="hasUnifiedState" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="not self.interactionObjects->select((isInteractionSurface and dependsOn->isEmpty()))->isEmpty()"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="isDistributable" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.interactionObjects->exists(io : InteractionObject | io.platforms->size() > 1)"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="hasDistributedState" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="self.interactionObjects->exists(io1 : InteractionObject, io2 : InteractionObject | io1 &lt;> io2 and not io1.platforms->symmetricDifference(io2.platforms)->isEmpty())"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="hasSinglePlatformState" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="not self.interactionObjects->iterate(io : InteractionObject; res : Set(Platform) = self.platforms | res->intersection(io.platforms))->isEmpty()"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="distributionReport" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="'Is Divisible: ' + self.isDivisible().toString() + '\n' + 'Is Distributable: ' + self.isDistributable().toString() + '\n' + 'Has Unified State: ' + self.hasUnifiedState().toString() + '\n' + 'Has Divided State: ' + self.hasDividedState().toString() + '\n' + 'Has Single Platform State: ' + self.hasSinglePlatformState().toString() + '\n' + 'Has Distributed State: ' + self.hasDistributedState().toString() + '\n'"/>
+      </eAnnotations>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="interactionObjects" lowerBound="1"
+        upperBound="-1" eType="#//InteractionObject" containment="true" eOpposite="#//InteractionObject/uisystem"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="platforms" lowerBound="1"
+        upperBound="-1" eType="#//Platform" containment="true" eOpposite="#//Platform/uiSystem"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="InteractionObject" eSuperTypes="deui-common.ecore#//NamedElement deui-common.ecore#//IdentifiedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="componentCannotBeInteractionSurface cycle desconnectedInteractionObject"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="componentCannotBeInteractionSurface" value="isComponent implies not isInteractionSurface"/>
+      <details key="cycle" value="not self->closure(hostedBy.target)->includes(self)"/>
+      <details key="desconnectedInteractionObject" value="not isInteractionSurface implies not hostedBy->isEmpty()"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="hostedBy" upperBound="-1"
+        eType="#//Hosting" eOpposite="#//Hosting/source"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="hosts" upperBound="-1"
+        eType="#//Hosting" containment="true" eOpposite="#//Hosting/target"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="uisystem" lowerBound="1"
+        eType="#//UISystem" eOpposite="#//UISystem/interactionObjects"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="implementedBy" eType="#//Implementation"
+        eOpposite="#//Implementation/target"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isContainer" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" volatile="true"
+        transient="true" derived="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="derivation" value="not hosts->isEmpty()"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isComponent" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" volatile="true"
+        transient="true" derived="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="derivation" value="hosts->isEmpty()"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isInteractionSurface" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" volatile="true"
+        transient="true" derived="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="derivation" value="not hosts->isEmpty() and not implementedBy->isEmpty()"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dependents" upperBound="-1"
+        eType="#//InteractionDependency" containment="true" eOpposite="#//InteractionDependency/target"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dependsOn" upperBound="-1"
+        eType="#//InteractionDependency" eOpposite="#//InteractionDependency/source"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="interactionSurfaces" upperBound="-1"
+        eType="#//InteractionObject" volatile="true" transient="true" derived="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="derivation" value="self->closure(hostedBy.target)->select(isInteractionSurface)"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="platforms" upperBound="-1"
+        eType="#//Platform" volatile="true" transient="true" derived="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="derivation" value="self.interactionSurfaces.implementedBy->flatten().oclAsType(Implementation).source->asSet()->union(self.implementedBy->collect(source)->asSet())->asOrderedSet()"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Platform" eSuperTypes="deui-common.ecore#//NamedElement deui-common.ecore#//IdentifiedElement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="uiSystem" lowerBound="1"
+        eType="#//UISystem" eOpposite="#//UISystem/platforms"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="implements" upperBound="-1"
+        eType="#//Implementation" containment="true" eOpposite="#//Implementation/source"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Hosting" eSuperTypes="deui-common.ecore#//IdentifiedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="hostingTheSameInteractionObjectTwice"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="hostingTheSameInteractionObjectTwice" value="source.hostedBy->forAll(h : Hosting | h &lt;> self implies h.target &lt;> self.target)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" lowerBound="1"
+        eType="#//InteractionObject" eOpposite="#//InteractionObject/hosts"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//InteractionObject" eOpposite="#//InteractionObject/hostedBy"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="optional" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Implementation" eSuperTypes="deui-common.ecore#//IdentifiedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="ImplementationOnInteractionSurface"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="ImplementationOnInteractionSurface" value="target.isInteractionSurface"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//Platform" eOpposite="#//Platform/implements"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" lowerBound="1"
+        eType="#//InteractionObject" eOpposite="#//InteractionObject/implementedBy"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="InteractionDependency" eSuperTypes="deui-common.ecore#//IdentifiedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="dependenciesOnInteractionSurfaces"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="dependenciesOnInteractionSurfaces" value="source.isInteractionSurface and target.isInteractionSurface"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//InteractionObject" eOpposite="#//InteractionObject/dependsOn"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" lowerBound="1"
+        eType="#//InteractionObject" eOpposite="#//InteractionObject/dependents"/>
+  </eClassifiers>
+</ecore:EPackage>

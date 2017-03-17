@@ -1,0 +1,25 @@
+import 'http://www.eclipse.org/emf/2002/Ecore#/'
+package ecore
+context EClass
+def : isA(typeName : String) : Boolean = 
+	name = typeName or oclIsKindOf(EClass)
+	and oclAsType(EClass).eAllSuperTypes->exists(name = typeName)
+
+-- for subclasses of DataType
+inv DataHasNoExtraProcessRefs:
+	isA('DataType'
+	) implies eReferences->forAll(
+		eReferenceType.isA('ProcessType') implies name.matches('in|out')
+	)
+
+-- for subclasses of ProcessType
+inv ProcessHasValidInputPorts:
+	isA('ProcessType') implies eReferences->forAll(
+		name.matches('^in.*') implies eReferenceType.isA('DataType')
+	)
+inv ProcessHasValidOutputPorts:
+	isA('ProcessType') implies eReferences->forAll(
+		name.matches('^out.*') implies eReferenceType.isA('DataType')
+	)
+
+endpackage

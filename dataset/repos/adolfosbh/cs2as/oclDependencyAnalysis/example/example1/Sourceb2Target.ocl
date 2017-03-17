@@ -1,0 +1,67 @@
+import 'SourceMM1b.ecore'
+import 'TargetMM1.ecore'
+import 'Environment.ecore'
+import 'Sourceb2Sourceb.ocl'
+import 'TargetLookup.ocl'
+
+package source
+
+context SRoot
+def : ast() : target::TRoot =
+	target::TRoot {
+		ownedA = ownedX.ast()
+	}
+
+context X
+def : ast() : target::A =
+	invalid -- To be overriden by X1/X2
+
+context X1
+def : ast() : target::A1 =
+	target::A1 {
+		ownsB = ownsY.oclAsType(Y1).ast()
+	}
+	
+context X2
+def : ast() : target::A2 =
+	target::A2 {
+		ownsC = ownsY.oclAsType(Y2).ast()
+	}
+
+context Y1	
+def : ast() : target::B =
+	target::B {
+		ownsD = ownsZ.ast(),
+		name = name
+	}
+	
+context Y2	
+def : ast() : target::C =
+	target::C {
+		ownsD = ownsZ.ast(),
+		name = name
+	}
+
+context Z
+def : ast() : target::D =
+	invalid -- To be overriden by Z1/Z2
+
+context Z1 
+def : ast() : target::D =
+	target::D {
+		toA = toY.oclAsType(source::Y1).ast().toA1,
+		name = name,
+		refsB = ast().lookupB(name) -- Lookups are performed from the created ast element
+									-- Problem : disambiguating lookups need to start from the container 
+	}
+	
+context Z2
+def : ast() : target::D =
+	target::D {
+		toA = toY.oclAsType(source::Y2).ast().toA2,
+		name = name,
+		refsC = ast().lookupC(name) -- Lookups are performed from the created ast element
+									-- Problem : disambiguating lookups need to start from the container 
+	}
+
+endpackage

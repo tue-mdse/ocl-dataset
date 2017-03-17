@@ -1,0 +1,218 @@
+import  _source : 'SourceMM1.ecore#/'
+import  _target : 'TargetMM1.ecore#/'
+import 'EnvExample1.ecore'
+
+package ocl
+---- Default Environment related functionality
+context OclElement
+--	
+def : env() : lookup::LookupEnvironment[1] =
+	_env(null)
+
+def : _env(child : OclElement) : lookup::LookupEnvironment[1] =
+	parentEnv()
+
+def : _exported_env(importer : OclElement) : lookup::LookupEnvironment[1] =
+	lookup::LookupEnvironment { }
+	
+def : parentEnv() : lookup::LookupEnvironment[1] =
+	let parent = oclContainer() in if parent = null then lookup::LookupEnvironment { } else parent._env(self) endif
+endpackage 
+
+package lookup
+		
+context LookupEnvironment
+def : nestedEnv() : LookupEnvironment = 
+	LookupEnvironment {
+		parentEnv = self
+	}
+
+def : addElementsOf(element : ocl::OclElement) : LookupEnvironment =
+	let newEnv = element._env(null)
+	in LookupEnvironment {
+		namedElements = self.namedElements->including(newEnv.namedElements)
+	}
+
+def : addElementsOf(elements : Collection(ocl::OclElement)) : LookupEnvironment =
+	elements->iterate(element ; acc : LookupEnvironment = self 
+		| acc.addElementsOf(element))
+
+endpackage
+
+package _target
+
+context TRoot
+
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	parentEnv()
+		.addElements(ownedA)
+		
+context A1
+def : _qualified_env() : lookup::LookupEnvironment =
+	let env = lookup::LookupEnvironment{}
+	in env
+		.addElements(ownsB)
+
+def : _lookupQualifiedB(bName : String) : B[?] =
+	let foundB = _lookupB(_qualified_env(), bName)
+	in  if foundB->isEmpty()
+		then null
+		else foundB->first()
+		endif
+		
+def : lookupQualifiedB(aPathElementCS : _source::PathElementCS) : B[?] =
+   _lookupQualifiedB(aPathElementCS.name)
+   
+
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	if ownsB->includes(child)	 
+	then parentEnv().nestedEnv()
+		.addElements(ownsB->select(x | self.ownsB->indexOf(x) < self.ownsB->indexOf(child)))
+	else parentEnv()
+	endif
+context A2
+def : _qualified_env() : lookup::LookupEnvironment =
+	let env = lookup::LookupEnvironment{}
+	in env
+		.addElements(ownsC)
+
+def : _lookupQualifiedC(cName : String) : C[?] =
+	let foundC = _lookupC(_qualified_env(), cName)
+	in  if foundC->isEmpty()
+		then null
+		else foundC->first()
+		endif
+		
+def : lookupQualifiedC(aPathElementCS : _source::PathElementCS) : C[?] =
+   _lookupQualifiedC(aPathElementCS.name)
+   
+
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	if ownsC->includes(child)	 
+	then parentEnv().nestedEnv()
+		.addElements(ownsC->select(x | self.ownsC->indexOf(x) < self.ownsC->indexOf(child)))
+	else parentEnv()
+	endif
+context B
+
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	parentEnv()
+context C
+
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	parentEnv()
+context D
+
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	parentEnv()
+
+context Visitable
+-- A1 lookup
+def : _lookupA1(env : lookup::LookupEnvironment, aName : String) : OrderedSet(A1) =
+let foundA1 = env.namedElements->selectByKind(A1)->select(name = aName)
+in  if foundA1->isEmpty() and not (env.parentEnv = null)
+	then _lookupA1(env.parentEnv, aName)
+	else foundA1
+	endif
+	
+-- Note: when calling this method, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupA1(aName : String) : A1[?] =
+let foundA1 = _lookupA1(env(), aName)
+in  if foundA1->isEmpty()
+	then null
+	else foundA1->first() -- LookupVisitor will report ambiguous result
+	endif
+	
+def : lookupA1(aPathElementCS : _source::PathElementCS) : A1[?] =
+   _lookupA1(aPathElementCS.name)
+   
+
+-- A2 lookup
+def : _lookupA2(env : lookup::LookupEnvironment, aName : String) : OrderedSet(A2) =
+let foundA2 = env.namedElements->selectByKind(A2)->select(name = aName)
+in  if foundA2->isEmpty() and not (env.parentEnv = null)
+	then _lookupA2(env.parentEnv, aName)
+	else foundA2
+	endif
+	
+-- Note: when calling this method, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupA2(aName : String) : A2[?] =
+let foundA2 = _lookupA2(env(), aName)
+in  if foundA2->isEmpty()
+	then null
+	else foundA2->first() -- LookupVisitor will report ambiguous result
+	endif
+	
+def : lookupA2(aPathElementCS : _source::PathElementCS) : A2[?] =
+   _lookupA2(aPathElementCS.name)
+   
+
+-- B lookup
+def : _lookupB(env : lookup::LookupEnvironment, bName : String) : OrderedSet(B) =
+let foundB = env.namedElements->selectByKind(B)->select(name = bName)
+in  if foundB->isEmpty() and not (env.parentEnv = null)
+	then _lookupB(env.parentEnv, bName)
+	else foundB
+	endif
+	
+-- Note: when calling this method, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupB(bName : String) : B[?] =
+let foundB = _lookupB(env(), bName)
+in  if foundB->isEmpty()
+	then null
+	else foundB->first() -- LookupVisitor will report ambiguous result
+	endif
+	
+def : lookupB(aPathElementCS : _source::PathElementCS) : B[?] =
+   _lookupB(aPathElementCS.name)
+   
+
+-- QN B lookup
+def : lookupB(aPathNameCS : _source::PathNameCS) : B[?] =
+   lookupB(aPathNameCS .path)
+
+def : lookupB(segments : OrderedSet(_source::PathElementCS)) : B[?] =
+   if segments->size() = 1
+   then lookupB(segments->first())
+   else let qualifierSegments = segments->subOrderedSet(1,segments->size()-1),
+            qualifier = lookupA1(segments->first())
+        in qualifier?.lookupQualifiedB(segments->last())
+   endif
+-- C lookup
+def : _lookupC(env : lookup::LookupEnvironment, cName : String) : OrderedSet(C) =
+let foundC = env.namedElements->selectByKind(C)->select(name = cName)
+in  if foundC->isEmpty() and not (env.parentEnv = null)
+	then _lookupC(env.parentEnv, cName)
+	else foundC
+	endif
+	
+-- Note: when calling this method, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupC(cName : String) : C[?] =
+let foundC = _lookupC(env(), cName)
+in  if foundC->isEmpty()
+	then null
+	else foundC->first() -- LookupVisitor will report ambiguous result
+	endif
+	
+def : lookupC(aPathElementCS : _source::PathElementCS) : C[?] =
+   _lookupC(aPathElementCS.name)
+   
+
+-- QN C lookup
+def : lookupC(aPathNameCS : _source::PathNameCS) : C[?] =
+   lookupC(aPathNameCS .path)
+
+def : lookupC(segments : OrderedSet(_source::PathElementCS)) : C[?] =
+   if segments->size() = 1
+   then lookupC(segments->first())
+   else let qualifierSegments = segments->subOrderedSet(1,segments->size()-1),
+            qualifier = lookupA2(segments->first())
+        in qualifier?.lookupQualifiedC(segments->last())
+   endif
+
+
+endpackage

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="Journal">
+  <eAnnotations source="http://www.eclipse.org/OCL/Import">
+    <details key="ecore" value="http://www.eclipse.org/emf/2002/Ecore"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="invocationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="settingDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="Journal">
+    <eOperations name="getPapers" ordered="false" upperBound="-1" eType="#//Paper">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="issues.publie->asSet()"/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="getIssues">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="issues->select(c:Issue| c.number > numero)&#x9;"/>
+      </eAnnotations>
+      <eParameters name="numero" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBigInteger"/>
+    </eOperations>
+    <eOperations name="getResearchPaper" ordered="false" upperBound="-1" eType="#//Issue">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="issues->select(c:Issue|c.publie)->select(Paper)->select(typeArticle = TYPE_ARTICLE::Recherche)"/>
+      </eAnnotations>
+      <eParameters name="typeArticle" lowerBound="1" eType="#//TYPE_ARTICLE"/>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="issues" upperBound="-1"
+        eType="#//Issue" eOpposite="#//Issue/journal"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="IssueNumber" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBigInteger"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="autheur" eType="#//Autheur"
+        eOpposite="#//Autheur/journal"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Issue">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="limitedTitle notSubmittedPublished afterPublication"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="limitedTitle" value=" if self.title = null then&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9; SpecialIssues = true &#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;     else SpecialIssues = false&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;     endif"/>
+      <details key="notSubmittedPublished" value=" publie->excludesAll(submit)"/>
+      <details key="afterPublication" value="publie->forAll(p:Paper | p.reviewer->size()=3)"/>
+    </eAnnotations>
+    <eOperations name="pageNumber" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBigInteger">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="post" value="result= publie->collect((LastPage- firstPage)-3)->sum()"/>
+      </eAnnotations>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="journal" lowerBound="1"
+        eType="#//Journal" eOpposite="#//Journal/issues"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="number" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBigInteger"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="publie" lowerBound="1"
+        upperBound="-1" eType="#//Paper" containment="true" eOpposite="#//Paper/issueOfPublication"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="pages" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBigInteger"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="SpecialIssues" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="title" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="submit" upperBound="-1"
+        eType="#//Paper" eOpposite="#//Paper/issueOfSubmission"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Paper">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="authorIsnotReviewer"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="authorIsnotReviewer" value="reviewer->forAll(r:Reviewer | redaction->select(a:Autheur|a.nameAuthor = r.nameReviewer )->size()&lt;1)&#xA;&#x9;&#x9;                              and reviewer->size()&lt;3"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="issueOfPublication" lowerBound="1"
+        eType="#//Issue" eOpposite="#//Issue/publie"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="typeArticle" eType="#//TYPE_ARTICLE"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="firstPage" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBigInteger"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="LastPage" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBigInteger"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="redaction" lowerBound="1"
+        upperBound="-1" eType="#//Autheur" eOpposite="#//Autheur/ecrit"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="revisioner" lowerBound="1"
+        upperBound="3" eType="#//Autheur" eOpposite="#//Autheur/examine"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="reviewer" upperBound="3"
+        eType="#//Reviewer" eOpposite="#//Reviewer/Review"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="issueOfSubmission" upperBound="-1"
+        eType="#//Issue" eOpposite="#//Issue/submit"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="TYPE_ARTICLE">
+    <eLiterals name="Recherche"/>
+    <eLiterals name="Application" value="1"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Autheur">
+    <eAnnotations source="http://www.obeo.fr/dsl/dnc/archetype">
+      <details key="archetype" value="Role"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nameAuthor" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ecrit" upperBound="-1"
+        eType="#//Paper" eOpposite="#//Paper/redaction"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="examine" eType="#//Paper"
+        eOpposite="#//Paper/revisioner"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="journal" eType="#//Journal"
+        eOpposite="#//Journal/autheur"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Reviewer">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nameReviewer" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="Review" upperBound="-1"
+        eType="#//Paper" eOpposite="#//Paper/reviewer"/>
+  </eClassifiers>
+</ecore:EPackage>

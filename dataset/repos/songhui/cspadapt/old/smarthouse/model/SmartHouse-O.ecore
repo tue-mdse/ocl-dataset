@@ -1,0 +1,222 @@
+import ecore : 'http://www.eclipse.org/emf/2002/Ecore#/';
+
+package SmartHouse : SmartHouse = 'http://dsg.cs.tcd.ie/smarthouse'
+{
+	class House{
+		attribute name : String { id };
+		attribute eprice : Real;
+		attribute time : Integer;
+		attribute outtemp: Real;
+		
+		property room#house : Room[*] { composes };
+		property member : Person[*] { composes };
+		property wh#house : WaterHeater[?] { composes };
+		property ev#house : EV[*] { composes };
+		property gate#house : Gate[?] {composes};
+		property sec#house: Security[?] {composes};
+		
+		invariant TooExpensiveToUseThemTogether:
+			eprice>15 implies (ev->forAll(e|e.charging=false) or 
+				not(wh.on) or room.heating->flatten()->forAll(e:Heating|e.level<3)
+			);
+		
+		invariant SuperExpensiveNotUseAnything:
+			eprice>20 implies (ev->forAll(e|e.charging=false) and not(wh.on) and 
+					room.heating->flatten()->forAll(e:Heating|e.level = 0));
+			
+		invariant WatchDog:
+			gate.outlocked implies sec.on;
+		invariant NoWindowOpenWhenSecOn:
+			sec.on implies room->select(e|e.name='liv').window->flatten()->forAll(e:Window|e.opened = false);
+		
+		invariant User__VeryNotSafe:
+			gate.outlocked implies sec.on=true;
+		--invariant User__NotCareCharging
+	}
+	class Gate{
+		
+		attribute outlocked : Boolean;
+		property house#gate : House;
+		
+	}
+	class Security{
+		
+		attribute on : Boolean{annotation config;}
+		property house#sec : House;
+	}
+	class Person{
+		attribute name : String { id };
+	}
+	class WaterHeater{
+		attribute temp : Real;
+		attribute on : Boolean {annotation config;}
+		attribute boost : Boolean {annotation config;}
+		
+		property house#wh : House;
+		
+		invariant DoNotHeatItForever:
+			temp < 50 or not(on);
+		invariant ColdWaterNeedHeating:
+			temp<30 implies on;
+		invariant INeedHotWaterInTheMorning:
+			house.time < 2 or house.time>8 or on;
+			
+		
+		invariant User__HotWaterAlways:
+			((temp<30) and (house.time<2 or house.time>8)) implies on = true;
+	}
+	class EV{
+		attribute name : String { id };
+		attribute pluged : Boolean;
+		attribute level : Integer;
+		attribute charging : Boolean{annotation config;}
+		
+		property house#ev : House;
+		
+		invariant LowLeveNeedCharge:
+			if (pluged) then level < 30 implies charging else true endif;
+		invariant LowPricePleaseCharge:
+			if (pluged) then house.eprice<10 implies charging else true endif;
+	}
+	class Room
+	{
+		attribute temp : ecore::EDouble;
+		attribute bright : Real;
+		attribute air : ecore::EInt;
+		attribute name : String { id };
+		
+		property house#room : House[?];
+		property window : Window[*] { composes };
+		property heating : Heating[*] { composes };
+		property light : Light[*] { composes };
+		property ac#room : AirConditioner[*] { composes };
+		property occupied : Person[*];
+		property sensor : Sensor[*] { composes };
+		property projector#room : Projector {composes};
+		property cooker : Cooker[?]{composes};
+		property wm#room : WashingMachine[?]{composes};
+		property cm#room : CoffeeMaker[?]{composes};
+		
+		invariant TooColdNeedHeating: temp < 18 implies heating->exists(e | e.level>0);
+		invariant ExtremelyColdNeedMoreHeating:
+			temp < 10 implies heating.level->sum() > 3 * heating->size();
+		invariant NoWindowOpenWhenHeating:
+			window->forAll(e : Window | e.opened = false) or heating->forAll(e : Heating | e.level = 0);
+		invariant NoWindowOpenWhenHeating:
+			window->forAll(e : Window | e.opened = false) or ac->forAll(e : AirConditioner | e.level = 0);
+		
+		invariant NoHeatingAndCoolingTogether:
+			heating->forAll(e | e.level = 0 ) or ac->forAll(e | e.level = 0);
+		invariant TooLateNoShouting:
+			house.time > 22 implies projector.volume < 4;
+		invariant ProjectingInDarkness:
+			(projector.on and bright > 500) implies 
+				(light->forAll(e|e.level = 0) and window->forAll(e|e.curtainOn));
+		invariant INeedFreshAir:
+			air > 5 implies window->exists(e|e.opened);
+		invariant TooColdToOpenWindow:
+			house.outtemp > 5 or window->forAll(e|not(e.opened));
+		 
+			
+		invariant User__AlwaysOpenWindow:
+			(air > 6 and house.outtemp >= 10) implies window->asSequence()->first().opened = true;
+		invariant User__AlwaysTurnOnFirstHeating:
+			(temp < 10 and house.eprice<20) implies heating->asSequence()->first().level=10;
+		invariant User__ILoveCurtains:
+			(projector.on) implies window->asSequence()->first().curtainOn = true;
+		
+	}
+	class Heating
+	{
+		attribute name : String { id };
+		attribute level : ecore::EInt{annotation config(domain = '0..10');}
+	}
+	class Window
+	{
+		attribute name : String { id };
+		attribute curtainOn : Boolean {annotation config;}
+		attribute opened : Boolean {annotation config;}
+	}
+	class AirConditioner
+	{
+		attribute level : Integer{annotation config(domain = '0..10');}
+		attribute freshAir : Boolean{annotation config;}
+		property room#ac : Room;
+		
+		invariant TooHotOpenAC:
+			room.temp > 28 implies level > 5;
+		invariant CodeNoAC:
+			room.temp < 23 implies level = 0;
+		invariant HotOutside:
+			room.house.outtemp > 30 implies level > 5;
+			
+		invariant User__HotOutside:
+			level >0  implies level = 9;
+	}
+	class Light
+	{
+		attribute level : Integer{annotation config(domain = '0..10');}
+		invariant User__LightWideOpen:
+			level <> 0 implies level = 5;
+	}
+	class Projector
+	{
+		attribute on : Boolean {annotation config;}
+		attribute brightness : Integer{annotation config(domain = '0..10');}
+		attribute volume : Integer{annotation config(domain = '0..10');}
+		property room#projector : Room;
+		
+		invariant TooNoisyToWatchTVWhenWashing:
+			if(room.wm <> null) then (not room.wm.on) or (not on) else true endif;
+	}
+	class WashingMachine
+	{
+		
+		attribute loaded : Boolean;
+		attribute on : Boolean{annotation config;}
+		
+		property room#wm : Room;		
+		
+		invariant OnWhenLoaded: loaded implies on;
+		
+		invariant User__WashImmediately:
+			loaded implies on = true;
+		
+	}
+	class Sensor
+	{
+		attribute temp: Boolean {annotation config;}
+		attribute air: Boolean {annotation config;}
+		attribute brightness: Boolean {annotation config;}
+		attribute battery: Integer;
+		attribute circle: Real{annotation config(domain= '0..10');}
+		
+		invariant RunningOutOfPower:
+			battery < 20 implies circle < 30;
+	}
+	class Cooker{
+		attribute on : Boolean {annotation config;}			
+	}
+	class CoffeeMaker{
+		
+		attribute loaded : Boolean;
+		attribute on : Boolean{annotation config;}
+		attribute warming : Boolean{annotation config;}
+		
+		property room#cm : Room;
+		
+		invariant MakeCoffeeForMeInTheMorning:
+			(room.house.time=7 and loaded) implies on;
+		invariant NoCarNoCoffee:
+			room.house.ev->exists(e|e.pluged) or on;
+			
+		invariant KeepItWarm:
+			(room.temp < 10 and loaded) implies warming;
+		
+		invariant KeepItWarm:
+			(room.temp>20) implies not warming;
+			
+		invariant User__IWantWarmed:
+			loaded implies warming = true;
+	}
+}

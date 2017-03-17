@@ -1,0 +1,55 @@
+--rename variables
+context EquationExpression
+def: eeIsSuitableForWhenEquation() : Boolean = 
+  let le : Expression = leftexpression 
+  in
+    let re : AbstractExpression = rightexpression 
+    in
+      le.aeIsAReference()
+      or (le.eIsSuitableExpressionListForWhenEquation()
+      and re.aeIsFunctionCall())
+          
+             
+--rename variables and iterator variables 
+        
+context Component
+inv unique_element_names_comp : 
+    let class  : AbstractMoClass = xBody().xContent().xMoClass(),
+        comps  : Sequence(Component) = class.amcRecCollectComponents()->excluding(self),
+        classes: Sequence(AbstractMoClass) = class.amcRecCollectClasses()
+    in componentnames->forAll(c1,c2 | c1.name = c2.name implies c1 = c2) and
+       comps->forAll(c1 | c1.componentnames->forAll(cn1 | self.componentnames->forAll(cn2 | cn1.name <> cn2.name))) and
+       classes->forAll(c | componentnames->forAll(cn | cn.name <> c.content.name))
+
+
+
+context Expression
+def: eIsSuitableExpressionListForWhenEquation() : Boolean
+     = eValueCount() = 1 and firstvalue.oclIsKindOf(ExpressionList) and firstvalue.oclAsType(ExpressionList).elIsSuitableForWhenEquation()
+def: eIsFunctionCall() : Boolean
+     = eValueCount() = 1 and firstvalue.oclIsKindOf(FunctionCall)
+
+     
+--remove unused
+context EnumerationList
+inv unique_enumeration_literals: 
+let unused: Integer = 5
+in
+enumerationliterals->isUnique(componentname.name)
+
+ 
+--separate and merge context classifiers
+context AbstractMoClass 
+def: amcCollectAbstractComponents() : Sequence(AbstractComponent)
+     = content.acCollectAbstractComponents()
+def: amcCollectExtendsClauses() : Sequence(ExtendsClause)
+     = content.acCollectExtendsClauses()
+def: amcCollectIOComponents() : Sequence(Component)
+     = content.acCollectIOComponents()
+def: amcCollectConnectorComponents() : Sequence(Component)
+     = content.acCollectConnectorComponents()
+def: amcCollectComponents() : Sequence(Component)
+     = amcCollectAbstractComponents()->select(
+	   oclIsKindOf(Component))->
+         collect(oclAsType(Component))
+ 

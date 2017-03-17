@@ -1,0 +1,782 @@
+-- OCL Utility Function Library for Rules and Metrics
+-- damyot, November 2009
+
+----------------------------------------------------------------------------
+-- Utility functions/queries to implement allInstances() and simplify the  
+-- definition of contexts and metrics. WARNING: Not all metaclasses are 
+-- covered (see other warnings below).
+----------------------------------------------------------------------------
+
+package urn
+context URNspec
+	
+------------------------------------------------------------------------------------------
+-- GRL Helper functions
+-- WARNING... NOT INCLUDED HERE (for simplicity):
+--    CollapsedActorRef, ContributionChange, ContributionContext, ContributionContextGroup
+--    GRLLinkableElement, GRLNode, GRLspec, LinkRefBendpoint
+------------------------------------------------------------------------------------------
+
+
+-- Diagrams/Graphs
+def: getAllGRLGraphs():Sequence(grl::GRLGraph) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(grl::GRLGraph))
+			-> collect(g|g.oclAsType(grl::GRLGraph))
+			-> asSequence()
+
+-- Actors
+def: getAllActors():Sequence(grl::Actor) = 
+		self.grlspec.actors -> asSequence()
+
+def: getAllActorRefs():Sequence(grl::ActorRef) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(grl::GRLGraph)).contRefs
+			-> select(r|r.oclIsTypeOf(grl::ActorRef))
+			-> collect(r|r.oclAsType(grl::ActorRef))
+			-> asSequence()
+
+-- Intentional Elements
+def: getAllIntentionalElements():Sequence(grl::IntentionalElement) =
+        -- Does not include indicators 
+		self.grlspec.intElements 
+			-> select(ie|not(ie.oclIsTypeOf(grl::kpimodel::Indicator)))
+			-> asSequence()
+
+def: getAllIntentionalElementsWithIndicators():Sequence(grl::IntentionalElement) = 
+		self.grlspec.intElements -> asSequence()
+
+def: getAllIntentionalElementRefs():Sequence(grl::IntentionalElementRef) =
+		-- Does not include references to indicators. 
+        self.grlspec.intElements 
+            -> select(ie:grl::IntentionalElement | not(ie.oclIsTypeOf(grl::kpimodel::Indicator))).refs
+			-> asSequence()
+			   
+def: getAllIntentionalElementRefsWithIndicators():Sequence(grl::IntentionalElementRef) =
+        self.grlspec.intElements.refs-> asSequence()	
+
+def: getAllGoals():Sequence(grl::IntentionalElement) = 
+		self.grlspec.intElements 
+			-> select(ie|ie.type=grl::IntentionalElementType::Goal)
+			-> asSequence()
+
+def: getAllSoftgoals():Sequence(grl::IntentionalElement) = 
+		self.grlspec.intElements 
+			-> select(ie|ie.type=grl::IntentionalElementType::Softgoal)
+			-> asSequence()
+
+def: getAllTasks():Sequence(grl::IntentionalElement) = 
+		self.grlspec.intElements 
+			-> select(ie|ie.type=grl::IntentionalElementType::Task)
+			-> asSequence()
+
+def: getAllResources():Sequence(grl::IntentionalElement) = 
+		self.grlspec.intElements 
+			-> select(ie|ie.type=grl::IntentionalElementType::Ressource)
+			-> asSequence()
+			 
+def: getAllRessources():Sequence(grl::IntentionalElement) =  /* Fix for jUCMNav's metamodel */
+		self.grlspec.intElements 
+			-> select(ie|ie.type=grl::IntentionalElementType::Ressource)
+			-> asSequence()
+
+
+def: getAllBeliefs():Sequence(grl::Belief) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(grl::GRLGraph)).nodes
+			-> select(n|n.oclIsTypeOf(grl::Belief))
+			-> collect(b|b.oclAsType(grl::Belief))
+			-> asSequence() 
+				
+-- Links				
+def: getAllElementLinks():Sequence(grl::ElementLink) = 
+		self.grlspec.links -> asSequence()
+
+def: getAllContributions():Sequence(grl::Contribution) = 
+		self.grlspec.links 
+			-> select(link:grl::ElementLink | link.oclIsTypeOf(grl::Contribution)) 
+			-> collect(l|l.oclAsType(grl::Contribution))
+			-> asSequence()
+
+def: getAllDecompositions():Sequence(grl::Decomposition) = 
+		self.grlspec.links
+			-> select(link:grl::ElementLink | link.oclIsTypeOf(grl::Decomposition))
+			-> collect(l|l.oclAsType(grl::Decomposition))
+			-> asSequence()
+
+def: getAllDependencies():Sequence(grl::Dependency) = 
+		self.grlspec.links
+			-> select(link:grl::ElementLink | link.oclIsTypeOf(grl::Dependency))
+			-> collect(l|l.oclAsType(grl::Dependency))
+			-> asSequence()
+
+def: getAllLinkRefs():Sequence(grl::LinkRef) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(grl::GRLGraph)).connections
+			-> select(r|r.oclIsKindOf(grl::LinkRef))
+			-> collect(r|r.oclAsType(grl::LinkRef))
+			-> asSequence() 
+
+def: getAllBeliefLinks():Sequence(grl::BeliefLink) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(grl::GRLGraph)).connections
+			-> select(r|r.oclIsTypeOf(grl::BeliefLink))
+			-> collect(r|r.oclAsType(grl::BeliefLink))
+			-> asSequence() 
+
+-- Strategies
+def: getAllEvaluationStrategies():Sequence(grl::EvaluationStrategy) = 
+		self.grlspec.strategies -> asSequence()
+
+def: getAllEvaluations():Sequence(grl::Evaluation) = 
+		self.grlspec.strategies.evaluations -> asSequence()
+
+def: getAllStrategiesGroups():Sequence(grl::StrategiesGroup) = 
+		self.grlspec.groups -> asSequence()
+		
+def: getAllEvaluationRanges():Sequence(grl::EvaluationRange) = 
+		self.grlspec.strategies.evaluations.evalRange -> asSequence()
+		
+-- Contribution Overrides
+def: getAllContributionContexts():Sequence(grl::ContributionContext) = 
+		self.grlspec.contributionContexts -> asSequence()
+
+def: getAllContributionContextGroups():Sequence(grl::ContributionContextGroup) = 
+		self.grlspec.contributionGroups -> asSequence()
+
+def: getAllContributionChanges():Sequence(grl::ContributionChange) = 
+		self.grlspec.contributionContexts.changes -> asSequence()
+
+def: getAllContributionRanges():Sequence(grl::ContributionRange) = 
+		self.grlspec.contributionContexts.changes.contribRange -> asSequence()
+
+-- Key Performance Indicators
+def: getAllIndicators():Sequence(grl::kpimodel::Indicator) = 
+		self.grlspec.intElements 
+			-> select(ie:grl::IntentionalElement | ie.oclIsTypeOf(grl::kpimodel::Indicator)) 
+			-> collect(ie|ie.oclAsType(grl::kpimodel::Indicator))
+			-> asSequence()
+
+def: getAllIndicatorRefs():Sequence(grl::IntentionalElementRef) =
+        self.grlspec.intElements 
+            -> select(ie:grl::IntentionalElement | ie.oclIsTypeOf(grl::kpimodel::Indicator)).refs
+			-> asSequence()     
+	
+def: getAllIndicatorGroups():Sequence(grl::kpimodel::IndicatorGroup) = 
+		self.grlspec.indicatorGroup -> asSequence()
+
+def: getAllKPIInformationElements():Sequence(grl::kpimodel::KPIInformationElement) = 
+		self.grlspec.kpiInformationElements -> asSequence()
+
+def: getAllKPIInformationElementRefs():Sequence(grl::kpimodel::KPIInformationElementRef) = 
+		self.grlspec.kpiInformationElements.refs -> asSequence()		
+
+def: getAllKPIKPIModelLinks():Sequence(grl::kpimodel::KPIModelLink) = 
+		self.grlspec.kpiModelLinks -> asSequence()
+
+def: getAllKPIKPIModelLinkRefs():Sequence(grl::kpimodel::KPIModelLinkRef) = 
+		self.grlspec.kpiModelLinks.refs -> asSequence()
+		
+def: getAllKPIInformationConfigs():Sequence(grl::kpimodel::KPIInformationConfig) = 
+		self.grlspec.strategies.kpiInfoConfig -> asSequence()
+
+def: getAllKPIEvalValueSets():Sequence(grl::kpimodel::KPIEvalValueSet) = 
+		self.grlspec.strategies.evaluations.kpiEvalValueSet -> asSequence()
+
+def: getAllKPINewEvalValues():Sequence(grl::kpimodel::KPINewEvalValue) = 
+		self.grlspec.strategies.evaluations.kpiNewEvalValue -> asSequence()
+
+----------------------------------------------------------------------
+-- UCM Helper functions
+-- WARNING... NOT INCLUDED HERE (for simplicity):
+--    ComponentLabel, ComponentType, ConnectionLabel, Label, NodeLabel
+----------------------------------------------------------------------
+
+-- UCM Map/Diagram
+def: getAllUCMmaps():Sequence(ucm::map::UCMmap) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap))
+			-> collect(g|g.oclAsType(ucm::map::UCMmap))
+			-> asSequence()
+
+-- Components and their references
+def: getAllComponents():Sequence(urncore::Component)= 
+		self.urndef.components
+			-> select(ce|ce.oclIsTypeOf(urncore::Component))
+			-> asSequence()		
+
+def: getAllComponentRefs():Sequence(ucm::map::ComponentRef) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).contRefs
+			-> select(r|r.oclIsTypeOf(ucm::map::ComponentRef))
+			-> collect(r|r.oclAsType(ucm::map::ComponentRef))
+			-> asSequence()
+
+-- Responsibilities and their references
+def: getAllResponsibilities():Sequence(urncore::Responsibility)= 
+		self.urndef.responsibilities -> asSequence()
+
+def: getAllRespRefs():Sequence(ucm::map::RespRef) =
+		self.urndef.responsibilities.respRefs -> asSequence()
+
+-- Other Path nodes
+def: getAllPathNodes():Sequence(ucm::map::PathNode) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsKindOf(ucm::map::PathNode))
+			-> collect(r|r.oclAsType(ucm::map::PathNode))
+			-> asSequence()
+
+def: getAllStartPoints():Sequence(ucm::map::StartPoint) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::StartPoint))
+			-> collect(r|r.oclAsType(ucm::map::StartPoint))
+			-> asSequence()
+
+def: getAllEndPoints():Sequence(ucm::map::EndPoint) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::EndPoint))
+			-> collect(r|r.oclAsType(ucm::map::EndPoint))
+			-> asSequence()
+
+def: getAllWaitingPlaces():Sequence(ucm::map::WaitingPlace) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::WaitingPlace))
+			-> collect(r|r.oclAsType(ucm::map::WaitingPlace))
+			-> asSequence()
+
+def: getAllTimers():Sequence(ucm::map::Timer) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::Timer))
+			-> collect(r|r.oclAsType(ucm::map::Timer))
+			-> asSequence()
+
+def: getAllWaitingPlacesWithTimers():Sequence(ucm::map::WaitingPlace) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsKindOf(ucm::map::WaitingPlace))
+			-> collect(r|r.oclAsType(ucm::map::WaitingPlace))
+			-> asSequence()
+
+
+def: getAllEmptyPoints():Sequence(ucm::map::EmptyPoint) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::EmptyPoint))
+			-> collect(r|r.oclAsType(ucm::map::EmptyPoint))
+			-> asSequence()
+
+def: getAllDirectionArrows():Sequence(ucm::map::DirectionArrow) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::DirectionArrow))
+			-> collect(r|r.oclAsType(ucm::map::DirectionArrow))
+			-> asSequence()
+
+def: getAllConnects():Sequence(ucm::map::Connect) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::Connect))
+			-> collect(r|r.oclAsType(ucm::map::Connect))
+			-> asSequence()
+
+def: getAllOrForks():Sequence(ucm::map::OrFork) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::OrFork))
+			-> collect(r|r.oclAsType(ucm::map::OrFork))
+			-> asSequence()
+
+def: getAllOrJoin():Sequence(ucm::map::OrJoin) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::OrJoin))
+			-> collect(r|r.oclAsType(ucm::map::OrJoin))
+			-> asSequence()
+
+def: getAllAndForks():Sequence(ucm::map::AndFork) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::AndFork))
+			-> collect(r|r.oclAsType(ucm::map::AndFork))
+			-> asSequence()
+
+def: getAllAndJoins():Sequence(ucm::map::AndJoin) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::AndJoin))
+			-> collect(r|r.oclAsType(ucm::map::AndJoin))
+			-> asSequence()
+
+def: getAllAnythings():Sequence(ucm::map::Anything) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::Anything))
+			-> collect(r|r.oclAsType(ucm::map::Anything))
+			-> asSequence()
+
+def: getAllFailurePoints():Sequence(ucm::map::FailurePoint) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::FailurePoint))
+			-> collect(r|r.oclAsType(ucm::map::FailurePoint))
+			-> asSequence()
+
+-- Stubs/plug-ins
+def: getAllStubs():Sequence(ucm::map::Stub) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::Stub))
+			-> collect(r|r.oclAsType(ucm::map::Stub))
+			-> asSequence()
+
+def: getAllPluginBindings():Sequence(ucm::map::PluginBinding) =
+		getAllStubs().bindings -> asSequence()
+
+def: getAllNodeConnections():Sequence(ucm::map::NodeConnection) =
+		self.urndef.specDiagrams->select(d|d.oclIsTypeOf(ucm::map::UCMmap)).connections
+			-> select(r|r.oclIsTypeOf(ucm::map::NodeConnection))
+			-> collect(r|r.oclAsType(ucm::map::NodeConnection))
+			-> asSequence()
+
+def: getAllInBindings():Sequence(ucm::map::InBinding) =
+        -- role 'in' is a keyword in OCL... Go through NodeConnection
+		getAllNodeConnections().inBindings -> asSequence()
+
+def: getAllOutBindings():Sequence(ucm::map::OutBinding) =
+		getAllStubs().bindings.out -> asSequence()
+
+def: getAllPluginComponentBindings():Sequence(ucm::map::ComponentBinding) =
+		getAllStubs().bindings.components -> asSequence()
+
+
+-- Scenarios
+def: getAllScenarioGroups():Sequence(ucm::scenario::ScenarioGroup) =
+		self.ucmspec.scenarioGroups -> asSequence()
+
+def: getAllScenarioDefs():Sequence(ucm::scenario::ScenarioDef) =
+		self.ucmspec.scenarioGroups.scenarios -> asSequence()
+
+def: getAllVariables():Sequence(ucm::scenario::Variable) =
+		self.ucmspec.variables -> asSequence()
+		
+def: getAllInitializations():Sequence(ucm::scenario::Initialization) =
+		self.ucmspec.scenarioGroups.scenarios.initializations -> asSequence()
+		
+def: getAllScenarioStartPoints():Sequence(ucm::scenario::ScenarioStartPoint) =
+		self.ucmspec.scenarioGroups.scenarios.startPoints -> asSequence()
+
+def: getAllScenarioEndPoints():Sequence(ucm::scenario::ScenarioEndPoint) =
+		self.ucmspec.scenarioGroups.scenarios.endPoints -> asSequence()
+
+
+-- Performance
+def: getAllDemands():Sequence(ucm::performance::Demand)= 
+		self.urndef.responsibilities.demands -> asSequence()
+
+def: getAllWorkloads():Sequence(ucm::performance::Workload) =
+		getAllStartPoints().workload
+
+def: getAllGeneralResources():Sequence(ucm::performance::GeneralResource) =
+		self.ucmspec.resources -> asSequence()
+
+def: getAllPassiveResources():Sequence(ucm::performance::PassiveResource) =
+		self.ucmspec.resources 
+			-> select(r|r.oclIsTypeOf(ucm::performance::PassiveResource))
+			-> collect(r|r.oclAsType(ucm::performance::PassiveResource))
+			-> asSequence()
+
+def: getAllActiveResources():Sequence(ucm::performance::ActiveResource) =
+		self.ucmspec.resources 
+			-> select(r|r.oclIsTypeOf(ucm::performance::ActiveResource))
+			-> collect(r|r.oclAsType(ucm::performance::ActiveResource))
+			-> asSequence()
+
+def: getAllProcessingResources():Sequence(ucm::performance::ProcessingResource) =
+		self.ucmspec.resources 
+			-> select(r|r.oclIsTypeOf(ucm::performance::ProcessingResource))
+			-> collect(r|r.oclAsType(ucm::performance::ProcessingResource))
+			-> asSequence()
+
+def: getAllExternalOperations():Sequence(ucm::performance::ExternalOperation) =
+		self.ucmspec.resources 
+			-> select(r|r.oclIsTypeOf(ucm::performance::ExternalOperation))
+			-> collect(r|r.oclAsType(ucm::performance::ExternalOperation))
+			-> asSequence()
+
+
+--------------------------------------------------------------
+-- URN Helper functions
+-- WARNING... NOT INCLUDED HERE (for simplicity):
+--    URNspec, GRLmodelElement, UCMmodelElement, URNdefinition
+--    Metadata, URNmodelElement, URNlink
+--------------------------------------------------------------
+
+-- URN diagrams and other common elements
+def: getAllURNdiagrams():Sequence(urncore::IURNDiagram) =
+		self.urndef.specDiagrams-> asSequence()
+
+def: getAllComments():Sequence(urncore::Comment) =
+		self.urndef.specDiagrams.comments -> asSequence()
+
+def: getAllConcerns():Sequence(urncore::Concern) =
+		self.urndef.concerns -> asSequence()
+
+def: getAllConditions():Sequence(urncore::Condition) =
+        -- For all 7 sources combined!
+		getAllPluginBindings().precondition 
+			-> union(getAllStartPoints().precondition)
+			-> union(getAllEndPoints().postcondition)
+			-> union(getAllNodeConnections().condition)
+			-> union(getAllConcerns().condition)
+			-> union(getAllScenarioDefs().preconditions)
+			-> union(getAllScenarioDefs().postconditions)
+			-> asSequence()
+
+endpackage
+
+--------------------------------------------------------------
+-- URN Metadata Helper functions
+--------------------------------------------------------------
+package urncore
+context URNmodelElement
+
+def: getMetadatasForName(mdname:String):Sequence(Metadata) =
+        -- Returns the metadata objects whose names match mdname
+		self.metadata 
+			-> select(md:Metadata | md.name = mdname)
+			-> asSequence()
+
+def: hasMetadata(mdname:String):Boolean =
+        -- NOTE: If there are >0 metadata with the same name, then returns true 
+		self.getMetadatasForName(mdname) -> size() > 0
+
+def: hasUniqueMetadata(mdname:String):Boolean =
+        -- NOTE: If there are <>1 metadata with the same name, then returns false 
+		self.getMetadatasForName(mdname) -> size() = 1
+
+def: getMetadata(mdname:String):String =
+		if (self.hasUniqueMetadata(mdname))
+		then 
+			self.getMetadatasForName(mdname) -> first().value
+		else
+			''
+		endif
+		
+-- For accessing evaluation values
+def: getNumEval():Integer =
+		let e:String = self.getMetadata('_numEval') in  
+			if (e <> '')
+			then e.toInteger()
+			else -1000  -- Error code.
+			endif
+
+def: getQualEval():String =
+		self.getMetadata('_qualEval')
+
+--------------------------------------------------------------
+-- URN Links Helper functions
+--------------------------------------------------------------
+def: getLinksToForType(type:String):Sequence(URNmodelElement) =
+        -- Returns the URN model elements to which elem links (with specified type)
+		self.fromLinks 
+			-> select(link:urn::URNlink | link.type = type).toElem
+			-> asSequence() 
+
+def: getLinksFromForType(type:String):Sequence(URNmodelElement) =
+        -- Returns the URN model elements from which elem links (with specified type)
+		self.toLinks 
+			-> select(link:urn::URNlink | link.type = type).fromElem
+			-> asSequence()
+
+--------------------------------------------------------------
+-- URN Concerns Helper functions
+--------------------------------------------------------------
+context Concern
+
+def: getGRLGraphsForConcern():Sequence(grl::GRLGraph) =
+        -- Returns the GRL graphs related to a concern
+		self.specDiagrams 
+			-> select(r|r.oclIsTypeOf(grl::GRLGraph))
+			-> collect(r|r.oclAsType(grl::GRLGraph))
+			-> asSequence()
+
+def: getUCMmapsForConcern():Sequence(ucm::map::UCMmap) =
+        -- Returns the UCM maps related to a concern
+		self.specDiagrams 
+			-> select(r|r.oclIsTypeOf(ucm::map::UCMmap))
+			-> collect(r|r.oclAsType(ucm::map::UCMmap))
+			-> asSequence()
+
+endpackage
+
+--------------------------------------------------------------
+-- GRL LinkRef Helper functions
+--------------------------------------------------------------
+package grl
+context LinkRef
+
+def: srcIsActor():Boolean =
+		self.link.src.oclIsTypeOf(Actor)
+
+def: destIsActor():Boolean =
+		self.link.dest.oclIsTypeOf(Actor)
+
+--------------------------------------------------------------
+-- GRL Dependency Helper Functions
+--------------------------------------------------------------
+context GRLLinkableElement
+
+def: dependees():Sequence(grl::GRLLinkableElement) =
+     -- The IEs/Actors that this IE depends on
+		self.linksSrc
+			-> select(link|link.oclIsTypeOf(grl::Dependency)).dest
+			-> asSequence()
+		
+def: dependers():Sequence(grl::GRLLinkableElement) =
+		-- The IEs that depend on this IE
+		self.linksDest
+			-> select(link|link.oclIsTypeOf(grl::Dependency)).src
+			-> asSequence()
+
+--------------------------------------------------------------
+-- GRL IE Def from Ref Helper Function
+--------------------------------------------------------------
+context IntentionalElementRef
+
+-- This is a hack to access an IE definition from an IE reference
+-- because the corresponding association role name (def) is an
+-- OCL keyword...! 
+
+def: getDef():grl::IntentionalElement =
+		self.diagram.urndefinition.urnspec.getAllIntentionalElements()
+		-> select(ie | ie.refs -> includes(self))
+		-> first()
+		
+--------------------------------------------------------------
+-- GRL Actor Hierarchy Helper Functions
+--------------------------------------------------------------
+
+context ActorRef
+
+def: getAncestorSet(current:Set(Actor)):Set(Actor) =
+		-- Invoked by getAncestors, to enable recursive construction of ancestors
+		let oneStep:Set(Actor) = current
+			->collect(a|a.contRefs)
+			->select(a|a.oclIsTypeOf(ActorRef))
+			->collect(a|a.oclAsType(ActorRef))->asSet()
+			->collect(ar|ar.parent)->asSet()
+			->select(a|a.oclIsTypeOf(ActorRef))
+			->collect(a|a.oclAsType(ActorRef))->asSet()
+			->collect(ar|ar.contDef)
+			->select(a|a.oclIsTypeOf(Actor))
+			->collect(a|a.oclAsType(Actor))->asSet()
+		in
+			if ( current->includesAll(oneStep) )  
+			then current
+			else getAncestorSet(current->union(oneStep))
+			endif
+
+def: getAncestors():Set(Actor) =
+		if self.parent->notEmpty()
+		then getAncestorSet( self.parent.contDef->collect(o|o.oclAsType(Actor))->asSet() )
+		else Set{}
+		endif
+		
+--------------------------------------------------------------
+-- GRL Legal Profile Helper Functions
+--------------------------------------------------------------
+context Actor
+
+def: isInLegalDiagram():Boolean =
+	-- Checks whether the actor is present in a legal diagram
+	self.contRefs.diagram
+		-> select(d|d.oclIsTypeOf(grl::GRLGraph))
+		-> collect(d|d.oclAsType(grl::GRLGraph))
+		-> select(d|d.getMetadata('ST_Legal')='Legal')
+		-> size() > 0
+
+context IntentionalElement
+
+def: isInLegalDiagram():Boolean =
+	-- Checks whether the IE is present in a legal diagram
+	self.refs.diagram
+		-> select(d|d.oclIsTypeOf(grl::GRLGraph))
+		-> collect(d|d.oclAsType(grl::GRLGraph))
+		-> select(d|d.getMetadata('ST_Legal')='Legal')
+		-> size() > 0
+
+--------------------------------------------------------------
+-- GRL Visual Elements Helper Functions
+--------------------------------------------------------------
+context GRLGraph
+
+def: getNbVisualElements():Integer =
+		-- does not include bendpoints...
+		  self.contRefs -> size()
+		+ self.connections -> size()
+		+ self.nodes -> size()
+
+--------------------------------------------------------------------------------------
+-- For features in Software Product Lines
+--------------------------------------------------------------------------------------
+context EvaluationStrategy
+
+-- In a strategy, feature A requires feature B
+def: featureRequires(nameA:String, nameB:String):Boolean=
+
+	let 
+		a:IntentionalElement = grlspec.intElements -> select(t | t.type = IntentionalElementType::Task and t.name = nameA) -> asSequence() -> first(),
+		b:IntentionalElement = grlspec.intElements -> select(t | t.type = IntentionalElementType::Task and t.name = nameB) -> asSequence() -> first(),
+		i100:Collection(IntentionalElement) = (evaluations -> select(e | e.evaluation = 100)) -> collect(intElement)
+	in
+		(i100 -> includes(a)) implies (i100 -> includes(b))
+
+-- In a strategy, feature A conflicts with feature B
+def: featureConflictsWith(nameA:String, nameB:String):Boolean=
+
+	let 
+		a:IntentionalElement = grlspec.intElements -> select(t | t.type = IntentionalElementType::Task and t.name = nameA) -> asSequence() -> first(),
+		b:IntentionalElement = grlspec.intElements -> select(t | t.type = IntentionalElementType::Task and t.name = nameB) -> asSequence() -> first(),
+		i100:Collection(IntentionalElement) = (evaluations -> select(e | e.evaluation = 100)) -> collect(intElement),
+		i_not0:Collection(IntentionalElement) = (evaluations -> select(e | e.evaluation <> 0)) -> collect(intElement)
+		
+	in
+		(i100 -> includes(a)) implies (i_not0 -> excludes(b))
+endpackage
+
+
+--------------------------------------------------------------
+-- UCM Component Hierarchy Helper Functions
+--------------------------------------------------------------
+
+package ucm::map
+context ComponentRef
+
+def: getAncestorSet(current:Set(urncore::Component)):Set(urncore::Component) =
+		-- Invoked by getAncestors, to enable recursive construction of ancestors
+		let oneStep:Set(urncore::Component) = current
+			->collect(c|c.contRefs)
+			->select(c|c.oclIsTypeOf(ComponentRef))
+			->collect(c|c.oclAsType(ComponentRef))->asSet()
+			->collect(cr|cr.parent)->asSet()
+			->select(c|c.oclIsTypeOf(ComponentRef))
+			->collect(c|c.oclAsType(ComponentRef))->asSet()
+			->collect(cr|cr.contDef)
+			->select(c|c.oclIsTypeOf(urncore::Component))
+			->collect(c|c.oclAsType(urncore::Component))->asSet()
+		in
+			if ( current->includesAll(oneStep) )  
+			then current
+			else getAncestorSet( current->union(oneStep) )
+			endif
+
+def: getAncestors():Set(urncore::Component) =
+		if self.parent->notEmpty()
+		then getAncestorSet(self.parent.contDef->collect(o|o.oclAsType(urncore::Component))->asSet())
+		else Set{}
+		endif
+
+--------------------------------------------------------------
+-- UCM Visual Elements Helper Functions
+--------------------------------------------------------------
+context UCMmap
+
+def: getNbVisualElements():Integer =
+		-- includes empty points and direction arrows...
+		  self.contRefs -> size()
+		+ self.connections -> size()
+		+ self.nodes -> size()
+
+--------------------------------------------------------------
+-- UCM Stubs and Submaps Helper Functions
+--------------------------------------------------------------
+context Stub
+def: getPluginsForStub():Sequence(ucm::map::UCMmap) =
+		self.bindings.plugin -> asSequence()
+
+context UCMmap
+def: getStubsForMap():Sequence(ucm::map::Stub) =
+		self.nodes
+			-> select(r|r.oclIsTypeOf(ucm::map::Stub))
+			-> collect(r|r.oclAsType(ucm::map::Stub))
+			-> asSequence()
+
+def: getSubmapsNoRec():Sequence(ucm::map::UCMmap) =
+		-- get direct submaps of a map
+		self.getStubsForMap() -> iterate(s; p:Sequence(ucm::map::UCMmap)=Sequence{} |
+									p->union(s.getPluginsForStub()) )
+
+def: getSubmapSet(current:Set(ucm::map::UCMmap)):Set(ucm::map::UCMmap) =
+		-- Invoked by getAllSubmaps, to enable recursive construction of submaps
+		let oneStep:Set(ucm::map::UCMmap) = current
+			->iterate(map; ps:Set(ucm::map::UCMmap)=Set{} |
+						ps->union(map.getSubmapsNoRec()->asSet()) )
+		in
+			if ( current->includesAll(oneStep) )  
+			then current
+			else getSubmapSet( current->union(oneStep) )
+			endif
+
+def: getAllSubmaps():Set(ucm::map::UCMmap) =
+		-- get submaps of a map recursively
+		let submaps:Set(ucm::map::UCMmap) = self.getSubmapsNoRec()->asSet() in
+			if submaps->notEmpty()
+			then self.getSubmapSet(submaps)
+			else submaps
+			endif
+			
+endpackage
+
+--------------------------------------------------------------
+-- URN Element Layout functions
+--------------------------------------------------------------
+package urncore
+context IURNContainerRef
+-- For components and actors
+
+def: isOutside(c:IURNContainerRef):Boolean =
+		(x>c.x+c.width) or
+		(y>c.y+c.height) or
+		(x+width<c.x) or
+		(y+height<c.y)
+
+def: isInside(c:IURNContainerRef):Boolean =
+		(x>=c.x) and
+		(y>=c.y) and
+		(x+width<=c.x+c.width) and
+		(y+height<=c.y+c.height)
+
+def: isOverlapping(c:IURNContainerRef):Boolean =
+		not(self.isOutside(c) or self.isInside(c) or c.isInside(self))
+
+def: noIntermediate(co:IURNContainerRef):Boolean =
+		diagram.contRefs
+			-> select(ci| ci<>co and ci<>self and self.isInside(ci) and ci.isInside(co))
+			-> isEmpty()
+
+
+context IURNNode
+-- For intentional elements and path nodes
+def: isInside(c:IURNContainerRef):Boolean =
+		(x>=c.x) and
+		(x<=c.x+c.width) and
+		(y>=c.y) and
+		(y<=c.y+c.height)
+
+def: noIntermediate(co:IURNContainerRef):Boolean =
+		diagram.contRefs
+			-> select(ci| ci<>co and self.isInside(ci) and ci.isInside(co))
+			-> isEmpty()
+
+--These functions for GRL IEs are approximative, based on default IE sizes.
+def: ieIsOutside(c:IURNContainerRef):Boolean =
+		(x>c.x+c.width) or
+		(y>c.y+c.height) or
+		(x+115<c.x) or
+		(y+50<c.y)
+
+def: ieIsInside(c:IURNContainerRef):Boolean =
+		(x>=c.x) and
+		(y>=c.y) and
+		(x+115<=c.x+c.width) and
+		(y+50<=c.y+c.height)
+
+def: ieIsOverlapping(c:IURNContainerRef):Boolean =
+		not(self.ieIsOutside(c) or self.ieIsInside(c))
+
+def: ieNoIntermediate(co:IURNContainerRef):Boolean =
+		diagram.contRefs
+			-> select(ci| ci<>co and self.ieIsInside(ci) and ci.isInside(co))
+			-> isEmpty()
+			
+def: ieIsOverlappingIE(ie:IURNNode):Boolean =
+		not(
+			(x>ie.x+115) or
+			(y>ie.y+50) or
+			(x+115<ie.x) or
+			(y+50<ie.y)
+		)
+			
+endpackage

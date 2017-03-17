@@ -1,0 +1,249 @@
+/*
+ *  TOPPERS/A-RTEGEN
+ *      Automotive Runtime Environment Generator
+ *
+ *  Copyright (C) 2013-2016 by Eiwa System Management, Inc., JAPAN
+ *
+ *  上記著作権者は，以下の(1)〜(4)の条件を満たす場合に限り，本ソフトウェ
+ *  ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
+ *  変・再配布（以下，利用と呼ぶ）することを無償で許諾する．
+ *  (1) 本ソフトウェアをソースコードの形で利用する場合には，上記の著作
+ *      権表示，この利用条件および下記の無保証規定が，そのままの形でソー
+ *      スコード中に含まれていること．
+ *  (2) 本ソフトウェアを，ライブラリ形式など，他のソフトウェア開発に使
+ *      用できる形で再配布する場合には，再配布に伴うドキュメント（利用
+ *      者マニュアルなど）に，上記の著作権表示，この利用条件および下記
+ *      の無保証規定を掲載すること．
+ *  (3) 本ソフトウェアを，機器に組み込むなど，他のソフトウェア開発に使
+ *      用できない形で再配布する場合には，次のいずれかの条件を満たすこ
+ *      と．
+ *    (a) 再配布に伴うドキュメント（利用者マニュアルなど）に，上記の著
+ *        作権表示，この利用条件および下記の無保証規定を掲載すること．
+ *    (b) 再配布の形態を，別に定める方法によって，TOPPERSプロジェクトに
+ *        報告すること．
+ *  (4) 本ソフトウェアの利用により直接的または間接的に生じるいかなる損
+ *      害からも，上記著作権者およびTOPPERSプロジェクトを免責すること．
+ *      また，本ソフトウェアのユーザまたはエンドユーザからのいかなる理
+ *      由に基づく請求からも，上記著作権者およびTOPPERSプロジェクトを
+ *      免責すること．
+ *
+ *  本ソフトウェアは，AUTOSAR（AUTomotive Open System ARchitecture）仕
+ *  様に基づいている．上記の許諾は，AUTOSARの知的財産権を許諾するもので
+ *  はない．AUTOSARは，AUTOSAR仕様に基づいたソフトウェアを商用目的で利
+ *  用する者に対して，AUTOSARパートナーになることを求めている．
+ *
+ *  本ソフトウェアは，無保証で提供されているものである．上記著作権者お
+ *  よびTOPPERSプロジェクトは，本ソフトウェアに関して，特定の使用目的
+ *  に対する適合性も含めて，いかなる保証も行わない．また，本ソフトウェ
+ *  アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
+ *  の責任を負わない．
+ * 
+ *  $Id: header.ocl 6220 2013-11-28 07:33:32Z t-inoue $
+ */
+
+import '../../../jp.ac.nagoya_u.is.nces.a_rte.model/model/ar4x.ecore#/'
+import '../../../jp.ac.nagoya_u.is.nces.a_rte.model/model/rte.ecore#/'
+import 'validation_common_instance.ocl'
+
+package ar4x::m2
+
+	/*
+	 * Autosar
+	 */
+	context Autosar
+
+	inv nrte_sws_0226:
+	BswImplementation.allInstances()->size() > 0
+
+
+	/*
+	 * BswImplementation
+	 */
+	context BswImplementation
+	
+	inv nrte_sws_0232:
+	ar4x::ecuc::RteBswModuleInstance.allInstances()->select(i : ar4x::ecuc::RteBswModuleInstance | i.rteBswImplementation = self)->size() = 1
+
+	/*
+	 * ExclusiveArea
+	 */
+
+	context ExclusiveArea
+	
+	def: bswSchedulableEntities : Set(BswSchedulableEntity) = 
+		(BswSchedulableEntity.allInstances()->select(i : BswSchedulableEntity | i.canEnterExclusiveArea->exists(j : ExclusiveArea | j = self))
+		->union(BswSchedulableEntity.allInstances()->select(i : BswSchedulableEntity | i.runsInsideExclusiveArea->exists(j : ExclusiveArea | j = self))))
+	def: anyEcucPartition : ar4x::ecuc::EcucPartition = 
+		bswSchedulableEntities.event.config->select(not rteBswMappedToTask.oclIsUndefined()).rteBswMappedToTask.ownerApplication->any(true).osAppEcucPartition
+
+	inv nrte_sws_0227:
+	if self.parent.oclIsKindOf(BswInternalBehavior) then
+		BswImplementation.allInstances()->select(behavior = self.parent)->isEmpty()
+		or self.bswConfig->size() = 1
+	else
+		true
+	endif
+
+	inv nrte_sws_0205:
+	if self.parent.oclIsKindOf(BswInternalBehavior) then
+		BswImplementation.allInstances()->select(behavior = self.parent)->isEmpty()
+		or ar4x::ecuc::EcucPartitionCollection.allInstances()->isEmpty()
+		or bswSchedulableEntities.event.config->select(not rteBswMappedToTask.oclIsUndefined())
+			->forAll(rteBswMappedToTask.ownerApplication->any(true).osAppEcucPartition = self.anyEcucPartition)
+	else
+		true
+	endif
+	
+	/*
+	 * BswEvent
+	 */
+
+	context BswEvent
+
+	inv nrte_sws_0196:
+	if BswImplementation.allInstances()->exists(behavior = self.parent) then
+		self.config->size() = 1
+	else
+		true
+	endif
+	
+	/*
+	 * ModeDeclarationGroupPrototype
+	 */
+	context ModeDeclarationGroupPrototype
+
+	inv nrte_sws_0328:
+	ar4x::ecuc::RteBswRequiredModeGroupConnection.allInstances()->select(rteBswRequiredModeGroup = self)->size() < 2
+
+	inv nrte_sws_0345:
+	rte::ex::ModeDeclarationGroupPrototypeEx.allInstances()->any(true).getUsingPartition(self)->size() < 2
+
+	/*
+	 * BswSchedulableEntity
+	 */
+	 
+	 context BswSchedulableEntity
+
+	 inv nrte_sws_0343:
+	 rte::ex::BswSchedulableEntityEx.allInstances()->any(true).getUsingPartition(self)->size() < 2
+
+endpackage
+
+package ar4x::instance
+
+endpackage
+
+package ar4x::ecuc
+
+	/*
+	 * RteBswEventToTaskMapping
+	 */
+	context RteBswEventToTaskMapping
+
+	def: expectedConfig : RteUsedOsActivation = self.rteBswUsedOsAlarm.expectedConfig->first()
+	def: activationOffset : ar4x::m2::TimeValue = if self.rteBswActivationOffset.oclIsUndefined() then null else self.rteBswActivationOffset endif
+	def: timeValueEx : rte::ex::TimeValueEx = rte::ex::TimeValueEx.allInstances()->any(true)
+	
+	inv nrte_sws_0194:
+	not self.rteBswEvent.oclIsKindOf(ar4x::m2::BswTimingEvent) or not self.rteBswMappedToTask.oclIsUndefined()
+
+	inv nrte_sws_0195:
+	not self.rteBswEvent.oclIsKindOf(ar4x::m2::BswTimingEvent) or not self.rteBswUsedOsAlarm.oclIsUndefined()
+
+	inv nrte_sws_0199:
+	not self.rteBswEvent.oclIsKindOf(ar4x::m2::BswTimingEvent) or expectedConfig.oclIsUndefined()
+	or timeValueEx.isGreaterThanOrEquals(activationOffset, expectedConfig.rteExpectedActivationOffset)
+
+	inv nrte_sws_0200:
+	not self.rteBswEvent.oclIsKindOf(ar4x::m2::BswTimingEvent) or expectedConfig.oclIsUndefined()
+	or timeValueEx.isMultiplesOf(timeValueEx.subtract(activationOffset, expectedConfig.rteExpectedActivationOffset), expectedConfig.rteExpectedTickDuration)
+
+	inv nrte_sws_0201:
+	not self.rteBswEvent.oclIsKindOf(ar4x::m2::BswTimingEvent) or expectedConfig.oclIsUndefined()
+	or timeValueEx.isMultiplesOf(self.rteBswEvent.oclAsType(ar4x::m2::BswTimingEvent).period, expectedConfig.rteExpectedTickDuration)
+
+	inv nrte_sws_0357:
+	not self.rteBswEvent.oclIsKindOf(ar4x::m2::BswBackgroundEvent) or not self.rteBswMappedToTask.oclIsUndefined()
+
+	inv nrte_sws_0352:
+	self.rteBswUsedOsAlarm.oclIsUndefined() or (self.rteBswEvent.oclIsKindOf(ar4x::m2::BswTimingEvent) or self.rteBswEvent.oclIsKindOf(ar4x::m2::BswBackgroundEvent)) 
+
+	/* irte_sws_007解除時に要修正 */
+	inv nrte_sws_0354:
+	RteBswEventToTaskMapping.allInstances()->select(m | m.rteBswMappedToTask = self.rteBswMappedToTask and m.rteBswUsedOsEvent = self.rteBswUsedOsEvent)
+		->forAll(m | m.rteBswUsedOsAlarm = self.rteBswUsedOsAlarm)
+
+	/* irte_sws_007解除時に要修正 */
+	inv nrte_sws_0355:
+	self.rteBswEvent.oclIsKindOf(ar4x::m2::BswBackgroundEvent) or self.rteBswEvent.oclIsKindOf(ar4x::m2::BswTimingEvent)
+	or
+	not RteBswEventToTaskMapping.allInstances()->select(m | m.rteBswMappedToTask = self.rteBswMappedToTask and m.rteBswUsedOsEvent = self.rteBswUsedOsEvent)
+		->exists(m | m.rteBswEvent.oclIsKindOf(ar4x::m2::BswBackgroundEvent) or m.rteBswEvent.oclIsKindOf(ar4x::m2::BswTimingEvent))
+
+	inv nrte_sws_0353:
+	let osApps : Set(OsApplication) = OsApplication.allInstances()->select(osApplicationCoreAssignment = self.rteBswMappedToTask.ownerApplication->any(true).osApplicationCoreAssignment)
+	in
+	not self.rteBswEvent.oclIsKindOf(ar4x::m2::BswBackgroundEvent) or not self.rteBswUsedOsAlarm.oclIsUndefined()
+	or not osApps.osAppTask->exists(t | t <> self.rteBswMappedToTask and t.osTaskPriority <= self.rteBswMappedToTask.osTaskPriority)
+
+	/*
+	 * RteBswExclusiveAreaImpl
+	 */
+	context RteBswExclusiveAreaImpl
+
+	inv nrte_sws_0228:
+	self.rteExclusiveAreaImplMechanism <> RteExclusiveAreaImplMechanismEnum::OS_RESOURCE or
+	not self.rteBswExclusiveAreaOsResource.oclIsUndefined()
+
+	inv nrte_sws_0229:
+	self.rteExclusiveAreaImplMechanism <> RteExclusiveAreaImplMechanismEnum::OS_SPINLOCK or
+	not self.rteBswExclusiveAreaOsSpinlock.oclIsUndefined()
+
+	inv nrte_sws_0230:
+	self.rteExclusiveAreaImplMechanism <> RteExclusiveAreaImplMechanismEnum::COOPERATIVE_RUNNABLE_PLACEMENT
+
+	/*
+	 * OsTask
+	 */
+
+	context OsTask
+
+	inv nrte_sws_0191:
+	self.mappedRteBswEvent->isEmpty() or self.mappedRteEvent->isEmpty()
+
+	inv nrte_sws_0198:
+	self.mappedRteBswEvent->forAll(rteBswUsedOsEvent.oclIsUndefined())
+	or self.mappedRteBswEvent->forAll(not rteBswUsedOsEvent.oclIsUndefined())
+
+	inv nrte_sws_0202:
+	self.mappedRteBswEvent->size() < 2
+	or (self.mappedRteBswEvent->isUnique(rteBswPositionInTask) and self.mappedRteBswEvent->forAll(not rteBswPositionInTask.oclIsUndefined()))
+
+	inv nrte_sws_0203:
+	EcucPartitionCollection.allInstances()->isEmpty() or self.mappedRteBswEvent->isEmpty()
+	or self.ownerApplication->size() = 1 and self.ownerApplication.osAppEcucPartition->size() = 1
+
+	inv nrte_sws_0204:
+	EcucPartitionCollection.allInstances()->isEmpty() or self.mappedRteBswEvent->isEmpty()
+	or self.ownerApplication.osAppEcucPartition.ecucPartitionBswModuleExecution = Bag{true}
+
+	/*
+	 * OsAlarm
+	 */
+	context OsAlarm
+
+	inv nrte_sws_0197:
+	not RteBswEventToTaskMapping.allInstances()->exists(rteBswUsedOsAlarm = self)
+	or self.expectedConfig->size() = 1
+
+	/*
+	 * RteBswRequiredModeGroupConnection
+	 */
+	 context RteBswRequiredModeGroupConnection
+	 
+	 inv nrte_sws_0331:
+	 rte::ex::ModeDeclarationGroupPrototypeEx.allInstances()->any(true).getUsingPartitionForManager(self.rteBswProvidedModeGroup)
+	 	->union(rte::ex::ModeDeclarationGroupPrototypeEx.allInstances()->any(true).getUsingPartitionForUser(self.rteBswRequiredModeGroup))
+	 	->asOrderedSet()->size() < 2
+		
+endpackage

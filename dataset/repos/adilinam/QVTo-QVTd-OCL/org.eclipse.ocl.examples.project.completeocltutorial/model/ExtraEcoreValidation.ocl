@@ -1,0 +1,68 @@
+/*******************************************************************************
+ * Copyright (c) 2012 Willink Transformations and others.
+ * All rights reserved.   This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *   E.D.Willink - Initial API and implementation
+ *
+ * This file provides additional validation constraints for use of OCL embedded in Ecore.
+ *******************************************************************************/
+import ecore : 'http://www.eclipse.org/emf/2002/Ecore#/'
+
+package ecore
+
+context EModelElement
+/**
+ * Declare a helper operation to map an ok/warning verdict to ok/error.
+*/
+def: asError(verdict : Boolean) : Boolean = if verdict then true else null endif
+
+/**
+ * Extra validation for EReference and EAttribute.
+ */
+context EStructuralFeature
+	
+/**
+ * Declare a helper property to determine whether an EStructuralFeature has an OCL derivation. 
+ */
+def: hasDerivation : Boolean = eAnnotations->select(source.startsWith('http://www.eclipse.org/emf/2002/Ecore/OCL'))->notEmpty()
+
+/**
+ * If a feature has an OCL derivation, it should be transient; otherwise it is not executed.
+ */
+inv DerivationIsTransient: hasDerivation implies transient
+
+/**
+ * If a feature has an OCL derivation, it must be volatile; otherwise the cached value suppresses execution.
+ */
+inv DerivationIsVolatile: asError(hasDerivation implies volatile)
+
+/**
+ * If a feature has an OCL derivation, it should not also have a default value.
+ */
+inv DerivationIsUninitialized: hasDerivation implies defaultValue.oclIsUndefined()
+
+/**
+ * Extra validation for just EReference.
+ */
+context EReference
+
+/**
+ * If a feature has an OCL derivation, it should not compete with built-in containment.
+ */
+inv DerivationIsNotComposed: asError(hasDerivation implies not containment)
+
+/**
+ * If a feature has an OCL derivation, it should be not waste time resolving proxies.
+ */
+inv DerivationDoesNotResolveProxies: hasDerivation implies not resolveProxies
+
+/**
+ * If a feature has an OCL derivation and an opposite, the opposite should also have an OCL derivation
+ */
+inv DerivationWithOppositeHasOppositeDerivation: hasDerivation and eOpposite <> null implies eOpposite.hasDerivation
+
+endpackage

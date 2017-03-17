@@ -1,0 +1,69 @@
+import  cs : 'ClassesCS.ecore#/'
+import  as : 'Classes.ecore#/'
+import 'classescs2asV2Helpers.ocl'
+import 'classescs2asV2Lookup.ocl'
+import 'classescs2asV2Disambiguation.ocl'
+package cs
+
+context RootCS
+def : ast() : as::Root =
+	as::Root {
+		ownedPackages = ownedPackages.ast() 
+	}
+context PackageCS
+def : ast() : as::Package =
+	as::Package {
+		name = name, 
+	ownedClasses = ownedClasses.ast(), 
+	ownedPackages = ownedPackages.ast() 
+	}
+context ClassCS
+def : ast() : as::Class =
+	as::Class {
+		name = name, 
+	ownedOperations = operations.ast(), 
+	ownedProperties = properties.ast(), 
+	superClass = if _extends = null then null else ast().lookupClass(_extends) endif 
+	}
+context PropertyCS
+def : ast() : as::Property =
+	as::Property {
+		name = name, 
+	type = ast().lookupClass(typeRef) 
+	}
+context OperationCS
+def : ast() : as::Operation =
+	as::Operation {
+		name = name, 
+	type = ast().lookupClass(resultRef), 
+	ownedParameters = params->collect(x | classes::Parameter{
+					name = x
+				}), 
+	ownedExpressions = bodyExps.ast() 
+	}
+context NameExpCS
+def : ast() : as::CallExp =
+	if isOpCallExp()
+	then as::OperationCallExp {
+		ownedCallExp = ownedNameExp?.ast(),
+		ownedArguments = roundedBrackets.args.ast(), 
+	referredOperation = if oclContainer().oclIsKindOf(NameExpCS) then ast().lookupOperationFrom(ast().owningSource.type, name, ast().oclAsType(as::OperationCallExp).ownedArguments) else ast().lookupOperation(name, ast().oclAsType(as::OperationCallExp).ownedArguments) endif, 
+	type = ast().oclAsType(as::OperationCallExp).referredOperation?.type
+	}
+	else
+		if isPropCallExp()
+		then as::PropertyCallExp {
+			ownedCallExp = ownedNameExp?.ast(), 
+		referredProperty = if oclContainer().oclIsKindOf(NameExpCS) then ast().lookupPropertyFrom(ast().owningSource.type, name) else ast().lookupProperty(name) endif, 
+		type = ast().oclAsType(as::PropertyCallExp).referredProperty?.type
+		}
+		else
+			invalid
+		endif
+	endif
+context ArgumentCS
+def : ast() : as::Argument =
+	as::Argument {
+		name = name 
+	}
+endpackage

@@ -1,0 +1,77 @@
+import 'ITCuliacan.ecore'
+
+package itculiacan 
+	
+-- 1) Validación de las claves
+
+context Alumno
+inv numeroControl: numeroControl > 0
+
+context Grupo
+	inv clave: 
+		clave > 0
+
+context Materia
+inv clave: clave > 0
+
+context PlanEstudio
+inv clave: clave > 0
+
+context Aula
+	inv clave: 
+		clave > 0 
+	
+	
+context Profesor
+inv clave : clave > 0
+
+-- 2).- Los grupos no deben tener más de 40 estudiantes.
+
+context Grupo
+	inv capacidadMaximaGrupo:
+		self.alumnos->size() <= 40
+
+-- 3).- El número de estudiantes en un grupo no debe ser superior  a la capacidad del aula.
+
+	inv grupoMenorACapacidadAula:
+		alumnos->asSet()->size() <= aula.capacidad 
+
+	
+-- 	4).-Se desea conocer el número de estudiantes inscritos en 1 materia
+
+-- 		Materia.allInstances()->select(clave=12).grupos.alumnos->asSet()
+-- 		refMaterias->select(clave=12).grupos.alumnos->asSet()
+
+
+--	5).-Se desea conocer el número de materias que imparte 1 profesor.
+	--  refProfesor->select(clave=1).grupos.materia->asSet()->size()
+
+
+--	6).- Un profesor no puede impartir más materias que las que le permite su nombramiento.
+
+context Profesor::numeroMaterias : Integer 
+	derive:
+		if nombramiento = Nombramiento::medioTiempo
+			then 10
+	  	else
+	  		20
+		endif 
+	
+ 
+
+context Profesor
+	inv materiasMaximasProfesor:
+		grupos->asSet()->size() <= numeroMaterias 
+
+
+		
+-- 7).- Las materias que cursa un alumno deben corresponder con las que están definidas en su plan de estudios.
+context Alumno
+	inv materiasDePlanEstudio:
+		grupos.materia->forAll(m | self.cursa.materias->includes(m))
+		
+		
+		
+		
+		
+endpackage

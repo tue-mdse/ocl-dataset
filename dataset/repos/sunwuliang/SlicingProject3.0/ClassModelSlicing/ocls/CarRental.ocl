@@ -1,0 +1,64 @@
+import 'platform:/resource/ClassModelSlicing/ecores/CarRental.ecore'
+
+-- from USE/examples/Others/CarRental
+-- Used for contract-aware slicing
+
+package CarRental
+
+context Person
+-- the age must be in a reasonable range
+inv Person3:
+  age > 0 and age < 80
+  
+context Employee
+-- each employee is either a manager or a clerk of a branch
+inv Employee1:
+   employer->isEmpty() xor managedBranch->isEmpty()
+
+context Branch 
+-- Each manager is also an employee of the same branch
+inv Branch1: 
+  self.employee->includes(self.manager)
+
+context Branch 
+-- Managers get a higher salary than employees
+inv Branch2: 
+  self.employee->forAll(e | e <> self.manager 
+    implies self.manager.salary > e.salary)
+
+context CarGroup 
+-- The order on CarGroups is not reflexive
+inv CarGroup1: 
+  higher <> self and lower <> self
+
+context CarGroup
+-- The order on CarGroups is anti-symmetric
+inv CarGroup2: 
+  higher.higher <> self and lower.lower <> self
+
+
+context Car
+-- A car may not be assigned to a maintenance and 
+-- to a rental at the same time
+inv Car1: 
+  rental->isEmpty() 
+
+
+context Rental
+inv Rental2: 
+  self.branch.carGroup->includes(self.carGroup)
+
+
+context Employee::raiseSalary(amount : Real) : Real
+  -- If the amount is positive, raise the salary 
+  -- by the given amount
+  pre:  amount > 0
+  post: self.salary = self.salary@pre + amount
+          and result = self.salary
+
+
+context Person::updateAge(newAge : Integer) : 
+  pre:  newAge > 0 and newAge <> age
+  post: self.age = newAge
+
+endpackage

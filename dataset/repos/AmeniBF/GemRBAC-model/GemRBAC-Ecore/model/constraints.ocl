@@ -1,0 +1,434 @@
+
+import ecore : 'http://www.eclipse.org/emf/2002/Ecore#/'
+import 'GemRBAC.ecore'
+
+package rbacmodel
+
+	context User
+
+	inv PreqRole:
+let r1 : Role = Role.allInstances()
+	->select(m : Role | m.idRole = 'r1')
+	->any(true) , r2 : Role = Role.allInstances()
+	->select(m : Role | m.idRole = 'r2')
+	->any(true) , 
+	roleSet : Set(Role) = self.roles
+	->union(self.delegatedRoles)
+	->asSet()
+in roleSet
+	->includes(r1) implies roleSet
+	->includes(r2)
+
+	context Role
+
+	inv PreqPermisssion:
+let p1 : Permission = Permission.allInstances()
+	->select(m : Permission | m.idPermission = 'p1')
+	->any(true) , p2 : Permission = Permission.allInstances()
+	->select(m : Permission | m.idPermission = 'p2')
+	->any(true)
+in self.permissions
+	->includes(p1) implies self.permissions
+	->includes(p2)
+
+	context User
+
+	inv Card:
+	let roleSet : Set(Role) = self.roles
+	->union(self.delegatedRoles)
+	->asSet()
+in roleSet
+	->size() <= 5
+
+	context Session
+
+	inv Card:
+	self.activeRoles
+	->size() <= 4
+
+	context Role
+
+	inv Card:
+	self.permissions
+	->size() <= 5
+
+	context Session
+
+	inv RoleEnablingPrecedence:
+let r1 : Role = Role.allInstances()
+	->select(a : Role | a.idRole = 'r1')
+	->any(true) , r2 : Role = Role.allInstances()
+	->select(a : Role | a.idRole = 'r2')
+	->any(true)
+in self.enabledRoles
+	->includes(r1) implies Session.allInstances()
+	->exists(s : Session | s.enabledRoles
+		->includes(r2))
+
+	context Session
+
+	inv RoleActivationPrecedence:
+let r1 : Role = Role.allInstances()
+	->select(a : Role | a.idRole = 'r2')
+	->any(true) , r2 : Role = Role.allInstances()
+	->select(a : Role | a.idRole = 'r5')
+	->any(true)
+in self.activeRoles
+	->includes(r1) implies Session.allInstances()
+	->exists(s : Session | s.activeRoles
+		->includes(r2))
+
+	context User
+
+	inv RoleHierarchy:
+	self.roles
+	->forAll(r : Role | self.roles
+		->includesAll(r.juniors))
+	
+	context Role
+
+	inv RoleHierarchyPermission:
+	self.juniors
+	->forAll(r : Role | r.permissions
+		->includesAll(self.permissions))
+
+	context User
+
+	inv SSoDCR:
+let r1 : Role = Role.allInstances()
+	->select(r : Role | r.idRole = 'r1')
+	->any(true) , r2 : Role = Role.allInstances()
+	->select(r : Role | r.idRole = 'r4')
+	->any(true),
+	roleSet : Set(Role) = self.roles
+	->union(self.delegatedRoles)
+	->asSet()
+	
+in if roleSet
+		->includes(r1) or self.roles
+		->includes(r2)
+	then (roleSet
+		->includes(r1) xor self.roles
+		->includes(r2))
+	else true
+	endif
+
+	context Role
+
+	inv SSoDCU:
+	if self.idRole = 'r6'
+	then
+	let u1 : User = User.allInstances()
+		->select(u : User | u.idUser = 'u1')
+		->any(true) , u2 : User = User.allInstances()
+		->select(u : User | u.idUser = 'u2')
+		->any(true)
+	in if self.users
+			->includes(u2) or self.users
+			->includes(u1)
+		then self.users
+			->includes(u2) xor self.users
+			->includes(u1)
+		else true
+		endif
+	else true
+	endif
+
+	context Role
+
+	inv SSoDCP1:
+let p1 : Permission = Permission.allInstances()
+	->select(p : Permission | p.idPermission = 'p1')
+	->any(true) , p2 : Permission = Permission.allInstances()
+	->select(p : Permission | p.idPermission = 'p6')
+	->any(true)
+in if self.permissions
+		->includes(p2) or self.permissions
+		->includes(p1)
+	then self.permissions
+		->includes(p2) xor self.permissions
+		->includes(p1)
+	else true
+	endif
+
+	context Permission
+
+	inv SSoDCP2:
+	if self.idPermission = 'p1'
+	then
+	let r1 : Role = Role.allInstances()
+		->select(r : Role | r.idRole = 'r1')
+		->any(true) , r2 : Role = Role.allInstances()
+		->select(r : Role | r.idRole = 'r2')
+		->any(true)
+	in if self.roles
+			->includes(r2) or self.roles
+			->includes(r1)
+		then self.roles
+			->includes(r2) xor self.roles
+			->includes(r1)
+		else true
+		endif
+	else true
+	endif
+
+	context Session
+
+	inv DSoD:
+let r1 : Role = Role.allInstances()
+	->select(r : Role | r.idRole = 'r1')
+	->any(true) , r2 : Role = Role.allInstances()
+	->select(r : Role | r.idRole = 'r3')
+	->any(true)
+in if self.activeRoles
+		->includes(r2) or self.activeRoles
+		->includes(r1)
+	then self.activeRoles
+		->includes(r2) xor self.activeRoles
+		->includes(r1)
+	else true
+	endif
+
+	context Session
+
+	inv ObjectDSOD:
+let r2 : Role = Role.allInstances()
+	->select(r : Role | r.idRole = 'r6')
+	->any(true) , r1 : Role = Role.allInstances()
+	->select(r : Role | r.idRole = 'r1')
+	->any(true) , p : Permission = Permission.allInstances()
+	->select(o : Permission | o.idPermission = 'p3')
+	->any(true) , 
+	logr2 : Set(History) = History.allInstances()
+	->select(a : History | a.role = r2 and a.user = self.user) , 
+	logr1 : Set(History) = History.allInstances()
+	->select(a : History | a.role = r1 and a.user = self.user)
+in if self.activeRoles
+		->includes(r1)
+	then (logr2
+		->select(a : History | a.object = p.object))
+		->isEmpty()
+	else if self.activeRoles
+			->includes(r2)
+		then (logr1
+			->select(a : History | a.object = p.object))
+			->isEmpty()
+		else true
+		endif
+	endif
+
+	context Session
+
+	inv OperationalDSoD:
+let r1 : Role = Role.allInstances()
+	->select(r : Role | r.idRole = 'r3')
+	->any(true) , r2 : Role = Role.allInstances()
+	->select(r : Role | r.idRole = 'r2')
+	->any(true) , u : RBACUtility = RBACUtility.allInstances()
+	->any(true) , opBT : Set(Operation) = u.businessTaskList , op : Set(Operation) = r1.permissions.operations
+	->asSet()
+	->union(r2.permissions.operations
+		->asSet())
+in (self.activeRoles
+	->includes(r1) and self.activeRoles
+	->includes(r2)) implies (opBT - op)
+	->notEmpty()
+
+	context Session
+
+	inv HistoryDSOD:
+let u : RBACUtility = RBACUtility.allInstances()
+	->any(true) , opBT : Set(Operation) = u.businessTaskList , r1 : Role = Role.allInstances()
+	->select(r : Role | r.idRole = 'r1')
+	->any(true) , r2 : Role = Role.allInstances()
+	->select(r : Role | r.idRole = 'r6')
+	->any(true) , p : Permission = Permission.allInstances()
+	->select(p : Permission | p.idPermission = 'p1')
+	->any(true) , op : Operation = Operation.allInstances()
+	->select(op : Operation | op.idOperation = 'op1')
+	->any(true) , perm1 : Set(Permission) = r1.permissions
+	->select(a : Permission | a.object = p.object) , perm2 : Set(Permission) = r2.permissions
+	->select(a : Permission | a.object = p.object) , opObjBT : Set(Operation) = (perm1.operations
+	->union(perm2.operations))
+	->select(a : Operation | opBT
+		->includes(a))
+	->asSet() , logr2 : Set(History) = History.allInstances()
+	->select(a : History | a.role = r2 and perm2
+		->includes(a.permission) and a.user = self.user) , 
+		logr1 : Set(History) = History.allInstances()
+	->select(a : History | a.role = r1 and perm1
+		->includes(a.permission) and a.user = self.user) , log : Set(History) = logr1
+	->union(logr2) , opLog : Set(Operation) = log
+	->collect(l | l.operation)
+	->asSet() , newopLog : Set(Operation) = opLog
+	->including(op)
+in (opObjBT - newopLog)
+	->notEmpty()
+
+	context Session
+
+	inv RoleBoD:
+let u : RBACUtility = RBACUtility.allInstances()
+	->any(true) , boundedPermissions : Set(Permission) = u.boundedPermissions , r1 : Role = Role.allInstances()
+	->select(r : Role | r.idRole = 'r3')
+	->any(true) , p : Permission = Permission.allInstances()
+	->select(p : Permission | p.idPermission = 'p2')
+	->any(true) , roles : Set(Role) = Role.allInstances()
+	->select(r : Role | r.permissions
+		->includesAll(boundedPermissions)) , roleLog : Set(History) = r1.logRole
+	->select(log : History | boundedPermissions
+		->includes(log.permission))
+in if boundedPermissions
+		->includes(p) and roleLog
+		->isEmpty()
+	then roles
+		->forAll(r : Role | boundedPermissions
+			->includes(r.logRole.permission))
+		->isEmpty()
+	else true
+	endif
+
+	context Session
+
+	inv SubjectBoD:
+	if self.user.idUser = 'u1'
+	then
+	let u : RBACUtility = RBACUtility.allInstances()
+		->any(true) , boundedPermissions : Set(Permission) = u.boundedPermissions , r1 : Role = Role.allInstances()
+		->select(r : Role | r.idRole = 'r1')
+		->any(true) , p : Permission = Permission.allInstances()
+		->select(p : Permission | p.idPermission = 'p2')
+		->any(true) , roles : Set(Role) = Role.allInstances()
+		->select(r : Role | r.permissions
+			->includesAll(boundedPermissions)) , subjectLog : Set(History) = r1.logRole
+		->select(a : History | a.user = self.user)
+	in if boundedPermissions
+			->includes(p) and subjectLog
+			->isEmpty()
+		then roles
+			->forAll(r : Role | boundedPermissions
+				->includes(r.logRole.permission))
+			->isEmpty()
+		else true
+		endif
+	else true
+	endif
+
+		
+	context Delegation
+
+	inv TotalDelegation:
+	self.isTotal = true implies self.delegatedPermissions
+	->asSet() = self.delegatedRole.permissions
+	->asSet()
+
+	
+	
+	context Delegation
+
+	inv PartialDelegation:
+	not (self.isTotal) implies (self.delegatedRole.permissions - self.delegatedPermissions)
+	->notEmpty()
+
+	context Delegation
+
+inv StrongTransfer:
+let roles : Set(Role) = self.delegatedRole.getAlljuniors()
+->including(self.delegatedRole)
+in
+self.isTransfer = delegationType:: strong implies 
+(self.delegatorUser.roles
+	->excludesAll(roles)) 
+	and (self.delegateUser.delegatedRoles
+	->includes(self.delegatedRole))
+
+context Delegation inv StaticWeakTransfer:
+	 
+	  let 
+	  acquiredRoles : Set(Role) = self.delegatorUser.roles
+	  ->union(self.delegatorUser.delegatedRoles),
+	  allowedRoles : Set(Role) = self.delegatedRole.getAlljuniors() -> select (r : Role | 
+	  	(r.seniors ->excluding(delegatedRole)) ->exists(r1 : Role | acquiredRoles ->includes(r1))),
+       roles : Set(Role) = (self.delegatedRole.getAlljuniors()
+	  ->including(self.delegatedRole)) - allowedRoles
+	  in self.isTransfer = delegationType:: weakStatic implies
+	   self.delegatorUser.roles
+	  ->excludesAll(roles) and  self.delegatorUser.roles
+	  ->includesAll(allowedRoles) and self.delegateUser.delegatedRoles
+	  ->includes(self.delegatedRole)
+	
+context Delegation inv DynamicWeakTransfer:
+	 let  acquiredRoles : Set(Role) = self.delegatorUser.roles
+	  ->union(self.delegatorUser.delegatedRoles),
+	  allowedRoles : Set(Role) = self.delegatedRole.getAlljuniors() -> select (r : Role | 
+	  	(r.seniors ->excluding(delegatedRole)) -> exists(r1 : Role | self.delegatorUser.sessions -> exists (s:Session| s.activeRoles ->includes(r1)))),
+	  roles : Set(Role) = (self.delegatedRole.getAlljuniors()
+	  ->including(self.delegatedRole)) - allowedRoles
+	 in  self.isTransfer = delegationType:: weakDynamic implies
+	  self.delegatorUser.roles
+	 ->excludesAll(roles) and self.delegatorUser.roles
+	  ->includesAll(allowedRoles) and self.delegateUser.delegatedRoles
+	  ->includes(self.delegatedRole)
+
+
+
+
+	context Delegation
+    
+	inv GrantDependent:
+	if self.isRevoked = true
+	then if self.delegatedRole.isDependent = true
+		then self.revokingUser = self.delegatorUser
+		else self.revokingUser = self.delegatorUser or self.delegatedRole.users
+			->includes(self.revokingUser)
+		endif
+	else true
+	endif
+
+	context Delegation
+
+	inv StrongRevocation:
+	if self.isRevoked = true
+	then self.delegatedRole.isStrong = true implies self.delegateUser.delegatedRoles
+		->excludesAll(delegatedRole.juniors)
+	else true
+	endif
+
+	context Delegation
+
+	inv CascadingRevocation:
+	if self.isRevoked = true
+	then self.delegatedRole.isCascading = true implies self.delegatedDelegation
+		->forAll(d | d.isRevoked = true)
+	else true
+	endif
+     
+
+     
+      context Session inv locationbased:
+     let userLocation: SpatialContext = self.user.userContext.oclAsType(SpatialContext), 
+         disabled: Set (Role) = self.user.roles -> select (r:Role | 
+         r.roleContext.oclAsType(SpatialContext) ->
+             forAll (loc: SpatialContext | not(loc.checkAccess(userLocation)))),   
+         enabled: Set (Role) = self.user.roles -> select (r:Role | 
+         r.roleContext.oclAsType(SpatialContext) ->
+             exists (loc: SpatialContext | loc.checkAccess(userLocation) = true)
+             )
+        in 
+             self.enabledRoles -> excludesAll(disabled) and self.enabledRoles -> includesAll(enabled)
+        
+              
+     context Session inv RoleContext:
+     let userContext: RBACContext = self.user.userContext,
+     disabled: Set (Role) = self.user.roles -> select (r:Role | 
+         r.roleContext ->
+             forAll (c: RBACContext | not(c.checkAccess(userContext)))),   
+     enabled: Set (Role) = self.user.roles -> select (r:Role | 
+         r.roleContext ->
+             exists (c: RBACContext | c.checkAccess(userContext) = true)
+             )
+        in 
+             self.enabledRoles -> excludesAll(disabled) and self.enabledRoles -> includesAll(enabled)
+   
+     
+endpackage

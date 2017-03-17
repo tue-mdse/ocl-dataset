@@ -1,0 +1,4855 @@
+import primitives : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/PrimitiveTypes.xmi#_0'
+import uml : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#_0'
+import actions : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#Actions'
+import activities : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#Activities'
+import classification : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#Classification'
+import commonBehavior : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#CommonBehavior'
+import commonStructure : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#CommonStructure'
+import deployments : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#Deployments'
+import informationFlows : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#InformationFlows'
+import interactions : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#Interactions'
+import packages : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#Packages'
+import simpleClassifiers : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#SimpleClassifiers'
+import stateMachines : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#StateMachines'
+import structuredClassifiers : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#StructuredClassifiers'
+import useCases : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#UseCases'
+import values : 'platform:/resource/org.eclipse.ocl.examples.uml25/model/UML.xmi#Values'
+
+package uml::Activities
+
+	context uml::Activities::Activity
+
+	inv maximum_one_parameter_node:
+		ownedParameter->forAll(p | p.direction <> UML::Classification::ParameterDirectionKind::inout implies
+		  node->select(
+		    (
+		      oclIsKindOf(activities::ActivityParameterNode) and
+		      oclAsType(activities::ActivityParameterNode).parameter = p
+		    ))
+		  ->size() = 1)
+
+	inv maximum_two_parameter_nodes:
+		ownedParameter->forAll(p | p.direction = UML::Classification::ParameterDirectionKind::inout implies
+		  let
+		    associatedNodes : Set(activities::ActivityNode) = node->select(
+		      oclIsKindOf(activities::ActivityParameterNode) and
+		      oclAsType(activities::ActivityParameterNode).parameter = p)
+		  in
+		    associatedNodes->size() = 2 and
+		    associatedNodes->select(incoming->notEmpty())
+		    ->size() <= 1 and
+		    associatedNodes->select(outgoing->notEmpty())
+		    ->size() <= 1)
+
+	context uml::Activities::Activity::isReadOnly : Boolean
+
+	init:
+	false
+
+	context uml::Activities::Activity::isSingleExecution : Boolean
+
+	init:
+	false
+
+	context uml::Activities::ActivityEdge
+
+	inv source_and_target:
+		activity <> null implies
+		source.containingActivity() = activity and
+		target.containingActivity() = activity
+
+	context ActivityEdge::isConsistentWith(redefiningElement : uml::Classification::RedefinableElement) : Boolean
+
+	body:
+	(redefiningElement.oclIsKindOf(ActivityEdge))
+
+	context uml::Activities::ActivityGroup
+
+	inv nodes_and_edges:
+		containedNode->forAll(activity = self.containingActivity()) and
+		containedEdge->forAll(activity = self.containingActivity())
+
+	inv not_contained:
+		subgroup->closure(subgroup)
+		.containedNode->excludesAll(containedNode) and
+		superGroup->closure(superGroup)
+		.containedNode->excludesAll(containedNode) and
+		subgroup->closure(subgroup)
+		.containedEdge->excludesAll(containedEdge) and
+		superGroup->closure(superGroup)
+		.containedEdge->excludesAll(containedEdge)
+
+	context ActivityGroup::containingActivity() : uml::Activities::Activity
+
+	body:
+	(if superGroup<>null then superGroup.containingActivity()
+else inActivity
+endif)
+
+	context uml::Activities::ActivityParameterNode
+
+	inv no_outgoing_edges:
+		incoming->notEmpty() and
+		outgoing->isEmpty() implies parameter.direction = UML::Classification::ParameterDirectionKind::out or parameter.direction = UML::Classification::ParameterDirectionKind::inout or parameter.direction = UML::Classification::ParameterDirectionKind::return
+
+	inv has_parameters:
+		activity.ownedParameter->includes(parameter)
+
+	inv same_type:
+		type = parameter.type
+
+	inv no_incoming_edges:
+		outgoing->notEmpty() and
+		incoming->isEmpty() implies parameter.direction = UML::Classification::ParameterDirectionKind::_'in' or parameter.direction = UML::Classification::ParameterDirectionKind::inout
+
+	inv no_edges:
+		incoming->isEmpty() or outgoing->isEmpty()
+
+	context uml::Activities::ActivityPartition
+
+	inv represents_classifier:
+		not isExternal and
+		represents.oclIsKindOf(classification::Classifier) and
+		superPartition->notEmpty() implies
+		let
+		  representedClassifier : classification::Classifier = represents.oclAsType(classification::Classifier)
+		in
+		  superPartition.represents.oclIsKindOf(classification::Classifier) and
+		  let
+		    representedSuperClassifier : classification::Classifier = superPartition.represents.oclAsType(classification::Classifier)
+		  in
+		    (
+		      representedSuperClassifier.oclIsKindOf(simpleClassifiers::BehavioredClassifier) and
+		      representedClassifier.oclIsKindOf(commonBehavior::Behavior) and
+		      representedSuperClassifier.oclAsType(simpleClassifiers::BehavioredClassifier)
+		      .ownedBehavior->includes(
+		        representedClassifier.oclAsType(commonBehavior::Behavior)) or
+		      representedSuperClassifier.oclIsKindOf(structuredClassifiers::Class) and
+		      representedSuperClassifier.oclAsType(structuredClassifiers::Class)
+		      .nestedClassifier->includes(representedClassifier) or
+		      structuredClassifiers::Association.allInstances()
+		      ->exists(a |
+		        a.memberEnd->exists(end1 | end1.isComposite and end1.type = representedClassifier and
+		          a.memberEnd->exists(end2 | end1 <> end2 and end2.type = representedSuperClassifier)))
+		    )
+
+	inv represents_property_and_is_contained:
+		represents.oclIsKindOf(classification::Property) and
+		superPartition->notEmpty() implies
+		superPartition.represents.oclIsKindOf(classification::Classifier) and represents.owner = superPartition.represents or
+		superPartition.represents.oclIsKindOf(classification::Property) and represents.owner =
+		superPartition.represents.oclAsType(classification::Property).type
+
+	inv represents_property:
+		represents.oclIsKindOf(classification::Property) and
+		superPartition->notEmpty() and
+		superPartition.represents.oclIsKindOf(classification::Classifier) implies
+		let
+		  representedClassifier : classification::Classifier = superPartition.represents.oclAsType(classification::Classifier)
+		in
+		  superPartition.subpartition->reject(isExternal)
+		  ->forAll(p |
+		    p.represents.oclIsKindOf(classification::Property) and p.owner = representedClassifier)
+
+	inv dimension_not_contained:
+		isDimension implies superPartition->isEmpty()
+
+	context uml::Activities::ActivityPartition::isDimension : Boolean
+
+	init:
+	false
+
+	context uml::Activities::ActivityPartition::isExternal : Boolean
+
+	init:
+	false
+
+	context uml::Activities::ControlFlow
+
+	inv object_nodes:
+		(
+		  source.oclIsKindOf(activities::ObjectNode) implies
+		  source.oclAsType(activities::ObjectNode).isControlType
+		) and
+		(
+		  target.oclIsKindOf(activities::ObjectNode) implies
+		  target.oclAsType(activities::ObjectNode).isControlType
+		)
+
+	context uml::Activities::DecisionNode
+
+	inv zero_input_parameters:
+		decisionInput <> null and decisionInputFlow = null and
+		incoming->exists(oclIsKindOf(activities::ControlFlow)) implies
+		decisionInput.inputParameters()
+		->isEmpty()
+
+	inv edges:
+		let
+		  allEdges : Set(activities::ActivityEdge) = incoming->union(outgoing)
+		in
+		  let
+		    allRelevantEdges : Set(activities::ActivityEdge) = if
+		      decisionInputFlow->notEmpty()
+		    then allEdges->excluding(decisionInputFlow)
+		    else allEdges
+		    endif
+		  in
+		    allRelevantEdges->forAll(
+		      oclIsKindOf(activities::ControlFlow)) or
+		    allRelevantEdges->forAll(
+		      oclIsKindOf(activities::ObjectFlow))
+
+	inv decision_input_flow_incoming:
+		incoming->includes(decisionInputFlow)
+
+	inv two_input_parameters:
+		decisionInput <> null and decisionInputFlow <> null and
+		incoming->forAll(oclIsKindOf(activities::ObjectFlow)) implies
+		decisionInput.inputParameters()
+		->size() = 2
+
+	inv incoming_outgoing_edges:
+		(incoming->size() = 1 or incoming->size() = 2
+		) and
+		outgoing->size() > 0
+
+	inv incoming_control_one_input_parameter:
+		decisionInput <> null and decisionInputFlow <> null and
+		incoming->exists(oclIsKindOf(activities::ControlFlow)) implies
+		decisionInput.inputParameters()
+		->size() = 1
+
+	inv parameters:
+		decisionInput <> null implies
+		decisionInput.ownedParameter->forAll(par | par.direction <> UML::Classification::ParameterDirectionKind::out and par.direction <> UML::Classification::ParameterDirectionKind::inout) and
+		decisionInput.ownedParameter->one(par | par.direction <> UML::Classification::ParameterDirectionKind::return)
+
+	inv incoming_object_one_input_parameter:
+		decisionInput <> null and decisionInputFlow = null and
+		incoming->forAll(oclIsKindOf(activities::ObjectFlow)) implies
+		decisionInput.inputParameters()
+		->size() = 1
+
+	context uml::Activities::ExceptionHandler
+
+	inv handler_body_edges:
+		handlerBody.incoming->isEmpty() and
+		handlerBody.outgoing->isEmpty() and
+		exceptionInput.incoming->isEmpty()
+
+	inv output_pins:
+		protectedNode.oclIsKindOf(actions::Action) and
+		protectedNode.oclAsType(actions::Action)
+		.output->notEmpty() implies
+		handlerBody.oclIsKindOf(actions::Action) and
+		let
+		  protectedNodeOutput : OrderedSet(actions::OutputPin) = protectedNode.oclAsType(actions::Action).output
+		in
+		  let
+		    handlerBodyOutput : OrderedSet(actions::OutputPin) = handlerBody.oclAsType(actions::Action).output
+		  in
+		    protectedNodeOutput->size() =
+		    handlerBodyOutput->size() and
+		    Sequence{1..protectedNodeOutput->size()
+		    }
+		    ->forAll(i |
+		      handlerBodyOutput->at(i)
+		      .type.conformsTo(protectedNodeOutput->at(i).type) and
+		      handlerBodyOutput->at(i).isOrdered =
+		      protectedNodeOutput->at(i).isOrdered and
+		      handlerBodyOutput->at(i)
+		      .compatibleWith(protectedNodeOutput->at(i)))
+
+	inv one_input:
+		handlerBody.oclIsKindOf(actions::Action) and
+		let
+		  inputs : OrderedSet(actions::InputPin) = handlerBody.oclAsType(actions::Action).input
+		in inputs->size() = 1 and inputs->first() = exceptionInput
+
+	inv edge_source_target:
+		let
+		  nodes : Set(activities::ActivityNode) = handlerBody.oclAsType(actions::Action)
+		  .allOwnedNodes()
+		in
+		  nodes.outgoing->forAll(nodes->includes(target)) and
+		  nodes.incoming->forAll(nodes->includes(source))
+
+	inv handler_body_owner:
+		handlerBody.owner = protectedNode.owner
+
+	inv exception_input_type:
+		exceptionInput.type = null or
+		exceptionType->forAll(
+		  conformsTo(
+		    exceptionInput.type.oclAsType(classification::Classifier)))
+
+	context uml::Activities::FinalNode
+
+	inv no_outgoing_edges:
+		outgoing->isEmpty()
+
+	context uml::Activities::ForkNode
+
+	inv edges:
+		let
+		  allEdges : Set(activities::ActivityEdge) = incoming->union(outgoing)
+		in
+		  allEdges->forAll(oclIsKindOf(activities::ControlFlow)) or
+		  allEdges->forAll(oclIsKindOf(activities::ObjectFlow))
+
+	inv one_incoming_edge:
+		incoming->size() = 1
+
+	context uml::Activities::InitialNode
+
+	inv no_incoming_edges:
+		incoming->isEmpty()
+
+	inv control_edges:
+		outgoing->forAll(oclIsKindOf(activities::ControlFlow))
+
+	context uml::Activities::InterruptibleActivityRegion
+
+	inv interrupting_edges:
+		interruptingEdge->forAll(edge |
+		  node->includes(edge.source) and
+		  node->excludes(edge.target) and
+		  edge.target.containingActivity() = inActivity)
+
+	context uml::Activities::JoinNode
+
+	inv one_outgoing_edge:
+		outgoing->size() = 1
+
+	inv incoming_object_flow:
+		if
+		  incoming->exists(oclIsKindOf(activities::ObjectFlow))
+		then
+		  outgoing->forAll(oclIsKindOf(activities::ObjectFlow))
+		else
+		  outgoing->forAll(oclIsKindOf(activities::ControlFlow))
+		endif
+
+	context uml::Activities::JoinNode::isCombineDuplicate : Boolean
+
+	init:
+	true
+
+	context uml::Activities::MergeNode
+
+	inv one_outgoing_edge:
+		outgoing->size() = 1
+
+	inv edges:
+		let
+		  allEdges : Set(activities::ActivityEdge) = incoming->union(outgoing)
+		in
+		  allEdges->forAll(oclIsKindOf(activities::ControlFlow)) or
+		  allEdges->forAll(oclIsKindOf(activities::ObjectFlow))
+
+	context uml::Activities::ObjectFlow
+
+	inv input_and_output_parameter:
+		selection <> null implies
+		selection.inputParameters()
+		->size() = 1 and
+		selection.inputParameters()
+		->forAll(not isUnique and is(0, *)) and
+		selection.outputParameters()
+		->size() = 1
+
+	inv no_executable_nodes:
+		not (
+		  source.oclIsKindOf(activities::ExecutableNode) or
+		  target.oclIsKindOf(activities::ExecutableNode)
+		)
+
+	inv transformation_behavior:
+		transformation <> null implies
+		transformation.inputParameters()
+		->size() = 1 and
+		transformation.outputParameters()
+		->size() = 1
+
+	inv selection_behavior:
+		selection <> null implies
+		source.oclIsKindOf(activities::ObjectNode)
+
+	inv compatible_types:
+		null
+
+	inv same_upper_bounds:
+		null
+
+	inv target:
+		null
+
+	inv is_multicast_or_is_multireceive:
+		not (isMulticast and isMultireceive)
+
+	context uml::Activities::ObjectFlow::isMulticast : Boolean
+
+	init:
+	false
+
+	context uml::Activities::ObjectFlow::isMultireceive : Boolean
+
+	init:
+	false
+
+	context uml::Activities::ObjectNode
+
+	inv input_output_parameter:
+		selection <> null implies
+		selection.inputParameters()
+		->size() = 1 and
+		selection.inputParameters()
+		->forAll(p | not p.isUnique and
+		  p.is(0, *) and
+		  self.type.conformsTo(p.type)) and
+		selection.outputParameters()
+		->size() = 1 and
+		selection.inputParameters()
+		->forAll(p | self.type.conformsTo(p.type))
+
+	inv selection_behavior:
+		selection <> null = ordering = UML::Activities::ObjectNodeOrderingKind::ordered
+
+	inv object_flow_edges:
+		not isControlType implies
+		incoming->union(outgoing)
+		->forAll(oclIsKindOf(activities::ObjectFlow))
+
+	context uml::Activities::ObjectNode::isControlType : Boolean
+
+	init:
+	false
+
+	context uml::Activities::ObjectNode::ordering : uml::Activities::ObjectNodeOrderingKind
+
+	init:
+	UML::Activities::ObjectNodeOrderingKind::FIFO
+
+	context ActivityNode::containingActivity() : uml::Activities::Activity
+
+	body:
+	(if inStructuredNode<>null then inStructuredNode.containingActivity()
+else activity
+endif)
+
+	context ActivityNode::isConsistentWith(redefiningElement : uml::Classification::RedefinableElement) : Boolean
+
+	body:
+	(redefiningElement.oclIsKindOf(ActivityNode))
+
+	context Variable::isAccessibleBy(a : uml::Actions::Action) : Boolean
+
+	body:
+	(if scope<>null then scope.allOwnedNodes()->includes(a)
+else a.containingActivity()=activityScope
+endif)
+
+endpackage
+
+package uml::Values
+
+	context uml::Values::Duration
+
+	inv no_expr_requires_observation:
+		expr = null implies
+		observation->size() = 1 and
+		observation->forAll(
+		  oclIsKindOf(values::DurationObservation))
+
+	context uml::Values::DurationConstraint
+
+	inv first_event_multiplicity:
+		if constrainedElement->size() = 2
+		then firstEvent->size() = 2
+		else firstEvent->size() = 0
+		endif
+
+	inv has_one_or_two_constrainedElements:
+		constrainedElement->size() = 1 or constrainedElement->size() = 2
+
+	context uml::Values::DurationObservation
+
+	inv first_event_multiplicity:
+		if event->size() = 2
+		then firstEvent->size() = 2
+		else firstEvent->size() = 0
+		endif
+
+	context uml::Values::OpaqueExpression
+
+	inv language_body_size:
+		language->notEmpty() implies _'body'->size() = language->size()
+
+	inv one_return_result_parameter:
+		behavior <> null implies
+		behavior.ownedParameter->select(direction = UML::Classification::ParameterDirectionKind::return)
+		->size() = 1
+
+	inv only_return_result_parameters:
+		behavior <> null implies
+		behavior.ownedParameter->select(direction <> UML::Classification::ParameterDirectionKind::return)
+		->isEmpty()
+
+	context OpaqueExpression::isNonNegative() : Boolean
+
+	pre _'pre':
+		self.isIntegral()
+
+	body:
+	(false)
+
+	context OpaqueExpression::isPositive() : Boolean
+
+	pre _'pre':
+		self.isIntegral()
+
+	body:
+	(false)
+
+	context OpaqueExpression::value() : Integer
+
+	pre _'pre':
+		self.isIntegral()
+
+	body:
+	(0)
+
+	context OpaqueExpression::isIntegral() : Boolean
+
+	body:
+	(false)
+
+	context OpaqueExpression::result() : uml::Classification::Parameter
+
+	body:
+	(if behavior = null then
+	null
+else
+	behavior.ownedParameter->first()
+endif)
+
+	context uml::Values::StringExpression
+
+	inv operands:
+		operand->forAll(oclIsKindOf(values::LiteralString))
+
+	inv subexpressions:
+		if subExpression->notEmpty()
+		then operand->isEmpty()
+		else operand->notEmpty()
+		endif
+
+	context StringExpression::stringValue() : String
+
+	body:
+	(if subExpression->notEmpty()
+then subExpression->iterate(se; stringValue: String = '' | stringValue.concat(se.stringValue()))
+else operand->iterate(op; stringValue: String = '' | stringValue.concat(op.stringValue()))
+endif)
+
+	context uml::Values::TimeConstraint
+
+	inv has_one_constrainedElement:
+		constrainedElement->size() = 1
+
+	context uml::Values::TimeConstraint::firstEvent : Boolean
+
+	init:
+	true
+
+	context uml::Values::TimeExpression
+
+	inv no_expr_requires_observation:
+		expr = null implies
+		observation->size() = 1 and
+		observation->forAll(
+		  oclIsKindOf(values::TimeObservation))
+
+	context LiteralBoolean::booleanValue() : Boolean
+
+	body:
+	(value)
+
+	context LiteralBoolean::isComputable() : Boolean
+
+	body:
+	(true)
+
+	context uml::Values::LiteralBoolean::value : Boolean
+
+	init:
+	false
+
+	context LiteralInteger::integerValue() : Integer
+
+	body:
+	(value)
+
+	context LiteralInteger::isComputable() : Boolean
+
+	body:
+	(true)
+
+	context uml::Values::LiteralInteger::value : Integer
+
+	init:
+	0
+
+	context LiteralNull::isComputable() : Boolean
+
+	body:
+	(true)
+
+	context LiteralNull::isNull() : Boolean
+
+	body:
+	(true)
+
+	context LiteralReal::isComputable() : Boolean
+
+	body:
+	(true)
+
+	context LiteralReal::realValue() : Real
+
+	body:
+	(value)
+
+	context LiteralString::isComputable() : Boolean
+
+	body:
+	(true)
+
+	context LiteralString::stringValue() : String
+
+	body:
+	(value)
+
+	context LiteralUnlimitedNatural::isComputable() : Boolean
+
+	body:
+	(true)
+
+	context LiteralUnlimitedNatural::unlimitedValue() : UnlimitedNatural
+
+	body:
+	(value)
+
+	context uml::Values::LiteralUnlimitedNatural::value : UnlimitedNatural
+
+	init:
+	0
+
+	context uml::Values::TimeObservation::firstEvent : Boolean
+
+	init:
+	true
+
+	context ValueSpecification::booleanValue() : Boolean
+
+	body:
+	(null)
+
+	context ValueSpecification::integerValue() : Integer
+
+	body:
+	(null)
+
+	context ValueSpecification::isCompatibleWith(p : uml::CommonStructure::ParameterableElement) : Boolean
+
+	body:
+	(self.oclIsKindOf(p.oclType()) and (p.oclIsKindOf(TypedElement) implies 
+self.type.conformsTo(p.oclAsType(TypedElement).type)))
+
+	context ValueSpecification::isComputable() : Boolean
+
+	body:
+	(false)
+
+	context ValueSpecification::isNull() : Boolean
+
+	body:
+	(false)
+
+	context ValueSpecification::realValue() : Real
+
+	body:
+	(null)
+
+	context ValueSpecification::stringValue() : String
+
+	body:
+	(null)
+
+	context ValueSpecification::unlimitedValue() : UnlimitedNatural
+
+	body:
+	(null)
+
+endpackage
+
+package uml::UseCases
+
+	context uml::UseCases::Actor
+
+	inv associations:
+		structuredClassifiers::Association.allInstances()
+		->forAll(a |
+		  a.memberEnd->collect(type)
+		  ->includes(self) implies
+		  a.memberEnd->size() = 2 and
+		  let actorEnd : classification::Property = a.memberEnd->any(type = self)
+		  in
+		    (
+		      actorEnd.opposite.class.oclIsKindOf(useCases::UseCase) or
+		      actorEnd.opposite.class.oclIsKindOf(structuredClassifiers::Class) and
+		      not actorEnd.opposite.class.oclIsKindOf(commonBehavior::Behavior)
+		    ))
+
+	inv must_have_name:
+		name->notEmpty()
+
+	context uml::UseCases::Extend
+
+	inv extension_points:
+		extensionLocation->forAll(xp | extendedCase.extensionPoint->includes(xp))
+
+	context uml::UseCases::ExtensionPoint
+
+	inv must_have_name:
+		name->notEmpty()
+
+	context uml::UseCases::UseCase
+
+	inv binary_associations:
+		structuredClassifiers::Association.allInstances()
+		->forAll(a |
+		  a.memberEnd.type->includes(self) implies
+		  a.memberEnd->size() = 2)
+
+	inv no_association_to_use_case:
+		structuredClassifiers::Association.allInstances()
+		->forAll(a |
+		  a.memberEnd.type->includes(self) implies
+		  let
+		    usecases : Set(useCases::UseCase) = a.memberEnd.type->select(
+		      oclIsKindOf(useCases::UseCase))
+		    ->collect(oclAsType(useCases::UseCase))
+		    ->asSet()
+		  in
+		    usecases->size() > 1 implies
+		    usecases->collect(subject)
+		    ->size() > 1)
+
+	inv cannot_include_self:
+		not allIncludedUseCases()->includes(self)
+
+	inv must_have_name:
+		name->notEmpty()
+
+	context UseCase::allIncludedUseCases() : Set(uml::UseCases::UseCase)
+
+	body:
+	(self.include.addition->union(self.include.addition->collect(uc | uc.allIncludedUseCases()))->asSet())
+
+endpackage
+
+package uml::StructuredClassifiers
+
+	context uml::StructuredClassifiers::Association
+
+	inv specialized_end_number:
+		parents()
+		->select(
+		  oclIsKindOf(structuredClassifiers::Association))
+		.oclAsType(structuredClassifiers::Association)
+		->forAll(p | p.memberEnd->size() = self.memberEnd->size())
+
+	inv specialized_end_types:
+		Sequence{1..memberEnd->size()
+		}
+		->forAll(i |
+		  general->select(
+		    oclIsKindOf(structuredClassifiers::Association))
+		  .oclAsType(structuredClassifiers::Association)
+		  ->forAll(ga |
+		    self.memberEnd->at(i)
+		    .type.conformsTo(ga.memberEnd->at(i).type)))
+
+	inv binary_associations:
+		memberEnd->exists(aggregation <> UML::Classification::AggregationKind::none) implies
+		memberEnd->size() = 2 and
+		memberEnd->exists(aggregation = UML::Classification::AggregationKind::none)
+
+	inv association_ends:
+		memberEnd->size() > 2 implies ownedEnd->includesAll(memberEnd)
+
+	inv ends_must_be_typed:
+		memberEnd->forAll(type->notEmpty())
+
+	context Association::endType() : Set(uml::CommonStructure::Type)
+
+	body:
+	(memberEnd->collect(type)->asSet())
+
+	context uml::StructuredClassifiers::Association::isDerived : Boolean
+
+	init:
+	false
+
+	context uml::StructuredClassifiers::AssociationClass
+
+	inv cannot_be_defined:
+		self.endType()
+		->excludes(self) and
+		self.endType()
+		->collect(et |
+		  et.oclAsType(classification::Classifier)
+		  .allParents())
+		->flatten()
+		->excludes(self)
+
+	inv disjoint_attributes_ends:
+		ownedAttribute->intersection(ownedEnd)->isEmpty()
+
+	context uml::StructuredClassifiers::Class
+
+	inv passive_class:
+		not isActive implies ownedReception->isEmpty() and classifierBehavior = null
+
+	context Class::extension() : Set(uml::Packages::Extension)
+
+	body:
+	(Extension.allInstances()->select(ext | 
+  let endTypes : Sequence(Classifier) = ext.memberEnd->collect(type.oclAsType(Classifier)) in
+  endTypes->includes(self) or endTypes.allParents()->includes(self) ))
+
+	context Class::superClass() : Set(uml::StructuredClassifiers::Class)
+
+	body:
+	(self.general()->select(oclIsKindOf(Class))->collect(oclAsType(Class))->asSet())
+
+	context uml::StructuredClassifiers::Class::isAbstract : Boolean
+
+	init:
+	false
+
+	context uml::StructuredClassifiers::Class::isActive : Boolean
+
+	init:
+	false
+
+	context uml::StructuredClassifiers::CollaborationUse
+
+	inv client_elements:
+		roleBinding->collect(client)
+		->forAll(ne1, ne2 |
+		  ne1.oclIsKindOf(structuredClassifiers::ConnectableElement) and
+		  ne2.oclIsKindOf(structuredClassifiers::ConnectableElement) and
+		  let
+		    ce1 : structuredClassifiers::ConnectableElement = ne1.oclAsType(structuredClassifiers::ConnectableElement)
+		  in
+		    let
+		      ce2 : structuredClassifiers::ConnectableElement = ne2.oclAsType(structuredClassifiers::ConnectableElement)
+		    in ce1.structuredClassifier = ce2.structuredClassifier) and
+		roleBinding->collect(supplier)
+		->forAll(ne1, ne2 |
+		  ne1.oclIsKindOf(structuredClassifiers::ConnectableElement) and
+		  ne2.oclIsKindOf(structuredClassifiers::ConnectableElement) and
+		  let
+		    ce1 : structuredClassifiers::ConnectableElement = ne1.oclAsType(structuredClassifiers::ConnectableElement)
+		  in
+		    let
+		      ce2 : structuredClassifiers::ConnectableElement = ne2.oclAsType(structuredClassifiers::ConnectableElement)
+		    in ce1.collaboration = ce2.collaboration)
+
+	inv every_role:
+		type.collaborationRole->forAll(role |
+		  roleBinding->exists(rb | rb.supplier->includes(role)))
+
+	inv connectors:
+		type.ownedConnector->forAll(connector |
+		  let
+		    rolesConnectedInCollab : Set(structuredClassifiers::ConnectableElement) = connector.end.role->asSet()
+		  in
+		    let
+		      relevantBindings : Set(commonStructure::Dependency) = roleBinding->select(rb |
+		        rb.supplier->intersection(rolesConnectedInCollab)
+		        ->notEmpty())
+		    in
+		      let
+		        boundRoles : Set(structuredClassifiers::ConnectableElement) = relevantBindings->collect(
+		          client.oclAsType(structuredClassifiers::ConnectableElement))
+		        ->asSet()
+		      in
+		        let
+		          contextClassifier : structuredClassifiers::StructuredClassifier = boundRoles->any(true)
+		          .structuredClassifier->any(true)
+		        in
+		          contextClassifier.ownedConnector->exists(correspondingConnector |
+		            correspondingConnector.end.role->forAll(role |
+		              boundRoles->includes(role)) and
+		            connector.type->notEmpty() and
+		            correspondingConnector.type->notEmpty() implies
+		            connector.type->forAll(
+		              conformsTo(correspondingConnector.type))))
+
+	context uml::StructuredClassifiers::Component
+
+	inv no_nested_classifiers:
+		nestedClassifier->isEmpty()
+
+	inv no_packaged_elements:
+		nestingClass <> null implies packagedElement->isEmpty()
+
+	context Component::provided() : Set(uml::SimpleClassifiers::Interface)
+
+	body:
+	(let 	ris : Set(Interface) = allRealizedInterfaces(),
+        realizingClassifiers : Set(Classifier) =  self.realization.realizingClassifier->union(self.allParents()->collect(realization.realizingClassifier))->asSet(),
+        allRealizingClassifiers : Set(Classifier) = realizingClassifiers->union(realizingClassifiers.allParents())->asSet(),
+        realizingClassifierInterfaces : Set(Interface) = allRealizingClassifiers->iterate(c; rci : Set(Interface) = Set{} | rci->union(c.allRealizedInterfaces())),
+        ports : Set(Port) = self.ownedPort->union(allParents()->collect(ownedPort))->asSet(),
+        providedByPorts : Set(Interface) = ports.provided->asSet()
+in     ris->union(realizingClassifierInterfaces) ->union(providedByPorts)->asSet())
+
+	context Component::required() : Set(uml::SimpleClassifiers::Interface)
+
+	body:
+	(let 	uis : Set(Interface) = allUsedInterfaces(),
+        realizingClassifiers : Set(Classifier) = self.realization.realizingClassifier->union(self.allParents()->collect(realization.realizingClassifier))->asSet(),
+        allRealizingClassifiers : Set(Classifier) = realizingClassifiers->union(realizingClassifiers.allParents())->asSet(),
+        realizingClassifierInterfaces : Set(Interface) = allRealizingClassifiers->iterate(c; rci : Set(Interface) = Set{} | rci->union(c.allUsedInterfaces())),
+        ports : Set(Port) = self.ownedPort->union(allParents()->collect(ownedPort))->asSet(),
+        usedByPorts : Set(Interface) = ports.required->asSet()
+in	    uis->union(realizingClassifierInterfaces)->union(usedByPorts)->asSet()
+)
+
+	context uml::StructuredClassifiers::Component::isIndirectlyInstantiated : Boolean
+
+	init:
+	true
+
+	context uml::StructuredClassifiers::Connector
+
+	inv types:
+		type <> null implies
+		let noOfEnds : Integer = end->size()
+		in
+		  type.memberEnd->size() = noOfEnds and
+		  Sequence{1..noOfEnds
+		  }
+		  ->forAll(i |
+		    end->at(i)
+		    .role.type.conformsTo(type.memberEnd->at(i).type))
+
+	inv roles:
+		structuredClassifier <> null and
+		end->forAll(e |
+		  (
+		    structuredClassifier.allRoles()
+		    ->includes(e.role) or
+		    e.role.oclIsKindOf(structuredClassifiers::Port) and
+		    structuredClassifier.allRoles()
+		    ->includes(e.partWithPort)
+		  ))
+
+	context Connector::kind() : uml::StructuredClassifiers::ConnectorKind
+
+	body:
+	(if end->exists(
+		role.oclIsKindOf(Port) 
+		and partWithPort->isEmpty()
+		and not role.oclAsType(Port).isBehavior)
+then ConnectorKind::delegation 
+else ConnectorKind::assembly 
+endif)
+
+	context uml::StructuredClassifiers::ConnectorEnd
+
+	inv role_and_part_with_port:
+		partWithPort->notEmpty() implies
+		role.oclIsKindOf(structuredClassifiers::Port) and
+		partWithPort.type.oclAsType(commonStructure::Namespace)
+		.member->includes(role)
+
+	inv part_with_port_empty:
+		role.oclIsKindOf(structuredClassifiers::Port) and role.owner = connector.owner implies
+		partWithPort->isEmpty()
+
+	inv multiplicity:
+		self.compatibleWith(definingEnd)
+
+	inv self_part_with_port:
+		partWithPort->notEmpty() implies
+		not partWithPort.oclIsKindOf(structuredClassifiers::Port)
+
+	context ConnectorEnd::definingEnd() : uml::Classification::Property
+
+	body:
+	(if connector.type = null 
+then
+  null 
+else
+  let index : Integer = connector.end->indexOf(self) in
+    connector.type.memberEnd->at(index)
+endif)
+
+	context uml::StructuredClassifiers::Port
+
+	inv port_aggregation:
+		aggregation = UML::Classification::AggregationKind::composite
+
+	inv default_value:
+		type.oclIsKindOf(simpleClassifiers::Interface) implies
+		defaultValue->isEmpty()
+
+	inv encapsulated_owner:
+		owner = encapsulatedClassifier
+
+	context Port::provided() : Set(uml::SimpleClassifiers::Interface)
+
+	body:
+	(if isConjugated then basicRequired() else basicProvided() endif)
+
+	context Port::required() : Set(uml::SimpleClassifiers::Interface)
+
+	body:
+	(if isConjugated then basicProvided() else basicRequired() endif)
+
+	context Port::basicProvided() : Set(uml::SimpleClassifiers::Interface)
+
+	body:
+	(if type.oclIsKindOf(Interface) 
+then type.oclAsType(Interface)->asSet() 
+else type.oclAsType(Classifier).allRealizedInterfaces() 
+endif)
+
+	context Port::basicRequired() : Set(uml::SimpleClassifiers::Interface)
+
+	body:
+	( type.oclAsType(Classifier).allUsedInterfaces() )
+
+	context uml::StructuredClassifiers::Port::isBehavior : Boolean
+
+	init:
+	false
+
+	context uml::StructuredClassifiers::Port::isConjugated : Boolean
+
+	init:
+	false
+
+	context uml::StructuredClassifiers::Port::isService : Boolean
+
+	init:
+	true
+
+	context ConnectableElement::end() : Set(uml::StructuredClassifiers::ConnectorEnd)
+
+	body:
+	(ConnectorEnd.allInstances()->select(role = self))
+
+	context EncapsulatedClassifier::ownedPort() : OrderedSet(uml::StructuredClassifiers::Port)
+
+	body:
+	(ownedAttribute->select(oclIsKindOf(Port))->collect(oclAsType(Port))->asOrderedSet())
+
+	context StructuredClassifier::part() : Set(uml::Classification::Property)
+
+	body:
+	(ownedAttribute->select(isComposite))
+
+	context StructuredClassifier::allRoles() : Set(uml::StructuredClassifiers::ConnectableElement)
+
+	body:
+	(allFeatures()->select(oclIsKindOf(ConnectableElement))->collect(oclAsType(ConnectableElement))->asSet())
+
+endpackage
+
+package uml::StateMachines
+
+	context uml::StateMachines::ConnectionPointReference
+
+	inv exit_pseudostates:
+		exit->forAll(kind = UML::StateMachines::PseudostateKind::exitPoint)
+
+	inv entry_pseudostates:
+		entry->forAll(kind = UML::StateMachines::PseudostateKind::entryPoint)
+
+	context uml::StateMachines::FinalState
+
+	inv no_exit_behavior:
+		exit->isEmpty()
+
+	inv no_outgoing_transitions:
+		outgoing->size() = 0
+
+	inv no_regions:
+		region->size() = 0
+
+	inv cannot_reference_submachine:
+		submachine->isEmpty()
+
+	inv no_entry_behavior:
+		entry->isEmpty()
+
+	inv no_state_behavior:
+		doActivity->isEmpty()
+
+	context uml::StateMachines::ProtocolStateMachine
+
+	inv classifier_context:
+		_'context' <> null and specification = null
+
+	inv deep_or_shallow_history:
+		region->forAll(r |
+		  r.subvertex->forAll(v |
+		    v.oclIsKindOf(stateMachines::Pseudostate) implies
+		    v.oclAsType(stateMachines::Pseudostate).kind <> UML::StateMachines::PseudostateKind::deepHistory and
+		    v.oclAsType(stateMachines::Pseudostate).kind <> UML::StateMachines::PseudostateKind::shallowHistory))
+
+	inv entry_exit_do:
+		region->forAll(r |
+		  r.subvertex->forAll(v |
+		    v.oclIsKindOf(stateMachines::State) implies
+		    v.oclAsType(stateMachines::State)
+		    .entry->isEmpty() and
+		    v.oclAsType(stateMachines::State)
+		    .exit->isEmpty() and
+		    v.oclAsType(stateMachines::State)
+		    .doActivity->isEmpty()))
+
+	inv protocol_transitions:
+		region->forAll(r |
+		  r.transition->forAll(t |
+		    t.oclIsTypeOf(stateMachines::ProtocolTransition)))
+
+	context uml::StateMachines::ProtocolTransition
+
+	inv refers_to_operation:
+		if referred()->notEmpty() and containingStateMachine()._'context'->notEmpty()
+		then
+		  containingStateMachine()
+		  ._'context'.oclAsType(simpleClassifiers::BehavioredClassifier)
+		  .allFeatures()
+		  ->includesAll(referred())
+		else true
+		endif
+
+	inv associated_actions:
+		effect = null
+
+	inv belongs_to_psm:
+		container.belongsToPSM()
+
+	context ProtocolTransition::referred() : Set(uml::Classification::Operation)
+
+	body:
+	(trigger->collect(event)->select(oclIsKindOf(CallEvent))->collect(oclAsType(CallEvent).operation)->asSet())
+
+	context uml::StateMachines::Pseudostate
+
+	inv transitions_outgoing:
+		kind = UML::StateMachines::PseudostateKind::fork implies
+		outgoing->forAll(t1, t2 |
+		  let
+		    contState : stateMachines::State = containingStateMachine()
+		    .LCAState(t1.target, t2.target)
+		  in contState <> null and
+		    contState.region->exists(r1, r2 | r1 <> r2 and
+		      t1.target.isContainedInRegion(r1) and
+		      t2.target.isContainedInRegion(r2)))
+
+	inv choice_vertex:
+		kind = UML::StateMachines::PseudostateKind::choice implies
+		incoming->size() >= 1 and
+		outgoing->size() >= 1
+
+	inv outgoing_from_initial:
+		kind = UML::StateMachines::PseudostateKind::initial implies outgoing.guard = null and
+		outgoing.trigger->isEmpty()
+
+	inv join_vertex:
+		kind = UML::StateMachines::PseudostateKind::join implies
+		outgoing->size() = 1 and
+		incoming->size() >= 2
+
+	inv junction_vertex:
+		kind = UML::StateMachines::PseudostateKind::junction implies
+		incoming->size() >= 1 and
+		outgoing->size() >= 1
+
+	inv history_vertices:
+		kind = UML::StateMachines::PseudostateKind::deepHistory or kind = UML::StateMachines::PseudostateKind::shallowHistory implies
+		outgoing->size() <= 1
+
+	inv initial_vertex:
+		kind = UML::StateMachines::PseudostateKind::initial implies outgoing->size() <= 1
+
+	inv fork_vertex:
+		kind = UML::StateMachines::PseudostateKind::fork implies
+		incoming->size() = 1 and
+		outgoing->size() >= 2
+
+	inv transitions_incoming:
+		kind = UML::StateMachines::PseudostateKind::join implies
+		incoming->forAll(t1, t2 |
+		  let
+		    contState : stateMachines::State = containingStateMachine()
+		    .LCAState(t1.source, t2.source)
+		  in contState <> null and
+		    contState.region->exists(r1, r2 | r1 <> r2 and
+		      t1.source.isContainedInRegion(r1) and
+		      t2.source.isContainedInRegion(r2)))
+
+	context uml::StateMachines::Pseudostate::kind : uml::StateMachines::PseudostateKind
+
+	init:
+	UML::StateMachines::PseudostateKind::initial
+
+	context uml::StateMachines::Region
+
+	inv deep_history_vertex:
+		self.subvertex->select(
+		  oclIsKindOf(stateMachines::Pseudostate))
+		->collect(oclAsType(stateMachines::Pseudostate))
+		->select((kind = UML::StateMachines::PseudostateKind::deepHistory))
+		->size() <= 1
+
+	inv shallow_history_vertex:
+		subvertex->select(
+		  oclIsKindOf(stateMachines::Pseudostate))
+		->collect(oclAsType(stateMachines::Pseudostate))
+		->select((kind = UML::StateMachines::PseudostateKind::shallowHistory))
+		->size() <= 1
+
+	inv owned:
+		(stateMachine <> null implies state = null
+		) and
+		(state <> null implies stateMachine = null
+		)
+
+	inv initial_vertex:
+		self.subvertex->select(
+		  oclIsKindOf(stateMachines::Pseudostate))
+		->collect(oclAsType(stateMachines::Pseudostate))
+		->select((kind = UML::StateMachines::PseudostateKind::initial))
+		->size() <= 1
+
+	context Region::isConsistentWith(redefiningElement : uml::Classification::RedefinableElement) : Boolean
+
+	pre _'pre':
+		redefiningElement.isRedefinitionContextValid(self)
+
+	body:
+	(-- the following is merely a default body; it is expected that the specific form of this constraint will be specified by profiles
+true)
+
+	context Region::belongsToPSM() : Boolean
+
+	body:
+	(if  stateMachine <> null 
+then
+  stateMachine.oclIsKindOf(ProtocolStateMachine)
+else 
+  state <> null  implies  state.container.belongsToPSM()
+endif )
+
+	context Region::containingStateMachine() : uml::StateMachines::StateMachine
+
+	body:
+	(if stateMachine = null 
+then
+  state.containingStateMachine()
+else
+  stateMachine
+endif)
+
+	context Region::isRedefinitionContextValid(redefinedElement : uml::Classification::RedefinableElement) : Boolean
+
+	body:
+	(if redefinedElement.oclIsKindOf(Region) then
+  let redefinedRegion : Region = redefinedElement.oclAsType(Region) in
+    if stateMachine->isEmpty() then
+    -- the Region is owned by a State
+      (state.redefinedState->notEmpty() and state.redefinedState.region->includes(redefinedRegion))
+    else -- the region is owned by a StateMachine
+      (stateMachine.extendedStateMachine->notEmpty() and
+        stateMachine.extendedStateMachine->exists(sm : StateMachine |
+          sm.region->includes(redefinedRegion)))
+    endif
+else
+  false
+endif)
+
+	context Region::redefinitionContext() : uml::Classification::Classifier
+
+	body:
+	(let sm : StateMachine = containingStateMachine() in
+if sm._'context' = null or sm.general->notEmpty() then
+  sm
+else
+  sm._'context'
+endif)
+
+	context uml::StateMachines::State
+
+	inv entry_or_exit:
+		connectionPoint->forAll(kind = UML::StateMachines::PseudostateKind::entryPoint or kind = UML::StateMachines::PseudostateKind::exitPoint)
+
+	inv submachine_states:
+		isSubmachineState implies connection->notEmpty()
+
+	inv composite_states:
+		connectionPoint->notEmpty() implies isComposite
+
+	inv destinations_or_sources_of_transitions:
+		self.isSubmachineState implies
+		self.connection->forAll(cp |
+		  cp.entry->forAll(ps | ps.stateMachine = self.submachine) and
+		  cp.exit->forAll(ps | ps.stateMachine = self.submachine))
+
+	inv submachine_or_regions:
+		isComposite implies not isSubmachineState
+
+	context State::isConsistentWith(redefiningElement : uml::Classification::RedefinableElement) : Boolean
+
+	pre _'pre':
+		redefiningElement.isRedefinitionContextValid(self)
+
+	body:
+	(-- the following is merely a default body; it is expected that the specific form of this constraint will be specified by profiles
+true)
+
+	context State::containingStateMachine() : uml::StateMachines::StateMachine
+
+	body:
+	(container.containingStateMachine())
+
+	context State::isComposite() : Boolean
+
+	body:
+	(region->notEmpty())
+
+	context State::isOrthogonal() : Boolean
+
+	body:
+	(region->size () > 1)
+
+	context State::isRedefinitionContextValid(redefinedElement : uml::Classification::RedefinableElement) : Boolean
+
+	body:
+	(if redefinedElement.oclIsKindOf(State) then
+  let redefinedState : State = redefinedElement.oclAsType(State) in
+    container.redefinedElement.oclAsType(Region)->exists(r:Region |
+      r.subvertex->includes(redefinedState))
+else
+  false
+endif)
+
+	context State::isSimple() : Boolean
+
+	body:
+	((region->isEmpty()) and not isSubmachineState())
+
+	context State::isSubmachineState() : Boolean
+
+	body:
+	(submachine <> null)
+
+	context State::redefinitionContext() : uml::Classification::Classifier
+
+	body:
+	(let sm : StateMachine = containingStateMachine() in
+if sm._'context' = null or sm.general->notEmpty() then
+  sm
+else
+  sm._'context'
+endif)
+
+	context uml::StateMachines::StateMachine
+
+	inv connection_points:
+		connectionPoint->forAll(kind = UML::StateMachines::PseudostateKind::entryPoint or kind = UML::StateMachines::PseudostateKind::exitPoint)
+
+	inv classifier_context:
+		_'context' <> null implies
+		not _'context'.oclIsKindOf(simpleClassifiers::Interface)
+
+	inv method:
+		specification <> null implies connectionPoint->isEmpty()
+
+	inv context_classifier:
+		specification <> null implies _'context' <> null and
+		specification.featuringClassifier->exists(c | c = _'context')
+
+	context StateMachine::LCA(s1 : uml::StateMachines::Vertex, s2 : uml::StateMachines::Vertex) :
+	uml::StateMachines::Region
+
+	body:
+	(if ancestor(s1, s2) then 
+    s2.container
+else
+	if ancestor(s2, s1) then
+	    s1.container 
+	else 
+	    LCA(s1.container.state, s2.container.state)
+	endif
+endif)
+
+	context StateMachine::ancestor(s1 : uml::StateMachines::Vertex, s2 : uml::StateMachines::Vertex) : Boolean
+
+	body:
+	(if (s2 = s1) then 
+	true 
+else 
+	if s1.container.stateMachine->notEmpty() then 
+	    true
+	else 
+	    if s2.container.stateMachine->notEmpty() then 
+	        false
+	    else
+	        ancestor(s1, s2.container.state)
+	     endif
+	 endif
+endif  )
+
+	context StateMachine::isConsistentWith(redefiningElement : uml::Classification::RedefinableElement) : Boolean
+
+	body:
+	(-- the following is merely a default body; it is expected that the specific form of this constraint will be specified by profiles
+true)
+
+	context StateMachine::isRedefinitionContextValid(redefinedElement : uml::Classification::RedefinableElement) :
+	Boolean
+
+	body:
+	(if redefinedElement.oclIsKindOf(StateMachine) then
+  let redefinedStateMachine : StateMachine = redefinedElement.oclAsType(StateMachine) in
+    self._'context'().oclAsType(BehavioredClassifier).redefinedClassifier->
+      includes(redefinedStateMachine._'context'())
+else
+  false
+endif)
+
+	context StateMachine::LCAState(v1 : uml::StateMachines::Vertex, v2 : uml::StateMachines::Vertex) :
+	uml::StateMachines::State
+
+	body:
+	(if v2.oclIsTypeOf(State) and ancestor(v1, v2) then
+	v2.oclAsType(State)
+else if v1.oclIsTypeOf(State) and ancestor(v2, v1) then
+	v1.oclAsType(State)
+else if (v1.container.state->isEmpty() or v2.container.state->isEmpty()) then 
+	null.oclAsType(State)
+else LCAState(v1.container.state, v2.container.state)
+endif endif endif)
+
+	context uml::StateMachines::Transition
+
+	inv state_is_external:
+		kind = UML::StateMachines::TransitionKind::external implies
+		not (
+		  source.oclIsKindOf(stateMachines::Pseudostate) and
+		  source.oclAsType(stateMachines::Pseudostate).kind = UML::StateMachines::PseudostateKind::entryPoint
+		)
+
+	inv join_segment_guards:
+		target.oclIsKindOf(stateMachines::Pseudostate) and
+		target.oclAsType(stateMachines::Pseudostate).kind = UML::StateMachines::PseudostateKind::join implies guard = null and
+		trigger->isEmpty()
+
+	inv state_is_internal:
+		kind = UML::StateMachines::TransitionKind::internal implies
+		source.oclIsKindOf(stateMachines::State) and source = target
+
+	inv outgoing_pseudostates:
+		source.oclIsKindOf(stateMachines::Pseudostate) and
+		source.oclAsType(stateMachines::Pseudostate).kind <> UML::StateMachines::PseudostateKind::initial implies
+		trigger->isEmpty()
+
+	inv join_segment_state:
+		target.oclIsKindOf(stateMachines::Pseudostate) and
+		target.oclAsType(stateMachines::Pseudostate).kind = UML::StateMachines::PseudostateKind::join implies
+		source.oclIsKindOf(stateMachines::State)
+
+	inv fork_segment_state:
+		source.oclIsKindOf(stateMachines::Pseudostate) and
+		source.oclAsType(stateMachines::Pseudostate).kind = UML::StateMachines::PseudostateKind::fork implies
+		target.oclIsKindOf(stateMachines::State)
+
+	inv state_is_local:
+		kind = UML::StateMachines::TransitionKind::local implies
+		source.oclIsKindOf(stateMachines::State) and
+		source.oclAsType(stateMachines::State).isComposite or
+		source.oclIsKindOf(stateMachines::Pseudostate) and
+		source.oclAsType(stateMachines::Pseudostate).kind = UML::StateMachines::PseudostateKind::entryPoint
+
+	inv initial_transition:
+		source.oclIsKindOf(stateMachines::Pseudostate) and
+		container.stateMachine->notEmpty() implies
+		trigger->isEmpty()
+
+	inv fork_segment_guards:
+		source.oclIsKindOf(stateMachines::Pseudostate) and
+		source.oclAsType(stateMachines::Pseudostate).kind = UML::StateMachines::PseudostateKind::fork implies guard = null and
+		trigger->isEmpty()
+
+	context Transition::isConsistentWith(redefiningElement : uml::Classification::RedefinableElement) : Boolean
+
+	pre _'pre':
+		redefiningElement.isRedefinitionContextValid(self)
+
+	body:
+	(-- the following is merely a default body; it is expected that the specific form of this constraint will be specified by profiles
+true)
+
+	context Transition::containingStateMachine() : uml::StateMachines::StateMachine
+
+	body:
+	(container.containingStateMachine())
+
+	context Transition::redefinitionContext() : uml::Classification::Classifier
+
+	body:
+	(let sm : StateMachine = containingStateMachine() in
+if sm._'context' = null or sm.general->notEmpty() then
+  sm
+else
+  sm._'context'
+endif)
+
+	context uml::StateMachines::Transition::kind : uml::StateMachines::TransitionKind
+
+	init:
+	UML::StateMachines::TransitionKind::external
+
+	context Vertex::containingStateMachine() : uml::StateMachines::StateMachine
+
+	body:
+	(if container <> null
+then
+-- the container is a region
+   container.containingStateMachine()
+else 
+   if (self.oclIsKindOf(Pseudostate)) and ((self.oclAsType(Pseudostate).kind = PseudostateKind::entryPoint) or (self.oclAsType(Pseudostate).kind = PseudostateKind::exitPoint)) then
+      self.oclAsType(Pseudostate).stateMachine
+   else 
+      if (self.oclIsKindOf(ConnectionPointReference)) then
+          self.oclAsType(ConnectionPointReference).state.containingStateMachine() -- no other valid cases possible
+      else 
+          null
+      endif
+   endif
+endif
+
+)
+
+	context Vertex::incoming() : Set(uml::StateMachines::Transition)
+
+	body:
+	(Transition.allInstances()->select(target=self))
+
+	context Vertex::outgoing() : Set(uml::StateMachines::Transition)
+
+	body:
+	(Transition.allInstances()->select(source=self))
+
+	context Vertex::isContainedInState(s : uml::StateMachines::State) : Boolean
+
+	body:
+	(if not s.isComposite() or container->isEmpty() then
+	false
+else
+	if container.state = s then 
+		true
+	else
+		container.state.isContainedInState(s)
+	endif
+endif)
+
+	context Vertex::isContainedInRegion(r : uml::StateMachines::Region) : Boolean
+
+	body:
+	(if (container = r) then
+	true
+else
+	if (r.state->isEmpty()) then
+		false
+	else
+		container.state.isContainedInRegion(r)
+	endif
+endif)
+
+endpackage
+
+package uml::SimpleClassifiers
+
+	context uml::SimpleClassifiers::BehavioredClassifier
+
+	inv class_behavior:
+		classifierBehavior->notEmpty() implies
+		classifierBehavior.specification->isEmpty()
+
+	context uml::SimpleClassifiers::Enumeration
+
+	inv immutable:
+		ownedAttribute->forAll(isReadOnly)
+
+	context uml::SimpleClassifiers::Interface
+
+	inv visibility:
+		feature->forAll(visibility = UML::CommonStructure::VisibilityKind::public)
+
+	context uml::SimpleClassifiers::Reception
+
+	inv same_name_as_signal:
+		name = signal.name
+
+	inv same_structure_as_signal:
+		signal.ownedAttribute->size() =
+		ownedParameter->size() and
+		Sequence{1..signal.ownedAttribute->size()
+		}
+		->forAll(i |
+		  ownedParameter->at(i).direction = UML::Classification::ParameterDirectionKind::_'in' and
+		  ownedParameter->at(i).name =
+		  signal.ownedAttribute->at(i).name and
+		  ownedParameter->at(i).type =
+		  signal.ownedAttribute->at(i).type and
+		  ownedParameter->at(i)
+		  .lowerBound() =
+		  signal.ownedAttribute->at(i)
+		  .lowerBound() and
+		  ownedParameter->at(i)
+		  .upperBound() =
+		  signal.ownedAttribute->at(i)
+		  .upperBound())
+
+	context EnumerationLiteral::classifier() : uml::SimpleClassifiers::Enumeration
+
+	body:
+	(enumeration)
+
+endpackage
+
+package uml::Packages
+
+	context uml::Packages::Extension
+
+	inv non_owned_end:
+		metaclassEnd()
+		->notEmpty() and
+		metaclassEnd()
+		.type.oclIsKindOf(structuredClassifiers::Class)
+
+	inv is_binary:
+		memberEnd->size() = 2
+
+	context Extension::isRequired() : Boolean
+
+	body:
+	(ownedEnd.lowerBound() = 1)
+
+	context Extension::metaclass() : uml::StructuredClassifiers::Class
+
+	body:
+	(metaclassEnd().type.oclAsType(Class))
+
+	context Extension::metaclassEnd() : uml::Classification::Property
+
+	body:
+	(memberEnd->reject(p | ownedEnd->includes(p.oclAsType(ExtensionEnd)))->any(true))
+
+	context uml::Packages::ExtensionEnd
+
+	inv multiplicity:
+		(lowerBound() = 0 or lowerBound() = 1
+		) and
+		upperBound() = 1
+
+	inv aggregation:
+		self.aggregation = UML::Classification::AggregationKind::composite
+
+	context ExtensionEnd::lowerBound() : Integer
+
+	body:
+	(if lowerValue=null then 0 else lowerValue.integerValue() endif)
+
+	context uml::Packages::Package
+
+	inv elements_public_or_private:
+		packagedElement->forAll(e | e.visibility <> null implies e.visibility = UML::CommonStructure::VisibilityKind::public or e.visibility = UML::CommonStructure::VisibilityKind::private)
+
+	context Package::makesVisible(el : uml::CommonStructure::NamedElement) : Boolean
+
+	pre _'pre':
+		member->includes(el)
+
+	body:
+	(ownedMember->includes(el) or
+(elementImport->select(ei|ei.importedElement = VisibilityKind::public)->collect(importedElement.oclAsType(NamedElement))->includes(el)) or
+(packageImport->select(visibility = VisibilityKind::public)->collect(importedPackage.member->includes(el))->notEmpty()))
+
+	context Package::allApplicableStereotypes() : Set(uml::Packages::Stereotype)
+
+	body:
+	(let ownedPackages : Bag(Package) = ownedMember->select(oclIsKindOf(Package))->collect(oclAsType(Package)) in
+ ownedStereotype->union(ownedPackages.allApplicableStereotypes())->flatten()->asSet()
+)
+
+	context Package::containingProfile() : uml::Packages::Profile
+
+	body:
+	(if self.oclIsKindOf(Profile) then 
+	self.oclAsType(Profile)
+else
+	self.namespace.oclAsType(Package).containingProfile()
+endif)
+
+	context Package::mustBeOwned() : Boolean
+
+	body:
+	(false)
+
+	context Package::nestedPackage() : Set(uml::Packages::Package)
+
+	body:
+	(packagedElement->select(oclIsKindOf(Package))->collect(oclAsType(Package))->asSet())
+
+	context Package::ownedStereotype() : Set(uml::Packages::Stereotype)
+
+	body:
+	(packagedElement->select(oclIsKindOf(Stereotype))->collect(oclAsType(Stereotype))->asSet())
+
+	context Package::ownedType() : Set(uml::CommonStructure::Type)
+
+	body:
+	(packagedElement->select(oclIsKindOf(Type))->collect(oclAsType(Type))->asSet())
+
+	context Package::visibleMembers() : Set(uml::CommonStructure::PackageableElement)
+
+	body:
+	(member->select( m | m.oclIsKindOf(PackageableElement) and self.makesVisible(m))->collect(oclAsType(PackageableElement))->asSet())
+
+	context uml::Packages::Profile
+
+	inv metaclass_reference_not_specialized:
+		metaclassReference.importedElement->select(c |
+		  c.oclIsKindOf(classification::Classifier) and
+		  c.oclAsType(classification::Classifier)
+		  .allParents()
+		  ->collect(namespace)
+		  ->includes(self))
+		->isEmpty() and
+		packagedElement->select(
+		  oclIsKindOf(classification::Classifier))
+		->collect(
+		  oclAsType(classification::Classifier)
+		  .allParents())
+		->intersection(
+		  metaclassReference.importedElement->select(
+		    oclIsKindOf(classification::Classifier))
+		  ->collect(oclAsType(classification::Classifier)))
+		->isEmpty()
+
+	inv references_same_metamodel:
+		metamodelReference.importedPackage.elementImport.importedElement.allOwningPackages()
+		->union(metaclassReference.importedElement.allOwningPackages())
+		->notEmpty()
+
+	context uml::Packages::Stereotype
+
+	inv binaryAssociationsOnly:
+		ownedAttribute.association->forAll(memberEnd->size() = 2)
+
+	inv generalize:
+		allParents()
+		->forAll(oclIsKindOf(packages::Stereotype)) and
+		classification::Classifier.allInstances()
+		->forAll(c |
+		  (
+		    c.allParents()
+		    ->exists(oclIsKindOf(packages::Stereotype)) implies
+		    c.oclIsKindOf(packages::Stereotype)
+		  ))
+
+	inv name_not_clash:
+		null
+
+	inv associationEndOwnership:
+		ownedAttribute->select(
+		  association->notEmpty() and
+		  not association.oclIsKindOf(packages::Extension) and
+		  not type.oclIsKindOf(packages::Stereotype))
+		->forAll(opposite.owner = association)
+
+	inv base_property_upper_bound:
+		null
+
+	inv base_property_multiplicity_single_extension:
+		null
+
+	inv base_property_multiplicity_multiple_extension:
+		null
+
+	context Stereotype::containingProfile() : uml::Packages::Profile
+
+	body:
+	(self.namespace.oclAsType(Package).containingProfile())
+
+	context Stereotype::profile() : uml::Packages::Profile
+
+	body:
+	(self.containingProfile())
+
+	context uml::Packages::ProfileApplication::isStrict : Boolean
+
+	init:
+	false
+
+endpackage
+
+package uml::Interactions
+
+	context uml::Interactions::ActionExecutionSpecification
+
+	inv action_referenced:
+		(
+		  enclosingInteraction->notEmpty() or
+		  enclosingOperand.combinedFragment->notEmpty()
+		) and
+		let
+		  parentInteraction : Set(interactions::Interaction) = enclosingInteraction.oclAsType(interactions::Interaction)
+		  ->asSet()
+		  ->union(
+		    enclosingOperand.combinedFragment->closure(enclosingOperand.combinedFragment)
+		    ->collect(enclosingInteraction)
+		    .oclAsType(interactions::Interaction)
+		    ->asSet())
+		in
+		  parentInteraction->size() = 1 and
+		  self.action.interaction->asSet() = parentInteraction
+
+	context uml::Interactions::CombinedFragment
+
+	inv break:
+		interactionOperator = UML::Interactions::InteractionOperatorKind::break implies
+		enclosingInteraction.oclAsType(interactions::InteractionFragment)
+		->asSet()
+		->union(
+		  enclosingOperand.oclAsType(interactions::InteractionFragment)
+		  ->asSet())
+		.covered->asSet() =
+		self.covered->asSet()
+
+	inv consider_and_ignore:
+		interactionOperator = UML::Interactions::InteractionOperatorKind::consider or interactionOperator = UML::Interactions::InteractionOperatorKind::ignore implies
+		oclIsKindOf(interactions::ConsiderIgnoreFragment)
+
+	inv opt_loop_break_neg:
+		interactionOperator = UML::Interactions::InteractionOperatorKind::opt or interactionOperator = UML::Interactions::InteractionOperatorKind::loop or interactionOperator = UML::Interactions::InteractionOperatorKind::break or interactionOperator = UML::Interactions::InteractionOperatorKind::assert or interactionOperator = UML::Interactions::InteractionOperatorKind::neg implies
+		operand->size() = 1
+
+	context uml::Interactions::CombinedFragment::interactionOperator : uml::Interactions::InteractionOperatorKind
+
+	init:
+	UML::Interactions::InteractionOperatorKind::seq
+
+	context uml::Interactions::ConsiderIgnoreFragment
+
+	inv consider_or_ignore:
+		interactionOperator = UML::Interactions::InteractionOperatorKind::consider or interactionOperator = UML::Interactions::InteractionOperatorKind::ignore
+
+	inv type:
+		message->forAll(m |
+		  m.oclIsKindOf(classification::Operation) or
+		  m.oclIsKindOf(simpleClassifiers::Signal))
+
+	context uml::Interactions::Continuation
+
+	inv first_or_last_interaction_fragment:
+		enclosingOperand->notEmpty() and
+		let peerFragments : OrderedSet(interactions::InteractionFragment) = enclosingOperand.fragment
+		in
+		  peerFragments->notEmpty() and
+		  (peerFragments->first() = self or peerFragments->last() = self
+		  )
+
+	inv same_name:
+		enclosingOperand.combinedFragment->notEmpty() and
+		let
+		  parentInteraction : Set(interactions::Interaction) = enclosingOperand.combinedFragment->closure(enclosingOperand.combinedFragment)
+		  ->collect(enclosingInteraction)
+		  .oclAsType(interactions::Interaction)
+		  ->asSet()
+		in
+		  parentInteraction->size() = 1 and
+		  let
+		    peerInteractions : Set(interactions::Interaction) = parentInteraction->union(
+		      parentInteraction->collect(_'context')
+		      ->collect(behavior)
+		      ->select(oclIsKindOf(interactions::Interaction))
+		      .oclAsType(interactions::Interaction)
+		      ->asSet())
+		    ->asSet()
+		  in
+		    peerInteractions->notEmpty() and
+		    let
+		      combinedFragments1 : Set(interactions::CombinedFragment) = peerInteractions.fragment->select(
+		        oclIsKindOf(interactions::CombinedFragment))
+		      .oclAsType(interactions::CombinedFragment)
+		      ->asSet()
+		    in
+		      combinedFragments1->notEmpty() and
+		      combinedFragments1->closure(
+		        operand.fragment->select(
+		          oclIsKindOf(interactions::CombinedFragment))
+		        .oclAsType(interactions::CombinedFragment))
+		      ->asSet()
+		      .operand.fragment->select(
+		        oclIsKindOf(interactions::Continuation))
+		      .oclAsType(interactions::Continuation)
+		      ->asSet()
+		      ->forAll(c |
+		        (c.name = self.name implies
+		          c.covered->asSet()
+		          ->forAll(cl |
+		            self.covered->asSet()
+		            ->select(
+		              (represents = cl.represents and selector = cl.selector
+		              ))
+		            ->asSet()
+		            ->size() = 1) and
+		          self.covered->asSet()
+		          ->forAll(cl |
+		            c.covered->asSet()
+		            ->select(
+		              (represents = cl.represents and selector = cl.selector
+		              ))
+		            ->asSet()
+		            ->size() = 1)
+		        ))
+
+	inv global:
+		enclosingOperand->notEmpty() and
+		let operandLifelines : Set(interactions::Lifeline) = enclosingOperand.covered
+		in
+		  operandLifelines->notEmpty() and
+		  operandLifelines->forAll(ol | self.covered->includes(ol))
+
+	context uml::Interactions::Continuation::setting : Boolean
+
+	init:
+	true
+
+	context uml::Interactions::DestructionOccurrenceSpecification
+
+	inv no_occurrence_specifications_below:
+		let o : interactions::InteractionOperand = enclosingOperand
+		in
+		  o->notEmpty() and
+		  let
+		    peerEvents : OrderedSet(interactions::OccurrenceSpecification) = covered.events->select(enclosingOperand = o)
+		  in peerEvents->last() = self
+
+	context uml::Interactions::ExecutionSpecification
+
+	inv same_lifeline:
+		start.covered = finish.covered
+
+	context uml::Interactions::Gate
+
+	inv actual_gate_matched:
+		interactionUse->notEmpty() implies
+		interactionUse.refersTo.formalGate->select(matches(self))
+		->size() = 1
+
+	inv inside_cf_matched:
+		isInsideCF() implies
+		combinedFragment.cfragmentGate->select(
+		  (isOutsideCF() and matches(self)
+		  ))
+		->size() = 1
+
+	inv outside_cf_matched:
+		isOutsideCF() implies
+		if
+		  self.combinedFragment.interactionOperator->asOrderedSet()
+		  ->first() = UML::Interactions::InteractionOperatorKind::alt
+		then
+		  self.combinedFragment.operand->forAll(op |
+		    self.combinedFragment.cfragmentGate->select(
+		      (
+		        isInsideCF() and
+		        oppositeEnd()
+		        .enclosingFragment()
+		        ->includes(self.combinedFragment) and
+		        matches(self)
+		      ))
+		    ->size() = 1)
+		else
+		  self.combinedFragment.cfragmentGate->select(
+		    (isInsideCF() and matches(self)
+		    ))
+		  ->size() = 1
+		endif
+
+	inv formal_gate_distinguishable:
+		isFormal() implies
+		interaction.formalGate->select(getName() = self.getName())
+		->size() = 1
+
+	inv actual_gate_distinguishable:
+		isActual() implies
+		interactionUse.actualGate->select(getName() = self.getName())
+		->size() = 1
+
+	inv outside_cf_gate_distinguishable:
+		isOutsideCF() implies
+		combinedFragment.cfragmentGate->select(getName() = self.getName())
+		->size() = 1
+
+	inv inside_cf_gate_distinguishable:
+		isInsideCF() implies
+		let selfOperand : interactions::InteractionOperand = self.getOperand()
+		in
+		  combinedFragment.cfragmentGate->select(
+		    (isInsideCF() and getName() = self.getName()
+		    ))
+		  ->select(getOperand() = selfOperand)
+		  ->size() = 1
+
+	context Gate::isOutsideCF() : Boolean
+
+	body:
+	(self.oppositeEnd()-> notEmpty() and combinedFragment->notEmpty() implies
+let oppEnd : MessageEnd = self.oppositeEnd()->asOrderedSet()->first() in
+if oppEnd.oclIsKindOf(MessageOccurrenceSpecification) 
+then let oppMOS : MessageOccurrenceSpecification = oppEnd.oclAsType(MessageOccurrenceSpecification)
+in  self.combinedFragment.enclosingInteraction.oclAsType(InteractionFragment)->asSet()->
+     union(self.combinedFragment.enclosingOperand.oclAsType(InteractionFragment)->asSet()) =
+     oppMOS.enclosingInteraction.oclAsType(InteractionFragment)->asSet()->
+     union(oppMOS.enclosingOperand.oclAsType(InteractionFragment)->asSet())
+else let oppGate : Gate = oppEnd.oclAsType(Gate) 
+in self.combinedFragment.enclosingInteraction.oclAsType(InteractionFragment)->asSet()->
+     union(self.combinedFragment.enclosingOperand.oclAsType(InteractionFragment)->asSet()) =
+     oppGate.combinedFragment.enclosingInteraction.oclAsType(InteractionFragment)->asSet()->
+     union(oppGate.combinedFragment.enclosingOperand.oclAsType(InteractionFragment)->asSet())
+endif)
+
+	context Gate::isInsideCF() : Boolean
+
+	body:
+	(self.oppositeEnd()-> notEmpty() and combinedFragment->notEmpty() implies
+let oppEnd : MessageEnd = self.oppositeEnd()->asOrderedSet()->first() in
+if oppEnd.oclIsKindOf(MessageOccurrenceSpecification)
+then let oppMOS : MessageOccurrenceSpecification
+= oppEnd.oclAsType(MessageOccurrenceSpecification)
+in combinedFragment = oppMOS.enclosingOperand.combinedFragment
+else let oppGate : Gate = oppEnd.oclAsType(Gate)
+in combinedFragment = oppGate.combinedFragment.enclosingOperand.combinedFragment
+endif)
+
+	context Gate::isActual() : Boolean
+
+	body:
+	(interactionUse->notEmpty())
+
+	context Gate::isFormal() : Boolean
+
+	body:
+	(interaction->notEmpty())
+
+	context Gate::getName() : String
+
+	body:
+	(if name->notEmpty() then name->asOrderedSet()->first()
+else  if isActual() or isOutsideCF() 
+  then if isSend() 
+    then 'out_'.concat(self.message.name->asOrderedSet()->first())
+    else 'in_'.concat(self.message.name->asOrderedSet()->first())
+    endif
+  else if isSend()
+    then 'in_'.concat(self.message.name->asOrderedSet()->first())
+    else 'out_'.concat(self.message.name->asOrderedSet()->first())
+    endif
+  endif
+endif)
+
+	context Gate::matches(gateToMatch : uml::Interactions::Gate) : Boolean
+
+	body:
+	(self.getName() = gateToMatch.getName() and 
+self.message.messageSort = gateToMatch.message.messageSort and
+self.message.name = gateToMatch.message.name and
+self.message.sendEvent->includes(self) implies gateToMatch.message.receiveEvent->includes(gateToMatch)  and
+self.message.receiveEvent->includes(self) implies gateToMatch.message.sendEvent->includes(gateToMatch) and
+self.message.signature = gateToMatch.message.signature)
+
+	context Gate::isDistinguishableFrom(n : uml::CommonStructure::NamedElement, ns : uml::CommonStructure::Namespace) :
+	Boolean
+
+	body:
+	(true)
+
+	context Gate::getOperand() : uml::Interactions::InteractionOperand
+
+	body:
+	(if isInsideCF() then
+  let oppEnd : MessageEnd = self.oppositeEnd()->asOrderedSet()->first() in
+    if oppEnd.oclIsKindOf(MessageOccurrenceSpecification)
+    then let oppMOS : MessageOccurrenceSpecification = oppEnd.oclAsType(MessageOccurrenceSpecification)
+        in oppMOS.enclosingOperand->asOrderedSet()->first()
+    else let oppGate : Gate = oppEnd.oclAsType(Gate)
+        in oppGate.combinedFragment.enclosingOperand->asOrderedSet()->first()
+    endif
+  else null
+endif)
+
+	context uml::Interactions::GeneralOrdering
+
+	inv irreflexive_transitive_closure:
+		after->closure(toAfter.after)->excludes(before)
+
+	context uml::Interactions::Interaction
+
+	inv not_contained:
+		enclosingInteraction->isEmpty()
+
+	context uml::Interactions::InteractionConstraint
+
+	inv minint_maxint:
+		maxint->notEmpty() or
+		minint->notEmpty() implies interactionOperand.combinedFragment.interactionOperator = UML::Interactions::InteractionOperatorKind::loop
+
+	inv minint_non_negative:
+		minint->notEmpty() implies minint->asSequence()->first().integerValue() >= 0
+
+	inv maxint_positive:
+		maxint->notEmpty() implies maxint->asSequence()->first().integerValue() > 0
+
+	inv dynamic_variables:
+		null
+
+	inv global_data:
+		null
+
+	inv maxint_greater_equal_minint:
+		maxint->notEmpty() implies
+		minint->notEmpty() and
+		maxint->asSequence()
+		->first()
+		.integerValue() >=
+		minint->asSequence()
+		->first()
+		.integerValue()
+
+	context uml::Interactions::InteractionOperand
+
+	inv guard_contain_references:
+		null
+
+	inv guard_directly_prior:
+		null
+
+	context uml::Interactions::InteractionUse
+
+	inv gates_match:
+		actualGate->notEmpty() implies
+		refersTo.formalGate->forAll(fg |
+		  self.actualGate->select(matches(fg))
+		  ->size() = 1) and
+		self.actualGate->forAll(ag |
+		  refersTo.formalGate->select(matches(ag))
+		  ->size() = 1)
+
+	inv arguments_are_constants:
+		null
+
+	inv returnValueRecipient_coverage:
+		returnValueRecipient->asSet()
+		->notEmpty() implies
+		let
+		  covCE : Set(structuredClassifiers::ConnectableElement) = covered.represents->asSet()
+		in
+		  covCE->notEmpty() and
+		  let
+		    classes : Set(classification::Classifier) = covCE.type.oclIsKindOf(classification::Classifier)
+		    .oclAsType(classification::Classifier)
+		    ->asSet()
+		  in
+		    let
+		      allProps : Set(classification::Property) = classes.attribute->union(
+		        classes.allParents().attribute)
+		      ->asSet()
+		    in allProps->includes(returnValueRecipient)
+
+	inv arguments_correspond_to_parameters:
+		null
+
+	inv returnValue_type_recipient_correspondence:
+		returnValue.type->asSequence()
+		->notEmpty() implies
+		returnValue.type->asSequence()
+		->first() =
+		returnValueRecipient.type->asSequence()
+		->first()
+
+	inv all_lifelines:
+		let
+		  parentInteraction : Set(interactions::Interaction) = enclosingInteraction->asSet()
+		  ->union(
+		    enclosingOperand.combinedFragment->closure(enclosingOperand.combinedFragment)
+		    ->collect(enclosingInteraction)
+		    .oclAsType(interactions::Interaction)
+		    ->asSet())
+		in
+		  parentInteraction->size() = 1 and
+		  let refInteraction : interactions::Interaction = refersTo
+		  in
+		    parentInteraction.covered->forAll(intLifeline |
+		      refInteraction.covered->forAll(refLifeline |
+		        (refLifeline.represents = intLifeline.represents and
+		          (
+		            refLifeline.selector.oclIsKindOf(values::LiteralString) implies
+		            intLifeline.selector.oclIsKindOf(values::LiteralString) and
+		            refLifeline.selector.oclAsType(values::LiteralString).value =
+		            intLifeline.selector.oclAsType(values::LiteralString).value
+		          ) and
+		          (
+		            refLifeline.selector.oclIsKindOf(values::LiteralInteger) implies
+		            intLifeline.selector.oclIsKindOf(values::LiteralInteger) and
+		            refLifeline.selector.oclAsType(values::LiteralInteger).value =
+		            intLifeline.selector.oclAsType(values::LiteralInteger).value
+		          ) implies
+		          self.covered->asSet()
+		          ->includes(intLifeline)
+		        )))
+
+	context uml::Interactions::Lifeline
+
+	inv selector_specified:
+		self.selector->notEmpty() =
+		(
+		  self.represents.oclIsKindOf(commonStructure::MultiplicityElement) and
+		  self.represents.oclAsType(commonStructure::MultiplicityElement)
+		  .isMultivalued()
+		)
+
+	inv interaction_uses_share_lifeline:
+		let intUses : Set(interactions::InteractionUse) = interaction.interactionUse
+		in
+		  intUses->forAll(iuse |
+		    let
+		      usingInteraction : Set(interactions::Interaction) = iuse.enclosingInteraction->asSet()
+		      ->union(
+		        iuse.enclosingOperand.combinedFragment->asSet()
+		        ->closure(enclosingOperand.combinedFragment)
+		        .enclosingInteraction->asSet())
+		    in
+		      let
+		        peerUses : Set(interactions::InteractionUse) = usingInteraction.fragment->select(
+		          oclIsKindOf(interactions::InteractionUse))
+		        .oclAsType(interactions::InteractionUse)
+		        ->asSet()
+		        ->union(
+		          usingInteraction.fragment->select(
+		            oclIsKindOf(interactions::CombinedFragment))
+		          .oclAsType(interactions::CombinedFragment)
+		          ->asSet()
+		          ->closure(
+		            operand.fragment->select(
+		              oclIsKindOf(interactions::CombinedFragment))
+		            .oclAsType(interactions::CombinedFragment))
+		          .operand.fragment->select(
+		            oclIsKindOf(interactions::InteractionUse))
+		          .oclAsType(interactions::InteractionUse)
+		          ->asSet())
+		        ->excluding(iuse)
+		      in
+		        peerUses->forAll(peerUse |
+		          peerUse.refersTo.lifeline->forAll(l | l.represents = self.represents and
+		            (
+		              self.selector.oclIsKindOf(values::LiteralString) implies
+		              l.selector.oclIsKindOf(values::LiteralString) and
+		              self.selector.oclAsType(values::LiteralString).value =
+		              l.selector.oclAsType(values::LiteralString).value
+		            ) and
+		            (
+		              self.selector.oclIsKindOf(values::LiteralInteger) implies
+		              l.selector.oclIsKindOf(values::LiteralInteger) and
+		              self.selector.oclAsType(values::LiteralInteger).value =
+		              l.selector.oclAsType(values::LiteralInteger).value
+		            ) implies
+		            usingInteraction.lifeline->exists(represents = self.represents and
+		              (
+		                self.selector.oclIsKindOf(values::LiteralString) implies
+		                l.selector.oclIsKindOf(values::LiteralString) and
+		                self.selector.oclAsType(values::LiteralString).value =
+		                l.selector.oclAsType(values::LiteralString).value
+		              ) and
+		              (
+		                self.selector.oclIsKindOf(values::LiteralInteger) implies
+		                l.selector.oclIsKindOf(values::LiteralInteger) and
+		                self.selector.oclAsType(values::LiteralInteger).value =
+		                l.selector.oclAsType(values::LiteralInteger).value
+		              )))))
+
+	inv same_classifier:
+		represents.namespace->closure(namespace)
+		->includes(interaction._'context')
+
+	inv selector_int_or_string:
+		self.selector->notEmpty() implies
+		self.selector.oclIsKindOf(values::LiteralInteger) or
+		self.selector.oclIsKindOf(values::LiteralString)
+
+	context uml::Interactions::Message
+
+	inv sending_receiving_message_event:
+		receiveEvent.oclIsKindOf(interactions::MessageOccurrenceSpecification) implies
+		let
+		  f : interactions::Lifeline = sendEvent->select(
+		    oclIsKindOf(interactions::MessageOccurrenceSpecification))
+		  .oclAsType(interactions::MessageOccurrenceSpecification)
+		  ->asOrderedSet()
+		  ->first().covered
+		in f =
+		  receiveEvent->select(
+		    oclIsKindOf(interactions::MessageOccurrenceSpecification))
+		  .oclAsType(interactions::MessageOccurrenceSpecification)
+		  ->asOrderedSet()
+		  ->first().covered implies
+		  f.events->indexOf(
+		    sendEvent.oclAsType(interactions::MessageOccurrenceSpecification)
+		    ->asOrderedSet()
+		    ->first()) <
+		  f.events->indexOf(
+		    receiveEvent.oclAsType(interactions::MessageOccurrenceSpecification)
+		    ->asOrderedSet()
+		    ->first())
+
+	inv arguments:
+		null
+
+	inv cannot_cross_boundaries:
+		sendEvent->notEmpty() and
+		receiveEvent->notEmpty() implies
+		let
+		  sendEnclosingFrag : Set(interactions::InteractionFragment) = sendEvent->asOrderedSet()
+		  ->first()
+		  .enclosingFragment()
+		in
+		  let
+		    receiveEnclosingFrag : Set(interactions::InteractionFragment) = receiveEvent->asOrderedSet()
+		    ->first()
+		    .enclosingFragment()
+		  in sendEnclosingFrag = receiveEnclosingFrag
+
+	inv signature_is_signal:
+		messageSort = UML::Interactions::MessageSort::asynchSignal and
+		signature.oclIsKindOf(simpleClassifiers::Signal) implies
+		let
+		  signalAttributes : OrderedSet(classification::Property) = signature.oclAsType(simpleClassifiers::Signal)
+		  .inheritedMember()
+		  ->select(n |
+		    n.oclIsTypeOf(classification::Property))
+		  ->collect(oclAsType(classification::Property))
+		  ->asOrderedSet()
+		in
+		  signalAttributes->size() =
+		  self.argument->size() and
+		  self.argument->forAll(o |
+		    (
+		      not (
+		        o.oclIsKindOf(values::Expression) and
+		        o.oclAsType(values::Expression)
+		        .symbol->size() = 0 and
+		        o.oclAsType(values::Expression)
+		        .operand->isEmpty()
+		      ) implies
+		      let
+		        p : classification::Property = signalAttributes->at(
+		          self.argument->indexOf(o))
+		      in
+		        o.type.oclAsType(classification::Classifier)
+		        .conformsTo(
+		          p.type.oclAsType(classification::Classifier))
+		    ))
+
+	inv occurrence_specifications:
+		null
+
+	inv signature_refer_to:
+		signature->notEmpty() implies
+		(
+		  signature.oclIsKindOf(classification::Operation) and
+		  (messageSort = UML::Interactions::MessageSort::asynchCall or messageSort = UML::Interactions::MessageSort::synchCall or messageSort = UML::Interactions::MessageSort::reply
+		  ) or
+		  signature.oclIsKindOf(simpleClassifiers::Signal) and messageSort = UML::Interactions::MessageSort::asynchSignal
+		) and name = signature.name
+
+	inv signature_is_operation_request:
+		(messageSort = UML::Interactions::MessageSort::asynchCall or messageSort = UML::Interactions::MessageSort::synchCall
+		) and
+		signature.oclIsKindOf(classification::Operation) implies
+		let
+		  requestParms : OrderedSet(classification::Parameter) = signature.oclAsType(classification::Operation)
+		  .ownedParameter->select(direction = UML::Classification::ParameterDirectionKind::inout or direction = UML::Classification::ParameterDirectionKind::_'in')
+		in
+		  requestParms->size() =
+		  self.argument->size() and
+		  self.argument->forAll(o |
+		    (
+		      not (
+		        o.oclIsKindOf(values::Expression) and
+		        o.oclAsType(values::Expression)
+		        .symbol->size() = 0 and
+		        o.oclAsType(values::Expression)
+		        .operand->isEmpty()
+		      ) implies
+		      let
+		        p : classification::Parameter = requestParms->at(
+		          self.argument->indexOf(o))
+		      in
+		        o.type.oclAsType(classification::Classifier)
+		        .conformsTo(
+		          p.type.oclAsType(classification::Classifier))
+		    ))
+
+	inv signature_is_operation_reply:
+		messageSort = UML::Interactions::MessageSort::reply and
+		signature.oclIsKindOf(classification::Operation) implies
+		let
+		  replyParms : OrderedSet(classification::Parameter) = signature.oclAsType(classification::Operation)
+		  .ownedParameter->select(direction = UML::Classification::ParameterDirectionKind::inout or direction = UML::Classification::ParameterDirectionKind::out or direction = UML::Classification::ParameterDirectionKind::return)
+		in
+		  replyParms->size() =
+		  self.argument->size() and
+		  self.argument->forAll(o |
+		    o.oclIsKindOf(values::Expression) and
+		    let
+		      e : values::Expression = o.oclAsType(values::Expression)
+		    in
+		      (
+		        e.operand->notEmpty() implies
+		        let
+		          p : classification::Parameter = replyParms->at(
+		            self.argument->indexOf(o))
+		        in
+		          e.operand->asSequence()
+		          ->first()
+		          .type.oclAsType(classification::Classifier)
+		          .conformsTo(
+		            p.type.oclAsType(classification::Classifier))
+		      ))
+
+	context Message::messageKind() : uml::Interactions::MessageKind
+
+	body:
+	(messageKind)
+
+	context Message::isDistinguishableFrom(n : uml::CommonStructure::NamedElement, ns : uml::CommonStructure::Namespace)
+	: Boolean
+
+	body:
+	(true)
+
+	context uml::Interactions::Message::messageSort : uml::Interactions::MessageSort
+
+	init:
+	UML::Interactions::MessageSort::synchCall
+
+	context MessageEnd::oppositeEnd() : Set(uml::Interactions::MessageEnd)
+
+	pre _'pre':
+		message->notEmpty()
+
+	body:
+	(message->asSet().messageEnd->asSet()->excluding(self))
+
+	context MessageEnd::isSend() : Boolean
+
+	pre _'pre':
+		message->notEmpty()
+
+	body:
+	(message.sendEvent->asSet()->includes(self))
+
+	context MessageEnd::isReceive() : Boolean
+
+	pre _'pre':
+		message->notEmpty()
+
+	body:
+	(message.receiveEvent->asSet()->includes(self))
+
+	context MessageEnd::enclosingFragment() : Set(uml::Interactions::InteractionFragment)
+
+	body:
+	(if self->select(oclIsKindOf(Gate))->notEmpty() 
+then -- it is a Gate
+let endGate : Gate = 
+  self->select(oclIsKindOf(Gate)).oclAsType(Gate)->asOrderedSet()->first()
+  in
+  if endGate.isOutsideCF() 
+  then endGate.combinedFragment.enclosingInteraction.oclAsType(InteractionFragment)->asSet()->
+     union(endGate.combinedFragment.enclosingOperand.oclAsType(InteractionFragment)->asSet())
+  else if endGate.isInsideCF() 
+    then endGate.combinedFragment.oclAsType(InteractionFragment)->asSet()
+    else if endGate.isFormal() 
+      then endGate.interaction.oclAsType(InteractionFragment)->asSet()
+      else if endGate.isActual() 
+        then endGate.interactionUse.enclosingInteraction.oclAsType(InteractionFragment)->asSet()->
+     union(endGate.interactionUse.enclosingOperand.oclAsType(InteractionFragment)->asSet())
+        else null
+        endif
+      endif
+    endif
+  endif
+else -- it is a MessageOccurrenceSpecification
+let endMOS : MessageOccurrenceSpecification  = 
+  self->select(oclIsKindOf(MessageOccurrenceSpecification)).oclAsType(MessageOccurrenceSpecification)->asOrderedSet()->first() 
+  in
+  if endMOS.enclosingInteraction->notEmpty() 
+  then endMOS.enclosingInteraction.oclAsType(InteractionFragment)->asSet()
+  else endMOS.enclosingOperand.oclAsType(InteractionFragment)->asSet()
+  endif
+endif)
+
+	context uml::Interactions::PartDecomposition
+
+	inv commutativity_of_decomposition:
+		null
+
+	inv assume:
+		null
+
+	inv parts_of_internal_structures:
+		null
+
+endpackage
+
+package uml::InformationFlows
+
+	context uml::InformationFlows::InformationFlow
+
+	inv must_conform:
+		null
+
+	inv sources_and_targets_kind:
+		self.informationSource->forAll(sis |
+		  (
+		    oclIsKindOf(useCases::Actor) or
+		    oclIsKindOf(deployments::Node) or
+		    oclIsKindOf(useCases::UseCase) or
+		    oclIsKindOf(deployments::Artifact) or
+		    oclIsKindOf(structuredClassifiers::Class) or
+		    oclIsKindOf(structuredClassifiers::Component) or
+		    oclIsKindOf(structuredClassifiers::Port) or
+		    oclIsKindOf(classification::Property) or
+		    oclIsKindOf(simpleClassifiers::Interface) or
+		    oclIsKindOf(packages::Package) or
+		    oclIsKindOf(activities::ActivityNode) or
+		    oclIsKindOf(activities::ActivityPartition) or
+		    oclIsKindOf(classification::InstanceSpecification) and
+		    not sis.oclAsType(classification::InstanceSpecification)
+		    .classifier->exists(
+		      oclIsKindOf(commonStructure::Relationship))
+		  )) and
+		self.informationTarget->forAll(sit |
+		  (
+		    oclIsKindOf(useCases::Actor) or
+		    oclIsKindOf(deployments::Node) or
+		    oclIsKindOf(useCases::UseCase) or
+		    oclIsKindOf(deployments::Artifact) or
+		    oclIsKindOf(structuredClassifiers::Class) or
+		    oclIsKindOf(structuredClassifiers::Component) or
+		    oclIsKindOf(structuredClassifiers::Port) or
+		    oclIsKindOf(classification::Property) or
+		    oclIsKindOf(simpleClassifiers::Interface) or
+		    oclIsKindOf(packages::Package) or
+		    oclIsKindOf(activities::ActivityNode) or
+		    oclIsKindOf(activities::ActivityPartition) or
+		    oclIsKindOf(classification::InstanceSpecification) and
+		    not sit.oclAsType(classification::InstanceSpecification)
+		    .classifier->exists(
+		      oclIsKindOf(commonStructure::Relationship))
+		  ))
+
+	inv convey_classifiers:
+		self.conveyed->forAll(
+		  oclIsKindOf(structuredClassifiers::Class) or
+		  oclIsKindOf(simpleClassifiers::Interface) or
+		  oclIsKindOf(informationFlows::InformationItem) or
+		  oclIsKindOf(simpleClassifiers::Signal) or
+		  oclIsKindOf(structuredClassifiers::Component))
+
+	context uml::InformationFlows::InformationItem
+
+	inv sources_and_targets:
+		self.represented->select(
+		  oclIsKindOf(informationFlows::InformationItem))
+		->forAll(p |
+		  p.conveyingFlow.source->forAll(q | self.conveyingFlow.source->includes(q)) and
+		  p.conveyingFlow.target->forAll(q | self.conveyingFlow.target->includes(q))) and
+		self.represented->forAll(
+		  (
+		    oclIsKindOf(structuredClassifiers::Class) or
+		    oclIsKindOf(simpleClassifiers::Interface) or
+		    oclIsKindOf(informationFlows::InformationItem) or
+		    oclIsKindOf(simpleClassifiers::Signal) or
+		    oclIsKindOf(structuredClassifiers::Component)
+		  ))
+
+	inv has_no:
+		self.generalization->isEmpty() and self.feature->isEmpty()
+
+	inv not_instantiable:
+		isAbstract
+
+endpackage
+
+package uml::Deployments
+
+	context uml::Deployments::CommunicationPath
+
+	inv association_ends:
+		endType->forAll(
+		  oclIsKindOf(deployments::DeploymentTarget))
+
+	context uml::Deployments::DeploymentSpecification
+
+	inv deployment_target:
+		deployment->forAll(
+		  location.oclIsKindOf(deployments::ExecutionEnvironment))
+
+	inv deployed_elements:
+		deployment->forAll(
+		  location.deployedElement->forAll(
+		    oclIsKindOf(structuredClassifiers::Component)))
+
+	context uml::Deployments::Node
+
+	inv internal_structure:
+		part->forAll(oclIsKindOf(deployments::Node))
+
+	context DeploymentTarget::deployedElement() : Set(uml::CommonStructure::PackageableElement)
+
+	body:
+	(deployment.deployedArtifact->select(oclIsKindOf(Artifact))->collect(oclAsType(Artifact).manifestation)->collect(utilizedElement)->asSet())
+
+endpackage
+
+package uml::CommonStructure
+
+	context uml::CommonStructure::Constraint
+
+	inv boolean_value:
+		null
+
+	inv no_side_effects:
+		null
+
+	inv not_apply_to_self:
+		not constrainedElement->includes(self)
+
+	context uml::CommonStructure::Element
+
+	inv has_owner:
+		mustBeOwned() implies owner->notEmpty()
+
+	inv not_own_self:
+		not allOwnedElements()->includes(self)
+
+	context Element::allOwnedElements() : Set(uml::CommonStructure::Element)
+
+	body:
+	(ownedElement->union(ownedElement->collect(e | e.allOwnedElements()))->asSet())
+
+	context Element::mustBeOwned() : Boolean
+
+	body:
+	(true)
+
+	context uml::CommonStructure::ElementImport
+
+	inv imported_element_is_public:
+		importedElement.visibility <> null implies importedElement.visibility = UML::CommonStructure::VisibilityKind::public
+
+	inv visibility_public_or_private:
+		visibility = UML::CommonStructure::VisibilityKind::public or visibility = UML::CommonStructure::VisibilityKind::private
+
+	context ElementImport::getName() : String
+
+	body:
+	(if alias->notEmpty() then
+  alias
+else
+  importedElement.name
+endif)
+
+	context uml::CommonStructure::ElementImport::visibility : uml::CommonStructure::VisibilityKind
+
+	init:
+	UML::CommonStructure::VisibilityKind::public
+
+	context uml::CommonStructure::MultiplicityElement
+
+	inv upper_ge_lower:
+		upperBound() >= lowerBound()
+
+	inv lower_ge_0:
+		lowerBound() >= 0
+
+	inv value_specification_no_side_effects:
+		null
+
+	inv value_specification_constant:
+		null
+
+	inv lower_is_integer:
+		lowerValue <> null implies lowerValue.integerValue() <> null
+
+	inv upper_is_unlimitedNatural:
+		upperValue <> null implies upperValue.unlimitedValue() <> null
+
+	context MultiplicityElement::includesMultiplicity(M : uml::CommonStructure::MultiplicityElement) : Boolean
+
+	pre _'pre':
+		self.upperBound()
+		->notEmpty() and
+		self.lowerBound()
+		->notEmpty() and
+		M.upperBound()
+		->notEmpty() and
+		M.lowerBound()
+		->notEmpty()
+
+	body:
+	((self.lowerBound() <= M.lowerBound()) and (self.upperBound() >= M.upperBound()))
+
+	context MultiplicityElement::isMultivalued() : Boolean
+
+	pre _'pre':
+		upperBound()->notEmpty()
+
+	body:
+	(upperBound() > 1)
+
+	context MultiplicityElement::compatibleWith(other : uml::CommonStructure::MultiplicityElement) : Boolean
+
+	body:
+	((other.lowerBound() <= self.lowerBound()) and ((other.upperBound() = *) or (self.upperBound() <= other.upperBound())))
+
+	context MultiplicityElement::is(lowerbound : Integer, upperbound : UnlimitedNatural) : Boolean
+
+	body:
+	(lowerbound = self.lowerBound() and upperbound = self.upperBound())
+
+	context MultiplicityElement::lower() : Integer
+
+	body:
+	(lowerBound())
+
+	context MultiplicityElement::lowerBound() : Integer
+
+	body:
+	(if (lowerValue=null or lowerValue.integerValue()=null) then 1 else lowerValue.integerValue() endif)
+
+	context MultiplicityElement::upper() : UnlimitedNatural
+
+	body:
+	(upperBound())
+
+	context MultiplicityElement::upperBound() : UnlimitedNatural
+
+	body:
+	(if (upperValue=null or upperValue.unlimitedValue()=null) then 1 else upperValue.unlimitedValue() endif)
+
+	context uml::CommonStructure::MultiplicityElement::isOrdered : Boolean
+
+	init:
+	false
+
+	context uml::CommonStructure::MultiplicityElement::isUnique : Boolean
+
+	init:
+	true
+
+	context uml::CommonStructure::NamedElement
+
+	inv visibility_needs_ownership:
+		namespace = null and owner <> null implies visibility = null
+
+	inv has_qualified_name:
+		name <> null and
+		allNamespaces()
+		->select(ns | ns.name = null)
+		->isEmpty() implies qualifiedName =
+		allNamespaces()
+		->iterate(ns; agg : String = name |
+		  ns.name.concat(self.separator())
+		  .concat(agg))
+
+	inv has_no_qualified_name:
+		name = null or
+		allNamespaces()
+		->select(ns | ns.name = null)
+		->notEmpty() implies qualifiedName = null
+
+	context NamedElement::allNamespaces() : OrderedSet(uml::CommonStructure::Namespace)
+
+	body:
+	(if owner.oclIsKindOf(TemplateParameter) and
+  owner.oclAsType(TemplateParameter).signature.template.oclIsKindOf(Namespace) then
+    let enclosingNamespace : Namespace =
+      owner.oclAsType(TemplateParameter).signature.template.oclAsType(Namespace) in
+        enclosingNamespace.allNamespaces()->prepend(enclosingNamespace)
+else
+  if namespace->isEmpty()
+    then OrderedSet{}
+  else
+    namespace.allNamespaces()->prepend(namespace)
+  endif
+endif)
+
+	context NamedElement::allOwningPackages() : Set(uml::Packages::Package)
+
+	body:
+	(if namespace.oclIsKindOf(Package)
+then
+  let owningPackage : Package = namespace.oclAsType(Package) in
+    owningPackage->union(owningPackage.allOwningPackages())
+else
+  null
+endif)
+
+	context NamedElement::isDistinguishableFrom(n : uml::CommonStructure::NamedElement, ns :
+		uml::CommonStructure::Namespace) : Boolean
+
+	body:
+	((self.oclIsKindOf(n.oclType()) or n.oclIsKindOf(self.oclType())) implies
+    ns.getNamesOfMember(self)->intersection(ns.getNamesOfMember(n))->isEmpty()
+)
+
+	context NamedElement::qualifiedName() : String
+
+	body:
+	(if self.name <> null and self.allNamespaces()->select( ns | ns.name=null )->isEmpty()
+then 
+    self.allNamespaces()->iterate( ns : Namespace; agg: String = self.name | ns.name.concat(self.separator()).concat(agg))
+else
+   null
+endif)
+
+	context NamedElement::separator() : String
+
+	body:
+	('::')
+
+	context NamedElement::clientDependency() : Set(uml::CommonStructure::Dependency)
+
+	body:
+	(Dependency.allInstances()->select(d | d.client->includes(self)))
+
+	context uml::CommonStructure::Namespace
+
+	inv members_distinguishable:
+		membersAreDistinguishable()
+
+	inv cannot_import_self:
+		packageImport.importedPackage.oclAsType(commonStructure::Namespace)
+		->excludes(self)
+
+	inv cannot_import_ownedMembers:
+		elementImport.importedElement.oclAsType(commonStructure::Element)
+		->excludesAll(ownedMember)
+
+	context Namespace::excludeCollisions(imps : Set(uml::CommonStructure::PackageableElement)) :
+	Set(uml::CommonStructure::PackageableElement)
+
+	body:
+	(imps->reject(imp1  | imps->exists(imp2 | not imp1.isDistinguishableFrom(imp2, self))))
+
+	context Namespace::getNamesOfMember(element : uml::CommonStructure::NamedElement) : Set(String)
+
+	body:
+	(if self.ownedMember ->includes(element)
+then Set{element.name}
+else let elementImports : Set(ElementImport) = self.elementImport->select(ei | ei.importedElement = element) in
+  if elementImports->notEmpty()
+  then
+     elementImports->collect(el | el.getName())->asSet()
+  else 
+     self.packageImport->select(pi | pi.importedPackage.visibleMembers().oclAsType(NamedElement)->includes(element))-> collect(pi | pi.importedPackage.getNamesOfMember(element))->asSet()
+  endif
+endif)
+
+	context Namespace::importMembers(imps : Set(uml::CommonStructure::PackageableElement)) :
+	Set(uml::CommonStructure::PackageableElement)
+
+	body:
+	(self.excludeCollisions(imps)->select(imp | self.ownedMember->forAll(mem | imp.isDistinguishableFrom(mem, self))))
+
+	context Namespace::importedMember() : Set(uml::CommonStructure::PackageableElement)
+
+	body:
+	(self.importMembers(elementImport.importedElement->asSet()->union(packageImport.importedPackage->collect(p | p.visibleMembers()))->asSet()))
+
+	context Namespace::membersAreDistinguishable() : Boolean
+
+	body:
+	(member->forAll( memb |
+   member->excluding(memb)->forAll(other |
+       memb.isDistinguishableFrom(other, self))))
+
+	context uml::CommonStructure::PackageableElement
+
+	inv namespace_needs_visibility:
+		visibility = null implies namespace = null
+
+	context uml::CommonStructure::PackageableElement::visibility : uml::CommonStructure::VisibilityKind
+
+	init:
+	UML::CommonStructure::VisibilityKind::public
+
+	context uml::CommonStructure::PackageImport
+
+	inv public_or_private:
+		visibility = UML::CommonStructure::VisibilityKind::public or visibility = UML::CommonStructure::VisibilityKind::private
+
+	context uml::CommonStructure::PackageImport::visibility : uml::CommonStructure::VisibilityKind
+
+	init:
+	UML::CommonStructure::VisibilityKind::public
+
+	context uml::CommonStructure::TemplateBinding
+
+	inv parameter_substitution_formal:
+		parameterSubstitution->forAll(b |
+		  signature.parameter->includes(b.formal))
+
+	inv one_parameter_substitution:
+		signature.parameter->forAll(p |
+		  parameterSubstitution->select(b | (b.formal = p))
+		  ->size() <= 1)
+
+	context uml::CommonStructure::TemplateParameter
+
+	inv must_be_compatible:
+		default <> null implies
+		default.isCompatibleWith(parameteredElement)
+
+	context uml::CommonStructure::TemplateParameterSubstitution
+
+	inv must_be_compatible:
+		actual->forAll(a |
+		  a.isCompatibleWith(formal.parameteredElement))
+
+	context uml::CommonStructure::TemplateSignature
+
+	inv own_elements:
+		template.ownedElement->includesAll(
+		  parameter.parameteredElement->asSet() -
+		  parameter.ownedParameteredElement->asSet())
+
+	inv unique_parameters:
+		parameter->forAll(p1, p2 | p1 <> p2 and
+		  p1.parameteredElement.oclIsKindOf(commonStructure::NamedElement) and
+		  p2.parameteredElement.oclIsKindOf(commonStructure::NamedElement) implies
+		  p1.parameteredElement.oclAsType(commonStructure::NamedElement).name <>
+		  p2.parameteredElement.oclAsType(commonStructure::NamedElement).name)
+
+	context ParameterableElement::isCompatibleWith(p : uml::CommonStructure::ParameterableElement) : Boolean
+
+	body:
+	(self.oclIsKindOf(p.oclType()))
+
+	context ParameterableElement::isTemplateParameter() : Boolean
+
+	body:
+	(templateParameter->notEmpty())
+
+	context TemplateableElement::isTemplate() : Boolean
+
+	body:
+	(ownedTemplateSignature <> null)
+
+	context TemplateableElement::parameterableElements() : Set(uml::CommonStructure::ParameterableElement)
+
+	body:
+	(self.allOwnedElements()->select(oclIsKindOf(ParameterableElement)).oclAsType(ParameterableElement)->asSet())
+
+	context Type::conformsTo(other : uml::CommonStructure::Type) : Boolean
+
+	body:
+	(false)
+
+endpackage
+
+package uml::CommonBehavior
+
+	context uml::CommonBehavior::Behavior
+
+	inv most_one_behavior:
+		specification <> null implies
+		_'context'.ownedBehavior->select(specification = self.specification)
+		->size() = 1
+
+	inv parameters_match:
+		specification <> null implies
+		ownedParameter->size() =
+		specification.ownedParameter->size()
+
+	inv feature_of_context_classifier:
+		_'context'.feature->includes(specification)
+
+	context Behavior::behavioredClassifier(from : uml::CommonStructure::Element) :
+	uml::SimpleClassifiers::BehavioredClassifier
+
+	pre spec:
+		if
+		  from.oclIsKindOf(simpleClassifiers::BehavioredClassifier)
+		then
+		  from.oclAsType(simpleClassifiers::BehavioredClassifier)
+		else
+		  if from.owner = null
+		  then null
+		  else self.behavioredClassifier(from.owner)
+		  endif
+		endif
+
+	context Behavior::_'context'() : uml::SimpleClassifiers::BehavioredClassifier
+
+	body:
+	(if nestingClass <> null then
+    null
+else
+    let b:BehavioredClassifier = self.behavioredClassifier(self.owner) in
+    if b.oclIsKindOf(Behavior) and b.oclAsType(Behavior)._'context' <> null then 
+        b.oclAsType(Behavior)._'context'
+    else 
+        b 
+    endif
+endif
+        )
+
+	context Behavior::inputParameters() : OrderedSet(uml::Classification::Parameter)
+
+	body:
+	(ownedParameter->select(direction=ParameterDirectionKind::_'in' or direction=ParameterDirectionKind::inout))
+
+	context Behavior::outputParameters() : OrderedSet(uml::Classification::Parameter)
+
+	body:
+	(ownedParameter->select(direction=ParameterDirectionKind::out or direction=ParameterDirectionKind::inout or direction=ParameterDirectionKind::return))
+
+	context uml::CommonBehavior::Behavior::isReentrant : Boolean
+
+	init:
+	true
+
+	context uml::CommonBehavior::FunctionBehavior
+
+	inv one_output_parameter:
+		self.ownedParameter->select(p |
+		  (p.direction = UML::Classification::ParameterDirectionKind::out or p.direction = UML::Classification::ParameterDirectionKind::inout or p.direction = UML::Classification::ParameterDirectionKind::return
+		  ))
+		->size() >= 1
+
+	inv types_of_parameters:
+		ownedParameter->forAll(p | p.type <> null and
+		  p.type.oclIsTypeOf(simpleClassifiers::DataType) and
+		  hasAllDataTypeAttributes(
+		    p.type.oclAsType(simpleClassifiers::DataType)))
+
+	context FunctionBehavior::hasAllDataTypeAttributes(d : uml::SimpleClassifiers::DataType) : Boolean
+
+	body:
+	(d.ownedAttribute->forAll(a |
+    a.type.oclIsKindOf(DataType) and
+      hasAllDataTypeAttributes(a.type.oclAsType(DataType))))
+
+	context uml::CommonBehavior::TimeEvent
+
+	inv when_non_negative:
+		when.integerValue() >= 0
+
+	context uml::CommonBehavior::TimeEvent::isRelative : Boolean
+
+	init:
+	false
+
+	context uml::CommonBehavior::Trigger
+
+	inv trigger_with_ports:
+		port->notEmpty() implies
+		event.oclIsKindOf(commonBehavior::MessageEvent)
+
+endpackage
+
+package uml::Classification
+
+	context uml::Classification::BehavioralFeature
+
+	inv abstract_no_method:
+		isAbstract implies method->isEmpty()
+
+	context BehavioralFeature::isDistinguishableFrom(n : uml::CommonStructure::NamedElement, ns :
+		uml::CommonStructure::Namespace) : Boolean
+
+	body:
+	((n.oclIsKindOf(BehavioralFeature) and ns.getNamesOfMember(self)->intersection(ns.getNamesOfMember(n))->notEmpty()) implies
+  Set{self}->including(n.oclAsType(BehavioralFeature))->isUnique(ownedParameter->collect(p|
+  Tuple { name=p.name, type=p.type,effect=p.effect,direction=p.direction,isException=p.isException,
+              isStream=p.isStream,isOrdered=p.isOrdered,isUnique=p.isUnique,lower=p.lower, upper=p.upper }))
+  )
+
+	context BehavioralFeature::inputParameters() : OrderedSet(uml::Classification::Parameter)
+
+	body:
+	(ownedParameter->select(direction=ParameterDirectionKind::_'in' or direction=ParameterDirectionKind::inout))
+
+	context BehavioralFeature::outputParameters() : OrderedSet(uml::Classification::Parameter)
+
+	body:
+	(ownedParameter->select(direction=ParameterDirectionKind::out or direction=ParameterDirectionKind::inout or direction=ParameterDirectionKind::return))
+
+	context uml::Classification::BehavioralFeature::concurrency : uml::Classification::CallConcurrencyKind
+
+	init:
+	UML::Classification::CallConcurrencyKind::sequential
+
+	context uml::Classification::BehavioralFeature::isAbstract : Boolean
+
+	init:
+	false
+
+	context uml::Classification::Classifier
+
+	inv specialize_type:
+		parents()->forAll(c | self.maySpecializeType(c))
+
+	inv maps_to_generalization_set:
+		powertypeExtent->forAll(gs |
+		  gs.generalization->forAll(gen |
+		    not (gen.general = self
+		    ) and
+		    not gen.general.allParents()
+		    ->includes(self) and
+		    not (gen.specific = self
+		    ) and
+		    not self.allParents()
+		    ->includes(gen.specific)))
+
+	inv non_final_parents:
+		parents()->forAll(not isFinalSpecialization)
+
+	inv no_cycles_in_generalization:
+		not allParents()->includes(self)
+
+	context Classifier::hasVisibilityOf(n : uml::CommonStructure::NamedElement) : Boolean
+
+	pre _'pre':
+		allParents()->including(self)->collect(member)->includes(n)
+
+	body:
+	(n.visibility <> VisibilityKind::private)
+
+	context Classifier::inheritableMembers(c : uml::Classification::Classifier) : Set(uml::CommonStructure::NamedElement)
+
+	pre _'pre':
+		c.allParents()->includes(self)
+
+	body:
+	(member->select(m | c.hasVisibilityOf(m)))
+
+	context Classifier::allFeatures() : Set(uml::Classification::Feature)
+
+	body:
+	(member->select(oclIsKindOf(Feature))->collect(oclAsType(Feature))->asSet())
+
+	context Classifier::allParents() : Set(uml::Classification::Classifier)
+
+	body:
+	(parents()->union(parents()->collect(allParents())->asSet()))
+
+	context Classifier::conformsTo(other : uml::CommonStructure::Type) : Boolean
+
+	body:
+	(if other.oclIsKindOf(Classifier) then
+  let otherClassifier : Classifier = other.oclAsType(Classifier) in
+    self = otherClassifier or allParents()->includes(otherClassifier)
+else
+  false
+endif)
+
+	context Classifier::general() : Set(uml::Classification::Classifier)
+
+	body:
+	(parents())
+
+	context Classifier::inherit(inhs : Set(uml::CommonStructure::NamedElement)) : Set(uml::CommonStructure::NamedElement)
+
+	body:
+	(inhs->reject(inh |
+  inh.oclIsKindOf(RedefinableElement) and
+  ownedMember->select(oclIsKindOf(RedefinableElement))->
+    select(redefinedElement->includes(inh.oclAsType(RedefinableElement)))
+       ->notEmpty()))
+
+	context Classifier::inheritedMember() : Set(uml::CommonStructure::NamedElement)
+
+	body:
+	(inherit(parents()->collect(inheritableMembers(self))->asSet()))
+
+	context Classifier::isTemplate() : Boolean
+
+	body:
+	(ownedTemplateSignature <> null or general->exists(g | g.isTemplate()))
+
+	context Classifier::maySpecializeType(c : uml::Classification::Classifier) : Boolean
+
+	body:
+	(self.oclIsKindOf(c.oclType()))
+
+	context Classifier::parents() : Set(uml::Classification::Classifier)
+
+	body:
+	(generalization.general->asSet())
+
+	context Classifier::directlyRealizedInterfaces() : Set(uml::SimpleClassifiers::Interface)
+
+	body:
+	((clientDependency->
+  select(oclIsKindOf(Realization) and supplier->forAll(oclIsKindOf(Interface))))->
+      collect(supplier.oclAsType(Interface))->asSet())
+
+	context Classifier::directlyUsedInterfaces() : Set(uml::SimpleClassifiers::Interface)
+
+	body:
+	((supplierDependency->
+  select(oclIsKindOf(Usage) and client->forAll(oclIsKindOf(Interface))))->
+    collect(client.oclAsType(Interface))->asSet())
+
+	context Classifier::allRealizedInterfaces() : Set(uml::SimpleClassifiers::Interface)
+
+	body:
+	(directlyRealizedInterfaces()->union(self.allParents()->collect(directlyRealizedInterfaces()))->asSet())
+
+	context Classifier::allUsedInterfaces() : Set(uml::SimpleClassifiers::Interface)
+
+	body:
+	(directlyUsedInterfaces()->union(self.allParents()->collect(directlyUsedInterfaces()))->asSet())
+
+	context Classifier::isSubstitutableFor(contract : uml::Classification::Classifier) : Boolean
+
+	body:
+	(substitution.contract->includes(contract))
+
+	context Classifier::allAttributes() : OrderedSet(uml::Classification::Property)
+
+	body:
+	(attribute->asSequence()->union(parents()->asSequence().allAttributes())->select(p | member->includes(p))->asOrderedSet())
+
+	context Classifier::allSlottableFeatures() : Set(uml::Classification::StructuralFeature)
+
+	body:
+	(member->select(oclIsKindOf(StructuralFeature))->
+  collect(oclAsType(StructuralFeature))->
+   union(self.inherit(self.allParents()->collect(p | p.attribute)->asSet())->
+     collect(oclAsType(StructuralFeature)))->asSet())
+
+	context uml::Classification::Classifier::isAbstract : Boolean
+
+	init:
+	false
+
+	context uml::Classification::Classifier::isFinalSpecialization : Boolean
+
+	init:
+	false
+
+	context uml::Classification::ClassifierTemplateParameter
+
+	inv has_constraining_classifier:
+		allowSubstitutable implies constrainingClassifier->notEmpty()
+
+	inv parametered_element_no_features:
+		parameteredElement.feature->isEmpty() and
+		(
+		  constrainingClassifier->isEmpty() implies
+		  parameteredElement.allParents()
+		  ->isEmpty()
+		)
+
+	inv matching_abstract:
+		not parameteredElement.isAbstract implies
+		templateParameterSubstitution.actual->forAll(a |
+		  not a.oclAsType(classification::Classifier).isAbstract)
+
+	inv actual_is_classifier:
+		templateParameterSubstitution.actual->forAll(a |
+		  a.oclIsKindOf(classification::Classifier))
+
+	inv constraining_classifiers_constrain_args:
+		templateParameterSubstitution.actual->forAll(a |
+		  let
+		    arg : classification::Classifier = a.oclAsType(classification::Classifier)
+		  in
+		    constrainingClassifier->forAll(cc | arg = cc or
+		      arg.conformsTo(cc) or allowSubstitutable and
+		      arg.isSubstitutableFor(cc)))
+
+	inv constraining_classifiers_constrain_parametered_element:
+		constrainingClassifier->forAll(cc | parameteredElement = cc or
+		  parameteredElement.conformsTo(cc) or allowSubstitutable and
+		  parameteredElement.isSubstitutableFor(cc))
+
+	context uml::Classification::ClassifierTemplateParameter::allowSubstitutable : Boolean
+
+	init:
+	true
+
+	context uml::Classification::GeneralizationSet
+
+	inv generalization_same_classifier:
+		generalization->collect(general)->asSet()->size() <= 1
+
+	inv maps_to_generalization_set:
+		powertype <> null implies
+		generalization->forAll(gen |
+		  not (gen.general = powertype
+		  ) and
+		  not gen.general.allParents()
+		  ->includes(powertype) and
+		  not (gen.specific = powertype
+		  ) and
+		  not powertype.allParents()
+		  ->includes(gen.specific))
+
+	context uml::Classification::GeneralizationSet::isCovering : Boolean
+
+	init:
+	false
+
+	context uml::Classification::GeneralizationSet::isDisjoint : Boolean
+
+	init:
+	false
+
+	context uml::Classification::InstanceSpecification
+
+	inv deployment_artifact:
+		deploymentForArtifact->notEmpty() implies
+		classifier->exists(oclIsKindOf(deployments::Artifact))
+
+	inv structural_feature:
+		classifier->forAll(c |
+		  c.allSlottableFeatures()
+		  ->forAll(f |
+		    slot->select(s | (s.definingFeature = f))
+		    ->size() <= 1))
+
+	inv defining_feature:
+		slot->forAll(s |
+		  classifier->exists(c |
+		    c.allSlottableFeatures()
+		    ->includes(s.definingFeature)))
+
+	inv deployment_target:
+		deployment->notEmpty() implies
+		classifier->exists(node |
+		  node.oclIsKindOf(deployments::Node) and
+		  deployments::Node.allInstances()
+		  ->exists(n | n.part->exists(p | p.type = node)))
+
+	context uml::Classification::Operation
+
+	inv at_most_one_return:
+		self.ownedParameter->select(
+		  (direction = UML::Classification::ParameterDirectionKind::return
+		  ))
+		->size() <= 1
+
+	inv only_body_for_query:
+		bodyCondition <> null implies isQuery
+
+	context Operation::isConsistentWith(redefiningElement : uml::Classification::RedefinableElement) : Boolean
+
+	pre _'pre':
+		redefiningElement.isRedefinitionContextValid(self)
+
+	body:
+	(redefiningElement.oclIsKindOf(Operation) and
+let op : Operation = redefiningElement.oclAsType(Operation) in
+	self.ownedParameter->size() = op.ownedParameter->size() and
+	Sequence{1..self.ownedParameter->size()}->
+		forAll(i |  
+		  let redefiningParam : Parameter = op.ownedParameter->at(i),
+               redefinedParam : Parameter = self.ownedParameter->at(i) in
+                 (redefiningParam.isUnique = redefinedParam.isUnique) and
+                 (redefiningParam.isOrdered = redefinedParam. isOrdered) and
+                 (redefiningParam.direction = redefinedParam.direction) and
+                 (redefiningParam.type.conformsTo(redefinedParam.type) or
+                     redefinedParam.type.conformsTo(redefiningParam.type)) and
+                 (redefiningParam.direction = ParameterDirectionKind::inout implies
+                         (redefinedParam.compatibleWith(redefiningParam) and
+                         redefiningParam.compatibleWith(redefinedParam))) and
+                 (redefiningParam.direction = ParameterDirectionKind::_'in' implies
+                         redefinedParam.compatibleWith(redefiningParam)) and
+                 ((redefiningParam.direction = ParameterDirectionKind::out or
+                      redefiningParam.direction = ParameterDirectionKind::return) implies
+                         redefiningParam.compatibleWith(redefinedParam))
+		))
+
+	context Operation::isOrdered() : Boolean
+
+	body:
+	(if returnResult()->notEmpty() then returnResult()-> exists(isOrdered) else false endif)
+
+	context Operation::isUnique() : Boolean
+
+	body:
+	(if returnResult()->notEmpty() then returnResult()->exists(isUnique) else true endif)
+
+	context Operation::lower() : Integer
+
+	body:
+	(if returnResult()->notEmpty() then returnResult()->any(true).lower else null endif)
+
+	context Operation::returnResult() : Set(uml::Classification::Parameter)
+
+	body:
+	(ownedParameter->select (direction = ParameterDirectionKind::return))
+
+	context Operation::type() : uml::CommonStructure::Type
+
+	body:
+	(if returnResult()->notEmpty() then returnResult()->any(true).type else null endif)
+
+	context Operation::upper() : UnlimitedNatural
+
+	body:
+	(if returnResult()->notEmpty() then returnResult()->any(true).upper else null endif)
+
+	context uml::Classification::Operation::isQuery : Boolean
+
+	init:
+	false
+
+	context uml::Classification::OperationTemplateParameter
+
+	inv match_default_signature:
+		default->notEmpty() implies
+		default.oclIsKindOf(classification::Operation) and
+		let
+		  defaultOp : classification::Operation = default.oclAsType(classification::Operation)
+		in
+		  defaultOp.ownedParameter->size() =
+		  parameteredElement.ownedParameter->size() and
+		  Sequence{1..defaultOp.ownedParameter->size()
+		  }
+		  ->forAll(ix |
+		    let p1 : classification::Parameter = defaultOp.ownedParameter->at(ix)
+		    in
+		      let
+		        p2 : classification::Parameter = parameteredElement.ownedParameter->at(ix)
+		      in p1.type = p2.type and p1.upper = p2.upper and p1.lower = p2.lower and p1.direction = p2.direction and p1.isOrdered = p2.isOrdered and p1.isUnique = p2.isUnique)
+
+	context uml::Classification::Parameter
+
+	inv in_and_out:
+		(effect = UML::Classification::ParameterEffectKind::delete implies direction = UML::Classification::ParameterDirectionKind::_'in' or direction = UML::Classification::ParameterDirectionKind::inout
+		) and
+		(effect = UML::Classification::ParameterEffectKind::create implies direction = UML::Classification::ParameterDirectionKind::out or direction = UML::Classification::ParameterDirectionKind::inout or direction = UML::Classification::ParameterDirectionKind::return
+		)
+
+	inv not_exception:
+		isException implies direction <> UML::Classification::ParameterDirectionKind::_'in' and direction <> UML::Classification::ParameterDirectionKind::inout
+
+	inv connector_end:
+		end->notEmpty() implies collaboration->notEmpty()
+
+	inv reentrant_behaviors:
+		isStream and behavior <> null implies not behavior.isReentrant
+
+	inv stream_and_exception:
+		not (isException and isStream)
+
+	inv object_effect:
+		type.oclIsKindOf(simpleClassifiers::DataType) implies effect = null
+
+	context Parameter::default() : String
+
+	body:
+	(if self.type = String then defaultValue.stringValue() else null endif)
+
+	context uml::Classification::Parameter::direction : uml::Classification::ParameterDirectionKind
+
+	init:
+	UML::Classification::ParameterDirectionKind::_'in'
+
+	context uml::Classification::Parameter::isException : Boolean
+
+	init:
+	false
+
+	context uml::Classification::Parameter::isStream : Boolean
+
+	init:
+	false
+
+	context uml::Classification::ParameterSet
+
+	inv same_parameterized_entity:
+		parameter->forAll(p1, p2 | self.owner = p1.owner and self.owner = p2.owner and p1.direction = p2.direction)
+
+	inv input:
+		(
+		  parameter->exists(direction = UML::Classification::ParameterDirectionKind::_'in') implies
+		  behavioralFeature.ownedParameter->select(p | p.direction = UML::Classification::ParameterDirectionKind::_'in' and
+		    p.parameterSet->isEmpty())
+		  ->forAll(isStream)
+		) and
+		(
+		  parameter->exists(direction = UML::Classification::ParameterDirectionKind::out) implies
+		  behavioralFeature.ownedParameter->select(p | p.direction = UML::Classification::ParameterDirectionKind::out and
+		    p.parameterSet->isEmpty())
+		  ->forAll(isStream)
+		)
+
+	inv two_parameter_sets:
+		parameter->forAll(
+		  parameterSet->forAll(s1, s2 |
+		    s1->size() =
+		    s2->size() implies
+		    s1.parameter->exists(p | not s2.parameter->includes(p))))
+
+	context uml::Classification::Property
+
+	inv subsetting_context_conforms:
+		subsettedProperty->notEmpty() implies
+		subsettingContext()
+		->notEmpty() and
+		subsettingContext()
+		->forAll(sc |
+		  subsettedProperty->forAll(sp |
+		    sp.subsettingContext()
+		    ->exists(c | sc.conformsTo(c))))
+
+	inv derived_union_is_read_only:
+		isDerivedUnion implies isReadOnly
+
+	inv multiplicity_of_composite:
+		isComposite and association <> null implies opposite.upperBound() <= 1
+
+	inv redefined_property_inherited:
+		redefinedProperty->notEmpty() implies
+		redefinitionContext->notEmpty() and
+		redefinedProperty->forAll(rp |
+		  redefinitionContext->collect(fc | fc.allParents())
+		  ->asSet()
+		  ->collect(c | c.allFeatures())
+		  ->asSet()
+		  ->includes(rp))
+
+	inv subsetting_rules:
+		subsettedProperty->forAll(sp |
+		  self.type.conformsTo(sp.type) and
+		  (
+		    self.upperBound()
+		    ->notEmpty() and
+		    sp.upperBound()
+		    ->notEmpty() implies
+		    self.upperBound() <=
+		    sp.upperBound()
+		  ))
+
+	inv binding_to_attribute:
+		self.isAttribute() and
+		templateParameterSubstitution->notEmpty() implies
+		templateParameterSubstitution->forAll(ts |
+		  ts.formal.oclIsKindOf(classification::Property) and
+		  ts.formal.oclAsType(classification::Property)
+		  .isAttribute())
+
+	inv derived_union_is_derived:
+		isDerivedUnion implies isDerived
+
+	inv deployment_target:
+		deployment->notEmpty() implies
+		owner.oclIsKindOf(deployments::Node) and
+		deployments::Node.allInstances()
+		->exists(n | n.part->exists(p | p = self))
+
+	inv subsetted_property_names:
+		subsettedProperty->forAll(sp | sp.name <> name)
+
+	inv type_of_opposite_end:
+		opposite->notEmpty() and owningAssociation->isEmpty() implies classifier = opposite.type
+
+	inv qualified_is_association_end:
+		qualifier->notEmpty() implies association->notEmpty()
+
+	context Property::isConsistentWith(redefiningElement : uml::Classification::RedefinableElement) : Boolean
+
+	pre _'pre':
+		redefiningElement.isRedefinitionContextValid(self)
+
+	body:
+	(redefiningElement.oclIsKindOf(Property) and 
+  let prop : Property = redefiningElement.oclAsType(Property) in 
+  (prop.type.conformsTo(self.type) and 
+  ((prop.lowerBound()->notEmpty() and self.lowerBound()->notEmpty()) implies prop.lowerBound() >= self.lowerBound()) and 
+  ((prop.upperBound()->notEmpty() and self.upperBound()->notEmpty()) implies prop.lowerBound() <= self.lowerBound()) and 
+  (self.isComposite implies prop.isComposite)))
+
+	context Property::isAttribute() : Boolean
+
+	body:
+	(not classifier->isEmpty())
+
+	context Property::isCompatibleWith(p : uml::CommonStructure::ParameterableElement) : Boolean
+
+	body:
+	(self.oclIsKindOf(p.oclType()) and (p.oclIsKindOf(TypedElement) implies
+self.type.conformsTo(p.oclAsType(TypedElement).type)))
+
+	context Property::isComposite() : Boolean
+
+	body:
+	(aggregation = AggregationKind::composite)
+
+	context Property::isNavigable() : Boolean
+
+	body:
+	(not classifier->isEmpty() or association.navigableOwnedEnd->includes(self))
+
+	context Property::opposite() : uml::Classification::Property
+
+	body:
+	(if association <> null and association.memberEnd->size() = 2
+then
+    association.memberEnd->any(e | e <> self)
+else
+    null
+endif)
+
+	context Property::subsettingContext() : Set(uml::CommonStructure::Type)
+
+	body:
+	(if association <> null
+then association.memberEnd->excluding(self)->collect(type)->asSet()
+else 
+  if classifier<>null
+  then classifier->asSet()
+  else Set{} 
+  endif
+endif)
+
+	context uml::Classification::Property::aggregation : uml::Classification::AggregationKind
+
+	init:
+	UML::Classification::AggregationKind::none
+
+	context uml::Classification::Property::isComposite : Boolean
+
+	init:
+	false
+
+	context uml::Classification::Property::isDerived : Boolean
+
+	init:
+	false
+
+	context uml::Classification::Property::isDerivedUnion : Boolean
+
+	init:
+	false
+
+	context uml::Classification::Property::isID : Boolean
+
+	init:
+	false
+
+	context uml::Classification::RedefinableElement
+
+	inv redefinition_consistent:
+		redefinedElement->forAll(re | re.isConsistentWith(self))
+
+	inv non_leaf_redefinition:
+		redefinedElement->forAll(re | not re.isLeaf)
+
+	inv redefinition_context_valid:
+		redefinedElement->forAll(re | self.isRedefinitionContextValid(re))
+
+	context RedefinableElement::isConsistentWith(redefiningElement : uml::Classification::RedefinableElement) : Boolean
+
+	pre _'pre':
+		redefiningElement.isRedefinitionContextValid(self)
+
+	body:
+	(false)
+
+	context RedefinableElement::isRedefinitionContextValid(redefinedElement : uml::Classification::RedefinableElement) :
+	Boolean
+
+	body:
+	(redefinitionContext->exists(c | c.allParents()->includesAll(redefinedElement.redefinitionContext)))
+
+	context uml::Classification::RedefinableElement::isLeaf : Boolean
+
+	init:
+	false
+
+	context uml::Classification::RedefinableTemplateSignature
+
+	inv redefines_parents:
+		classifier.allParents()
+		->forAll(c |
+		  c.ownedTemplateSignature->notEmpty() implies
+		  self->closure(extendedSignature)
+		  ->includes(c.ownedTemplateSignature))
+
+	context RedefinableTemplateSignature::isConsistentWith(redefiningElement : uml::Classification::RedefinableElement) :
+	Boolean
+
+	pre _'pre':
+		redefiningElement.isRedefinitionContextValid(self)
+
+	body:
+	(redefiningElement.oclIsKindOf(RedefinableTemplateSignature))
+
+	context RedefinableTemplateSignature::inheritedParameter() : Set(uml::CommonStructure::TemplateParameter)
+
+	body:
+	(if extendedSignature->isEmpty() then Set{} else extendedSignature.parameter->asSet() endif)
+
+	context uml::Classification::Feature::isStatic : Boolean
+
+	init:
+	false
+
+	context uml::Classification::Generalization::isSubstitutable : Boolean
+
+	init:
+	true
+
+	context uml::Classification::StructuralFeature::isReadOnly : Boolean
+
+	init:
+	false
+
+endpackage
+
+package uml::Actions
+
+	context uml::Actions::ValueSpecificationAction
+
+	inv multiplicity:
+		result.is(1, 1)
+
+	inv compatible_type:
+		value.type.conformsTo(result.type)
+
+	context uml::Actions::VariableAction
+
+	inv scope_of_variable:
+		variable.isAccessibleBy(self)
+
+	context uml::Actions::WriteLinkAction
+
+	inv allow_access:
+		endData.end->exists(end | end.type = _'context' or end.visibility = UML::CommonStructure::VisibilityKind::public or end.visibility = UML::CommonStructure::VisibilityKind::protected and
+		  endData.end->exists(other | other <> end and
+		    _'context'.conformsTo(
+		      other.type.oclAsType(classification::Classifier))))
+
+	context uml::Actions::WriteStructuralFeatureAction
+
+	inv multiplicity_of_result:
+		result <> null implies result.is(1, 1)
+
+	inv type_of_value:
+		value <> null implies
+		value.type.conformsTo(structuralFeature.type)
+
+	inv multiplicity_of_value:
+		value <> null implies value.is(1, 1)
+
+	inv type_of_result:
+		result <> null implies result.type = object.type
+
+	context uml::Actions::WriteVariableAction
+
+	inv value_type:
+		value <> null implies value.type.conformsTo(variable.type)
+
+	inv multiplicity:
+		value <> null implies value.is(1, 1)
+
+	context uml::Actions::AcceptCallAction
+
+	inv result_pins:
+		let
+		  parameter : OrderedSet(classification::Parameter) = trigger.event->asSequence()
+		  ->first()
+		  .oclAsType(commonBehavior::CallEvent)
+		  .operation.inputParameters()
+		in
+		  result->size() =
+		  parameter->size() and
+		  Sequence{1..result->size()
+		  }
+		  ->forAll(i |
+		    parameter->at(i)
+		    .type.conformsTo(result->at(i).type) and
+		    parameter->at(i).isOrdered =
+		    result->at(i).isOrdered and
+		    parameter->at(i)
+		    .compatibleWith(result->at(i)))
+
+	inv trigger_call_event:
+		trigger->size() = 1 and
+		trigger->asSequence()
+		->first()
+		.event.oclIsKindOf(commonBehavior::CallEvent)
+
+	inv unmarshall:
+		isUnmarshall = true
+
+	context uml::Actions::AcceptEventAction
+
+	inv one_output_pin:
+		not isUnmarshall and
+		trigger->exists(
+		  (
+		    event.oclIsKindOf(commonBehavior::SignalEvent) or
+		    event.oclIsKindOf(commonBehavior::TimeEvent)
+		  )) implies
+		output->size() = 1 and
+		output->first()
+		.is(1, 1)
+
+	inv no_input_pins:
+		input->size() = 0
+
+	inv no_output_pins:
+		self.oclIsTypeOf(actions::AcceptEventAction) and
+		trigger->forAll(
+		  (
+		    event.oclIsKindOf(commonBehavior::ChangeEvent) or
+		    event.oclIsKindOf(commonBehavior::CallEvent)
+		  )) implies
+		output->size() = 0
+
+	inv unmarshall_signal_events:
+		isUnmarshall and
+		self.oclIsTypeOf(actions::AcceptEventAction) implies
+		trigger->size() = 1 and
+		trigger->asSequence()
+		->first()
+		.event.oclIsKindOf(commonBehavior::SignalEvent) and
+		let
+		  attribute : OrderedSet(classification::Property) = trigger->asSequence()
+		  ->first()
+		  .event.oclAsType(commonBehavior::SignalEvent)
+		  .signal.allAttributes()
+		in
+		  attribute->size() > 0 and
+		  result->size() =
+		  attribute->size() and
+		  Sequence{1..result->size()
+		  }
+		  ->forAll(i |
+		    result->at(i).type =
+		    attribute->at(i).type and
+		    result->at(i).isOrdered =
+		    attribute->at(i).isOrdered and
+		    result->at(i)
+		    .includesMultiplicity(attribute->at(i)))
+
+	inv conforming_type:
+		not isUnmarshall implies
+		result->isEmpty() or
+		let type : commonStructure::Type = result->first().type
+		in type = null or
+		  trigger->forAll(
+		    event.oclIsKindOf(commonBehavior::SignalEvent)) and
+		  trigger.event.oclAsType(commonBehavior::SignalEvent)
+		  .signal->forAll(s | s.conformsTo(type))
+
+	context uml::Actions::AcceptEventAction::isUnmarshall : Boolean
+
+	init:
+	false
+
+	context uml::Actions::ActionInputPin
+
+	inv input_pin:
+		fromAction.input->forAll(
+		  oclIsKindOf(actions::ActionInputPin))
+
+	inv one_output_pin:
+		fromAction.output->size() = 1
+
+	inv no_control_or_object_flow:
+		fromAction.incoming->union(outgoing)
+		->isEmpty() and
+		fromAction.input.incoming->isEmpty() and
+		fromAction.output.outgoing->isEmpty()
+
+	context uml::Actions::AddStructuralFeatureValueAction
+
+	inv required_value:
+		value <> null
+
+	inv insertAt_pin:
+		if not structuralFeature.isOrdered
+		then insertAt = null
+		else not isReplaceAll implies insertAt <> null and
+		  insertAt->forAll(type = UnlimitedNatural and
+		    is(1, 1.oclAsType(UnlimitedNatural)))
+		endif
+
+	context uml::Actions::AddStructuralFeatureValueAction::isReplaceAll : Boolean
+
+	init:
+	false
+
+	context uml::Actions::AddVariableValueAction
+
+	inv required_value:
+		value <> null
+
+	inv insertAt_pin:
+		if not variable.isOrdered
+		then insertAt = null
+		else not isReplaceAll implies insertAt <> null and
+		  insertAt->forAll(type = UnlimitedNatural and
+		    is(1, 1.oclAsType(UnlimitedNatural)))
+		endif
+
+	context uml::Actions::AddVariableValueAction::isReplaceAll : Boolean
+
+	init:
+	false
+
+	context uml::Actions::BroadcastSignalAction
+
+	inv number_of_arguments:
+		argument->size() = signal.allAttributes()->size()
+
+	inv type_ordering_multiplicity:
+		let attribute : OrderedSet(classification::Property) = signal.allAttributes()
+		in
+		  Sequence{1..argument->size()
+		  }
+		  ->forAll(i |
+		    argument->at(i)
+		    .type.conformsTo(attribute->at(i).type) and
+		    argument->at(i).isOrdered =
+		    attribute->at(i).isOrdered and
+		    argument->at(i)
+		    .compatibleWith(attribute->at(i)))
+
+	inv no_onport:
+		onPort = null
+
+	context uml::Actions::CallAction
+
+	inv argument_pins:
+		let parameter : OrderedSet(classification::Parameter) = self.inputParameters()
+		in
+		  argument->size() =
+		  parameter->size() and
+		  Sequence{1..argument->size()
+		  }
+		  ->forAll(i |
+		    argument->at(i)
+		    .type.conformsTo(parameter->at(i).type) and
+		    argument->at(i).isOrdered =
+		    parameter->at(i).isOrdered and
+		    argument->at(i)
+		    .compatibleWith(parameter->at(i)))
+
+	inv result_pins:
+		let
+		  parameter : OrderedSet(classification::Parameter) = self.outputParameters()
+		in
+		  result->size() =
+		  parameter->size() and
+		  Sequence{1..result->size()
+		  }
+		  ->forAll(i |
+		    parameter->at(i)
+		    .type.conformsTo(result->at(i).type) and
+		    parameter->at(i).isOrdered =
+		    result->at(i).isOrdered and
+		    parameter->at(i)
+		    .compatibleWith(result->at(i)))
+
+	inv synchronous_call:
+		result->notEmpty() implies isSynchronous
+
+	context uml::Actions::CallAction::isSynchronous : Boolean
+
+	init:
+	true
+
+	context uml::Actions::CallBehaviorAction
+
+	inv no_onport:
+		onPort = null
+
+	context CallBehaviorAction::outputParameters() : OrderedSet(uml::Classification::Parameter)
+
+	body:
+	(behavior.outputParameters())
+
+	context CallBehaviorAction::inputParameters() : OrderedSet(uml::Classification::Parameter)
+
+	body:
+	(behavior.inputParameters())
+
+	context uml::Actions::CallOperationAction
+
+	inv type_target_pin:
+		if onPort = null
+		then
+		  target.type.oclAsType(classification::Classifier)
+		  .allFeatures()
+		  ->includes(operation)
+		else
+		  target.type.oclAsType(classification::Classifier)
+		  .allFeatures()
+		  ->includes(onPort) and
+		  onPort.provided->union(onPort.required)
+		  .allFeatures()
+		  ->includes(operation)
+		endif
+
+	context CallOperationAction::outputParameters() : OrderedSet(uml::Classification::Parameter)
+
+	body:
+	(operation.outputParameters())
+
+	context CallOperationAction::inputParameters() : OrderedSet(uml::Classification::Parameter)
+
+	body:
+	(operation.inputParameters())
+
+	context uml::Actions::Clause
+
+	inv body_output_pins:
+		_'body'.oclAsType(actions::Action)
+		.allActions()
+		.output->includesAll(bodyOutput)
+
+	inv decider_output:
+		test.oclAsType(actions::Action)
+		.allActions()
+		.output->includes(decider) and decider.type = Boolean and
+		decider.is(1, 1)
+
+	inv test_and_body:
+		test->intersection(_'body')->isEmpty()
+
+	context uml::Actions::ClearAssociationAction
+
+	inv multiplicity:
+		object.is(1, 1)
+
+	inv same_type:
+		association.memberEnd->exists(self.object.type.conformsTo(type))
+
+	context uml::Actions::ClearStructuralFeatureAction
+
+	inv type_of_result:
+		result <> null implies result.type = object.type
+
+	inv multiplicity_of_result:
+		result <> null implies result.is(1, 1)
+
+	context uml::Actions::ConditionalNode
+
+	inv result_no_incoming:
+		result.incoming->isEmpty()
+
+	inv no_input_pins:
+		input->isEmpty()
+
+	inv one_clause_with_executable_node:
+		node->select(oclIsKindOf(activities::ExecutableNode))
+		.oclAsType(activities::ExecutableNode)
+		->forAll(n |
+		  self.clause->select(test->union(_'body')->includes(n))
+		  ->size() = 1)
+
+	inv matching_output_pins:
+		clause->forAll(
+		  bodyOutput->size() =
+		  self.result->size() and
+		  Sequence{1..self.result->size()
+		  }
+		  ->forAll(i |
+		    bodyOutput->at(i)
+		    .type.conformsTo(result->at(i).type) and
+		    bodyOutput->at(i).isOrdered =
+		    result->at(i).isOrdered and
+		    bodyOutput->at(i).isUnique =
+		    result->at(i).isUnique and
+		    bodyOutput->at(i)
+		    .compatibleWith(result->at(i))))
+
+	inv executable_nodes:
+		clause.test->union(clause._'body') =
+		node->select(oclIsKindOf(activities::ExecutableNode))
+		.oclAsType(activities::ExecutableNode)
+
+	inv clause_no_predecessor:
+		clause->closure(predecessorClause)
+		->intersection(clause)
+		->isEmpty()
+
+	context ConditionalNode::allActions() : Set(uml::Actions::Action)
+
+	body:
+	(self->asSet())
+
+	context uml::Actions::ConditionalNode::isAssured : Boolean
+
+	init:
+	false
+
+	context uml::Actions::ConditionalNode::isDeterminate : Boolean
+
+	init:
+	false
+
+	context uml::Actions::CreateLinkAction
+
+	inv association_not_abstract:
+		not self.association().isAbstract
+
+	context uml::Actions::CreateLinkObjectAction
+
+	inv multiplicity:
+		result.is(1, 1)
+
+	inv type_of_result:
+		result.type = association()
+
+	inv association_class:
+		self.association()
+		.oclIsKindOf(structuredClassifiers::AssociationClass)
+
+	context uml::Actions::CreateObjectAction
+
+	inv classifier_not_abstract:
+		not classifier.isAbstract
+
+	inv multiplicity:
+		result.is(1, 1)
+
+	inv classifier_not_association_class:
+		not classifier.oclIsKindOf(structuredClassifiers::AssociationClass)
+
+	inv same_type:
+		result.type = classifier
+
+	context uml::Actions::DestroyObjectAction
+
+	inv multiplicity:
+		target.is(1, 1)
+
+	inv no_type:
+		target.type = null
+
+	context uml::Actions::DestroyObjectAction::isDestroyLinks : Boolean
+
+	init:
+	false
+
+	context uml::Actions::DestroyObjectAction::isDestroyOwnedObjects : Boolean
+
+	init:
+	false
+
+	context uml::Actions::ExpansionNode
+
+	inv region_as_input_or_output:
+		regionAsInput->notEmpty() xor regionAsOutput->notEmpty()
+
+	context uml::Actions::InputPin
+
+	inv outgoing_edges_structured_only:
+		outgoing->notEmpty() implies action <> null and
+		action.oclIsKindOf(actions::StructuredActivityNode) and
+		action.oclAsType(actions::StructuredActivityNode)
+		.allOwnedNodes()
+		->includesAll(outgoing.target)
+
+	context uml::Actions::LinkAction
+
+	inv same_pins:
+		inputValue->asBag() = endData.allPins()
+
+	inv same_association:
+		endData.end = self.association().memberEnd->asBag()
+
+	inv not_static:
+		endData->forAll(not end.isStatic)
+
+	context LinkAction::association() : uml::StructuredClassifiers::Association
+
+	body:
+	(endData->asSequence()->first().end.association)
+
+	context uml::Actions::LinkEndCreationData
+
+	inv insertAt_pin:
+		if not end.isOrdered
+		then insertAt = null
+		else not isReplaceAll = false implies insertAt <> null and
+		  insertAt->forAll(type = UnlimitedNatural and is(1, 1))
+		endif
+
+	context LinkEndCreationData::allPins() : Bag(uml::Actions::InputPin)
+
+	body:
+	(self.LinkEndData::allPins()->including(insertAt))
+
+	context uml::Actions::LinkEndCreationData::isReplaceAll : Boolean
+
+	init:
+	false
+
+	context uml::Actions::LinkEndData
+
+	inv same_type:
+		value <> null implies value.type.conformsTo(end.type)
+
+	inv multiplicity:
+		value <> null implies value.is(1, 1)
+
+	inv end_object_input_pin:
+		value->excludesAll(qualifier.value)
+
+	inv property_is_association_end:
+		end.association <> null
+
+	inv qualifiers:
+		end.qualifier->includesAll(qualifier.qualifier)
+
+	context LinkEndData::allPins() : Bag(uml::Actions::InputPin)
+
+	body:
+	(value->asBag()->union(qualifier.value))
+
+	context uml::Actions::LinkEndDestructionData
+
+	inv destroyAt_pin:
+		if not end.isOrdered or end.isUnique or isDestroyDuplicates
+		then destroyAt = null
+		else destroyAt <> null and
+		  destroyAt->forAll(type = UnlimitedNatural and is(1, 1))
+		endif
+
+	context LinkEndDestructionData::allPins() : Bag(uml::Actions::InputPin)
+
+	body:
+	(self.LinkEndData::allPins()->including(destroyAt))
+
+	context uml::Actions::LinkEndDestructionData::isDestroyDuplicates : Boolean
+
+	init:
+	false
+
+	context uml::Actions::LoopNode
+
+	inv result_no_incoming:
+		result.incoming->isEmpty()
+
+	inv input_edges:
+		loopVariableInput.outgoing->isEmpty()
+
+	inv executable_nodes:
+		setupPart->union(test)
+		->union(bodyPart) =
+		node->select(oclIsKindOf(activities::ExecutableNode))
+		.oclAsType(activities::ExecutableNode)
+		->asSet()
+
+	inv body_output_pins:
+		bodyPart.oclAsType(actions::Action)
+		.allActions()
+		.output->includesAll(bodyOutput)
+
+	inv setup_test_and_body:
+		setupPart->intersection(test)
+		->isEmpty() and
+		setupPart->intersection(bodyPart)
+		->isEmpty() and
+		test->intersection(bodyPart)
+		->isEmpty()
+
+	inv matching_output_pins:
+		bodyOutput->size() =
+		loopVariable->size() and
+		Sequence{1..loopVariable->size()
+		}
+		->forAll(i |
+		  bodyOutput->at(i)
+		  .type.conformsTo(loopVariable->at(i).type) and
+		  bodyOutput->at(i).isOrdered =
+		  loopVariable->at(i).isOrdered and
+		  bodyOutput->at(i).isUnique =
+		  loopVariable->at(i).isUnique and
+		  loopVariable->at(i)
+		  .includesMultiplicity(bodyOutput->at(i)))
+
+	inv matching_loop_variables:
+		loopVariableInput->size() =
+		loopVariable->size() and loopVariableInput.type = loopVariable.type and loopVariableInput.isUnique = loopVariable.isUnique and loopVariableInput.lower = loopVariable.lower and loopVariableInput.upper = loopVariable.upper
+
+	inv matching_result_pins:
+		result->size() =
+		loopVariable->size() and result.type = loopVariable.type and result.isUnique = loopVariable.isUnique and result.lower = loopVariable.lower and result.upper = loopVariable.upper
+
+	inv loop_variable_outgoing:
+		allOwnedNodes()
+		->includesAll(loopVariable.outgoing.target)
+
+	context LoopNode::allActions() : Set(uml::Actions::Action)
+
+	body:
+	(self->asSet())
+
+	context LoopNode::sourceNodes() : Set(uml::Activities::ActivityNode)
+
+	body:
+	(self.StructuredActivityNode::sourceNodes()->union(loopVariable))
+
+	context uml::Actions::LoopNode::isTestedFirst : Boolean
+
+	init:
+	false
+
+	context uml::Actions::OpaqueAction
+
+	inv language_body_size:
+		language->notEmpty() implies _'body'->size() = language->size()
+
+	context uml::Actions::OutputPin
+
+	inv incoming_edges_structured_only:
+		incoming->notEmpty() implies action <> null and
+		action.oclIsKindOf(actions::StructuredActivityNode) and
+		action.oclAsType(actions::StructuredActivityNode)
+		.allOwnedNodes()
+		->includesAll(incoming.source)
+
+	context uml::Actions::Pin
+
+	inv control_pins:
+		isControl implies isControlType
+
+	inv not_unique:
+		not isUnique
+
+	context uml::Actions::Pin::isControl : Boolean
+
+	init:
+	false
+
+	context uml::Actions::QualifierValue
+
+	inv multiplicity_of_qualifier:
+		value.is(1, 1)
+
+	inv type_of_qualifier:
+		value.type.conformsTo(qualifier.type)
+
+	inv qualifier_attribute:
+		linkEndData.end.qualifier->includes(qualifier)
+
+	context uml::Actions::ReadExtentAction
+
+	inv type_is_classifier:
+		result.type = classifier
+
+	inv multiplicity_of_result:
+		result.is(0, *)
+
+	context uml::Actions::ReadIsClassifiedObjectAction
+
+	inv no_type:
+		object.type = null
+
+	inv multiplicity_of_output:
+		result.is(1, 1)
+
+	inv boolean_result:
+		result.type = Boolean
+
+	inv multiplicity_of_input:
+		object.is(1, 1)
+
+	context uml::Actions::ReadIsClassifiedObjectAction::isDirect : Boolean
+
+	init:
+	false
+
+	context uml::Actions::ReadLinkAction
+
+	inv type_and_ordering:
+		self.openEnd()
+		->forAll(type = result.type and isOrdered = result.isOrdered)
+
+	inv compatible_multiplicity:
+		self.openEnd()->first().compatibleWith(result)
+
+	inv visibility:
+		let openEnd : classification::Property = self.openEnd()->first()
+		in openEnd.visibility = UML::CommonStructure::VisibilityKind::public or
+		  endData->exists(oed | oed.end <> openEnd and
+		    (_'context' = oed.end.type or openEnd.visibility = UML::CommonStructure::VisibilityKind::protected and
+		      _'context'.conformsTo(
+		        oed.end.type.oclAsType(classification::Classifier))
+		    ))
+
+	inv one_open_end:
+		self.openEnd()->size() = 1
+
+	inv navigable_open_end:
+		self.openEnd()->first().isNavigable()
+
+	context ReadLinkAction::openEnd() : OrderedSet(uml::Classification::Property)
+
+	body:
+	(endData->select(value=null).end->asOrderedSet())
+
+	context uml::Actions::ReadLinkObjectEndAction
+
+	inv property:
+		end.association <> null
+
+	inv multiplicity_of_object:
+		object.is(1, 1)
+
+	inv ends_of_association:
+		end.association.memberEnd->forAll(e | not e.isStatic)
+
+	inv type_of_result:
+		result.type = end.type
+
+	inv multiplicity_of_result:
+		result.is(1, 1)
+
+	inv type_of_object:
+		object.type = end.association
+
+	inv association_of_association:
+		end.association.oclIsKindOf(structuredClassifiers::AssociationClass)
+
+	context uml::Actions::ReadLinkObjectEndQualifierAction
+
+	inv multiplicity_of_object:
+		object.is(1, 1)
+
+	inv type_of_object:
+		object.type = qualifier.associationEnd.association
+
+	inv multiplicity_of_qualifier:
+		qualifier.is(1, 1)
+
+	inv ends_of_association:
+		qualifier.associationEnd.association.memberEnd->forAll(e | not e.isStatic)
+
+	inv multiplicity_of_result:
+		result.is(1, 1)
+
+	inv same_type:
+		result.type = qualifier.type
+
+	inv association_of_association:
+		qualifier.associationEnd.association.oclIsKindOf(structuredClassifiers::AssociationClass)
+
+	inv qualifier_attribute:
+		qualifier.associationEnd <> null
+
+	context uml::Actions::ReadSelfAction
+
+	inv contained:
+		_'context' <> null
+
+	inv multiplicity:
+		result.is(1, 1)
+
+	inv not_static:
+		let behavior : commonBehavior::Behavior = self.containingBehavior()
+		in behavior.specification <> null implies not behavior.specification.isStatic
+
+	inv type:
+		result.type = _'context'
+
+	context uml::Actions::ReadStructuralFeatureAction
+
+	inv multiplicity:
+		structuralFeature.compatibleWith(result)
+
+	inv type_and_ordering:
+		result.type = structuralFeature.type and result.isOrdered = structuralFeature.isOrdered
+
+	context uml::Actions::ReadVariableAction
+
+	inv type_and_ordering:
+		result.type = variable.type and result.isOrdered = variable.isOrdered
+
+	inv compatible_multiplicity:
+		variable.compatibleWith(result)
+
+	context uml::Actions::ReclassifyObjectAction
+
+	inv input_pin:
+		object.type = null
+
+	inv classifier_not_abstract:
+		not newClassifier->exists(isAbstract)
+
+	inv multiplicity:
+		object.is(1, 1)
+
+	context uml::Actions::ReclassifyObjectAction::isReplaceAll : Boolean
+
+	init:
+	false
+
+	context uml::Actions::ReduceAction
+
+	inv reducer_inputs_output:
+		let inputs : OrderedSet(classification::Parameter) = reducer.inputParameters()
+		in
+		  let
+		    outputs : OrderedSet(classification::Parameter) = reducer.outputParameters()
+		  in
+		    inputs->size() = 2 and
+		    outputs->size() = 1 and
+		    inputs.type->forAll(t |
+		      (
+		        outputs.type->forAll(conformsTo(t)) and
+		        collection.upperBound() > 1 implies
+		        collection.type.conformsTo(t)
+		      ))
+
+	inv input_type_is_collection:
+		null
+
+	inv output_types_are_compatible:
+		reducer.outputParameters()
+		.type->forAll(conformsTo(result.type))
+
+	context uml::Actions::ReduceAction::isOrdered : Boolean
+
+	init:
+	false
+
+	context uml::Actions::RemoveStructuralFeatureValueAction
+
+	inv removeAt_and_value:
+		if structuralFeature.isOrdered and not structuralFeature.isUnique and not isRemoveDuplicates
+		then value = null and removeAt <> null and removeAt.type = UnlimitedNatural and
+		  removeAt.is(1, 1)
+		else removeAt = null and value <> null
+		endif
+
+	context uml::Actions::RemoveStructuralFeatureValueAction::isRemoveDuplicates : Boolean
+
+	init:
+	false
+
+	context uml::Actions::RemoveVariableValueAction
+
+	inv removeAt_and_value:
+		if variable.isOrdered and not variable.isUnique and not isRemoveDuplicates
+		then value = null and removeAt <> null and removeAt.type = UnlimitedNatural and
+		  removeAt.is(1, 1)
+		else removeAt = null and value <> null
+		endif
+
+	context uml::Actions::RemoveVariableValueAction::isRemoveDuplicates : Boolean
+
+	init:
+	false
+
+	context uml::Actions::ReplyAction
+
+	inv pins_match_parameter:
+		let
+		  parameter : OrderedSet(classification::Parameter) = replyToCall.event.oclAsType(commonBehavior::CallEvent)
+		  .operation.outputParameters()
+		in
+		  replyValue->size() =
+		  parameter->size() and
+		  Sequence{1..replyValue->size()
+		  }
+		  ->forAll(i |
+		    replyValue->at(i)
+		    .type.conformsTo(parameter->at(i).type) and
+		    replyValue->at(i).isOrdered =
+		    parameter->at(i).isOrdered and
+		    replyValue->at(i)
+		    .compatibleWith(parameter->at(i)))
+
+	inv event_on_reply_to_call_trigger:
+		replyToCall.event.oclIsKindOf(commonBehavior::CallEvent)
+
+	context uml::Actions::SendObjectAction
+
+	inv type_target_pin:
+		onPort <> null implies
+		target.type.oclAsType(classification::Classifier)
+		.allFeatures()
+		->includes(onPort)
+
+	context uml::Actions::SendSignalAction
+
+	inv type_ordering_multiplicity:
+		let attribute : OrderedSet(classification::Property) = signal.allAttributes()
+		in
+		  Sequence{1..argument->size()
+		  }
+		  ->forAll(i |
+		    argument->at(i)
+		    .type.conformsTo(attribute->at(i).type) and
+		    argument->at(i).isOrdered =
+		    attribute->at(i).isOrdered and
+		    argument->at(i)
+		    .compatibleWith(attribute->at(i)))
+
+	inv number_order:
+		argument->size() = signal.allAttributes()->size()
+
+	inv type_target_pin:
+		not onPort->isEmpty() implies
+		target.type.oclAsType(classification::Classifier)
+		.allFeatures()
+		->includes(onPort)
+
+	context uml::Actions::StartClassifierBehaviorAction
+
+	inv multiplicity:
+		object.is(1, 1)
+
+	inv type_has_classifier:
+		object.type->notEmpty() implies
+		object.type.oclIsKindOf(simpleClassifiers::BehavioredClassifier) and
+		object.type.oclAsType(simpleClassifiers::BehavioredClassifier).classifierBehavior <> null
+
+	context uml::Actions::StartObjectBehaviorAction
+
+	inv multiplicity_of_object:
+		object.is(1, 1)
+
+	inv type_of_object:
+		self.behavior() <> null
+
+	inv no_onport:
+		onPort->isEmpty()
+
+	context StartObjectBehaviorAction::outputParameters() : OrderedSet(uml::Classification::Parameter)
+
+	body:
+	(self.behavior().outputParameters())
+
+	context StartObjectBehaviorAction::inputParameters() : OrderedSet(uml::Classification::Parameter)
+
+	body:
+	(self.behavior().inputParameters())
+
+	context StartObjectBehaviorAction::behavior() : uml::CommonBehavior::Behavior
+
+	body:
+	(if object.type.oclIsKindOf(Behavior) then
+  object.type.oclAsType(Behavior)
+else if object.type.oclIsKindOf(BehavioredClassifier) then
+  object.type.oclAsType(BehavioredClassifier).classifierBehavior
+else
+  null
+endif
+endif)
+
+	context uml::Actions::StructuralFeatureAction
+
+	inv multiplicity:
+		object.is(1, 1)
+
+	inv object_type:
+		object.type.oclAsType(classification::Classifier)
+		.allFeatures()
+		->includes(structuralFeature) or
+		object.type.conformsTo(
+		  structuralFeature.oclAsType(classification::Property).opposite.type)
+
+	inv visibility:
+		structuralFeature.visibility = UML::CommonStructure::VisibilityKind::public or
+		_'context'.allFeatures()
+		->includes(structuralFeature) or structuralFeature.visibility = UML::CommonStructure::VisibilityKind::protected and
+		_'context'.conformsTo(
+		  structuralFeature.oclAsType(classification::Property)
+		  .opposite.type.oclAsType(classification::Classifier))
+
+	inv not_static:
+		not structuralFeature.isStatic
+
+	inv one_featuring_classifier:
+		structuralFeature.featuringClassifier->size() = 1
+
+	context uml::Actions::StructuredActivityNode
+
+	inv output_pin_edges:
+		output.outgoing.target->excludesAll(allOwnedNodes() - input)
+
+	inv edges:
+		edge =
+		self.sourceNodes()
+		.outgoing->intersection(self.allOwnedNodes().incoming)
+		->union(
+		  self.targetNodes()
+		  .incoming->intersection(self.allOwnedNodes().outgoing))
+		->asSet()
+
+	inv input_pin_edges:
+		input.incoming.source->excludesAll(allOwnedNodes() - output)
+
+	context StructuredActivityNode::allActions() : Set(uml::Actions::Action)
+
+	body:
+	(node->select(oclIsKindOf(Action)).oclAsType(Action).allActions()->including(self)->asSet())
+
+	context StructuredActivityNode::allOwnedNodes() : Set(uml::Activities::ActivityNode)
+
+	body:
+	(self.Action::allOwnedNodes()->union(node)->union(node->select(oclIsKindOf(Action)).oclAsType(Action).allOwnedNodes())->asSet())
+
+	context StructuredActivityNode::sourceNodes() : Set(uml::Activities::ActivityNode)
+
+	body:
+	(node->union(input.oclAsType(ActivityNode)->asSet())->
+  union(node->select(oclIsKindOf(Action)).oclAsType(Action).output)->asSet())
+
+	context StructuredActivityNode::targetNodes() : Set(uml::Activities::ActivityNode)
+
+	body:
+	(node->union(output.oclAsType(ActivityNode)->asSet())->
+  union(node->select(oclIsKindOf(Action)).oclAsType(Action).input)->asSet())
+
+	context StructuredActivityNode::containingActivity() : uml::Activities::Activity
+
+	body:
+	(self.Action::containingActivity())
+
+	context uml::Actions::StructuredActivityNode::mustIsolate : Boolean
+
+	init:
+	false
+
+	context uml::Actions::TestIdentityAction
+
+	inv multiplicity:
+		first.is(1, 1) and second.is(1, 1)
+
+	inv no_type:
+		first.type = null and second.type = null
+
+	inv result_is_boolean:
+		result.type = Boolean
+
+	context uml::Actions::UnmarshallAction
+
+	inv structural_feature:
+		unmarshallType.allAttributes()->size() >= 1
+
+	inv number_of_result:
+		unmarshallType.allAttributes()->size() = result->size()
+
+	inv type_ordering_and_multiplicity:
+		let
+		  attribute : OrderedSet(classification::Property) = unmarshallType.allAttributes()
+		in
+		  Sequence{1..result->size()
+		  }
+		  ->forAll(i |
+		    attribute->at(i)
+		    .type.conformsTo(result->at(i).type) and
+		    attribute->at(i).isOrdered =
+		    result->at(i).isOrdered and
+		    attribute->at(i)
+		    .compatibleWith(result->at(i)))
+
+	inv multiplicity_of_object:
+		object.is(1, 1)
+
+	inv object_type:
+		object.type.conformsTo(unmarshallType)
+
+	context uml::Actions::ValuePin
+
+	inv no_incoming_edges:
+		incoming->isEmpty()
+
+	inv compatible_type:
+		value.type.conformsTo(type)
+
+	context Action::_'context'() : uml::Classification::Classifier
+
+	body:
+	(let behavior: Behavior = self.containingBehavior() in
+if behavior=null then null
+else if behavior._'context' = null then behavior
+else behavior._'context'
+endif
+endif)
+
+	context Action::allActions() : Set(uml::Actions::Action)
+
+	body:
+	(self->asSet())
+
+	context Action::allOwnedNodes() : Set(uml::Activities::ActivityNode)
+
+	body:
+	(input.oclAsType(Pin)->asSet()->union(output->asSet()))
+
+	context Action::containingBehavior() : uml::CommonBehavior::Behavior
+
+	body:
+	(if inStructuredNode<>null then inStructuredNode.containingBehavior() 
+else if activity<>null then activity
+else interaction 
+endif
+endif
+)
+
+	context uml::Actions::Action::isLocallyReentrant : Boolean
+
+	init:
+	false
+
+	context uml::Actions::ExpansionRegion::mode : uml::Actions::ExpansionKind
+
+	init:
+	UML::Actions::ExpansionKind::iterative
+
+endpackage

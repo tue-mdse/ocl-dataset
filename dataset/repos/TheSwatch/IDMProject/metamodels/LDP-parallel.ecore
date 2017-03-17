@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="LDPparallel" nsURI="platform:/resource/projet-idm/metamodels/LDP-parallel.ecore"
+    nsPrefix="LDPparallel">
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="invocationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="settingDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="Processus">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="sequences" lowerBound="1"
+        upperBound="-1" eType="#//Sequence" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="portes" upperBound="-1"
+        eType="#//Porte" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="debut" lowerBound="1" eType="#//Debut"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="fin" lowerBound="1" eType="#//Fin"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="sequencesActives" upperBound="-1"
+        eType="#//Sequence"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ElementProcessus" abstract="true"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Sequence" eSuperTypes="#//ElementProcessus">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="suivant precedent"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="suivant" value="self.activites -> one( a : Activite | a.suivante.oclIsUndefined())"/>
+      <details key="precedent" value="self.activites -> one(a : Activite | a.precedente.oclIsUndefined())"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="activites" lowerBound="1"
+        upperBound="-1" eType="#//Activite" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="activiteCourante" eType="#//Activite"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="premiereActivite" lowerBound="1"
+        eType="#//Activite"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Activite">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="nomUnique pasDeCycle"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="nomUnique" value="Activite.allInstances()->one(a : Activite | a.name = self.name)"/>
+      <details key="pasDeCycle" value="self.pasDansSuivant(self)"/>
+    </eAnnotations>
+    <eOperations name="pasDansSuivant" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="body" value="if self.suivante.oclIsUndefined() then true &#xA;&#x9;&#x9;&#x9;      else not(self.suivante = act) and self.suivante.pasDansSuivant(act)&#xA;&#x9;&#x9;&#x9;      endif"/>
+      </eAnnotations>
+      <eParameters name="act" lowerBound="1" eType="#//Activite"/>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="suivante" eType="#//Activite"
+        eOpposite="#//Activite/precedente"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="precedente" eType="#//Activite"
+        eOpposite="#//Activite/suivante"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PseudoEtat" abstract="true" eSuperTypes="#//ElementProcessus">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="reference" lowerBound="1"
+        eType="#//ElementProcessus"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Debut" eSuperTypes="#//PseudoEtat"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Fin" eSuperTypes="#//PseudoEtat"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Porte" abstract="true" eSuperTypes="#//ElementProcessus"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Fourche" eSuperTypes="#//Porte">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="pred" lowerBound="1" eType="#//ElementProcessus"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="succ" lowerBound="1" upperBound="-1"
+        eType="#//ElementProcessus"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Jonction" eSuperTypes="#//Porte">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="pred" lowerBound="1" upperBound="-1"
+        eType="#//ElementProcessus"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="succ" lowerBound="1" eType="#//ElementProcessus"/>
+  </eClassifiers>
+</ecore:EPackage>

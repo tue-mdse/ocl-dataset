@@ -1,0 +1,83 @@
+/* @model{operators.ecore} */
+package operators
+
+-- variable must have a name
+context Variable inv nameNotNull:
+not(self.name = null)
+
+-- a referenced EOperation must not have any parameter
+context EOperationQualifier inv parameterLessOperation:
+self.operation.eParameters->size() = 0
+
+-- referenced type of TypeVariable must not be abstract
+context TypeVariable inv typeMustBeConcrete:
+not(self.type.abstract = true)
+
+-- referenced EReference must be a containment to create a child
+context CREATE inv containmentReference:
+self.parentCompositeReference.containment = true
+
+-- parent of a created element must be unique
+context CREATE inv uniqueParent:
+let 
+	variableReference : VariableReference = self.parent.oclAsType(VariableReference),
+	queryResult : EObjectReference = variableReference.referencedVariable.oclAsType(QueryVariable).queryResult.oclAsType(EObjectReference)
+in
+	if self.parent.oclIsKindOf(EObjectReference) then
+		self.parent.oclAsType(EObjectReference).elements->size() = 1
+	else
+		if self.parent.oclIsKindOf(VariableReference) then
+		 	if variableReference.referencedVariable.oclIsKindOf(QueryVariable) then
+		 		if variableReference.referencedVariable.oclAsType(QueryVariable).queryResult.oclIsKindOf(EObjectReference) then
+		 			queryResult.elements->size() = 1
+		 		else false
+		 		endif
+		 	else true
+		 	endif
+		else true
+		endif
+	endif
+
+-- reference owner must be unique
+context SET inv uniqueParent:
+let 
+	variableReference : VariableReference = self.referenceOwner.oclAsType(VariableReference),
+	queryResult : EObjectReference = variableReference.referencedVariable.oclAsType(QueryVariable).queryResult.oclAsType(EObjectReference)
+in
+	if self.referenceOwner.oclIsKindOf(EObjectReference) then
+		self.referenceOwner.oclAsType(EObjectReference).elements->size() = 1
+	else
+		if self.referenceOwner.oclIsKindOf(VariableReference) then
+		 	if variableReference.referencedVariable.oclIsKindOf(QueryVariable) then
+		 		if variableReference.referencedVariable.oclAsType(QueryVariable).queryResult.oclIsKindOf(EObjectReference) then
+		 			queryResult.elements->size() = 1
+		 		else false
+		 		endif
+		 	else true
+		 	endif
+		else true
+		endif
+	endif
+
+-- move target must be unique
+context MOVE inv uniqueParent:
+let 
+	variableReference : VariableReference = self.newParent.oclAsType(VariableReference),
+	queryResult : EObjectReference = variableReference.referencedVariable.oclAsType(QueryVariable).queryResult.oclAsType(EObjectReference)
+in
+	if self.newParent.oclIsKindOf(EObjectReference) then
+		self.newParent.oclAsType(EObjectReference).elements->size() = 1
+	else
+		if self.newParent.oclIsKindOf(VariableReference) then
+		 	if variableReference.referencedVariable.oclIsKindOf(QueryVariable) then
+		 		if variableReference.referencedVariable.oclAsType(QueryVariable).queryResult.oclIsKindOf(EObjectReference) then
+		 			queryResult.elements->size() = 1
+		 		else false
+		 		endif
+		 	else true
+		 	endif
+		else true
+		endif
+	endif
+
+endpackage 

@@ -1,0 +1,459 @@
+/*
+ *  TOPPERS/A-RTEGEN
+ *      Automotive Runtime Environment Generator
+ *
+ *  Copyright (C) 2013-2016 by Eiwa System Management, Inc., JAPAN
+ *
+ *  上記著作権者は，以下の(1)〜(4)の条件を満たす場合に限り，本ソフトウェ
+ *  ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
+ *  変・再配布（以下，利用と呼ぶ）することを無償で許諾する．
+ *  (1) 本ソフトウェアをソースコードの形で利用する場合には，上記の著作
+ *      権表示，この利用条件および下記の無保証規定が，そのままの形でソー
+ *      スコード中に含まれていること．
+ *  (2) 本ソフトウェアを，ライブラリ形式など，他のソフトウェア開発に使
+ *      用できる形で再配布する場合には，再配布に伴うドキュメント（利用
+ *      者マニュアルなど）に，上記の著作権表示，この利用条件および下記
+ *      の無保証規定を掲載すること．
+ *  (3) 本ソフトウェアを，機器に組み込むなど，他のソフトウェア開発に使
+ *      用できない形で再配布する場合には，次のいずれかの条件を満たすこ
+ *      と．
+ *    (a) 再配布に伴うドキュメント（利用者マニュアルなど）に，上記の著
+ *        作権表示，この利用条件および下記の無保証規定を掲載すること．
+ *    (b) 再配布の形態を，別に定める方法によって，TOPPERSプロジェクトに
+ *        報告すること．
+ *  (4) 本ソフトウェアの利用により直接的または間接的に生じるいかなる損
+ *      害からも，上記著作権者およびTOPPERSプロジェクトを免責すること．
+ *      また，本ソフトウェアのユーザまたはエンドユーザからのいかなる理
+ *      由に基づく請求からも，上記著作権者およびTOPPERSプロジェクトを
+ *      免責すること．
+ *
+ *  本ソフトウェアは，AUTOSAR（AUTomotive Open System ARchitecture）仕
+ *  様に基づいている．上記の許諾は，AUTOSARの知的財産権を許諾するもので
+ *  はない．AUTOSARは，AUTOSAR仕様に基づいたソフトウェアを商用目的で利
+ *  用する者に対して，AUTOSARパートナーになることを求めている．
+ *
+ *  本ソフトウェアは，無保証で提供されているものである．上記著作権者お
+ *  よびTOPPERSプロジェクトは，本ソフトウェアに関して，特定の使用目的
+ *  に対する適合性も含めて，いかなる保証も行わない．また，本ソフトウェ
+ *  アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
+ *  の責任を負わない．
+ * 
+ *  $Id: header.ocl 6220 2013-11-28 07:33:32Z t-inoue $
+ */
+
+import '../../../jp.ac.nagoya_u.is.nces.a_rte.model/model/ar4x.ecore#/'
+import '../../../jp.ac.nagoya_u.is.nces.a_rte.model/model/rte.ecore#/'
+import 'validation_common_instance.ocl'
+
+package ar4x::m2
+
+	/*
+	 * ExclusiveArea
+	 */
+
+	context ExclusiveArea
+	
+	inv nrte_sws_0104:
+ 	if self.parent.oclIsKindOf(SwcInternalBehavior) then
+		self.swcConfig->size() = 1
+	else
+		true
+	endif
+
+	/*
+	 * RteEvent
+	 */
+
+	context RteEvent
+
+	inv nrte_sws_0112:
+	self.config
+	->size() = 1
+
+	/*
+	 * CompositionSwComponentType
+	 */
+
+	context CompositionSwComponentType
+
+	inv nrte_sws_0115:
+	self.component
+	->size() > 0
+
+	/*
+	 * ISignalGroup
+	 */
+	context ISignalGroup
+
+	inv nrte_sws_0278:
+	self.systemSignalGroup.systemSignal->size() = self.iSignal->size()
+	and
+	self.systemSignalGroup.systemSignal->forAll(ss | self.iSignal->select(systemSignal = ss)->notEmpty())
+	and
+	self.iSignal->forAll(is | self.systemSignalGroup.systemSignal->select(ss | ss = is.systemSignal)->notEmpty())
+
+	/*
+	 * SenderReceiverToSignalMapping
+	 */
+	context SenderReceiverToSignalMapping
+
+	def: isUint8(type : ar4x::m2::ImplementationDataType) : Boolean =
+		if type.category = 'VALUE' and type.baseType.nativeDeclaration.oclIsUndefined() then
+			type.shortName = 'uint8'
+		else
+			type.baseType.nativeDeclaration = 'uint8'
+		endif
+
+	inv nrte_sws_0285:
+	not self.dataElementIref.targetDataPrototype.type.oclIsTypeOf(ar4x::m2::ImplementationDataType)
+	or
+	let type : ar4x::m2::ImplementationDataType = self.dataElementIref.targetDataPrototype.type.oclAsType(ar4x::m2::ImplementationDataType).getLeafImplementationDataType()
+	in
+	type.category = 'VALUE'
+		or (type.category = 'ARRAY'
+			and (type.subElement->at(1).swDataDefProps.baseType.nativeDeclaration = 'uint8'
+				or isUint8(type.subElement->at(1).swDataDefProps.implementationDataType)))
+
+	/*
+	 * SenderReceiverToSignalGroupMapping
+	 */
+	context SenderReceiverToSignalGroupMapping
+
+	def: getElementNum(orgType : ar4x::m2::ImplementationDataType) : Integer =
+		let type : ar4x::m2::ImplementationDataType = orgType.getLeafImplementationDataType()
+		in
+		if type.category = 'ARRAY' then
+			type.subElement->first().arraySize
+		else if type.category = 'UNION' then
+			1
+		else
+			type.subElement->size()
+		endif endif
+		
+	inv nrte_sws_0279:
+	self.dataElementIref.targetDataPrototype.type.oclIsTypeOf(ImplementationDataType)
+	and
+	self.signalGroup.systemSignal->size() = getElementNum(self.dataElementIref.targetDataPrototype.type.oclAsType(ImplementationDataType))
+
+	inv nrte_sws_0280:
+	if self.typeMapping.oclIsTypeOf(SenderRecArrayTypeMapping) then
+		let mapping : SenderRecArrayTypeMapping = self.typeMapping.oclAsType(SenderRecArrayTypeMapping)
+		in
+		self.signalGroup.systemSignal->forAll(ss | mapping.arrayElementMapping->select(systemSignal = ss)->notEmpty())
+		and
+		mapping.arrayElementMapping->forAll(map | self.signalGroup.systemSignal->select(ss | map.systemSignal = ss)->notEmpty())
+	else if self.typeMapping.oclIsTypeOf(SenderRecRecordTypeMapping) then
+		let mapping : SenderRecRecordTypeMapping = self.typeMapping.oclAsType(SenderRecRecordTypeMapping)
+		in
+		self.signalGroup.systemSignal->forAll(ss | mapping.recordElementMapping->select(systemSignal = ss)->notEmpty())
+		and
+		mapping.recordElementMapping->forAll(map | self.signalGroup.systemSignal->select(ss | map.systemSignal = ss)->notEmpty())
+	else
+		false
+	endif endif
+
+	inv nrte_sws_0281:
+	not self.dataElementIref.targetDataPrototype.type.oclIsTypeOf(ImplementationDataType)
+	or
+	let type : ar4x::m2::ImplementationDataType = self.dataElementIref.targetDataPrototype.type.oclAsType(ar4x::m2::ImplementationDataType).getLeafImplementationDataType()
+	in
+	if self.typeMapping.oclIsTypeOf(SenderRecArrayTypeMapping) then
+		let mapping : SenderRecArrayTypeMapping = self.typeMapping.oclAsType(SenderRecArrayTypeMapping)
+		in
+		mapping.arrayElementMapping->forAll(indexedArrayElement.implementationArrayElement = type.subElement->first())
+		and
+		mapping.arrayElementMapping->size() = type.subElement->first().arraySize
+		and
+		Sequence{1..(mapping.arrayElementMapping->size())}->iterate(i : Integer; flag : Boolean = true |
+			flag and mapping.arrayElementMapping->select(indexedArrayElement.index = i-1)->notEmpty())
+	else
+		true
+	endif
+
+	inv nrte_sws_0282:
+	not self.dataElementIref.targetDataPrototype.type.oclIsTypeOf(ImplementationDataType)
+	or
+	let type : ar4x::m2::ImplementationDataType = self.dataElementIref.targetDataPrototype.type.oclAsType(ar4x::m2::ImplementationDataType).getLeafImplementationDataType()
+	in
+	if self.typeMapping.oclIsTypeOf(SenderRecRecordTypeMapping) then
+		let mapping : SenderRecRecordTypeMapping = self.typeMapping.oclAsType(SenderRecRecordTypeMapping)
+		in
+		if type.category = 'STRUCTURE' then
+			type.subElement->forAll(te | mapping.recordElementMapping->select(implementationRecordElement = te)->notEmpty())
+			and
+			mapping.recordElementMapping->forAll(map | type.subElement->select(te | map.implementationRecordElement = te)->notEmpty())
+		else
+			mapping.recordElementMapping->forAll(map | type.subElement->select(te | map.implementationRecordElement = te)->notEmpty())
+		endif
+	else
+		true
+	endif
+
+	/*
+	 * AssemblySwConnector
+	 */
+	context AssemblySwConnector
+
+	def: ecucPartition : Set(ecuc::EcucPartition) = ecuc::EcucPartition.allInstances()
+
+	inv nrte_sws_0284:
+	not self.providerIref.targetPPort.providedInterface.oclIsTypeOf(ClientServerInterface)
+	or
+	ecucPartition->select(ecucPartitionSoftwareComponent->select(prototype = self.providerIref.contextComponent)->notEmpty())->isEmpty()
+	or
+	ecucPartition->select(ecucPartitionSoftwareComponent->select(prototype = self.requesterIref.contextComponent)->notEmpty())->isEmpty()
+	or
+	ecucPartition->select(ecucPartitionSoftwareComponent->select(prototype = self.providerIref.contextComponent)->notEmpty())->asSequence()->first()
+	= ecucPartition->select(ecucPartitionSoftwareComponent->select(prototype = self.requesterIref.contextComponent)->notEmpty())->asSequence()->first()
+	or
+	ecucPartition->select(ecucPartitionSoftwareComponent->select(prototype = self.providerIref.contextComponent)->notEmpty())->asSequence()->first().getOwnerCore()
+	= ecucPartition->select(ecucPartitionSoftwareComponent->select(prototype = self.requesterIref.contextComponent)->notEmpty())->asSequence()->first().getOwnerCore()
+
+	inv nrte_sws_0286:
+	not self.providerIref.targetPPort.providedInterface.oclIsTypeOf(ClientServerInterface)
+	or
+	ecucPartition->select(ecucPartitionSoftwareComponent->select(prototype = self.providerIref.contextComponent)->notEmpty())->isEmpty()
+	or
+	ecucPartition->select(ecucPartitionSoftwareComponent->select(prototype = self.requesterIref.contextComponent)->notEmpty())->isEmpty()
+	or
+	ecucPartition->select(ecucPartitionSoftwareComponent->select(prototype = self.providerIref.contextComponent)->notEmpty())->asSequence()->first()
+	= ecucPartition->select(ecucPartitionSoftwareComponent->select(prototype = self.requesterIref.contextComponent)->notEmpty())->asSequence()->first()
+	or
+	ecucPartition->select(ecucPartitionSoftwareComponent->select(prototype = self.providerIref.contextComponent)->notEmpty())->asSequence()->first().isTrusted()
+	
+endpackage
+
+package ar4x::instance
+
+	/*
+	 * SwComponentInstanceInSystem
+	 */
+	context SwComponentInstanceInSystem
+
+	inv nrte_sws_0136:
+	ar4x::ecuc::EcucPartitionCollection.allInstances()->isEmpty()
+	or self.ownerPartition->size() = 1
+
+	/*
+	 * VariableDataInstanceInComposition
+	 */
+	context VariableDataInstanceInComposition
+
+	def:
+	variableDataInstanceInCompositionEx : rte::ex::VariableDataInstanceInCompositionEx =
+	rte::ex::VariableDataInstanceInCompositionEx.allInstances()->any(true)
+
+	inv nrte_sws_0137:
+	self.prototype.isEventSemantics()
+	or not variableDataInstanceInCompositionEx.getInitValue(self).oclIsUndefined()
+
+	inv nrte_sws_0140:
+	not self.isRequired()
+	or not self.providerConnection->exists(provider.prototype.oclAsType(PVariableDataInstanceInSwc).isInvalidationEnabled())
+	or not self.prototype.getInvalidValue().oclIsUndefined()
+
+endpackage
+
+package ar4x::ecuc
+
+	/*
+	 * RteEventToTaskMapping
+	 */
+	context RteEventToTaskMapping
+	
+	def: timeValueEx : rte::ex::TimeValueEx = rte::ex::TimeValueEx.allInstances()->any(true)
+	def: expectedConfig : RteUsedOsActivation = self.rteUsedOsAlarm.expectedConfig->first()
+	def: activationOffset : m2::TimeValue = if self.rteActivationOffset.oclIsUndefined() then null else self.rteActivationOffset endif
+
+	inv nrte_sws_0107:
+	not self.rteEvent.oclIsKindOf(ar4x::m2::OperationInvokedEvent) or self.rteMappedToTask.oclIsUndefined()
+
+	inv nrte_sws_0109:
+	not self.rteEvent.oclIsKindOf(ar4x::m2::TimingEvent) or not self.rteMappedToTask.oclIsUndefined()
+
+	inv nrte_sws_0110:
+	not self.rteEvent.oclIsKindOf(ar4x::m2::TimingEvent) or not self.rteUsedOsAlarm.oclIsUndefined()
+
+	inv nrte_sws_0133:
+	not self.rteEvent.oclIsKindOf(m2::TimingEvent) or expectedConfig.oclIsUndefined()
+	or timeValueEx.isGreaterThanOrEquals(activationOffset, expectedConfig.rteExpectedActivationOffset)
+
+	inv nrte_sws_0134:
+	not self.rteEvent.oclIsKindOf(m2::TimingEvent) or expectedConfig.oclIsUndefined()
+	or timeValueEx.isMultiplesOf(timeValueEx.subtract(activationOffset, expectedConfig.rteExpectedActivationOffset), expectedConfig.rteExpectedTickDuration)
+
+	inv nrte_sws_0135:
+	not self.rteEvent.oclIsKindOf(m2::TimingEvent) or expectedConfig.oclIsUndefined()
+	or timeValueEx.isMultiplesOf(self.rteEvent.oclAsType(m2::TimingEvent).period, expectedConfig.rteExpectedTickDuration)
+
+	inv nrte_sws_0351:
+	self.rteMappedToTask.oclIsUndefined()
+	or
+	self.rteMappedToTask.ownerApplication->isEmpty()
+	or
+	self.rteMappedToTask.ownerApplication.osAppEcucPartition.ecucPartitionSoftwareComponent->exists(prototype.type = self.rteEvent.startOnEvent.parent.parent)
+
+	/* irte_sws_007解除時に要修正 */
+	inv nrte_sws_0354:
+	RteEventToTaskMapping.allInstances()->select(m | m.rteMappedToTask = self.rteMappedToTask and m.rteUsedOsEvent = self.rteUsedOsEvent)
+		->forAll(m | m.rteUsedOsAlarm = self.rteUsedOsAlarm)
+
+	/* irte_sws_007解除時に要修正 */
+	inv nrte_sws_0355:
+	self.rteEvent.oclIsKindOf(ar4x::m2::BackgroundEvent) or self.rteEvent.oclIsKindOf(ar4x::m2::TimingEvent)
+	or
+	not RteEventToTaskMapping.allInstances()->select(m | m.rteMappedToTask = self.rteMappedToTask and m.rteUsedOsEvent = self.rteUsedOsEvent)
+		->exists(m | m.rteEvent.oclIsKindOf(ar4x::m2::BackgroundEvent) or m.rteEvent.oclIsKindOf(ar4x::m2::TimingEvent))
+
+	inv nrte_sws_0356:
+	not self.rteEvent.oclIsKindOf(ar4x::m2::BackgroundEvent) or not self.rteMappedToTask.oclIsUndefined()
+
+	inv nrte_sws_0367:
+	not self.rteEvent.oclIsKindOf(ar4x::m2::DataReceivedEvent) or not self.rteMappedToTask.oclIsUndefined()
+
+	inv nrte_sws_0368:
+	not self.rteEvent.oclIsKindOf(ar4x::m2::DataReceiveErrorEvent) or not self.rteMappedToTask.oclIsUndefined()
+
+	inv nrte_sws_0369:
+	not self.rteEvent.oclIsKindOf(ar4x::m2::DataSendCompletedEvent) or not self.rteMappedToTask.oclIsUndefined()
+
+	inv rte_sws_7809:
+	self.rteUsedOsAlarm.oclIsUndefined() or (self.rteEvent.oclIsKindOf(ar4x::m2::TimingEvent) or self.rteEvent.oclIsKindOf(ar4x::m2::BackgroundEvent)) 
+
+	inv rte_sws_7181:
+	let osApps : Set(OsApplication) = OsApplication.allInstances()->select(osApplicationCoreAssignment = self.rteMappedToTask.ownerApplication->any(true).osApplicationCoreAssignment)
+	in
+	not self.rteEvent.oclIsKindOf(ar4x::m2::BackgroundEvent) or not self.rteUsedOsAlarm.oclIsUndefined()
+	or not osApps.osAppTask->exists(t | t <> self.rteMappedToTask and t.osTaskPriority <= self.rteMappedToTask.osTaskPriority)
+
+	/* irte_sws_007解除時に要修正 */
+	inv nrte_sws_0370:
+	not self.rteEvent.oclIsKindOf(ar4x::m2::DataSendCompletedEvent)
+	or
+	not RteEventToTaskMapping.allInstances()->select(m | (not m.rteMappedToTask.oclIsUndefined()) and m.rteMappedToTask = self.rteMappedToTask and m.rteUsedOsEvent = self.rteUsedOsEvent)
+		->exists(m | not m.rteEvent.oclIsKindOf(ar4x::m2::DataSendCompletedEvent)
+						or (m.rteEvent.oclIsKindOf(ar4x::m2::DataSendCompletedEvent) and m.rteEvent.oclAsType(ar4x::m2::DataSendCompletedEvent).eventSourceData <> self.rteEvent.oclAsType(ar4x::m2::DataSendCompletedEvent).eventSourceData))
+
+	/* irte_sws_007解除時に要修正 */
+	inv nrte_sws_0371:
+	not self.rteEvent.oclIsKindOf(ar4x::m2::DataReceivedEvent)
+	or
+	not RteEventToTaskMapping.allInstances()->select(m | (not m.rteMappedToTask.oclIsUndefined()) and m.rteMappedToTask = self.rteMappedToTask and m.rteUsedOsEvent = self.rteUsedOsEvent)
+		->exists(m | not m.rteEvent.oclIsKindOf(ar4x::m2::DataReceivedEvent)
+						or (m.rteEvent.oclIsKindOf(ar4x::m2::DataReceivedEvent) and m.rteEvent.oclAsType(ar4x::m2::DataReceivedEvent).data <> self.rteEvent.oclAsType(ar4x::m2::DataReceivedEvent).data))
+
+	/* irte_sws_007解除時に要修正 */
+	inv nrte_sws_0372:
+	not self.rteEvent.oclIsKindOf(ar4x::m2::DataReceiveErrorEvent)
+	or
+	not RteEventToTaskMapping.allInstances()->select(m | (not m.rteMappedToTask.oclIsUndefined()) and m.rteMappedToTask = self.rteMappedToTask and m.rteUsedOsEvent = self.rteUsedOsEvent)
+		->exists(m | not m.rteEvent.oclIsKindOf(ar4x::m2::DataReceiveErrorEvent)
+						or (m.rteEvent.oclIsKindOf(ar4x::m2::DataReceiveErrorEvent) and m.rteEvent.oclAsType(ar4x::m2::DataReceiveErrorEvent).data <> self.rteEvent.oclAsType(ar4x::m2::DataReceiveErrorEvent).data))
+
+	/*
+	 * RteExclusiveAreaImplementation
+	 */
+
+	context RteExclusiveAreaImplementation
+
+	inv nrte_sws_0105:
+	self.rteExclusiveAreaImplMechanism <> RteExclusiveAreaImplMechanismEnum::OS_RESOURCE or
+	not self.rteExclusiveAreaOsResource.oclIsUndefined()
+
+	inv nrte_sws_0106:
+	self.rteExclusiveAreaImplMechanism <> RteExclusiveAreaImplMechanismEnum::OS_SPINLOCK or
+	not self.rteExclusiveAreaOsSpinlock.oclIsUndefined()
+
+	inv nrte_sws_0141:
+	self.rteExclusiveAreaImplMechanism <> RteExclusiveAreaImplMechanismEnum::COOPERATIVE_RUNNABLE_PLACEMENT
+
+	/*
+	 * OsTask
+	 */
+
+	context OsTask
+
+	inv nrte_sws_0131:
+	self.mappedRteEvent->forAll(rteUsedOsEvent.oclIsUndefined())
+	or self.mappedRteEvent->forAll(not rteUsedOsEvent.oclIsUndefined())
+
+	inv nrte_sws_0147:
+	self.mappedRteEvent->size() < 2
+	or (self.mappedRteEvent->isUnique(rtePositionInTask) and self.mappedRteEvent->forAll(not rtePositionInTask.oclIsUndefined()))
+
+	inv nrte_sws_0154:
+	EcucPartitionCollection.allInstances()->isEmpty() or self.mappedRteEvent->isEmpty()
+	or self.ownerApplication->size() = 1 and self.ownerApplication.osAppEcucPartition->size() = 1
+
+	inv nrte_sws_0190:
+	self.mappedRteEvent->isEmpty() or self.mappedRteBswEvent->isEmpty()
+
+	/*
+	 * OsAlarm
+	 */
+	context OsAlarm
+
+	inv nrte_sws_0118:
+	not RteEventToTaskMapping.allInstances()->exists(rteUsedOsAlarm = self)
+	or self.expectedConfig->size() = 1
+
+	/*
+	 * ComSignal
+	 */
+	context ComSignal
+
+	def:
+	comSignalEx : rte::ex::ComSignalEx = rte::ex::ComSignalEx.allInstances()->any(true)
+
+	inv nrte_sws_0287:
+	self.comSystemTemplateSystemSignal.oclIsUndefined()
+	or
+	comSignalEx.getVariableDataInstanceInCompositions(self).prototype.prototype
+		->select(type.oclIsTypeOf(ar4x::m2::ImplementationDataType) and type.oclAsType(ar4x::m2::ImplementationDataType).category = 'DATA_REFERENCE')->isEmpty()
+
+	/*
+	 * ComSignalGroup
+	 */
+	context ComSignalGroup
+
+	inv nrte_sws_0277:
+	self.comSystemTemplateSignalGroup.oclIsUndefined()
+	or
+	(self.comSystemTemplateSignalGroup.iSignalGroup.iSignal->size() = self.comGroupSignal->size()
+		and
+		self.comSystemTemplateSignalGroup.iSignalGroup.iSignal->forAll(isg | self.comGroupSignal->select(comSystemTemplateSystemSignal.iSignal = isg)->notEmpty())
+		and
+		self.comGroupSignal->forAll(cgs | self.comSystemTemplateSignalGroup.iSignalGroup.iSignal->select(is | is = cgs.comSystemTemplateSystemSignal.iSignal)->notEmpty()))
+
+	/*
+	 * ComGroupSignal
+	 */
+	context ComGroupSignal
+
+	inv nrte_sws_0283:
+	self.comSystemTemplateSystemSignal.oclIsUndefined()
+	or
+	(self.comSystemTemplateSystemSignal.iSignalGroup.oclIsUndefined()
+		and
+		not self.comSystemTemplateSystemSignal.iSignal.oclIsUndefined())
+
+	/*
+	 * OsIocDataProperties
+	 */
+	context OsIocDataProperties
+
+	inv nrte_sws_0299:
+	self.osIocInitValue.oclIsUndefined() or self.osIocInitValue.size() < 1
+	or
+	let type : ar4x::m2::ImplementationDataType = self.osIocDataType.getLeafImplementationDataType()
+	in
+	if type.category = 'VALUE' or type.category = 'DATA_REFERENCE' then
+		true
+	else
+		let startIndex : Integer = self.osIocInitValue.indexOf('{'),
+			endIndex : Integer = self.osIocInitValue.lastIndexOf('}')
+		in
+		startIndex > 0 and endIndex > 0 and startIndex < endIndex
+	endif
+	
+endpackage

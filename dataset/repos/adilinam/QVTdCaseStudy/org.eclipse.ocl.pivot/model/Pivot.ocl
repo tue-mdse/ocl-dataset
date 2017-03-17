@@ -1,0 +1,444 @@
+import 'Pivot.ecore'
+
+include 'Types.ocl'
+
+package ocl
+
+context Constraint
+inv UniqueName: true -- _'context'.ownedRule->excluding(self)->forAll(name <> self.name or stereotype <> self.stereotype)
+
+context Element
+def: allOwnedElements() : Set(Element) =
+	self->closure(oclContents()->selectByKind(Element))
+
+--FIXME oclContainer() suspect on DomainElements
+--def: owner : Element = oclContainer()
+	/**
+	 * Elements that must be owned must have an owner.
+	 */
+--	inv has_owner:
+--		mustBeOwned() implies owner->notEmpty() 
+	/**
+	 * An element may not directly or indirectly own itself.
+	 */
+--	inv not_own_self:
+--		not allOwnedElements()->includes(self)
+
+--	def: allOwnedElements() : Set(Element) =
+--	ownedElement->union(ownedElement->collect(e | e.allOwnedElements()))->asSet()
+
+--	def: mustBeOwned() : Boolean = true
+
+--context ParameterableElement
+--def: isCompatibleWith(p : ParameterableElement) : Boolean =
+--p.oclIsKindOf(self.oclType())
+
+context Type
+def: flattenedType() : Type[?] = self
+
+--context CollectionType
+--def: flattenedType() : Type = elementType.flattenedType()
+
+context Property
+def: isAttribute(p : Property) : Boolean =
+--Type.allInstances()->exists(c| c.ownedAttribute->includes(p))
+let container : ocl::OclElement = oclContainer() in container.oclIsKindOf(Class) and container.oclAsType(Class).ownedProperties->includes(self)
+
+--inv DerivedIsInitialised: isDerived implies ownedRule->one(stereotype = 'derivation') or ownedRule->one(stereotype = 'initial')
+
+--inv CompatibleInitialiser: isDerived implies defaultExpression <> null
+
+inv CompatibleDefaultExpression: ownedExpression <> null and ownedExpression.oclAsType(ExpressionInOCL).ownedBody <> null implies CompatibleBody(ownedExpression)
+
+context Operation
+inv CompatibleReturn: bodyExpression <> null and bodyExpression.oclAsType(ExpressionInOCL).ownedBody <> null implies CompatibleBody(bodyExpression)
+inv LoadableImplementation:
+	true
+inv UniquePreconditionName: ownedPreconditions->isUnique(p | p?.name)
+inv UniquePostconditionName: ownedPostconditions->isUnique(p | p?.name)
+
+context Feature
+inv TypeIsNotInvalid : type <> OclInvalid
+
+context VariableDeclaration
+inv TypeIsNotInvalid : type <> OclInvalid
+
+context CollectionLiteralPart
+inv TypeIsNotInvalid : type <> OclInvalid
+
+context ShadowPart
+inv TypeIsNotInvalid : type <> OclInvalid
+
+context CallExp
+inv TypeIsNotInvalid : type <> OclInvalid
+
+context IfExp
+inv TypeIsNotInvalid : type <> OclInvalid
+
+context LetExp
+inv TypeIsNotInvalid : type <> OclInvalid
+
+context ShadowExp
+inv TypeIsNotInvalid : type <> OclInvalid
+
+context StateExp
+inv TypeIsNotInvalid : type <> OclInvalid
+
+context VariableExp
+inv TypeIsNotInvalid : type <> OclInvalid
+
+context Class
+inv UniqueInvariantName: ownedInvariants->isUnique(p | p?.name)
+
+context Variable
+inv CompatibleInitialiserType: ownedInit <> null implies ownedInit?.type?.conformsTo(type)
+
+context IteratorExp
+inv ClosureBodyTypeIsConformanttoIteratorType:
+	true
+inv SortedByIteratorTypeIsComparable:
+	true
+
+context TypedElement
+def: CompatibleBody(bodySpecification : ValueSpecification[1]) : Boolean[1] =
+	bodySpecification.type?.conformsTo(self.type)
+
+--def: makeParameter() : Parameter = Parameter{name='name'}
+
+---ExpressionWFRs.ocl-----
+
+--context PropertyCallExp
+/** The type of the call expression is the type of the referred property. */
+--inv TypeIsReferredPropertyType: type = referredProperty.type
+
+context BooleanLiteralExp
+/** The type of a boolean Literal expression is the type Boolean. */
+inv TypeIsBoolean: self.type = Boolean
+
+context CollectionLiteralExp
+/** 'Collection' is an abstract class on the M1 level and has no M0 instances. */
+inv CollectionKindIsConcrete: kind <> CollectionKind::Collection
+
+context CollectionLiteralExp
+/** The type of a collection literal expression is determined by the collection kind selection and the common
+supertype of all elements. Note that the definition below defines only an upper bound on the elementType. The usage of
+the CollectionLiteralExp defines a lower bound. If the elementType is not explicitly specified, the elementType must be
+chosen to ensure the well-formedness of the elements of the CollectionLiteralExp and the usage of the
+CollectionLiteralExp.
+
+For instance in
+acc : Set(Real) = Set{1}->excluding(-1)
+Set{1} is well formed for any type Set(T) where T ≤ UnlimitedNatural. Well-formedness of the excluding operation call
+requires T ≤ Integer, and well-formedness of the initializer requires Real ≤ T. The overall expression is therefore only
+well-formed if Real ≤ T ≤ Integer. Either Set(Real) or Set(Integer) are well-formed. The most general type, Set(Real), is
+recommended since it minimizes type conversions and can often be easily deduced by considering the result type.
+*/
+inv SetKindIsSet: kind = CollectionKind::Set implies type.oclIsKindOf(SetType)
+inv OrderedSetKindIsOrderedSet: kind = CollectionKind::OrderedSet implies type.oclIsKindOf(OrderedSetType)
+inv SequenceKindIsSequence: kind = CollectionKind::Sequence implies type.oclIsKindOf(SequenceType)
+inv BagKindIsBag: kind = CollectionKind::Bag implies type.oclIsKindOf(BagType)
+--inv ElementTypeIsCommonElementType: let elementType : Type = part->iterate (p; c : Classifier = OclVoid | c.commonSuperType (p.type))
+--in elementType.conformsTo(type.oclAsType(CollectionType).elementType)
+
+/* CollectionLiteralPart
+No additional well-formedness rules. */
+
+context CollectionItem
+/** The type of a CollectionItem is the type of the item expression. */
+inv TypeIsItemType: type = ownedItem.type
+
+--context CollectionRange
+/** The type of a CollectionRange is the common supertype of the expressions taking part in the range. */
+--inv TypeIsCommonType: type = first.type.commonSuperType (last.type)
+
+context EnumLiteralExp
+/** The type of an enum Literal expression is the type of the referred literal. */
+inv TypeIsEnumerationType: self.type = referredLiteral?.owningEnumeration
+
+context IfExp
+/** The type of the condition of an if expression must be Boolean. */
+inv ConditionTypeIsBoolean: self.ownedCondition.type = Boolean
+
+/* The type of the if expression is the most common supertype of the else and then expressions. */
+--context IfExp
+--inv TypeIsCommonType: self.type = thenExpression.type.commonSuperType(elseExpression.type)
+
+context IntegerLiteralExp
+/** The type of an integer Literal expression is the type Integer. */
+inv TypeIsInteger: self.type = Integer
+
+context IteratorExp
+/** There is exactly one iterator. */
+inv AnyHasOneIterator: name = 'any' implies ownedIterators->size() = 1
+
+context IteratorExp
+/** The type is the same as the source element type */
+inv AnyTypeIsSourceElementType: name = 'any' implies type = ownedSource?.type?.oclAsType(CollectionType).elementType
+
+context IteratorExp
+/** The type of the body must be Boolean. */
+inv AnyBodyTypeIsBoolean: name = 'any' implies ownedBody.type = 'Boolean'
+
+context IteratorExp
+/** There is exactly one iterator. */ 
+inv ClosureHasOneIterator: name = 'closure' implies ownedIterators->size() = 1
+
+context IteratorExp
+/** The collection type for an OrderedSet or a Sequence source type is OrderedSet.
+ * For any other source the collection type is Set. */
+inv ClosureTypeIsUniqueCollection: name = 'closure' implies
+if ownedSource?.type?.oclIsKindOf(SequenceType) or ownedSource?.type.oclIsKindOf(OrderedSetType) then
+type.oclIsKindOf(OrderedSetType)
+else
+type.oclIsKindOf(SetType)
+endif
+
+context IteratorExp
+/** The source element type is the same as type of the body elements or element. */
+inv ClosureSourceElementTypeIsBodyElementType: name = 'closure' implies
+ownedSource?.type.oclAsType(CollectionType).elementType =
+if ownedBody.type.oclIsKindOf(CollectionType)
+then ownedBody.type.oclAsType(CollectionType).elementType
+else ownedBody.type
+endif
+
+context IteratorExp
+/** The element type is the same as the source element type. */
+inv ClosureElementTypeIsSourceElementType: name = 'closure' implies
+type.oclAsType(CollectionType).elementType
+= ownedSource?.type.oclAsType(CollectionType).elementType
+
+context IteratorExp
+/* The collection type for an OrderedSet or a Sequence type is a Sequence,
+ * the result type for any other collection type is a Bag.
+*/
+inv CollectTypeIsUnordered: name = 'collect' implies
+if ownedSource?.type.oclIsKindOf(SequenceType) or ownedSource?.type.oclIsKindOf(OrderedSetType) then
+type.oclIsKindOf(SequenceType)
+else
+type.oclIsKindOf(BagType)
+endif
+
+context IteratorExp
+/** The element type is the flattened type of the body elements. */
+inv CollectElementTypeIsFlattenedBodyType: name = 'collect' implies
+type.oclAsType(CollectionType).elementType = ownedBody.type.flattenedType()
+
+context IteratorExp
+/** The collection type for an OrderedSet or a Sequence type is a Sequence, the result type for any other collection type is Bag. */
+inv SortedByIsOrderedIfSourceIsOrdered: name = 'sortedBy' implies
+if ownedSource?.type.oclIsKindOf(SequenceType) or ownedSource?.type.oclIsKindOf(BagType) then
+type.oclIsKindOf(SequenceType)
+else
+type.oclIsKindOf(OrderedSetType)
+endif
+
+context IteratorExp
+/** The element type is the type of the body elements. */
+inv SortedByElementTypeIsSourceElementType: name = 'sortedBy' implies
+type.oclAsType(CollectionType).elementType =
+ownedBody.type.oclAsType(CollectionType).elementType
+
+context IterateExp
+/** The type of the iterate is the type of the result variable. */
+inv TypeIsResultType: type = ownedResult?.type
+
+context IterateExp
+/** The type of the body expression must conform to the declared type of the result variable. */
+inv BodyTypeConformsToResultType: ownedBody.type.conformsTo(ownedResult?.type)
+
+context IterateExp
+/** A result variable must have an init expression. */
+inv OneInitializer: self.ownedResult?.ownedInit->size() = 1
+
+/*------------- unescaped in */
+context LetExp
+/** The type of a Let expression is the type of the in expression. */
+inv TypeIsInType: type = ownedIn.type
+
+/** LiteralExp
+No additional well-formedness rules. */
+
+context LoopExp
+/** The type of the source expression must be a collection. */
+inv SourceIsCollection: ownedSource?.type.oclIsKindOf(CollectionType)
+
+context LoopExp
+/** The loop variable of an iterator expression has no init expression. */
+inv NoInitializers: self.ownedIterators->forAll(p | p?.ownedInit->isEmpty())
+
+context IteratorExp
+/** The type of each iterator variable must be the type of the elements of the source collection. */
+inv IteratorTypeIsSourceElementType: self.ownedIterators->forAll(p | ownedSource?.type.oclAsType(CollectionType).elementType.conformsTo(p?.type))
+/** Safe navigation is not necessary when the source collection is null-free. */
+inv SafeSourceCanBeNull: isSafe implies not ownedSource?.type.oclAsType(CollectionType).isNullFree
+/** Safe navigation is not necessary when an iterator can be null. */
+inv SafeIteratorIsRequired: isSafe implies ownedIterators?->forAll(isRequired)
+/** Safe navigation is necessary when an iterator cannot be null and the source collection is not null-free. */
+inv UnsafeSourceCanNotBeNull: (not isSafe and ownedIterators?->exists(isRequired)) implies ownedSource?.type.oclAsType(CollectionType).isNullFree
+
+context IterateExp
+/** Safe navigation is not necessary when the source collection is null-free. */
+inv SafeSourceCanBeNull: isSafe implies not ownedSource?.type.oclAsType(CollectionType).isNullFree
+/** Safe navigation is not necessary when an iterator can be null. */
+inv SafeIteratorIsRequired: isSafe implies ownedIterators?->forAll(isRequired)
+/** Safe navigation is necessary when an iterator cannot be null and the source collection is not null-free. */
+inv UnsafeSourceCanNotBeNull: (not isSafe and ownedIterators?->exists(isRequired)) implies ownedSource?.type.oclAsType(CollectionType).isNullFree
+
+/** FeatureCallExp
+No additional well-formedness rules. */
+
+/** NumericLiteralExp
+No additional well-formedness rules. */
+
+/** OCLExpression
+No additional well-formedness rules. */
+--context MessageExp
+/** If the message is an operation call action, the arguments must conform to the parameters of the operation. */
+--inv: calledOperation->notEmpty() implies
+--argument->forAll (a | a.type.conformsTo
+--(self.calledOperation.operation.ownedParameter->
+--select( kind = ParameterDirectionKind::_'in' )
+--->at (argument->indexOf (a)).type))
+
+--context MessageExp
+/** If the message is a send signal action, the arguments must conform to the attributes of the signal. */
+--inv: sentSignal->notEmpty() implies
+--argument->forAll (a | a.type.conformsTo
+--(self.sentSignal.signal.ownedAttribute
+--->at (argument->indexOf (a)).type))
+
+--context MessageExp
+/** If the message is a call operation action, the operation must be an operation of the type of the target expression. */
+--inv: calledOperation->notEmpty() implies
+--target.type.allOperations()->includes(calledOperation.operation)
+
+context MessageExp
+/** An OCL message has either a called operation or a sent signal. */
+inv OneCallOrOneSend: ownedCalledOperation->size() + ownedSentSignal->size() = 1
+
+context MessageExp
+/** The target of an OCL message cannot be a collection. */
+inv TargetIsNotACollection: not ownedTarget.type.oclIsKindOf(CollectionType)
+
+/*------------- spelling: arguments */
+context OperationCallExp
+/** All the arguments must conform to the parameters of the referred operation. */
+inv ArgumentTypeIsConformant:
+	let operation : Operation = self.referredOperation in
+	let parameters : OrderedSet(Parameter) = operation?.ownedParameters in
+	let selfType : Type = operation?.owningClass in
+	Sequence{1..ownedArguments->size()}->forAll (i | 
+		let argument : OCLExpression = ownedArguments->at(i) in
+		let parameter : Parameter = parameters->at(i) in
+		let parameterType : Type = parameter?.type in
+		let requiredType : Type = if parameter?.isTypeof then Class else parameterType.specializeIn(self, selfType) endif in
+		argument?.type.conformsTo(requiredType))
+
+/*------------- spelling: arguments */
+context OperationCallExp
+/** There must be exactly as many arguments as the referred operation has parameters. */
+inv ArgumentCount: ownedArguments->size() = referredOperation?.ownedParameters->size()
+/** Safe navigation is not necessary when the source cannot be null. */
+inv SafeSourceCanBeNull: (ownedSource <> null) and isSafe implies not ownedSource?.isRequired
+/** Safe navigation is necessary when the source could be null. -- unless infix with an OclVoid overload */
+--inv UnsafeSourceCanNotBeNull: (ownedSource <> null) and not isSafe implies ownedSource?.isRequired
+
+--inv StaticSourceIsNull: referredOperation.isStatic implies source = null
+
+--inv NonStaticSourceIsConformant: let operation : Operation = self.referredOperation in
+--	not operation.isStatic implies source <> null --.type.conformsTo(operation.owningClass.specializeIn(self, operation.owningClass))
+
+
+--context OperationCallExp
+/** An additional attribute refParams lists all parameters of the referred operation except the return and out parameter(s). */
+--def: refParams: Sequence(Parameter) = referredOperation.ownedParameter->select (p |
+--p.kind <> ParameterDirectionKind::return or
+--p.kind <> ParameterDirectionKind::out)
+
+context PropertyCallExp
+def: getSpecializedReferredPropertyOwningType() : Class = referredProperty?.owningClass -- extended in Java code
+def: getSpecializedReferredPropertyType() : Class = referredProperty?.type.oclAsType(Class) -- extended in Java code
+/** The type of the source conforms to the owning type of the property. */
+inv NonStaticSourceTypeIsConformant: not referredProperty?.isStatic implies 
+	ownedSource?.type.conformsTo(getSpecializedReferredPropertyOwningType())
+/** The type of the call expression is the type of the referred property. */
+inv CompatibleResultType: type = getSpecializedReferredPropertyType()
+/** Safe navigation is not necessary when the source cannot be null. */
+inv SafeSourceCanBeNull: (ownedSource <> null) and isSafe implies not ownedSource?.isRequired
+/** Safe navigation is necessary when the source could be null. */
+inv UnsafeSourceCanNotBeNull: (ownedSource <> null) and not isSafe implies ownedSource?.isRequired
+
+--inv StaticSourceIsNull: referredProperty.isStatic implies source.oclAsType(Type).conformsTo(getSpecializedReferredPropertyOwningType())
+
+context Element
+def: getValue(stereotype : Type, propertyName : String) : Element[?] = null
+
+/*
+context CompleteModel
+def: allRootPackageURIs = partialRoots.ownedPackages.completeURI->asSet()
+inv: packageURI2completeURI.keys = allRootPackageURIs
+inv: completeURI2packageURIs.keys->forAll(c | completeURI2packageURIs[c]->forAll(p | packageURI2completeURI[p] = c))
+inv: packageURI2completeURI.keys->forAll(p | completeURI2packageURIs[packageURI2completeURI[p]]->includes(p))
+
+
+
+
+
+
+context CompleteModel
+def: allRootPackages : Set(Package) = partialRoots.ownedPackages->asSet()		// no duplicates anyway
+def: allRootPackageCompleteURIs = allRootPackages.completeURI->asSet()
+inv: name2rootCompletePackage.keys = allRootPackageURIs
+inv: name2rootCompletePackage.values = allRootPackages
+inv: allRootPackageCompleteURIs->forAll(n | name2rootCompletePackage[n].partialPackages = allRootPackages->select(completeURI = n))
+
+
+
+
+
+
+context CompletePackage
+def: allNestedPackages : Set(Package) = partialPackages.ownedPackages->asSet()		// no duplicates anyway
+def: allNestedPackageNames = allNestedPackages.name->asSet()
+inv: name2nestedCompletePackage.keys = allNestedPackageNames
+inv: name2nestedCompletePackage.values = allNestedPackages
+inv: allNestedPackageNames->forAll(n | name2nestedCompletePackage[n].partialPackages = allNestedPackages->select(name = n))
+
+
+
+
+
+
+context NestedCompletePackage
+def: allPackages : Set(Package) = owningCompletePackage.partialPackages.ownedPackages->asSet()		// no duplicates anyway
+def: allPackageNames = allPackages.name->asSet()
+inv: name2completePackage.keys = allPackageNames
+inv: name2completePackage.values = allPackages
+inv: allPackageNames->forAll(n | name2completePackage[n].partialPackages = allPackages->select(name = n))
+
+
+
+
+
+
+context CompleteClass
+def: allClasses : Set(Class) = owningCompletePackage.partialPackages.ownedClasses->asSet()		// no duplicates anyway
+def: allClassNames = allClasses.name->asSet()
+inv: name2completeClass.keys = allClassNames
+inv: name2completeClass.values = allClasses
+inv: allClassNames->forAll(n | name2completeClass[n].partialClasses = allClasses->select(name = n))
+
+
+
+
+
+
+context CompleteModel
+def: allClasses : Set(Class) = partialRoots->closure(ownedPackages).ownedClasses
+inv: allClasses->forAll(c | class2completeClass[c].partialClasses->includes(c))
+inv: allClasses->size() = class2completeClass.values.partialClasses->size()
+inv: allClasses->size() = class2completeClass.values.partialClasses->asSet()->size()
+*/
+
+endpackage

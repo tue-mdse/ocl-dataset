@@ -1,0 +1,31 @@
+import ecore : 'http://www.eclipse.org/emf/2002/Ecore#/'
+import 'gemRBAC.ecore'
+package gemRBAC
+
+
+context Permission
+
+inv DayOfWeekHourPermAssign:
+if  self.idPermission = 'p1'  then
+let  u : RBACUtility = RBACUtility.allInstances() ->any(true),
+     day:RelativeTimePoint =  u.getDayOfWeek(),
+	 r: Role = Role.allInstances()
+	     ->select(m : Role | m.idRole = 'r1')-> any(true) ,
+temporalContext: Set(RBACContext) = self.permissionContextAssignment-> select(c|c.oclIsTypeOf(TemporalContext)), 
+ timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet(),
+ days: Set (ComposedRelativeTE) = timeE -> select (t: ComposedRelativeTE| (t.oclIsTypeOf(RelativeTimeInterval) and t.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(DayOfWeek) and
+       	day.isContained(t.oclAsType(RelativeTimeInterval)) ) or t.oclIsTypeOf(DayOfWeek) and  day.equalTo (t.oclAsType(DayOfWeek)))
+ in	 
+ 
+    if days -> exists (t| t.checkHours(u)= true) then
+       self.roles -> includes (r)
+    else
+       self.roles -> excludes (r)  
+ 
+  endif
+   else
+   true
+   endif
+    
+
+endpackage 

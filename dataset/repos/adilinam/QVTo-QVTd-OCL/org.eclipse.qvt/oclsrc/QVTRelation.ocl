@@ -1,0 +1,661 @@
+/*
+--*******************************************************************************
+-- Copyright (c) 2008,2009 Willink Transformations and others.
+-- All rights reserved. This program and the accompanying materials
+-- are made available under the terms of the Eclipse Public License v1.0
+-- which accompanies this distribution, and is available at
+-- http://www.eclipse.org/legal/epl-v10.html
+-- 
+-- Contributors:
+-- E.D.Willink - initial API and implementation
+--*******************************************************************************
+*/
+-----------------------------------------------------------------------
+-- EMOF
+-----------------------------------------------------------------------
+package EMOF
+
+context Class
+--def: allOwnedAttributes : Set(Property) =
+--    superClass.allOwnedAttributes->asSet()->union(ownedAttribute)
+--def: allSuperClasses : Set(Class) =
+--    superClass.allSuperClasses->asSet()->union(superClass)
+def: isSuperClassOf(c : Class) : Boolean =
+    self = c or superClass->exists(isSuperClassOf(c))
+def: definesProperty(p : Property) : Boolean =
+    p.class.isSuperClassOf(self)
+def: definesOppositeProperty(p : Property) : Boolean =
+    p.type.oclIsKindOf(Class) and p.type.oclAsType(Class).isSuperClassOf(self)
+    
+context Element
+def: ancestors : OrderedSet(Element) =
+    if container() <> null
+    then container().oclAsType(Element).ancestors->append(self)
+    else self->asOrderedSet()
+    endif
+def: hasAncestor(e : Element) : Boolean =
+    let parent : Element = container() in
+    (parent = e)
+    or ((parent <> null) and parent.hasAncestor(e))
+def: children : Set(Element) =
+    Element.allInstances()->select(e | e.ancestors->includes(self))   
+def: allVariableExps : Set(EssentialOCL::VariableExp) =
+    children->select(oclIsKindOf(EssentialOCL::VariableExp))
+        .oclAsType(EssentialOCL::VariableExp)->asSet()
+def: allReferencedVariables : Set(EssentialOCL::Variable) =
+    allVariableExps.referredVariable->asSet()
+def: allOclExpressions : Set(EssentialOCL::OclExpression) =
+    children->select(oclIsKindOf(EssentialOCL::OclExpression))
+        .oclAsType(EssentialOCL::OclExpression)->asSet()
+def: allCollectionTypes : Set(EssentialOCL::CollectionType) =
+    allOclExpressions.type->select(oclIsKindOf(EssentialOCL::CollectionType))
+        .oclAsType(EssentialOCL::CollectionType)->asSet()
+def: locallyDefined(v : EssentialOCL::Variable) : Boolean =
+    if (oclIsKindOf(EssentialOCL::LetExp)
+        and (oclAsType(EssentialOCL::LetExp).variable = v))
+    or (oclIsKindOf(EssentialOCL::IterateExp)
+        and ((oclAsType(EssentialOCL::IterateExp).result = v) 
+             or oclAsType(EssentialOCL::IterateExp).iterator->includes(v)))
+    or (oclIsKindOf(EssentialOCL::LoopExp)
+        and oclAsType(EssentialOCL::LoopExp).iterator->includes(v))
+    then true
+    else let parent : EMOF::Element = container() in
+        if parent.oclIsKindOf(EssentialOCL::OclExpression)
+        or parent.oclIsKindOf(EssentialOCL::CollectionLiteralPart)
+        or parent.oclIsKindOf(EssentialOCL::TupleLiteralPart)
+        then parent.locallyDefined(v)
+        else false
+        endif
+    endif
+--def: properAncestors : OrderedSet(Element)
+----    = ancestors->excluding(self)
+--    = ancestors->excluding(self)->asOrderedSet()   
+--def: properChildren : Set(Element)
+--    = children->excluding(self)
+    
+context Type
+def: transitiveElementType() : Type =
+    if oclIsKindOf(EssentialOCL::CollectionType)
+    then oclAsType(EssentialOCL::CollectionType).elementType.transitiveElementType()
+    else self
+    endif
+def: isPredefinedType() : Boolean =
+    (self = Boolean)
+    or (self = Integer)
+    or (self = Real)
+    or (self = String)
+    or (self = UnlimitedNatural)
+def: assignableFrom(t : Type) : Boolean = -- FIXME Set assignments
+    if oclIsKindOf(EssentialOCL::CollectionType)
+        and t.oclIsKindOf(EssentialOCL::CollectionType)
+    then let et : Type = oclAsType(EssentialOCL::CollectionType).elementType in
+        et = OclVoid
+        or et.assignableFrom(t.oclAsType(EssentialOCL::CollectionType).elementType)
+    else t.getMetaClass().isSuperClassOf(getMetaClass())
+    endif   
+def: matchableWith(t : Type) : Boolean =
+    self.assignableFrom(t) or t.assignableFrom(self)   
+
+context Property
+def: collectionKind : EssentialOCL::CollectionKind =
+    if upper <= 1
+    then null
+    else if isUnique
+        then
+            if isOrdered
+            then EssentialOCL::CollectionKind::OrderedSet
+            else EssentialOCL::CollectionKind::Set
+            endif
+        else
+            if isOrdered
+            then EssentialOCL::CollectionKind::Sequence
+            else EssentialOCL::CollectionKind::Bag
+            endif 
+        endif
+    endif
+
+endpackage
+
+-----------------------------------------------------------------------
+-- EssentialOCL
+-----------------------------------------------------------------------
+package EssentialOCL
+    
+context Variable
+def: isSpecialVariable : Boolean =
+    name = '_'
+def: isLocalVariable : Boolean =
+    container().locallyDefined(self)
+
+context OclExpression
+--def: allReferencedTypes : Set(EMOF::Type)
+--    = allOclExpressions.type->asSet()
+--def: allReferencedCollectionTypes : Set(CollectionType)
+--    = allOclExpressions.type->select(oclIsKindOf(CollectionType)).oclAsType(CollectionType)->asSet()
+def: allReferencedElementTypes : Set(EMOF::Type) =
+    allOclExpressions.type.transitiveElementType()->asSet()
+--def: nonExpressionParent : EMOF::Element
+--    = if container().oclIsKindOf(OclExpression)
+--    then container().oclAsType(OclExpression).nonExpressionParent
+--    else container()
+--    endif
+def: allVariables : Set(EssentialOCL::Variable) =
+    let childVariables : Set(EssentialOCL::Variable) =
+        children->select(oclIsKindOf(EssentialOCL::Variable))
+        .oclAsType(EssentialOCL::Variable)->asSet() in
+    if oclIsKindOf(EssentialOCL::Variable)
+    then childVariables->including(oclAsType(EssentialOCL::Variable))
+    else childVariables
+    endif
+def: allLocalVariables : Set(EssentialOCL::Variable) =
+    allVariables->select(isLocalVariable)
+def: allExternalVariables : Set(EssentialOCL::Variable) =
+    allVariables->select(not isLocalVariable)
+def: isSpecialVariableReference : Boolean =
+    oclIsKindOf(EssentialOCL::VariableExp)
+    and let v : EssentialOCL::Variable
+        = oclAsType(EssentialOCL::VariableExp).referredVariable in
+    (v <> null) and v.isSpecialVariable
+    
+context VariableExp
+inv UnderscoreOnlyUsedAsCollectionTemplateExpMemberOrRest:
+    name = '_'
+    implies container().oclIsKindOf(QVTTemplate::CollectionTemplateExp)
+    and let cte : QVTTemplate::CollectionTemplateExp
+        = container().oclAsType(QVTTemplate::CollectionTemplateExp) in
+        (cte.rest = self)
+        or (cte.member->exists(referredVariable = self))
+    
+context CollectionType
+def: kind() : CollectionKind =
+    if oclIsKindOf(BagType) then CollectionKind::Bag
+    else if oclIsKindOf(OrderedSetType) then CollectionKind::OrderedSet
+    else if oclIsKindOf(SequenceType) then CollectionKind::Sequence
+    else if oclIsKindOf(SetType) then CollectionKind::Set
+    else CollectionKind::Collection
+    endif endif endif endif
+
+endpackage
+
+-----------------------------------------------------------------------
+-- QVTBase
+-----------------------------------------------------------------------
+package QVTBase
+
+context TypedModel
+def: allDependsOn : Set(TypedModel) =
+    if dependsOn <> null
+    then dependsOn.allDependsOn->asSet()->union(dependsOn)
+    else Set{}
+    endif
+def: declaredPackages : Set(EMOF::Package) =
+    dependsOn.declaredPackages->asSet()->union(usedPackage)
+def: declaresType(t : EMOF::Type) : Boolean =
+    t.isPredefinedType()
+    or declaredPackages->includes(t._package)
+def: equivalentTo(t : TypedModel) : Boolean =
+    declaredPackages = t.declaredPackages
+inv DependsOnIsAcyclic :
+    allDependsOn->excludes(self)
+inv DependsOnAreModelParameters :
+    transformation.modelParameter->includesAll(dependsOn)
+
+context Transformation
+def: allExtends : Set(Transformation) =
+    if extends <> null
+    then extends.allExtends->including(extends)
+    else Set{}
+    endif
+def: declaredPackages : Set(EMOF::Package) =
+    modelParameter.declaredPackages->asSet()
+def: definesRule(r : Rule) : Boolean =
+    rule->includes(r) or extends->exists(definesRule(r)) 
+def: declaresType(t : EMOF::Type) : Boolean =
+    t.isPredefinedType() or declaredPackages->includes(t._package)
+def: definesModel(m : TypedModel) : Boolean =
+    modelParameter->includes(m)
+def: modelParameter(requiredName : String) : TypedModel =
+    modelParameter->any(name = requiredName)
+inv ExtendsIsAcyclic :
+    allExtends->excludes(self)
+inv ModelParameterNamesAreCompatibleWithExtension :
+    extends <> null
+    implies modelParameter.name = extends.modelParameter.name
+inv EveryModelParameterUsedPackagesIsCompatibleWithExtension :
+    extends <> null
+    implies modelParameter->forAll(m |
+        m.declaredPackages = extends.modelParameter(m.name).declaredPackages)
+inv ModelParameterNamesAreUnique :
+    modelParameter->isUnique(name)
+inv RuleNamesAreUnique :
+    rule->isUnique(name)
+inv SynthesizedTypesAreOwned :
+    ownedType->includesAll(allCollectionTypes)
+--inv SynthesizedTypesAreUnique :  -- inherited from EMOF validation
+--    allCollectionTypes->isUnique(elementType)
+
+context Domain
+def: transformation : Transformation =
+    rule.transformation
+def: declaredPackages : Set(EMOF::Package) =
+    typedModel.usedPackage
+def: declaresType(t : EMOF::Type) : Boolean =
+    t.isPredefinedType() or declaredPackages->includes(t._package)
+inv TypedModelExistsWarning :
+    typedModel <> null
+inv TypedModelDefinedByTransformation :
+    typedModel <> null
+    implies transformation.definesModel(typedModel)
+inv CheckableOrEnforceable :
+    isCheckable or isEnforceable
+
+context Rule
+def: domain(requiredName : String) : Domain =
+    domain->any(name = requiredName)
+inv OverridesIsCompatible :
+    overrides <> null
+    implies domain->size() = overrides.domain->size()
+    and domain->forAll(d |
+        let overriddenDomain : Domain = overrides.domain(d.name) in
+        overriddenDomain <> null
+        and d.typedModel.equivalentTo(overriddenDomain.typedModel)) 
+inv OverridesDefinedByTransformation :
+    overrides <> null
+    implies transformation.definesRule(overrides)
+inv DomainNamesAreUnique :
+    domain->isUnique(name)
+inv TypedModelsAreUnique :
+    domain->isUnique(typedModel)
+inv DomainTypedModelsMatchModelParameters :
+    true
+
+context Function
+inv IsSideEffectFree :
+    children->forAll(e |
+        e.oclIsKindOf(EssentialOCL::OclExpression)
+        implies
+        let packageName : String = e.getMetaClass()._package.name
+        in packageName = 'EssentialOCL'
+        or packageName = 'QVTRelation')
+inv EveryFunctionParameterIsAFunctionParameter :
+    ownedParameter->forAll(oclIsKindOf(FunctionParameter))
+
+context Predicate
+inv ConditionExpressionIsBoolean :
+    conditionExpression.type.oclIsTypeOf(Boolean)
+inv ExternalVariablesAreBoundByPattern :
+    pattern.bindsTo->includesAll(conditionExpression.allExternalVariables)
+
+context Pattern
+inv NoVariableIsAFunctionParameter :
+    bindsTo->forAll(not oclIsKindOf(FunctionParameter))
+        
+endpackage
+
+-----------------------------------------------------------------------
+-- QVTTemplate
+-----------------------------------------------------------------------
+package QVTTemplate
+
+context TemplateExp
+def: domainAncestorOf(e : EMOF::Element) : QVTBase::Domain =
+    if e.oclIsKindOf(QVTBase::Domain)
+    then e.oclAsType(QVTBase::Domain)
+    else let p : EMOF::Element = e.container() in
+        if p <> null then domainAncestorOf(p)
+        else null
+        endif
+    endif
+def: domain : QVTBase::Domain =
+    domainAncestorOf(self)
+def: patternAncestorOf(e : EMOF::Element) : QVTBase::Pattern =
+    if e.oclIsKindOf(QVTBase::Pattern)
+    then e.oclAsType(QVTBase::Pattern)
+    else let p : EMOF::Element = e.container() in
+        if p <> null then patternAncestorOf(p)
+        else null
+        endif
+    endif
+def: pattern : QVTBase::Pattern =
+    patternAncestorOf(self)
+inv DomainExists:
+    domain <> null
+inv PatternExists:
+    pattern <> null
+--inv VariableIsDefinedByRelation:
+--    bindsTo <> null implies relation.definesVariable(bindsTo)
+inv VariableIsBoundByPattern:
+    bindsTo <> null
+    implies pattern.bindsTo->includes(bindsTo)
+inv VariableTypeIsDeclaredByDomain:
+    bindsTo <> null
+    implies domain.declaresType(bindsTo.type.transitiveElementType())
+inv WhereIsBoolean:
+    where <> null
+    implies where.type.oclIsTypeOf(Boolean)
+
+context ObjectTemplateExp
+inv ReferredClassIsDeclaredByDomain:
+    domain.declaresType(referredClass)
+inv PartsAreUnique :
+    part->isUnique(referredProperty)
+-- following is too simple; must account for RelationCallExp overlays
+--inv EveryEnforceablePartIsEnforcedWarning:
+--    domain.isEnforceable
+--    implies referredClass.allOwnedAttributes->forAll(a |
+--        (a.lower > 0)
+--        and not a.isDerived
+--        and ((a.opposite = null) or not a.opposite.isComposite)
+--        and a.default = null        
+--        implies part->exists(referredProperty = a))
+
+context CollectionTemplateExp
+--def: elementType : EMOF::Type
+--    = referredCollectionType.elementType
+def: isEmpty : Boolean =
+    member->size() = 0 and rest = null
+inv ReferredCollectionElementTypeIsDeclaredByDomain:
+    domain.declaresType(referredCollectionType.transitiveElementType())
+inv EveryMemberTypeMatchesElementType:
+    member->forAll(m | 
+        m.isSpecialVariableReference
+        or referredCollectionType.elementType.assignableFrom(m.type))
+inv EveryMemberExpressionVariableIsBoundByPattern:
+    member.allReferencedVariables->forAll(v |
+        not v.isSpecialVariable
+        implies pattern.bindsTo->includes(v))
+inv MemberCountSatifiesLowerBound:
+    container().oclIsKindOf(PropertyTemplateItem)
+    and not isEmpty
+    implies member->size() >= container().oclAsType(PropertyTemplateItem).referredProperty.lower
+inv RestTypeMatchesCollectionType:
+    rest <> null
+    implies rest.isSpecialVariable
+    or referredCollectionType.assignableFrom(rest.type)
+inv RestVariableIsBoundByPattern:
+    rest <> null
+    and not rest.isSpecialVariable
+    implies pattern.bindsTo->includes(rest)
+-- following is too simple; must account for RelationCallExp overlays
+--inv EveryEnforceableMemberIsEnforcedWarning:
+--    domain.isEnforceable
+--    and container().oclIsKindOf(PropertyTemplateItem)
+--    implies let property : EMOF::Property = container().oclAsType(PropertyTemplateItem).referredProperty in
+--    property.lower <= member->size()
+--    or property.default <> null
+
+context PropertyTemplateItem
+def: pattern : QVTBase::Pattern =
+    objContainer.pattern
+--def: relation : QVTRelation::Relation
+--    = domainPattern.relation
+--def: relationDomain : QVTRelation::RelationDomain
+--    = domainPattern.relationDomain
+def: propertyCollectionKind : EssentialOCL::CollectionKind =
+    if isOpposite
+    then null
+    else referredProperty.collectionKind
+    endif
+def: valueCollectionType : EssentialOCL::CollectionType =
+    if value.oclIsKindOf(CollectionTemplateExp)
+    then value.oclAsType(CollectionTemplateExp).referredCollectionType
+    else null endif
+inv ReferredPropertyIsDefinedByReferredClass:
+    if isOpposite
+    then objContainer.referredClass.definesOppositeProperty(referredProperty)
+    else objContainer.referredClass.definesProperty(referredProperty)
+    endif
+inv EveryExpressionVariableIsBoundByPattern:
+    not value.oclIsKindOf(TemplateExp)
+    implies value.allReferencedVariables->forAll(v |
+        not v.isSpecialVariable
+        implies pattern.bindsTo->includes(v))
+--inv ValueElementTypeMatchesReferredPropertyElementType :
+--    let propertyElementType : EMOF::Type
+--        = referredProperty.type.transitiveElementType() in
+--    let valueElementType : EMOF::Type = value.type.transitiveElementType() in    
+--    propertyElementType.assignableFrom(valueElementType)
+inv ObjectTypeMatchesPropertyType : -- applicable to single and multi-valued properties
+    value.oclIsKindOf(ObjectTemplateExp)
+    implies referredProperty.type.assignableFrom(value.type)
+inv CollectionElementTypeMatchesPropertyType : -- applicable to single and multi-valued properties
+    value.oclIsKindOf(CollectionTemplateExp)
+    implies referredProperty.type.assignableFrom(value.oclAsType(CollectionTemplateExp).referredCollectionType.elementType)
+inv SetMatchesSet :
+    propertyCollectionKind = EssentialOCL::CollectionKind::Set
+    implies valueCollectionType.oclIsKindOf(EssentialOCL::SetType)
+inv NonBagMatchesNonBag :
+    propertyCollectionKind = EssentialOCL::CollectionKind::OrderedSet
+    or propertyCollectionKind = EssentialOCL::CollectionKind::Sequence
+    implies valueCollectionType.oclIsKindOf(EssentialOCL::SetType)
+    or valueCollectionType.oclIsKindOf(EssentialOCL::SequenceType)
+    or valueCollectionType.oclIsKindOf(EssentialOCL::OrderedSetType)
+--inv SimpleVariableIsBoundByPattern:
+--    value.oclIsKindOf(EssentialOCL::VariableExp)
+--    implies let ve : EssentialOCL::VariableExp
+--        = value.oclAsType(EssentialOCL::VariableExp) in
+--    pattern.bindsTo->includes(ve.referredVariable)
+    
+endpackage
+
+-----------------------------------------------------------------------
+-- QVTRelation
+-----------------------------------------------------------------------
+package QVTRelation
+
+context RelationalTransformation
+def: relations : Set(Relation) =
+    rule.oclAsType(Relation)->asSet()
+inv EveryRuleIsARelation :
+    rule->forAll(oclIsKindOf(Relation))
+--inv HasTopLevelRelation :
+--    relations->exists(isTopLevel)
+inv KeysAreUnique :
+    ownedKey->isUnique(identifies)
+
+context Relation
+def: domains : OrderedSet(RelationDomain) =
+    domain.oclAsType(RelationDomain)->asOrderedSet()
+def: domain(t: QVTBase::TypedModel) : RelationDomain =
+    domains->any(typedModel = t)
+--def: orderedDomains : OrderedSet(RelationDomain) =
+--    transformation.modelParameter->iterate(t : QVTBase::TypedModel;
+--        result : OrderedSet(RelationDomain) = OrderedSet{} |
+ --       result->append(domain(t)))
+def: declaredPackages : Set(EMOF::Package) =
+    domain.typedModel.usedPackage->asSet()
+def: declaresType(t : EMOF::Type) : Boolean =
+    t.isPredefinedType() or declaredPackages->includes(t._package)
+def: definesVariable(v : EssentialOCL::Variable) : Boolean =
+    variable->includes(v)
+def: relationalTransformation : RelationalTransformation =
+    transformation.oclAsType(RelationalTransformation)
+def: patternExpressions(pattern : QVTBase::Pattern) : Bag(EssentialOCL::OclExpression) =
+    if pattern = null
+    then Bag{}
+    else pattern.predicate.conditionExpression
+    endif
+def: typesAreDeclaredByRelation(pattern : QVTBase::Pattern) : Boolean =
+    let exprs : Bag(EssentialOCL::OclExpression) = patternExpressions(pattern) in
+    exprs.allReferencedVariables->forAll(v | 
+        declaresType(v.type.transitiveElementType()))
+    and exprs.allVariables->forAll(v | 
+        declaresType(v.type.transitiveElementType()))
+def: variablesAreDefinedByRelation(pattern : QVTBase::Pattern) : Boolean =
+    let exprs : Bag(EssentialOCL::OclExpression) = patternExpressions(pattern) in
+    exprs.allVariableExps->forAll(ve |
+        let v : EssentialOCL::Variable = ve.referredVariable in
+        definesVariable(v) or ve.locallyDefined(v))
+inv EveryDomainIsARelationDomain :
+    domain->forAll(oclIsKindOf(RelationDomain))
+inv AtLeastTwoDomains :
+    domains->size() >= 2
+inv DomainTypedModelsMatchModelParameters :
+    domain.typedModel->asOrderedSet() = transformation.modelParameter
+inv NonTopLevelIsNotInvokedWarning :
+    not isTopLevel
+    implies not RelationCallExp.allInstances()->exists(referredRelation = self)
+inv RelationImplsAreUniqueWarning :
+    operationalImpl->isUnique(impl)
+inv VariablesAreUnique :
+    variable->isUnique(name)
+inv WhenTypesAreDeclaredByRelation :
+    typesAreDeclaredByRelation(when)
+inv WhenVariablesAreDefinedByRelation :
+    variablesAreDefinedByRelation(when)
+inv WhereTypesAreDeclaredByRelation : -- perhaps just types of bound variables
+    typesAreDeclaredByRelation(where)
+inv WhereVariablesAreDefinedByRelation :
+    variablesAreDefinedByRelation(where)
+-- FIXME Section 7.5 predicate ordering constraints
+
+context RelationDomain
+def: relation : QVTRelation::Relation =
+    rule.oclAsType(Relation)
+def: rootTemplateExpression : QVTTemplate::TemplateExp =
+    if pattern <> null
+    then pattern.templateExpression
+    else null
+    endif
+inv PrimitiveDomainIsUnnamed:
+    pattern = null
+    implies name = null
+inv RootVariableIsDefinedByRelation:
+    relation.definesVariable(rootVariable)
+inv RootVariableTypeIsDeclaredByDomainTypedModel :
+    declaresType(rootVariable.type.transitiveElementType())
+inv EveryEnforceableVariableIsMatchedOrAssigned :
+    isEnforceable
+    implies pattern.bindsTo->forAll(v |
+    -- v is RelationCallExp argument
+    -- v.type.metaClass().ownedAttribute->forAll(a | assigned or matched) 
+    true)
+
+context DomainPattern
+def: relationDomain : RelationDomain =
+    container().oclAsType(RelationDomain)
+def: relation : Relation =
+    relationDomain.relation
+inv EveryVariableIsDefinedByRelation :
+    bindsTo->forAll(v | relation.definesVariable(v))
+inv RootTemplateExpressionIsBoundToRootVariable :
+    templateExpression <> null
+    implies templateExpression.bindsTo = relationDomain.rootVariable
+inv RootTemplateExpressionTypeIsRootVariableType :
+    templateExpression <> null
+    implies templateExpression.type = relationDomain.rootVariable.type
+
+context Key
+inv AtLeastOnePart:
+    part->size() + oppositePart->size() > 0
+inv IdentifiesTypeIsDeclaredByTransformation:
+    transformation.declaresType(identifies)
+inv EveryPartIsDeclaredByIdentifies:
+    part->forAll(p | identifies.definesProperty(p))
+inv EveryOppositePartReferencesIdentifies:
+    oppositePart->forAll(p | identifies.definesOppositeProperty(p))
+inv UsedInSomeTemplateVariableWarning :
+    true -- FIXME
+inv UsedInTwoOrMoreTemplateVariableWarning :
+    true -- FIXME
+  
+context RelationImplementation
+inv InDirectionOfIsDefinedByTransformation :
+    relation.transformation.definesModel(inDirectionOf)
+inv EveryParameterTypeMatchesDomainRootVariableType :
+    let parameters : OrderedSet(EMOF::Parameter) = impl.ownedParameter in
+    let domains : OrderedSet(RelationDomain) = relation.domains in
+    parameters->size() = domains->size() and
+    parameters->forAll(parameter |
+        let parameterType : EMOF::Type = parameter.type in
+        let index : Integer = parameters->indexOf(parameter) in
+        let domain : RelationDomain = domains->at(index) in
+        let domainType : EMOF::Type = domain.rootVariable.type in
+        if (domain.typedModel = inDirectionOf)
+        then domainType.assignableFrom(parameterType)
+        else parameterType.assignableFrom(domainType)
+        endif)
+-- FIXME Section 7.8 context constraints
+
+context RelationDomainAssignment
+def: relationDomain : RelationDomain =
+--    owner
+    container().oclAsType(RelationDomain)
+def: relation : Relation =
+    relationDomain.relation
+inv VariableDefinedByRelation:
+    relation.definesVariable(variable)
+inv VariableTypeMatchesValueType:
+    variable.type.assignableFrom(valueExp.type)
+
+context RelationCallExp
+def: getPattern(a : EMOF::Element) : QVTBase::Pattern =
+    let parent : EMOF::Element = a.container()
+    in if parent.oclIsKindOf(QVTBase::Pattern) then parent.oclAsType(QVTBase::Pattern)
+    else if parent.oclIsKindOf(QVTBase::Predicate) then getPattern(parent)
+    else if parent.oclIsKindOf(QVTTemplate::PropertyTemplateItem) then getPattern(parent)
+    else if parent.oclIsKindOf(EssentialOCL::OclExpression) then getPattern(parent)
+    else null
+    endif endif endif endif
+def: getRelation(a : EMOF::Element) : Relation =
+    let parent : EMOF::Element = a.container()
+    in if parent.oclIsKindOf(Relation) then parent.oclAsType(Relation)
+    else if parent.oclIsKindOf(QVTBase::Domain) then getRelation(parent)
+    else if parent.oclIsKindOf(QVTBase::Pattern) then getRelation(parent)
+    else if parent.oclIsKindOf(QVTBase::Predicate) then getRelation(parent)
+    else if parent.oclIsKindOf(QVTTemplate::PropertyTemplateItem) then getRelation(parent)
+    else if parent.oclIsKindOf(EssentialOCL::OclExpression) then getRelation(parent)
+    else null 
+    endif endif endif endif endif endif
+def: pattern : QVTBase::Pattern =
+    getPattern(self)
+def: relation : Relation =
+    getRelation(self)
+def: transformation : RelationalTransformation =
+    relation.relationalTransformation
+def: invokedFromWhen : Boolean =
+    pattern = relation.when
+def: invokedFromWhere : Boolean =
+    pattern = relation.where
+def: argumentNumberMatches : Boolean =
+    argument->size() = referredRelation.domain->size()
+inv PatternExists:
+    pattern <> null
+inv RelationExists:
+    relation <> null
+inv InvokedFromWhenOrWhereClause:
+    invokedFromWhen or invokedFromWhere
+inv ReferredRelationDeclaredByTransformation:
+    transformation.definesRule(referredRelation)
+inv ReferredRelationArgumentNumberMatches:
+    argumentNumberMatches
+inv EveryWhenReferredRelationArgumentTypeMatches:
+    (invokedFromWhen and argumentNumberMatches)
+    implies argument->forAll(a |
+    let index : Integer = argument->indexOf(a) in 
+--    let typedModel : QVTBase::TypedModel
+--        = transformation.modelParameter->at(index) in
+    let referredDomain : RelationDomain = referredRelation.domains->at(index) in
+    let referredType : EMOF::Type = referredDomain.rootVariable.type in
+    let argumentType : EMOF::Type = a.type in
+    referredType.assignableFrom(argumentType))
+inv EveryWhereReferredRelationArgumentTypeIsMatchableWarning:
+    (invokedFromWhere and argumentNumberMatches)
+    implies argument->forAll(a |
+    let index : Integer = argument->indexOf(a) in 
+--    let typedModel : QVTBase::TypedModel
+--        = transformation.modelParameter->at(index) in
+    let referredDomain : RelationDomain = referredRelation.domains->at(index) in
+    let referredType : EMOF::Type = referredDomain.rootVariable.type in
+    let argumentType : EMOF::Type = a.type in
+    referredType.matchableWith(argumentType))
+inv TypeIsBoolean :
+    type.oclIsTypeOf(Boolean)
+
+context OppositePropertyCallExp
+inv PropertyIsReference :
+    referredProperty.type.oclIsKindOf(EMOF::Class)
+inv PropertyIsUnidirectional :
+    referredProperty.opposite = null
+    
+endpackage

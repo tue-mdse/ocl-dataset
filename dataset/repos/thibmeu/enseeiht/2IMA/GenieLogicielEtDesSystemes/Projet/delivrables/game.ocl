@@ -1,0 +1,157 @@
+import game : 'model/generated/Game.ecore'
+
+package game
+
+context Jeu
+	-- Le nom ne doit pas etre vide
+	inv nomVide: name <> ''
+
+context Composant
+	-- Le nom ne doit pas etre vide
+	inv nomVide: name <> ''
+
+context Territoire
+	-- Les lieux et chemins ne doivent pas avoir le meme nom
+	inv composantsIdentiques: composants-> forAll(a,b|a.name = b.name implies a = b)
+	-- Le territoire possede un depart et il est unique
+	inv unDepart: composants	-> select(co|co.oclIsTypeOf(Lieu))
+								-> collect(co|co.oclAsType(Lieu))
+								-> select(l|l.position = Emplacement::Depart)
+								-> size() = 1
+	-- Le territoire possede une ou plusieurs fins
+	inv uneArrivee: composants	-> select(co|co.oclIsTypeOf(Lieu))
+								-> collect(co|co.oclAsType(Lieu))
+								-> select(l|l.position = Emplacement::Fin)
+								-> size() >= 1
+
+context ComposantTerritoire
+	-- Toutes les possessions doivent etre differentes
+	inv possessionsIdentiques: possessions-> forAll(a,b|a.possession <> b.possession)
+
+context Lieu
+	-- La meme personne ne peut etre presente qu'une fois dans un lieu
+	inv personnesIdentiques: personnes-> forAll(a,b|a.name = b.name implies a = b)
+	-- Une seule personne obligatoire par lieu
+	inv uneObligatoire: personnes-> select(pe|pe.obligation = Obligation::Obligatoire)-> size() <= 1
+	-- Toutes les conditions doivent etre differentes
+	inv conditionsIdentiques: conditions-> forAll(a,b|a.name = b.name implies a = b)
+
+context DescriptionConditionnee
+	-- La description ne doit pas etre vide
+	inv descriptionVide: description <> ''
+	-- Toutes les conditions doivent etre differentes
+	inv conditionsIdentiques: conditions-> forAll(a,b|a.name = b.name implies a = b)
+
+context Chemin
+	-- Le lieu de debut et de fin doivent etre different
+	inv lieuxIdentiques: depart <> fin
+	-- Toutes les conditions doivent etre differentes
+	inv conditionsIdentiques: conditionsOuverture-> forAll(a,b|a.name = b.name implies a = b)
+						  and conditionsVisibilite-> forAll(a,b|a.name = b.name implies a = b)
+
+context Personne
+	-- Toutes les possessions doivent etre differentes
+	inv possessionsIdentiques: possessions-> forAll(a,b|a.possession <> b.possession)
+	-- Toutes les choix doivent etre differents
+	inv choixIdentiques: choix-> forAll(a,b|a.name = b.name implies a = b)
+	-- La personne possede un ou plusieurs choix de depart
+	inv unDepart: choix	-> select(c|c.position = Emplacement::Depart)
+						-> size() >= 1
+	-- Doit-on faire une closure pour voir qu'on peut avoir une fin ou laisse t on ca au petri?
+
+context Explorateur
+	-- Toutes les possessions doivent etre differentes
+	inv possessionsIdentiques: possessions-> forAll(a,b|
+		a.possession.connaissance = b.possession.connaissance
+		and (a.possession.connaissance <> null or a.possession.oclAsType(Objet) = a.possession.oclAsType(Objet))
+		implies a.possession = b.possession
+	)
+	-- La charge de l'explorateur est positive ou nulle (si il ne peut rien porter)
+	inv poids: poidsMax >= 0
+
+context Possession
+	-- Une possession est soit une connaissance soit un objet
+	inv connaissanceOuObjet: connaissance <> null xor self.oclIsTypeOf(Objet)
+
+context PossessionConditionnee
+	-- Toutes les conditions doivent etre differentes
+	inv conditionsIdentiques: conditions-> forAll(a,b|a.name = b.name implies a = b)
+
+context Connaissance
+	-- Toutes les conditions doivent etre differentes
+	inv conditionsVisibiliteIdentiques: conditionsVisibilite-> forAll(a,b|a.name = b.name implies a = b)
+
+context Objet
+	-- Un objet represente une quantite ou une absence d'objets elementaires
+	inv quantitePositive: quantite >= 0
+
+context ObjetElementaire
+	-- La taille de l'objet est positive ou nulle
+	inv taillePositive: taille >= 0
+	-- Toutes les conditions doivent etre differentes
+	inv conditionsIdentiques: conditionsVisibilite-> forAll(a,b|a.name = b.name implies a = b)
+						  and conditionsTransformabilite-> forAll(a,b|a.conditions = b.conditions implies a.objets = b.objets)
+
+context Transformation
+	-- Toutes les conditions doivent etre differentes
+	inv conditionsIdentiques: conditions-> forAll(a,b|a.name = b.name implies a = b)
+	-- Tous les objets doivent etre differents.
+	inv objetsIdentiques: objets-> forAll(a,b|a.objet.name = b.objet.name implies a.objet = b.objet)
+
+context Condition
+	-- Toutes les conditions doivent etre differentes
+	inv conditionsIdentiques: conditions-> forAll(a,b|a.name = b.name implies a = b)
+	-- Une condition ne doit pas boucler
+	inv pasBoucle: conditions-> closure(a | a.conditions)-> forAll(a| a.name <> self.name)
+	-- Toutes les possessions doivent etre differentes
+	inv possessionsIdentiques: possessions-> forAll(a,b|
+		a.connaissance = b.connaissance
+		and (a.connaissance <> null or a.oclAsType(Objet) = a.oclAsType(Objet))
+		implies a = b
+	)
+	-- Toutes les difficultes doivent etre differentes
+	inv difficultesIdentiques: difficulte-> select(a|a = Difficulte::Facile)-> size() <= 1
+						   and difficulte-> select(a|a = Difficulte::Moyen)-> size() <= 1
+						   and difficulte-> select(a|a = Difficulte::Difficile)-> size() <= 1
+	-- Une probabilite est forcement positive
+	inv probabilitePositive: probabilite >= 0 and probabilite <= 100
+
+context Comparaison
+	-- Une comparaison est soit une connaissance soit un comparateur et un objet
+	inv connaissanceOuObjet: connaissance <> null xor (comparateur <> null and objet <> null)
+
+context Choix
+	-- Toutes les conditions doivent etre differentes
+	inv conditionsIdentiques: conditions-> forAll(a,b|a.name = b.name implies a = b)
+	-- Toutes les actions doivent etre differentes.
+	inv actionsIdentiques: actions-> forAll(a,b|a.action = b.action implies a = b)
+
+context ChoixConditionne
+	-- Toutes les conditions doivent etre differentes
+	inv conditionsIdentiques: conditions-> forAll(a,b|a.name = b.name implies a = b)
+	-- Toutes les decisions doivent etre differentes entre elles.
+	inv decisionsIdentiques: decisionsPrecedentes-> forAll(a,b|(a.choix = b.choix and a.action = b.action) implies a = b)
+
+context Action
+	-- Toutes les possessions doivent etre differentes
+	inv possessionsIdentiques: possessions-> forAll(a,b|
+		a.possession.connaissance = b.possession.connaissance
+		and (a.possession.connaissance <> null or a.possession.oclAsType(Objet) = a.possession.oclAsType(Objet))
+		implies a.possession = b.possession
+	)
+	-- Tous les objets consommes doivent etre differents
+	inv objetsIdentiques: objetsConsommes-> forAll(a,b|a.objet.name = b.objet.name implies a.objet = b.objet)	
+
+context ActionConditionnee
+	-- Toutes les conditions doivent etre differentes
+	inv conditionsIdentiques: conditions-> forAll(a,b|a.name = b.name implies a = b)
+	-- Toutes les choix doivent etre differents
+	inv choixIdentiques: choixOfferts-> forAll(a,b|a.choix.name = b.choix.name implies a.choix = b.choix)
+	-- Toutes les decisions doivent etre differentes entre elles.
+	inv decisionsIdentiques: decisionsPrecedentes-> forAll(a,b|(a.choix = b.choix and a.action = b.action) implies a = b)
+
+context Decision
+	-- L'action doit etre une action propose par le choix
+	inv actionIncluse: choix.actions-> one(a|a.action = action)
+
+endpackage

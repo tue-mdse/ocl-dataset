@@ -1,0 +1,120 @@
+import 'CompleteOCLCS.ecore'
+import '/resource/org.eclipse.ocl.xtext.base/model/BaseCS.ecore'
+import '/resource/org.eclipse.ocl.pivot/model/Pivot.ecore'
+--import '/resource/org.eclipse.ocl.pivot/model/PivotLookup.ocl'
+
+import '/resource/org.eclipse.ocl.xtext.base/model/BaseCS2AS.ocl' -- To import other OCL definitions
+
+package completeoclcs
+	
+context ClassifierContextDeclCS
+/* A ClassifierContextDeclCS has no unique AS element since multiple ContextDeclCS are merged */
+def : ast() : ocl::Class = invalid
+def : referredClass() : ocl::Class = referredClass
+	
+context CompleteOCLDocumentCS
+def : ast() : ocl::Model =
+	let modelPackages = ownedPackages.referredPackage->asSet()->union(ownedContexts.referredPackage()) in
+	ocl::Model {
+		name = name,
+		ownedImports = ownedIncludes.ast(),
+		ownedPackages = modelPackages->sortedBy(name)->collect(p | contextPackage(p, ownedPackages->select(referredPackage = p), ownedContexts->select(referredPackage() = p)))
+	}
+def : contextClass(modelClass : ocl::Class, contextDecls : OrderedSet(ContextDeclCS)) : ocl::Class =
+	let classifierContextDecls = contextDecls->selectByKind(ClassifierContextDeclCS) in
+	let classifierInvariants = classifierContextDecls.ownedInvariants in
+	let defOperations = classifierContextDecls.ownedDefinitions->selectByKind(DefOperationCS) in
+	let defProperties = classifierContextDecls.ownedDefinitions->selectByKind(DefPropertyCS) in
+	let operationContextDecls = contextDecls->selectByKind(OperationContextDeclCS) in
+	let propertyContextDecls = contextDecls->selectByKind(PropertyContextDeclCS) in
+	let propertyInvariants = propertyContextDecls.ownedDerivedInvariants in
+	ocl::Class {
+		name = modelClass.name,
+		ownedInvariants = classifierInvariants.ast()->union(propertyInvariants.ast()),
+		ownedOperations = operationContextDecls->collect(o | contextOperation(o))->union(defOperations.ast())->sortedBy(name),
+		ownedProperties = propertyContextDecls->collect(p | contextProperty(p))->union(defProperties.ast())->sortedBy(name)
+	}
+def : contextOperation(operationContext : OperationContextDeclCS) : ocl::Operation =
+	let modelOperation = operationContext.referredOperation in
+	ocl::Operation {
+		name = modelOperation.name,
+		type = modelOperation.type,
+		isRequired = modelOperation.isRequired,
+		ownedParameters = modelOperation.ownedParameters,
+		isStatic = modelOperation.isStatic,
+		bodyExpression = if operationContext.ownedBodies->notEmpty() then operationContext.ownedBodies->first().ast() else null endif,
+		ownedPostconditions = operationContext.ownedPostconditions.ast(),
+		ownedPreconditions = operationContext.ownedPreconditions.ast()
+	}
+def : contextPackage(modelPackage : ocl::Package, packageDecls : OrderedSet(PackageDeclarationCS), contextDecls : OrderedSet(ContextDeclCS)) : ocl::Package =
+	let packageInvariants = packageDecls.ownedInvariants in
+	let allContextDecls = contextDecls->appendAll(packageDecls.ownedContexts) in
+	let modelClasses = allContextDecls.referredClass()->asSet() in
+	ocl::Package {
+		name = modelPackage.name,
+		nsPrefix = modelPackage.nsPrefix,
+		URI = modelPackage.URI,
+--		ownedInvariants = packageInvariants.ast(),
+		ownedClasses = modelClasses->sortedBy(name)->collect(c | contextClass(c, allContextDecls->select(cd | cd.referredClass() = c)))
+	}
+def : contextProperty(propertyContext : PropertyContextDeclCS) : ocl::Property =
+	let modelProperty = propertyContext.referredProperty in
+	ocl::Property {
+		name = modelProperty.name,
+		type = modelProperty.type,
+		isRequired = modelProperty.isRequired,
+		isStatic = modelProperty.isStatic,
+		ownedExpression = if propertyContext.ownedDefaultExpressions->notEmpty() then propertyContext.ownedDefaultExpressions->first().ast() else null endif
+	}
+	
+context ContextDeclCS
+/* Return the Class for which the a derived ClassifierContextDeclCS provides additional class detail,
+ * or the containing Class for which a derived FeatureContextDeclCS provides additional feature detail. */
+def : referredClass() : ocl::Class = null
+/* Return the containing Package for which the a derived ClassifierContextDeclCS provides additional class detail,
+ * or a derived FeatureContextDeclCS provides additional feature detail. */
+def : referredPackage() : ocl::Package = referredClass().owningPackage
+		
+context DefOperationCS
+def : ast() : ocl::Operation =
+	ocl::Operation {
+		name = name,
+		type = ownedType.ast(),
+		isStatic = isStatic,
+		ownedParameters = ownedParameters.ast(),
+		bodyExpression = ownedSpecification.ast()
+--		postcondition = ownedSpecification.ast()
+--		precondition = ownedSpecification.ast()
+	}
+	
+context DefPropertyCS
+def : ast() : ocl::Property =
+	ocl::Property {
+		name = name,
+		type = ownedType.ast(),
+--		isRequired = ownedType.isRequired,
+		isStatic = isStatic,
+		ownedExpression = ownedSpecification.ast()
+	}
+	
+context OperationContextDeclCS
+/* An OperationContextDeclCS has no unique AS element since multiple OperationContextDeclCS are merged */
+def : ast() : ocl::Operation = invalid
+def : referredClass() : ocl::Class = referredOperation.owningClass
+inv ConsistentParameters: ownedParameters = referredOperation.ownedParameters
+--inv ConsistentRequired: ownedType.isRequired = referredOperation.isRequired
+inv ConsistentType: ownedType.ast() = referredOperation.type
+inv AtMostOneBody: ownedBodies->size() <= 1
+
+context PackageDeclarationCS
+/* A PackageDeclarationCS has no unique AS element since multiple PackageDeclarationCS and ContextDeclCS are merged */
+def : ast() : ocl::Package = invalid
+	
+context PropertyContextDeclCS
+/* A PropertyContextDeclCS has no unique AS element since multiple PropertyContextDeclCS are merged */
+def : ast() : ocl::Property = invalid
+def : referredClass() : ocl::Class = referredProperty.owningClass
+--inv ConsistentRequired: ownedType.isRequired = referredProperty.isRequired
+inv ConsistentType: ownedType.ast() = referredProperty.type
+
+endpackage

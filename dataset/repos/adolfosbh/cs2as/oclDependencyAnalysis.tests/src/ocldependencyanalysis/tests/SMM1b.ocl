@@ -1,0 +1,45 @@
+import 'SourceMM1.ecore'
+import 'TargetMM1.ecore'
+
+package source
+
+context X
+def : ast() : target::A =
+	if isA1
+	then target::A1 {
+		ownsB = ownsY.oclAsType(Y1).ast()
+	}
+	else target::A2 {
+		ownsC = ownsY.oclAsType(Y2).ast()
+	}
+	endif
+
+context Y
+def : ast() : ocl::OclElement = null -- overriden
+
+context Y1	
+def : ast() : target::B =
+	target::B {
+		ownsD = ownsZ.ast()
+	}
+	
+context Y2	
+def : ast() : target::C =
+	target::C {
+		ownsD = ownsZ.ast()
+	}
+
+context Z 
+def : ast() : target::D =
+	if toY.ast().oclIsKindOf(target::B)
+	then target::D {
+			toB = toY.ast().oclAsType(target::B), -- Produces a cycle
+			toA = toY.ast().oclAsType(target::B).toA1
+		} 
+	else target::D {
+			toB = toY.ast().oclAsType(target::C), -- Produces a cycle
+			toA = toY.ast().oclAsType(target::C).toA2
+		} 
+	endif
+		
+endpackage

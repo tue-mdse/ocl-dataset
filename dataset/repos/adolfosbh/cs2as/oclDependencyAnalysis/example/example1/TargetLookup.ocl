@@ -1,0 +1,75 @@
+import 'Environment.ecore'
+--import 'Environment.ocl' FIXME imported OCL doesn't work
+import 'TargetMM1.ecore'
+
+package ocl
+
+context OclElement
+def: parentEnv() : env::Environment =
+	let parent = oclContainer() in if parent = null then env::Environment { } else parent._env(self) endif
+
+--def : _env(child : OclElement) : env::Environment =
+--	parentEnv()
+
+def : _env(child : OclElement) : env::Environment =
+	_env_B(child).mergeEnv(
+	_env_C(child))
+
+def : _env_B(child : OclElement) : env::Environment =
+	parentEnv()
+	
+def : _env_C(child : OclElement) : env::Environment =
+	parentEnv()
+	
+
+def: lookupBs(bName : String) : Set(target::B) =
+	self._env(null).namedElements->selectByKind(target::B)->select(name = bName)
+
+def: lookupCs(cName : String) : Set(target::C) =
+	self._env(null).namedElements->selectByKind(target::C)->select(name = cName)
+
+def: lookupB(name : String) : target::B =
+	lookupBs(name)->any(true)
+	
+def: lookupC(name : String) : target::C =
+	lookupCs(name)->any(true)
+
+endpackage
+
+package target
+
+context TRoot
+def : _env(child : ocl::OclElement) : env::Environment =
+	parentEnv()
+	
+context A1
+def : _env(child : ocl::OclElement) : env::Environment =
+	_env_B(child)
+	
+def : _env_B(child : ocl::OclElement) : env::Environment =
+	let ownedBs = self.ownsB
+	in parentEnv().nestedEnv()
+		.addElements(ownedBs->select(x | ownedBs->indexOf(x) < ownedBs->indexOf(child)))
+
+context A2
+def : _env(child : ocl::OclElement) : env::Environment =
+	_env_C(child)
+	
+def : _env_C(child : ocl::OclElement) : env::Environment =
+	let ownedCs = self.ownsC
+	in parentEnv().nestedEnv()
+		.addElements(ownedCs->select(x| ownedCs->indexOf(x) < ownedCs->indexOf(child)))
+
+context B
+def : _env(child : ocl::OclElement) : env::Environment =
+	parentEnv()
+	
+context C
+def : _env(child : ocl:: OclElement) : env::Environment =
+	parentEnv()
+
+context D
+def : _env(child : ocl::OclElement) : env::Environment =
+	parentEnv()
+	
+endpackage

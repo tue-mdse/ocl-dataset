@@ -1,0 +1,51 @@
+import 'platform:/resource/ClassModelSlicing/ecores/CoachBusWithOperation.ecore'
+
+package CoachBusWithOperation
+
+context Coach
+inv MinCoachSize: 
+self.noOfSeats >= 10
+
+context Coach 
+inv MaxCoachSize:
+self.trips->forAll(t | t.passengers->size() <= noOfSeats)
+
+context Ticket 
+inv UniqueTicketNumber:
+Ticket.allInstances()->isUnique(t | t.number)
+
+context Passenger
+inv NonNegativeAge:
+self.age >= 0
+
+context Passenger
+inv MaleOrFemale:
+self.sex = Sex::male or self.sex = Sex::female
+
+context Employee inv UniqueEmployeeID:
+Employee.allInstances()->isUnique(e | e.id)
+
+context Employee inv BaseSalaryConstraint:
+self.baseSalary >= 0
+
+context Passenger::updateAge(newAge : Integer) :
+pre :	self.age <> newAge
+post :	self.age = newAge
+
+context Ticket::updateNumber(newNumber : Integer) :
+pre :	self.number <> newNumber
+post :	self.number = newNumber
+
+context Trip::addPassenger(p : Passenger) :
+pre :	self.passengers->excludes(p)
+post :	self.passengers = self.passengers@pre->including(p)
+
+context Coach::updateNoOfSeats(newNoOfSeats : Integer) :
+pre :	self.noOfSeats <> newNoOfSeats
+post :	self.noOfSeats = newNoOfSeats
+
+context Coach::addTrip(trip : Trip) :
+pre :	self.trips->excludes(trip)
+post :	self.trips = self.trips@pre->including(trip)
+
+endpackage

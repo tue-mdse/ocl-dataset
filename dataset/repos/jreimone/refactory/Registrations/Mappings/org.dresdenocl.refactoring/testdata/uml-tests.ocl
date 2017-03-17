@@ -1,0 +1,36 @@
+context NamedElement
+
+inv: 
+-- FIX OTHER replaced ->union with concat
+	(self.name->notEmpty() and self.allNamespaces()
+		->select(ns | ns.name->isEmpty())->isEmpty()) 
+implies 
+	self.qualifiedName = self.allNamespaces()
+	->iterate( ns : Namespace; result: String = self.name |
+		ns.name.concat(self.separator()).concat(result))
+		
+		
+		
+context Property
+
+/* [3] Subsetting may only occur when the context of the subsetting property conforms to the context of the 
+   subsetted property. */
+inv:
+subsettedProperty->notEmpty() implies
+	(subsettingContext()->notEmpty() and subsettingContext()->forAll (sc |
+		subsettedProperty->forAll(sp |
+			sp.subsettingContext()->exists(c | sc.conformsTo(c))))) 
+			
+			
+/* [5] The redefinition context of a region is the nearest containing statemachine. */
+-- FIX SYNTAX ESCAPE replaced context with _context (2x)
+context Transition
+inv:
+let sm = containingStateMachine() in
+if sm._context->isEmpty() or sm.general->notEmpty() then
+sm
+else
+sm._context
+endif
+
+

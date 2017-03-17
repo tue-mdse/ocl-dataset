@@ -1,0 +1,51 @@
+import  cs : 'generated/Delphi.ecore#/' 
+import  as : 'astm.ecore#/' 
+package cs
+
+context cs::ident
+def : extract() :String =
+	null
+context cs::MultipleId
+def : extract() :String =
+	id->iterate(x ; acc : String = ''  |
+					if self.id->indexOf(x) = 1 then acc + x else acc + '.'  + x endif)
+context cs::ReservedId
+def : extract() :String =
+	reservedWord.id
+context cs::MineID
+def : extract() :String =
+	first
+context cs::identList
+def : extract() :String =
+	ids->first().extract()
+context cs::designatorPart
+def : extract() :String =
+	id
+context cs::exprList
+def : createActualParams() :Sequence(as::ActualParameterExpression) =
+	self.exps->collect(x | as::ActualParameterExpression {
+				value = x.ast.oclAsType(as::Expression)
+			})
+context cs::interfaceDecl
+def : getFragments() :Sequence(as::DefinitionObject) =
+	Sequence { }
+context cs::declSection
+def : getFragments() :Sequence(as::DefinitionObject) =
+	Sequence { }
+context cs::constSection
+def : getFragments() :Sequence(as::VariableDefinition) =
+	self.constantDecl.ast.oclAsType(as::VariableDefinition)
+context cs::varSection
+def : getFragments() :Sequence(as::VariableDefinition) =
+	self.varDecls.ast.oclAsType(as::VariableDefinition)
+context cs::typeSection
+def : getFragments() :Sequence(as::TypeDefinition) =
+	self.typeDecl.ast.oclAsType(as::TypeDefinition)
+context cs::procedureDecl
+def : getFragments() :Sequence(as::FunctionDefinition) =
+	Sequence { self.ast.oclAsType(as::FunctionDefinition)}
+context cs::functionDecl
+def : getFragments() :Sequence(as::FunctionDefinition) =
+	Sequence { self.ast.oclAsType(as::FunctionDefinition)}
+
+endpackage

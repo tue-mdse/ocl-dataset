@@ -1,0 +1,140 @@
+import  cs : 'ClassesCS.ecore#/'
+import  as : 'Classes.ecore#/'
+import 'EnvExample2.ecore'
+
+package ocl
+---- Default Environment related functionality
+context OclElement
+--	
+def : env() : lookup::LookupEnvironment =
+	_env(null)
+
+def : _env(child : OclElement) : lookup::LookupEnvironment =
+	parentEnv()
+	
+def : parentEnv() : lookup::LookupEnvironment =
+	let parent = oclContainer() in if parent = null then lookup::LookupEnvironment { } else parent._env(self) endif
+endpackage 
+
+package lookup
+		
+context LookupEnvironment
+def : nestedEnv() : LookupEnvironment = 
+	LookupEnvironment {
+		parentEnv = self
+	}
+
+endpackage
+
+package as
+
+context Root
+
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	parentEnv()
+		.addElements(ownedPackages)
+
+context Package
+def : _qualification_env() : lookup::LookupEnvironment =
+	let env = lookup::LookupEnvironment{}
+	in env
+		.addElements(ownedPackages)
+		.addElements(ownedClasses)
+
+def : _lookupQualifiedPackage(pName : String) : Package[?] =
+	let foundPackage = _lookupPackage(_qualification_env(), pName)
+	in  if foundPackage->isEmpty()
+		then null
+		else foundPackage->first()
+		endif
+		
+def : lookupQualifiedPackage(aPathElementCS : cs::PathElementCS) : Package[?] =
+   _lookupQualifiedPackage(aPathElementCS.name)
+
+def : _lookupQualifiedClass(cName : String) : Class[?] =
+	let foundClass = _lookupClass(_qualification_env(), cName)
+	in  if foundClass->isEmpty()
+		then null
+		else foundClass->first()
+		endif
+		
+def : lookupQualifiedClass(aPathElementCS : cs::PathElementCS) : Class[?] =
+   _lookupQualifiedClass(aPathElementCS.name)
+   
+
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	parentEnv().nestedEnv()
+		.addElements(ownedPackages).addElements(ownedClasses)
+context Class
+
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	parentEnv()
+
+context Visitable
+-- Package lookup
+def : _lookupPackage(env : lookup::LookupEnvironment, pName : String) : OrderedSet(Package) =
+let foundPackage = env.namedElements->selectByKind(Package)->select(name = pName)
+in  if foundPackage->isEmpty() and not (env.parentEnv = null)
+	then _lookupPackage(env.parentEnv, pName)
+	else foundPackage
+	endif
+	
+-- Note: when calling this method, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupPackage(pName : String) : Package[?] =
+let foundPackage = _lookupPackage(env(), pName)
+in  if foundPackage->isEmpty()
+	then null
+	else foundPackage->first() -- LookupVisitor will report ambiguous result
+	endif
+	
+def : lookupPackage(aPathElementCS : cs::PathElementCS) : Package[?] =
+   _lookupPackage(aPathElementCS.name)
+   
+
+-- QN Package lookup
+def : lookupPackage(aPathNameCS : cs::PathNameCS) : Package[?] =
+   lookupPackage(aPathNameCS .path)
+
+def : lookupPackage(segments : OrderedSet(cs::PathElementCS)) : Package[?] =
+   if segments->size() = 1
+   then lookupPackage(segments->first())
+   else let qualifierSegments = segments->subOrderedSet(1,segments->size()-1),
+            qualifier = lookupPackage(qualifierSegments)
+        in qualifier?.lookupQualifiedPackage(segments->last())
+   endif
+-- Class lookup
+def : _lookupClass(env : lookup::LookupEnvironment, cName : String) : OrderedSet(Class) =
+let foundClass = env.namedElements->selectByKind(Class)->select(name = cName)
+in  if foundClass->isEmpty() and not (env.parentEnv = null)
+	then _lookupClass(env.parentEnv, cName)
+	else foundClass
+	endif
+	
+-- Note: when calling this method, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupClass(cName : String) : Class[?] =
+let foundClass = _lookupClass(env(), cName)
+in  if foundClass->isEmpty()
+	then null
+	else foundClass->first() -- LookupVisitor will report ambiguous result
+	endif
+	
+def : lookupClass(aPathElementCS : cs::PathElementCS) : Class[?] =
+   _lookupClass(aPathElementCS.name)
+   
+
+-- QN Class lookup
+def : lookupClass(aPathNameCS : cs::PathNameCS) : Class[?] =
+   lookupClass(aPathNameCS .path)
+
+def : lookupClass(segments : OrderedSet(cs::PathElementCS)) : Class[?] =
+   if segments->size() = 1
+   then lookupClass(segments->first())
+   else let qualifierSegments = segments->subOrderedSet(1,segments->size()-1),
+            qualifier = lookupPackage(qualifierSegments)
+        in qualifier?.lookupQualifiedClass(segments->last())
+   endif
+
+
+endpackage
