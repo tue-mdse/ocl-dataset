@@ -1,0 +1,1014 @@
+[comment encoding = UTF-8 
+/**
+ * <copyright>
+ *
+ * Copyright (c) 2002-2011 IBM Corporation and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *   IBM - Initial API and implementation
+ *   Obeo - Migrate to Acceleo
+ *
+ * </copyright>
+ */
+/]
+[module ModelWizard('http://www.eclipse.org/emf/2002/GenModel')/]
+
+[import org::eclipse::emf::eef::codegen::ecore::services::common /]
+[import org::eclipse::emf::eef::codegen::ecore::services::header /]
+[import org::eclipse::emf::eef::codegen::ecore::services::StringUtil /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenClass /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenPackage /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenModel /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenFeature /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenEnum /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenDataType /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenTypedElement /]
+
+[template public ModelWizard(genPackage : GenPackage) {genModel : GenModel = genPackage.genModel; packageName : String = genPackage.getPresentationPackageName(); className : String = genPackage.getModelWizardClassName()}]
+[genModel.initializeImportManager(packageName, className)/]
+
+[file (genModel.editorPath(packageName, className), false, 'UTF-8')]
+[includeHeader()/]
+package [packageName/];
+
+
+[genModel.addImportHere('java.util.ArrayList')/]
+[genModel.addImportHere('java.util.Arrays')/]
+[genModel.addImportHere('java.util.Collection')/]
+[genModel.addImportHere('java.util.Collections')/]
+[genModel.addImportHere('java.util.HashMap')/]
+[if (not genModel.useGenerics())]
+[genModel.addImportHere('java.util.Iterator')/]
+[/if]
+[genModel.addImportHere('java.util.List')/]
+[genModel.addImportHere('java.util.Map')/]
+[genModel.addImportHere('java.util.MissingResourceException')/]
+[genModel.addImportHere('java.util.StringTokenizer')/]
+
+[if (not genModel.richClientPlatform and genModel.complianceLevel <> GenJDKLevel::JDK14)]
+[genModel.addImportHere('org.eclipse.emf.common.CommonPlugin')/]
+
+[/if]
+[genModel.addImportHere('org.eclipse.emf.common.util.URI')/]
+
+[genModel.addImportHere('org.eclipse.emf.ecore.EClass')/]
+[genModel.addImportHere('org.eclipse.emf.ecore.EClassifier')/]
+
+[genModel.addImportHere('org.eclipse.emf.ecore.resource.Resource')/]
+[genModel.addImportHere('org.eclipse.emf.ecore.resource.ResourceSet')/]
+
+[genModel.addImportHere('org.eclipse.emf.ecore.resource.impl.ResourceSetImpl')/]
+
+[genModel.addImportHere('org.eclipse.emf.ecore.EObject')/]
+
+[genModel.addImportHere('org.eclipse.emf.ecore.xmi.XMLResource')/]
+
+[genModel.addImportHere('org.eclipse.emf.edit.ui.provider.ExtendedImageRegistry')/]
+
+[if (not genModel.richClientPlatform)]
+[genModel.addImportHere('org.eclipse.core.resources.IContainer')/]
+[genModel.addImportHere('org.eclipse.core.resources.IFile')/]
+[genModel.addImportHere('org.eclipse.core.resources.IFolder')/]
+[genModel.addImportHere('org.eclipse.core.resources.IProject')/]
+[genModel.addImportHere('org.eclipse.core.resources.IResource')/]
+[genModel.addImportHere('org.eclipse.core.resources.ResourcesPlugin')/]
+
+[/if]
+[genModel.addImportHere('org.eclipse.core.runtime.IProgressMonitor')/]
+
+[genModel.addImportHere('org.eclipse.jface.dialogs.MessageDialog')/]
+
+[genModel.addImportHere('org.eclipse.jface.viewers.IStructuredSelection')/]
+
+[genModel.addImportHere('org.eclipse.jface.wizard.Wizard')/]
+[genModel.addImportHere('org.eclipse.jface.wizard.WizardPage')/]
+
+[genModel.addImportHere('org.eclipse.swt.SWT')/]
+
+[genModel.addImportHere('org.eclipse.swt.events.ModifyListener')/]
+[genModel.addImportHere('org.eclipse.swt.events.ModifyEvent')/]
+
+[genModel.addImportHere('org.eclipse.swt.layout.GridData')/]
+[genModel.addImportHere('org.eclipse.swt.layout.GridLayout')/]
+
+[genModel.addImportHere('org.eclipse.swt.widgets.Combo')/]
+[genModel.addImportHere('org.eclipse.swt.widgets.Composite')/]
+[genModel.addImportHere('org.eclipse.swt.widgets.Label')/]
+
+[genModel.addImportHere('org.eclipse.ui.INewWizard')/]
+[genModel.addImportHere('org.eclipse.ui.IWorkbench')/]
+
+[if (not genModel.richClientPlatform)]
+[genModel.addImportHere('org.eclipse.ui.actions.WorkspaceModifyOperation')/]
+
+[genModel.addImportHere('org.eclipse.ui.dialogs.WizardNewFileCreationPage')/]
+
+[genModel.addImportHere('org.eclipse.ui.part.FileEditorInput')/]
+[genModel.addImportHere('org.eclipse.ui.part.ISetSelectionTarget')/]
+
+[/if]
+[if (not genModel.suppressEMFMetaData)]
+[genModel.addImportHere(genPackage.getQualifiedFactoryInterfaceName())/]
+[/if]
+[genModel.addImportHere(genPackage.getQualifiedPackageInterfaceName())/]
+[genModel.addImportHere(genPackage.getQualifiedEditPluginClassName())/]
+
+[let content : String = genPackage.fileContent(genModel, packageName, className)]
+[genModel.genSortedImports()/]
+
+[content/]
+[/let]
+[/file]
+[/template]
+
+[template public fileContent(genPackage : GenPackage, genModel : GenModel, packageName : String, className : String)]
+/**
+ * This is a simple wizard for creating a new model file.
+ * <!-- begin-user-doc -->
+ * <!-- end-user-doc -->
+ * @generated
+ */
+public class [className/] extends Wizard implements INewWizard
+{
+[if (genModel.hasCopyrightField())]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public static final [genModel.getImportedName('java.lang.String')/] copyright = [genModel.getCopyrightFieldLiteral()/];[genModel.getNonNLS()/]
+
+[/if]
+	/**
+	 * The supported extensions for created files.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public static final [genModel._ListOfString()/] FILE_EXTENSIONS =
+		Collections.unmodifiableList(Arrays.asList([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_[genPackage.getEditorClassName()/]FilenameExtensions").split("\\s*,\\s*")));[genModel.getNonNLS()/][genModel.getNonNLS(2)/]
+
+	/**
+	 * A formatted list of supported file extensions, suitable for display.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public static final String FORMATTED_FILE_EXTENSIONS =
+		[genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_[genPackage.getEditorClassName()/]FilenameExtensions").replaceAll("\\s*,\\s*", ", ");[genModel.getNonNLS()/][genModel.getNonNLS(2)/][genModel.getNonNLS(3)/]
+
+	/**
+	 * This caches an instance of the model package.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected [if genModel.suppressEMFMetaData][genModel.getImportedName('org.eclipse.emf.ecore.EPackage')/][else][genPackage.getPackageInterfaceName()/][/if] [genPackage.getUncapPackageName()/] = [genPackage.getPackageInterfaceName()/].eINSTANCE;
+
+	/**
+	 * This caches an instance of the model factory.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected [if genModel.suppressEMFMetaData][genModel.getImportedName('org.eclipse.emf.ecore.EFactory')/][else][genPackage.getFactoryInterfaceName()/][/if] [genPackage.getUncapFactoryName()/] = [genPackage.getUncapPackageName()/].get[if genModel.suppressEMFMetaData]EFactoryInstance[else][genPackage.getFactoryName()/][/if]();
+
+[if (not genModel.richClientPlatform)]
+	/**
+	 * This is the file creation page.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected [genPackage.getModelWizardClassName()/]NewFileCreationPage newFileCreationPage;
+
+[/if]
+	/**
+	 * This is the initial object creation page.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected [genPackage.getModelWizardClassName()/]InitialObjectCreationPage initialObjectCreationPage;
+
+	/**
+	 * Remember the selection during initialization for populating the default container.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected IStructuredSelection selection;
+
+	/**
+	 * Remember the workbench during initialization.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected IWorkbench workbench;
+
+	/**
+[if (not genPackage.hasDocumentRoot())]
+	 * Caches the names of the types that can be created as the root object.
+[else]
+	 * Caches the names of the features representing global elements.
+[/if]
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected [genModel._ListOfString()/] initialObjectNames;
+
+	/**
+	 * This just records the information.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void init(IWorkbench workbench, IStructuredSelection selection)
+	{
+		this.workbench = workbench;
+		this.selection = selection;
+		setWindowTitle([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_Wizard_label"));[genModel.getNonNLS()/]
+		setDefaultPageImageDescriptor(ExtendedImageRegistry.INSTANCE.getImageDescriptor([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getImage("full/wizban/New[genPackage.prefix/]")));[genModel.getNonNLS()/]
+	}
+
+	/**
+[if (not genPackage.hasDocumentRoot())]
+	 * Returns the names of the types that can be created as the root object.
+[else]
+	 * Returns the names of the features representing global elements.
+[/if]
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected [genModel._CollectionOfString()/] getInitialObjectNames()
+	{
+		if (initialObjectNames == null)
+		{
+			initialObjectNames = new [genModel._ArrayListOfString()/]();
+[if (not genPackage.hasDocumentRoot())]
+  [if (genModel.useGenerics())]
+			for (EClassifier eClassifier : [genPackage.getUncapPackageName()/].getEClassifiers())
+  [else]
+			for (Iterator classifiers = [genPackage.getUncapPackageName()/].getEClassifiers().iterator(); classifiers.hasNext(); )
+  [/if]
+			{
+  [if (not genModel.useGenerics())]
+				EClassifier eClassifier = (EClassifier)classifiers.next();
+  [/if]
+				if (eClassifier instanceof EClass)
+				{
+					EClass eClass = (EClass)eClassifier;
+					if (!eClass.isAbstract())
+					{
+						initialObjectNames.add(eClass.getName());
+					}
+				}
+			}
+[else]
+  [if (genModel.useGenerics())]
+			for ([genModel.getImportedName('org.eclipse.emf.ecore.EStructuralFeature')/] eStructuralFeature : [genModel.getImportedName('org.eclipse.emf.ecore.util.ExtendedMetaData')/].INSTANCE.getAllElements([genModel.getImportedName('org.eclipse.emf.ecore.util.ExtendedMetaData')/].INSTANCE.getDocumentRoot([genPackage.getUncapPackageName()/])))
+  [else]
+			for (Iterator elements = [genModel.getImportedName('org.eclipse.emf.ecore.util.ExtendedMetaData')/].INSTANCE.getAllElements([genModel.getImportedName('org.eclipse.emf.ecore.util.ExtendedMetaData')/].INSTANCE.getDocumentRoot([genPackage.getUncapPackageName()/])).iterator(); elements.hasNext(); )
+  [/if]
+			{
+  [if (not genModel.useGenerics())]
+				[genModel.getImportedName('org.eclipse.emf.ecore.EStructuralFeature')/] eStructuralFeature = ([genModel.getImportedName('org.eclipse.emf.ecore.EStructuralFeature')/])elements.next();
+  [/if]
+				if (eStructuralFeature.isChangeable())
+				{
+					EClassifier eClassifier = eStructuralFeature.getEType();
+					if (eClassifier instanceof EClass)
+					{
+						EClass eClass = (EClass)eClassifier;
+						if (!eClass.isAbstract())
+						{
+							initialObjectNames.add(eStructuralFeature.getName());
+						}
+					}
+				}
+			}
+[/if]
+			Collections.sort(initialObjectNames, [if (not genModel.richClientPlatform and genModel.complianceLevel <> GenJDKLevel::JDK14)]CommonPlugin.INSTANCE.getComparator()[else]java.text.Collator.getInstance()[/if]);
+		}
+		return initialObjectNames;
+	}
+
+	/**
+	 * Create a new model.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected EObject createInitialModel()
+	{
+[if (not genPackage.hasDocumentRoot())]
+		EClass eClass = (EClass)[genPackage.getUncapPackageName()/].getEClassifier(initialObjectCreationPage.getInitialObjectName());
+		EObject rootObject = [genPackage.getUncapFactoryName()/].create(eClass);
+[else]
+		EClass eClass = [genModel.getImportedName('org.eclipse.emf.ecore.util.ExtendedMetaData')/].INSTANCE.getDocumentRoot([genPackage.getUncapPackageName()/]);
+		EStructuralFeature eStructuralFeature = eClass.getEStructuralFeature(initialObjectCreationPage.getInitialObjectName());
+		EObject rootObject = [genPackage.getUncapFactoryName()/].create(eClass);
+		rootObject.eSet(eStructuralFeature, [genModel.getImportedName('org.eclipse.emf.ecore.util.EcoreUtil')/].create((EClass)eStructuralFeature.getEType()));
+[/if]
+		return rootObject;
+	}
+
+	/**
+	 * Do the work after everything is specified.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useClassOverrideAnnotation())]
+	@Override
+[/if]
+	public boolean performFinish()
+	{
+		try
+		{
+[if (genModel.richClientPlatform)]
+			// Get the URI of the model file.
+			//
+			final URI fileURI = getModelURI();
+			if (new [genModel.getImportedName('java.io.File')/](fileURI.toFileString()).exists())
+			{
+				if (!MessageDialog.openQuestion
+						(getShell(),
+						 [genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_Question_title"),[genModel.getNonNLS()/]
+						 [genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_WARN_FileConflict", new String [genModel.genSquareBrackets('')/]{ fileURI.toFileString() })))[genModel.getNonNLS()/]
+				{
+					initialObjectCreationPage.selectFileField();
+					return false;
+				}
+			}
+			
+			// Do the work within an operation.
+			//
+			[genModel.getImportedName('org.eclipse.jface.operation.IRunnableWithProgres')/] operation = new [genModel.getImportedName('org.eclipse.jface.operation.IRunnableWithProgress')/]()
+			{
+				public void run(IProgressMonitor progressMonitor)
+[else]
+			// Remember the file.
+			//
+			final IFile modelFile = getModelFile();
+
+			// Do the work within an operation.
+			//
+			WorkspaceModifyOperation operation =
+				new WorkspaceModifyOperation()
+				{
+[if (genModel.useClassOverrideAnnotation())]
+					@Override
+[/if]
+					protected void execute(IProgressMonitor progressMonitor)
+[/if]
+					{
+						try
+						{
+							// Create a resource set
+							//
+							ResourceSet resourceSet = new ResourceSetImpl();
+
+[if (not genModel.richClientPlatform)]
+							// Get the URI of the model file.
+							//
+							URI fileURI = URI.createPlatformResourceURI(modelFile.getFullPath().toString(), true);
+
+[/if]
+							// Create a resource for this file.
+							//
+							Resource resource = resourceSet.createResource(fileURI[if (genPackage.isContentType())], [genPackage.getImportedPackageInterfaceName()/].eCONTENT_TYPE[/if]);
+
+							// Add the initial model object to the contents.
+							//
+							EObject rootObject = createInitialModel();
+							if (rootObject != null)
+							{
+								resource.getContents().add(rootObject);
+							}
+
+							// Save the contents of the resource to the file system.
+							//
+							[genModel._MapOfObjectToObject()/] options = new [genModel._HashMapOfObjectToObject()/]();
+							options.put(XMLResource.OPTION_ENCODING, initialObjectCreationPage.getEncoding());
+							resource.save(options);
+						}
+						catch (Exception exception)
+						{
+							[genPackage.getImportedEditorPluginClassName()/].INSTANCE.log(exception);
+						}
+						finally
+						{
+							progressMonitor.done();
+						}
+					}
+				};
+
+			getContainer().run(false, false, operation);
+
+[if (genModel.richClientPlatform)]
+			return genModel.getQualifiedEditorAdvisorClassName().openEditor(workbench, fileURI);
+[else]
+			// Select the new file resource in the current view.
+			//
+			[genModel.getImportedName('org.eclipse.ui.IWorkbenchWindow')/] workbenchWindow = workbench.getActiveWorkbenchWindow();
+			[genModel.getImportedName('org.eclipse.ui.IWorkbenchPage')/] page = workbenchWindow.getActivePage();
+			final [genModel.getImportedName('org.eclipse.ui.IWorkbenchPart')/] activePart = page.getActivePart();
+			if (activePart instanceof ISetSelectionTarget)
+			{
+				final [genModel.getImportedName('org.eclipse.jface.viewers.ISelection')/] targetSelection = new [genModel.getImportedName('org.eclipse.jface.viewers.StructuredSelection')/](modelFile);
+				getShell().getDisplay().asyncExec
+					(new Runnable()
+					 {
+						 public void run()
+						 {
+							 ((ISetSelectionTarget)activePart).selectReveal(targetSelection);
+						 }
+					 });
+			}
+
+			// Open an editor on the new file.
+			//
+			try
+			{
+				page.openEditor
+					(new FileEditorInput(modelFile),
+					 workbench.getEditorRegistry().getDefaultEditor[if (not genPackage.isContentType())](modelFile.getFullPath().toString()).getId());[else](modelFile.getFullPath().toString(),
+					[genModel.getImportedName('org.eclipse.core.runtime.Platform')/].getContentTypeManager().getContentType([genPackage.getImportedPackageInterfaceName()/].eCONTENT_TYPE)).getId());[/if]
+			}
+			catch ([genModel.getImportedName('org.eclipse.ui.PartInitException')/] exception)
+			{
+				MessageDialog.openError(workbenchWindow.getShell(), [genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_OpenEditorError_label"), exception.getMessage());[genModel.getNonNLS()/]
+				return false;
+			}
+
+			return true;
+[/if]
+		}
+		catch (Exception exception)
+		{
+			[genPackage.getImportedEditorPluginClassName()/].INSTANCE.log(exception);
+			return false;
+		}
+	}
+
+[if (not genModel.richClientPlatform)]
+	/**
+	 * This is the one page of the wizard.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public class [genPackage.getModelWizardClassName()/]NewFileCreationPage extends WizardNewFileCreationPage
+	{
+		/**
+		 * Pass in the selection.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		public [genPackage.getModelWizardClassName()/]NewFileCreationPage(String pageId, IStructuredSelection selection)
+		{
+			super(pageId, selection);
+		}
+
+		/**
+		 * The framework calls this to see if the file is correct.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+[if (genModel.useClassOverrideAnnotation())]
+		@Override
+[/if]
+		protected boolean validatePage()
+		{
+			if (super.validatePage())
+			{
+				String extension = new [genModel.getImportedName('org.eclipse.core.runtime.Path')/](getFileName()).getFileExtension();
+				if (extension == null || !FILE_EXTENSIONS.contains(extension))
+				{
+					String key = FILE_EXTENSIONS.size() > 1 ? "_WARN_FilenameExtensions" : "_WARN_FilenameExtension";[genModel.getNonNLS()/][genModel.getNonNLS(2)/]
+					setErrorMessage([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString(key, new Object [genModel.genSquareBrackets('')/] { FORMATTED_FILE_EXTENSIONS }));
+					return false;
+				}
+				return true;
+			}
+			return false;
+		}
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		public IFile getModelFile()
+		{
+			return ResourcesPlugin.getWorkspace().getRoot().getFile(getContainerFullPath().append(getFileName()));
+		}
+	}
+
+[/if]
+	/**
+	 * This is the page where the type of object to create is selected.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public class [genPackage.getModelWizardClassName()/]InitialObjectCreationPage extends WizardPage
+	{
+[if (genModel.richClientPlatform)]
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		protected [genModel.getImportedName('org.eclipse.swt.widgets.Text')/] fileField;
+
+[/if]
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		protected Combo initialObjectField;
+
+		/**
+		 * @generated
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 */
+		protected [genModel._ListOfString()/] encodings;
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		protected Combo encodingField;
+
+		/**
+		 * Pass in the selection.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		public [genPackage.getModelWizardClassName()/]InitialObjectCreationPage(String pageId)
+		{
+			super(pageId);
+		}
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		public void createControl(Composite parent)
+		{
+			Composite composite = new Composite(parent, SWT.NONE);
+			{
+				GridLayout layout = new GridLayout();
+				layout.numColumns = 1;
+				layout.verticalSpacing = 12;
+				composite.setLayout(layout);
+
+				GridData data = new GridData();
+				data.verticalAlignment = GridData.FILL;
+				data.grabExcessVerticalSpace = true;
+				data.horizontalAlignment = GridData.FILL;
+				composite.setLayoutData(data);
+			}
+
+[if (genModel.richClientPlatform)]
+			Label resourceURILabel = new Label(composite, SWT.LEFT);
+			{
+				resourceURILabel.setText([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_File_label"));[genModel.getNonNLS()/]
+
+				GridData data = new GridData();
+				data.horizontalAlignment = GridData.FILL;
+				resourceURILabel.setLayoutData(data);
+			}
+
+			Composite fileComposite = new Composite(composite, SWT.NONE);
+			{
+				GridData data = new GridData();
+				data.horizontalAlignment = GridData.END;
+				fileComposite.setLayoutData(data);
+
+				GridLayout layout = new GridLayout();
+				data.horizontalAlignment = GridData.FILL;
+				layout.marginHeight = 0;
+				layout.marginWidth = 0;
+				layout.numColumns = 2;
+				fileComposite.setLayout(layout);
+			}
+
+			fileField = new [genModel.getImportedName('org.eclipse.swt.widgets.Text')/](fileComposite, SWT.BORDER);
+			{
+				GridData data = new GridData();
+				data.horizontalAlignment = GridData.FILL;
+				data.grabExcessHorizontalSpace = true;
+				data.horizontalSpan = 1;
+				fileField.setLayoutData(data);
+			}
+
+			fileField.addModifyListener(validator);
+
+  [if (not genModel.richAjaxPlatform)]
+			[genModel.getImportedName('org.eclipse.swt.widgets.Button')/] resourceURIBrowseFileSystemButton = new [genModel.getImportedName('org.eclipse.swt.widgets.Button')/](fileComposite, SWT.PUSH);
+			resourceURIBrowseFileSystemButton.setText([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_Browse_label"));[genModel.getNonNLS()/]
+
+			resourceURIBrowseFileSystemButton.addSelectionListener
+				(new [genModel.getImportedName('org.eclipse.swt.events.SelectionAdapter')/]()
+				 {
+    [if (genModel.useClassOverrideAnnotation())]
+					 @Override
+    [/if]
+					 public void widgetSelected([genModel.getImportedName('org.eclipse.swt.events.SelectionEvent')/] event)
+					 {
+						 String[genModel.genSquareBrackets('')/] filters = [if (not genModel.useGenerics())](String[genModel.genSquareBrackets('')/])[/if][genPackage.getImportedEditorClassName()/].FILE_EXTENSION_FILTERS.toArray(new String[genModel.genSquareBrackets(genPackage.getImportedEditorClassName().concat('.FILE_EXTENSION_FILTERS.size()'))/];
+						 String[genModel.genSquareBrackets('')/] files = [genModel.getImportedName(genModel.getQualifiedEditorAdvisorClassName())/].openFilePathDialog(getShell(), [genModel.getImportedName('org.eclipse.swt.SWT')/].SAVE, filters);
+						 if (files.length > 0)
+						 {
+							 fileField.setText(files[genModel.genSquareBrackets('0')/]);
+						 }
+					 }
+				 });
+  [/if]
+[/if]
+			Label containerLabel = new Label(composite, SWT.LEFT);
+			{
+				containerLabel.setText([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_ModelObject"));[genModel.getNonNLS()/]
+
+				GridData data = new GridData();
+				data.horizontalAlignment = GridData.FILL;
+				containerLabel.setLayoutData(data);
+			}
+
+			initialObjectField = new Combo(composite, SWT.BORDER);
+			{
+				GridData data = new GridData();
+				data.horizontalAlignment = GridData.FILL;
+				data.grabExcessHorizontalSpace = true;
+				initialObjectField.setLayoutData(data);
+			}
+
+  [if (genModel.useGenerics())]
+			for (String objectName : getInitialObjectNames())
+			{
+				initialObjectField.add(getLabel(objectName));
+			}
+  [else]
+			for (Iterator i = getInitialObjectNames().iterator(); i.hasNext(); )
+			{
+				initialObjectField.add(getLabel((String)i.next()));
+			}
+  [/if]
+
+			if (initialObjectField.getItemCount() == 1)
+			{
+				initialObjectField.select(0);
+			}
+			initialObjectField.addModifyListener(validator);
+
+			Label encodingLabel = new Label(composite, SWT.LEFT);
+			{
+				encodingLabel.setText([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_XMLEncoding"));[genModel.getNonNLS()/]
+
+				GridData data = new GridData();
+				data.horizontalAlignment = GridData.FILL;
+				encodingLabel.setLayoutData(data);
+			}
+			encodingField = new Combo(composite, SWT.BORDER);
+			{
+				GridData data = new GridData();
+				data.horizontalAlignment = GridData.FILL;
+				data.grabExcessHorizontalSpace = true;
+				encodingField.setLayoutData(data);
+			}
+
+  [if (genModel.useGenerics())]
+			for (String encoding : getEncodings())
+			{
+				encodingField.add(encoding);
+			}
+  [else]
+			for (Iterator i = getEncodings().iterator(); i.hasNext(); )
+			{
+				encodingField.add((String)i.next());
+			}
+  [/if]
+
+			encodingField.select(0);
+			encodingField.addModifyListener(validator);
+
+			setPageComplete(validatePage());
+			setControl(composite);
+		}
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		protected ModifyListener validator =
+			new ModifyListener()
+			{
+				public void modifyText(ModifyEvent e)
+				{
+					setPageComplete(validatePage());
+				}
+			};
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		protected boolean validatePage()
+		{
+[if (genModel.richClientPlatform)]
+			URI fileURI = getFileURI();
+			if (fileURI == null || fileURI.isEmpty())
+			{
+				setErrorMessage(null);
+				return false;
+			}
+
+			String extension = fileURI.fileExtension();
+			if (extension == null || !FILE_EXTENSIONS.contains(extension))
+			{
+				String key = FILE_EXTENSIONS.size() > 1 ? "_WARN_FilenameExtensions" : "_WARN_FilenameExtension";[genModel.getNonNLS()/][genModel.getNonNLS(2)/]
+				setErrorMessage([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString(key, new Object [genModel.genSquareBrackets('')/] { FORMATTED_FILE_EXTENSIONS }));
+				return false;
+			}
+
+			setErrorMessage(null);
+[/if]
+			return getInitialObjectName() != null && getEncodings().contains(encodingField.getText());
+		}
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+[if (genModel.useClassOverrideAnnotation())]
+		@Override
+[/if]
+		public void setVisible(boolean visible)
+		{
+			super.setVisible(visible);
+			if (visible)
+			{
+[if (not genModel.richClientPlatform)]
+				if (initialObjectField.getItemCount() == 1)
+				{
+					initialObjectField.clearSelection();
+					encodingField.setFocus();
+				}
+				else
+				{
+					encodingField.clearSelection();
+					initialObjectField.setFocus();
+				}
+[else]
+				initialObjectField.clearSelection();
+				encodingField.clearSelection();
+				fileField.setFocus();
+[/if]
+			}
+		}
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		public String getInitialObjectName()
+		{
+			String label = initialObjectField.getText();
+
+  [if (genModel.useGenerics())]
+			for (String name : getInitialObjectNames())
+  [else]
+			for (Iterator i = getInitialObjectNames().iterator(); i.hasNext(); )
+  [/if]
+			{
+  [if (not genModel.useGenerics())]
+				String name = (String)i.next();
+  [/if]
+				if (getLabel(name).equals(label))
+				{
+					return name;
+				}
+			}
+			return null;
+		}
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		public String getEncoding()
+		{
+			return encodingField.getText();
+		}
+[if (genModel.richClientPlatform)]
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		public URI getFileURI()
+		{
+			try
+			{
+				return URI.createFileURI(fileField.getText());
+			}
+			catch (Exception exception)
+			{
+				// Ignore
+			}
+			return null;
+		}
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		public void selectFileField()
+		{
+				initialObjectField.clearSelection();
+				encodingField.clearSelection();
+				fileField.selectAll();
+				fileField.setFocus();
+		}		
+[/if]
+
+
+		/**
+		 * Returns the label for the specified [genPackage._type()/] name.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		protected String getLabel(String [genPackage._type()/]Name)
+		{
+			try
+			{
+				return [genPackage.getEditPluginClassName()/].INSTANCE.getString("[genPackage._prefix()/]" + [genPackage._type()/]Name + "_[genPackage._type()/]");[genModel.getNonNLS()/][genModel.getNonNLS(2)/]
+			}
+			catch(MissingResourceException mre)
+			{
+				[genModel.getImportedName(genModel.getQualifiedEditorPluginClassName())/].INSTANCE.log(mre);
+			}
+			return [genPackage._type()/]Name;
+		}
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		protected [genModel._CollectionOfString()/] getEncodings()
+		{
+			if (encodings == null)
+			{
+				encodings = new [genModel._ArrayListOfString()/]();
+				for (StringTokenizer stringTokenizer = new StringTokenizer([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_XMLEncodingChoices")); stringTokenizer.hasMoreTokens(); )[genModel.getNonNLS()/]
+				{
+					encodings.add(stringTokenizer.nextToken());
+				}
+			}
+			return encodings;
+		}
+	}
+
+	/**
+	 * The framework calls this to create the contents of the wizard.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useClassOverrideAnnotation())]
+		@Override
+[/if]
+	public void addPages()
+	{
+[if (not genModel.richClientPlatform)]
+		// Create a page, set the title, and the initial model file name.
+		//
+		newFileCreationPage = new [genPackage.getModelWizardClassName()/]NewFileCreationPage("Whatever", selection);[genModel.getNonNLS()/]
+		newFileCreationPage.setTitle([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_[genPackage.getModelWizardClassName()/]_label"));[genModel.getNonNLS()/]
+		newFileCreationPage.setDescription([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_[genPackage.getModelWizardClassName()/]_description"));[genModel.getNonNLS()/]
+		newFileCreationPage.setFileName([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_[genPackage.getEditorClassName()/]FilenameDefaultBase") + "." + [if (not genModel.useGenerics())](String)[/if]FILE_EXTENSIONS.get(0));[genModel.getNonNLS()/][genModel.getNonNLS(2)/]
+		addPage(newFileCreationPage);
+
+		// Try and get the resource selection to determine a current directory for the file dialog.
+		//
+		if (selection != null && !selection.isEmpty())
+		{
+			// Get the resource...
+			//
+			Object selectedElement = selection.iterator().next();
+			if (selectedElement instanceof IResource)
+			{
+				// Get the resource parent, if its a file.
+				//
+				IResource selectedResource = (IResource)selectedElement;
+				if (selectedResource.getType() == IResource.FILE)
+				{
+					selectedResource = selectedResource.getParent();
+				}
+
+				// This gives us a directory...
+				//
+				if (selectedResource instanceof IFolder || selectedResource instanceof IProject)
+				{
+					// Set this for the container.
+					//
+					newFileCreationPage.setContainerFullPath(selectedResource.getFullPath());
+
+					// Make up a unique new name here.
+					//
+					String defaultModelBaseFilename = [genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_[genPackage.getEditorClassName()/]FilenameDefaultBase");[genModel.getNonNLS()/]
+					String defaultModelFilenameExtension = [if (not genModel.useGenerics())](String)[/if]FILE_EXTENSIONS.get(0);
+					String modelFilename = defaultModelBaseFilename + "." + defaultModelFilenameExtension;[genModel.getNonNLS()/]
+					for (int i = 1; ((IContainer)selectedResource).findMember(modelFilename) != null; ++i)
+					{
+						modelFilename = defaultModelBaseFilename + i + "." + defaultModelFilenameExtension;[genModel.getNonNLS()/]
+					}
+					newFileCreationPage.setFileName(modelFilename);
+				}
+			}
+		}
+[/if]
+		initialObjectCreationPage = new [genPackage.getModelWizardClassName()/]InitialObjectCreationPage("Whatever2");[genModel.getNonNLS()/]
+		initialObjectCreationPage.setTitle([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_[genPackage.getModelWizardClassName()/]_label"));[genModel.getNonNLS()/]
+		initialObjectCreationPage.setDescription([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_Wizard_initial_object_description"));[genModel.getNonNLS()/]
+		addPage(initialObjectCreationPage);
+	}
+
+[if (genModel.richClientPlatform)]
+	/**
+	 * Get the URI from the page.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public URI getModelURI()
+	{
+		return initialObjectCreationPage.getFileURI();
+	}
+
+[else]
+	/**
+	 * Get the file from the page.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public IFile getModelFile()
+	{
+		return newFileCreationPage.getModelFile();
+	}
+
+[/if]
+}
+[/template]
+
+[template protected _ListOfString (genModel : GenModel)]
+[if genModel.useGenerics()]List<[genModel.getImportedName('java.lang.String')/]>[else]List[/if]
+[/template]
+
+[template protected _ArrayListOfString (genModel : GenModel)]
+[if genModel.useGenerics()]ArrayList<[genModel.getImportedName('java.lang.String')/]>[else]ArrayList[/if]
+[/template]
+
+[template protected _CollectionOfString (genModel : GenModel)]
+[if genModel.useGenerics()]Collection<[genModel.getImportedName('java.lang.String')/]>[else]Collection[/if]
+[/template]
+
+[template protected _MapOfObjectToObject (genModel : GenModel)]
+[if genModel.useGenerics()]Map<[genModel.getImportedName('java.lang.Object')/], [genModel.getImportedName('java.lang.Object')/]>[else]Map[/if]
+[/template]
+
+[template protected _HashMapOfObjectToObject (genModel : GenModel)]
+[if genModel.useGenerics()]HashMap<[genModel.getImportedName('java.lang.Object')/], [genModel.getImportedName('java.lang.Object')/]>[else]HashMap[/if]
+[/template]
+
+[query protected _type(genPackage : GenPackage) : String = if genPackage.hasDocumentRoot() then 'feature' else 'type' endif/]
+
+[query protected _prefix(genPackage : GenPackage) : String = if genPackage.hasDocumentRoot() then '_UI_DocumentRoot_' else '_UI_' endif/]
+

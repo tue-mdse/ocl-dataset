@@ -1,0 +1,57 @@
+[comment encoding = UTF-8 /]
+[module generateList('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::components::compositeComponent /]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::name::fileNameQueries /]
+
+[**
+ * This template generates the view web pages.
+ * @param aClass
+ */]
+[template public generateList(aClass : Class) ? (isFeatureClass(aClass))]
+[file (getWebPagesFileName(aClass, 'List'), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:ui="http://java.sun.com/jsf/facelets"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:f="http://java.sun.com/jsf/core"
+      xmlns:comp="http://java.sun.com/jsf/composite/ezcomp"
+	  xmlns:p="http://primefaces.org/ui">
+
+    <ui:composition template="/template.xhtml">
+        <ui:define name="body">
+			<p:messages id="messages" autoUpdate="true" closable="true" />  
+        	<p:dataTable 	rows="10" value="#{[aClass.name.toLowerFirst()/]Controller.lazyModel}" 
+        					var="item"
+							id="tbl[aClass.name.toLowerFirst()/]"
+							lazy="true"
+							paginator="true" 
+							paginatorTemplate="{CurrentPageReport}  {FirstPageLink} {PreviousPageLink} {PageLinks} {NextPageLink} {LastPageLink} {RowsPerPageDropdown}">
+                   <f:facet name="header">  
+    					<h:outputText value="#{bundle.List[aClass.name/]Title}"/>
+					</f:facet>  
+					[for (aProperty : Property | aClass.getAllProperties()) ? (isAssociationAttribute(aProperty)._not())]
+       	 			<p:column headerText="#{bundle.[aProperty.class.name/]_[aProperty.name/]}" filterBy="#{item.[aProperty.name/]}" filterMatchMode="contains"  sortBy="#{item.[aProperty.name/]}">
+                        <h:outputText value="#{item.[aProperty.name/]}"/>
+                    </p:column>
+        			[/for]                                      
+                    <p:column headerText="&nbsp;" exportable="false">
+						<p:commandButton style="visibility:hidden;width:0px;"/>
+						<p:commandButton ajax="false" action="#{[aClass.name.toLowerFirst()/]Controller.prepareView}" title="#{bundle.ViewLink}" icon="ui-icon-zoomin"/>
+                    	<p:commandButton ajax="false" action="#{[aClass.name.toLowerFirst()/]Controller.prepareEdit}" title="#{bundle.EditLink}" icon="ui-icon-pencil"/>
+                    	<p:commandButton ajax="false" action="#{[aClass.name.toLowerFirst()/]Controller.destroy}" title="#{bundle.DestroyLink}" icon="ui-icon-trash"/>
+	 				</p:column>
+            </p:dataTable>
+			<br/>
+			<p:commandButton style="visibility:hidden;width:0px;"/>
+			<p:commandButton 	ajax="false" icon="ui-icon-document"
+					action="#{[aClass.name.toLowerFirst()/]Controller.prepareCreate}" 
+					value="#{bundle.[aClass.name/]CreateLink}"
+					immediate="true"/>
+		 </ui:define>	
+    </ui:composition>
+</html>
+[/file]
+[/template]

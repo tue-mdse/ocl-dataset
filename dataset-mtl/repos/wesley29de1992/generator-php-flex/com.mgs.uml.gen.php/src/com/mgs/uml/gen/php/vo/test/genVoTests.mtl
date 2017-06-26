@@ -1,0 +1,138 @@
+[comment encoding = UTF-8 /]
+[module genVoTests('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::gen::php::entity::entityCommon /]
+[import com::mgs::uml::common::umlUtils /]
+[import com::mgs::uml::gen::php::common::phpUtils /]
+[import com::mgs::uml::gen::php::vo::genValueObjectFactory /]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::common::services /]
+
+[template public genVoTests(m : Model)]
+	
+[comment @main /]
+[file ('test/vo/VoTest.php', false, 'UTF-8')]
+<?php
+
+class VoTest extends PHPUnit_Framework_TestCase {
+
+[for (c : Class | m.eAllContents(Class)) ? (profile_isEntity())]
+	[c.genObjectCreate()/]
+	[c.genObjectCompare()/]
+	[c.genObjectTestCreate()/]
+	[c.genObjectTestCreateRecursive()/]
+	[c.genTestVoToEntity()/]
+[/for]
+
+}
+
+?>
+[/file]
+	
+[/template]
+
+[template public genTestVoToEntity(c : Class)]
+public function testVoToEntity_For[c.entityName()/](){
+	$objA = $this->create[c.entityName()/]();
+[for (p : Property | c.allComplexProperties()) ? (type.profile_isEntity() and upper = 1)]
+	$objB = $this->create[p.type->filter(Class).entityName()/]();
+	$objA->[p.setterName()/]($objB);
+[/for]
+[for (p : Property | c.allComplexProperties()) ? (type.profile_isEntity() and upper <> 1)]
+	$objB = $this->create[p.type->filter(Class).entityName()/]();
+	$objA->[p.adderName()/]($objB);
+[/for]
+	$voA = ValueObjectFactory::getInstance()->create[c.entityName()/]Recursive($objA);
+	$resA = EntityFactory::getInstance()->create[c.entityName()/]FromVO($voA);
+[for (p : Property | c.allComplexProperties())? (type.profile_isEntity())]
+	$this->assertNotNull($resA->[p.getterName()/]());
+[/for]
+}
+[/template]
+
+[template public genObjectCreate(c : Class)]
+private function create[c.entityName()/](){
+	$object = EntityFactory::getInstance()->create[c.entityName()/]();
+[for (p : Property | c.allSimplePrimitiveAttributes())]
+	$object->[p.setterName()/]([p.php_genTestValue()/]);
+[/for]
+	return $object;
+}
+[/template]
+
+[template public genObjectTestCreate(c : Class)]
+public function testCreate[c.entityName()/](){
+	$vo = ValueObjectFactory::getInstance()->create[c.entityName()/](null); 
+	$this->assertNull($vo);
+	
+	$object = $this->create[c.entityName()/]();
+	$vo = ValueObjectFactory::getInstance()->create[c.entityName()/]($object, true); 
+	$this->assertTrue($vo->partial);
+	
+	$object = $this->create[c.entityName()/]();
+	$vo = ValueObjectFactory::getInstance()->create[c.entityName()/]($object); 
+	$this->compare[c.entityName()/]($object, $vo);
+}
+[if (c.hasBaseClass())]
+public function testCreate[c.entityName()/]Hierarchy(){
+	$object = $this->create[c.entityName()/]();
+	$vo = ValueObjectFactory::getInstance()->create[c.baseClass().entityName()/]($object);
+	$this->compare[c.entityName()/]($object, $vo);
+	$this->assertTrue($vo instanceof [c.genNameVO()/], "[c.entityName()/] vo is not a [c.genNameVO()/] but a " . get_class($vo)); 
+}
+[/if]
+[/template]
+
+[template public genObjectTestCreateRecursive(c : Class)]
+public function testCreate[c.entityName()/]Recursive(){
+	$object = $this->create[c.entityName()/]();
+[for (p : Property | c.allComplexProperties()) ? (type.profile_isEntity())]
+	$relatedObject = $this->create[p.type->filter(Class).entityName()/]();
+[if (p.upper = 1)]
+	$object->[p.setterName()/]($relatedObject);	
+[else]
+	$object->[p.adderName()/]($relatedObject);	
+[/if]
+[/for]
+	$vo = ValueObjectFactory::getInstance()->create[c.entityName()/]Recursive($object);
+	$this->compare[c.entityName()/]($object, $vo);
+[for (p : Property | c.allComplexProperties()) ? (type.profile_isEntity())]
+[if (p.upper = 1)]
+	$objectRelated = $object->[p.getterName()/]();
+	$voRelated = $vo->[p.genName()/];
+[else]
+	$array = $object->[p.getterName()/]();
+	$objectRelated = @$array['[0]'/];
+	$voRelated = @$vo->[p.genName()/]['[0]'/];
+[/if]
+	$this->compare[p.type->filter(Class).entityName()/]($objectRelated, $voRelated);
+[if (p.hasOppositeProperty())]
+[if (p.getOppositeProperty().upper = 1)]
+	$objectOpposite = $objectRelated->[p.getOppositeProperty().getterName()/]();
+	$voOpposite = $voRelated->[p.getOppositeProperty().genName()/];
+[else]
+	$array = $objectRelated->[p.getOppositeProperty().getterName()/]();
+	$objectOpposite = @$array['[0]'/];
+	$voOpposite = @$voRelated->[p.getOppositeProperty().genName()/]['[0]'/];
+[/if]
+	$this->compare[c.entityName()/]($objectOpposite, $voOpposite);
+[/if]
+[/for]
+}
+[/template]
+
+[template public genObjectCompare(c : Class)]
+private function compare[c.entityName()/]($object, $vo){
+	if($object == null || $vo == null){
+		$this->assertTrue($vo == null && $object == null, "[c.entityName()/] vo is not null\n");
+	}else{
+		$this->assertEquals($object->getId(), $vo->id);
+[for (p : Property | c.profile_propertiesEntity()) ? (isSimplePrimitive() and not profile_confidentiality_isNever())]
+		$this->assertEquals($object->[p.getterName()/](false), $vo->[p.genName()/]);
+[/for]
+[for (p : Property | c.profile_propertiesEntity()) ? (isSimplePrimitive() and profile_confidentiality_isNever())]
+		$this->assertNull($vo->[p.genName()/]);
+[/for]
+	}
+}
+[/template]
+

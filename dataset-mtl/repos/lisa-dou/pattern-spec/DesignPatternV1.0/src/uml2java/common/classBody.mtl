@@ -1,0 +1,79 @@
+[comment]
+  Copyright 2008, 2010 Obeo
+  All rights reserved.  This program and the accompanying materials
+  are made available under the terms of the Eclipse Public License 1.0
+  
+  Any license can be applied to the files generated with this template.
+  
+  author <a href="mailto:stephane.bouchet@obeo.fr">Stephane Bouchet</a>
+[/comment]
+[module classBody('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import common/]
+
+[template public generateClassBody(c : Class)]
+public[if (c.isAbstract)] abstract[/if] class [c.name.toUpperFirst()/][for (superC : Class | c.superClass) before(' extends ') separator(',')] [superC.name/][/for][for (interf : Interface | c.getImplementedInterfaces()) before(' implements ') separator(',')] [interf.name/][/for] {
+[for (p : Property | c.ownedAttribute)]
+		[if (p.upper = -1 or p.upper > 1)]
+		    /**
+		     * the [p.name/] attribute.
+		     */
+		    [p.visibility/] List<[p.type.name/]> [p.name/];
+		[else]
+		    /**
+		     * the [p.name/] attribute.
+		     */
+		    [p.visibility/] [p.type.name/] [p.name/];
+		[/if]	
+[/for]
+ 
+[for (o : Operation | c.getOperations())]
+[o.operationBody()/]
+[/for]
+[for (interf : Interface | c.getImplementedInterfaces())]
+[for (o : Operation | interf.ownedOperation)]
+[o.operationBody()/]
+[/for]
+[/for]
+}    
+[/template]
+
+[template private operationBody(o : Operation)]
+
+    /**
+     *
+[for (p : Parameter | o.ownedParameter) ? (p.direction <> ParameterDirectionKind::return)]
+[paramOperationComment(p)/]
+[/for]
+[if (not o.type.oclIsUndefined())]
+[o.returnOperationComment()/]
+[/if]
+
+     */
+
+//JML Specifications
+[o.precondition.nameExpression.symbol /] 
+[o.postcondition.nameExpression.symbol /]
+
+[if (o.isAbstract) ]
+  [o.visibility/] abstract [o.returnTypeOperation()/]([o.getInParameter()/]);
+[else]
+  [o.visibility/] [if (o.isStatic)] static [/if] [o.returnTypeOperation()/]([o.getInParameter()/]) 
+	[if (not o.bodyCondition.oclIsUndefined())]
+      [o.bodyCondition.nameExpression.symbol/]
+	  
+	[else]
+	   {
+	   [if (not o.type.oclIsUndefined())]
+	   // [protected ('for operation '.concat(o.name))]
+        // TODO should be implemented
+        return null;
+        // [/protected]
+		[else]
+	        // [protected ('for operation '.concat(o.name))]
+	        // TODO should be implemented
+	        // [/protected]
+		[/if]
+		}
+	[/if]  
+[/if]
+[/template]

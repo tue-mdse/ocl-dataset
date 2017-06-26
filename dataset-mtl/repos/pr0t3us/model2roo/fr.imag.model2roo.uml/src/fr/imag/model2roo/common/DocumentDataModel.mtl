@@ -1,0 +1,76 @@
+[comment encoding = UTF-8 /]
+[**
+ * Copyright 2012 jccastrejon
+ * 
+ * This file is part of Model2Roo.
+ * Model2Roo is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ * 
+ * Model2Roo is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Model2Roo.  If not, see <http://www.gnu.org/licenses/>.
+ */]
+[module DocumentDataModel('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import fr::imag::model2roo::common::Common/]
+
+[**
+ * Identifies whether the specified package should be associated with the Document data model
+ * @param aPackage UML2 Package.
+*/]
+[template public isDocumentDataModel(aPackage : Package) post(trim())]
+[if 'dataModel'.getPropertyValue('', 'rooCommand::RooModelCommand', aPackage) = 'DOCUMENT'] true [else] false [/if]
+[/template]
+
+[**
+ * Generate the appropriate setup for document data models.
+ * @param aPackage UML2 Package
+*/]
+[template public generateDocumentSetup(aPackage : Package) post(trim())]
+  mongo setup ['persistenceUserName'.getPropertyValue('--userName ', 'rooCommand::RooModelCommand', aPackage)/] ['persistencePassword'.getPropertyValue('--password ', 'rooCommand::RooModelCommand', aPackage)/]  ['persistenceDatabaseName'.getPropertyValue('--databaseName ', 'rooCommand::RooModelCommand', aPackage)/]
+[/template]
+
+[**
+ * Generate the appropriate commands for a document representation of the given class.
+ * @param aClass UML2 Class.
+*/]
+[template public generateDocumentEntity(aClass : Class) post(trim())]
+  entity mongo --class ~.domain.[aClass.name/] [aClass.getRooDetails()/]
+  repository mongo --interface ~.repository.[aClass.name/]Repository --entity ~.domain.[aClass.name/]
+[/template]
+
+[**
+ * Generate the properties of the classes contained in the specified package, and that aren't abstract
+ * @param aPackage UML package.
+ */]
+[template public generateDocumentEntitiesProperties(aPackage : Package) post(trim())]
+[for (anElement: Element | aPackage.ownedElement)]
+  [if anElement.oclIsTypeOf(Class)]
+    [let aClass : Class = anElement.oclAsType(Class)]
+      [if not aClass.isAbstract] 
+        [aClass.generateInheritedProperties(aPackage)/]
+        [aClass.generateEntityProperties(aClass)/]
+      [/if] 
+    [/let]
+  [/if]
+[/for]
+[/template]
+
+[**
+ * Generate the properties associated to the super classes, as if they belonged to the children classes
+ * @param aClass UML2 Class.
+ * @param aPackage UML2 Package.
+*/]
+[template private generateInheritedProperties(aClass : Class, aPackage : Package) post(trim())]
+[if aPackage.isDocumentDataModel() = 'true']
+  [for (aSuperClass : Class | aClass.superClass)]
+    [aSuperClass.generateEntityProperties(aClass)/] 
+  [/for]
+[/if]
+[/template]

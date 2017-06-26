@@ -1,0 +1,497 @@
+[comment encoding = UTF-8 /]
+[module tests('http://www.eclipse.org/uml2/5.0.0/UML') extends backend::logic::logic]
+[import ::utils /]
+
+[template public mainTests(c : Class, path : String)]
+[c.genTests(path.concat('test/logic/'))/]
+[/template]
+
+[template protected genTests(c : Class, path : String) {className : String = c.getTestName();}]
+[let bean : String = c.getName().concat('Logic')]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].test.logic;
+
+import [c.getModel().baseGroup()/].ejbs.[c.getBeanName()/];
+import [c.getModel().baseGroup()/].api.[c.getAPIName()/];
+import [c.getModel().baseGroup()/].entities.[c.getEntityName()/];
+[if (c.isChild())]
+import [c.getModel().baseGroup()/].entities.[c.getParentAttribute().getClass().getEntityName()/];
+[/if]
+import [c.getModel().baseGroup()/].persistence.[c.getPersistenceName()/];
+[for (a : Property | c.getRelationshipAttributes())]
+import [c.getModel().baseGroup()/].entities.[a.getClass().getEntityName()/];
+[/for]
+import java.util.ArrayList;
+import java.util.List;
+[if (c.hasDateAttribute())]import java.util.Date;[/if]
+import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.UserTransaction;
+import org.junit.Assert;
+import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import uk.co.jemos.podam.api.PodamFactory;
+import uk.co.jemos.podam.api.PodamFactoryImpl;
+
+/**
+ * @generated
+ */
+@RunWith(Arquillian.class)
+public class [className/] {
+
+    /**
+     * @generated
+     */
+    [if (c.isChild())]
+    [c.getParentAttribute().getClass().getEntityName()/] fatherEntity;
+    [/if]
+
+    /**
+     * @generated
+     */
+    private PodamFactory factory = new PodamFactoryImpl();
+
+    /**
+     * @generated
+     */
+    @Inject
+    private [c.getAPIName()/] [bean/];
+
+    /**
+     * @generated
+     */
+    @PersistenceContext
+    private EntityManager em;
+
+    /**
+     * @generated
+     */
+    @Inject
+    private UserTransaction utx;
+
+    /**
+     * @generated
+     */
+    private List<[c.getEntityName()/]> data = new ArrayList<[c.getEntityName()/]>();
+    [for (a : Property | c.getRelationshipAttributes()->reject(isComposite()))]
+    [if(c.name <> a.getClass().name)]
+    /**
+     * @generated
+     */
+    private List<[a.getClass().getEntityName()/]> [a.getListVar()/] = new ArrayList<>();
+    [/if]
+    [/for]
+
+    /**
+     * @generated
+     */
+    @Deployment
+    public static JavaArchive createDeployment() {
+        return ShrinkWrap.create(JavaArchive.class)
+                .addPackage([c.getEntityName()/].class.getPackage())
+                .addPackage([c.getBeanName()/].class.getPackage())
+                .addPackage([c.getAPIName()/].class.getPackage())
+                .addPackage([c.getPersistenceName()/].class.getPackage())
+                .addAsManifestResource("META-INF/persistence.xml", "persistence.xml")
+                .addAsManifestResource("META-INF/beans.xml", "beans.xml");
+    }
+
+    /**
+     * Configuración inicial de la prueba.
+     *
+     * @generated
+     */
+    @Before
+    public void configTest() {
+        try {
+            utx.begin();
+            clearData();
+            insertData();
+            utx.commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                utx.rollback();
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * Limpia las tablas que están implicadas en la prueba.
+     *
+     * @generated
+     */
+    private void clearData() {
+        [for (a : Property | c.getRelationshipAttributes()->reject(isRelationshipOwner()))]
+        em.createQuery("delete from [a.getClass().getEntityName()/]").executeUpdate();
+        [/for]
+        em.createQuery("delete from [c.getEntityName()/]").executeUpdate();
+        [for (a : Property | c.getRelationshipAttributes()->select(isRelationshipOwner()))]
+        em.createQuery("delete from [a.getClass().getEntityName()/]").executeUpdate();
+        [/for]
+    }
+
+    /**
+     * Inserta los datos iniciales para el correcto funcionamiento de las pruebas.
+     *
+     * @generated
+     */
+    private void insertData() {
+        [if (c.isChild())]
+            [for (a : Property | c.getRelationshipAttributes()->reject(isComposite()))]
+            [if(c.getParentAttribute().getClass().name <> a.getClass().name)]
+            for (int i = 0; i < 3; i++) {
+                [a.getClass().getEntityName()/] [a.name/] = factory.manufacturePojo([a.getClass().getEntityName()/].class);
+                em.persist([a.name/]);
+                [a.getListVar()/].add([a.name/]);
+            }
+            [/if]
+            [/for]
+    
+            fatherEntity = factory.manufacturePojo([c.getParentAttribute().getClass().getEntityName()/].class);
+            fatherEntity.setId(1L);
+            em.persist(fatherEntity);
+        [else]
+            [for (a : Property | c.getRelationshipAttributes()->reject(isComposite()))]
+            [if(c.name <> a.getClass().name)]
+            for (int i = 0; i < 3; i++) {
+                [a.getClass().getEntityName()/] [a.name/] = factory.manufacturePojo([a.getClass().getEntityName()/].class);
+                em.persist([a.name/]);
+                [a.getListVar()/].add([a.name/]);
+            }
+            [/if]
+            [/for]
+        [/if]
+        for (int i = 0; i < [if (c.isChild() and c.getParentAttribute().isOne2One())]1[else]3[/if]; i++) {
+            [c.getEntityName()/] entity = factory.manufacturePojo([c.getEntityName()/].class);
+            [if (c.isChild())]
+                entity.[c.getParentAttribute().setter()/](fatherEntity);
+    
+                [for (a : Property | c.getRelationshipAttributes()->reject(isComposite() or not isRelationshipOwner()))]
+                [if(c.getParentAttribute().getClass().name <> a.getClass().name)]
+                [if (a.getUpper() = 1)]
+                entity.[a.setter()/]([a.getListVar()/].get(0));
+                [else]
+                entity.[a.getter()/]().add([a.getListVar()/].get(0));
+                [/if]
+                [/if]
+                [/for]
+            [else]
+                [for (a : Property | c.getRelationshipAttributes()->reject(isComposite() or not isRelationshipOwner()))]
+                [if(c.name <> a.getClass().name)]
+                [if (a.getUpper() = 1)]
+                entity.[a.setter()/]([a.getListVar()/].get(0));
+                [else]
+                entity.[a.getter()/]().add([a.getListVar()/].get(0));
+                [/if]
+                [/if]
+            [/for]
+            [/if]
+
+            em.persist(entity);
+            data.add(entity);
+            [for (a : Property | c.getRelationshipAttributes()->reject(isComposite() or isRelationshipOwner() or isOne2One()))]
+
+            [if (a.getOtherEnd().getUpper() = 1)]
+            if (i == 0) {
+                [a.getListVar()/].get(i).[a.getOtherEnd().setter()/](entity);
+            }
+            [else]
+            [a.getListVar()/].get(0).[a.getOtherEnd().getter()/]().add(entity);
+            [/if]
+            [/for]
+        }
+    }
+[if (c.isChild())]
+   /**
+     * Prueba para crear un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void create[c.name/]Test() {
+        [c.getEntityName()/] newEntity = factory.manufacturePojo([c.getEntityName()/].class);
+        [c.getEntityName()/] result = [bean/].create[c.name/](fatherEntity.getId(), newEntity);
+        Assert.assertNotNull(result);
+        [c.getEntityName()/] entity = em.find([c.getEntityName()/].class, result.getId());
+        [for (prop : Property | c.attribute->reject(a2| c.isGeneralization() and a2.existAttribute(c.getGeneralizationClass())))]
+        Assert.assertEquals(newEntity.[prop.getter()/](), entity.[prop.getter()/]());
+        [/for]
+    }
+
+    /**
+     * Prueba para consultar la lista de [c.name/]s
+     *
+     * @generated
+     */
+    @Test
+    public void get[c.name/]sTest() {
+        List<[c.getEntityName()/]> list = [bean/].get[c.name/]s(fatherEntity.getId());
+        Assert.assertEquals(data.size(), list.size());
+        for ([c.getEntityName()/] entity : list) {
+            boolean found = false;
+            for ([c.getEntityName()/] storedEntity : data) {
+                if (entity.getId().equals(storedEntity.getId())) {
+                    found = true;
+                }
+            }
+            Assert.assertTrue(found);
+        }
+    }
+
+    
+    /**
+     * Prueba para consultar un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void get[c.name/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        [c.getEntityName()/] resultEntity = [bean/].get[c.name/](entity.getId());
+        Assert.assertNotNull(resultEntity);
+        [for (prop : Property | c.attribute->reject(a2| c.isGeneralization() and a2.existAttribute(c.getGeneralizationClass())))]
+        Assert.assertEquals(entity.[prop.getter()/](), resultEntity.[prop.getter()/]());
+        [/for]
+    }
+
+    /**
+     * Prueba para eliminar un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void delete[c.name/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        [for (a : Property | c.getNonCompositeCollectionAttributes())]
+        [if(c.name <> a.getClass().name)]
+        [bean/].remove[a.name.toUpperFirst()/](entity.getId(), [a.getListVar()/].get(0).getId());
+        [/if]
+        [/for]
+        [bean/].delete[c.name/](entity.getId());
+        [c.getEntityName()/] deleted = em.find([c.getEntityName()/].class, entity.getId());
+        Assert.assertNull(deleted);
+    }
+
+    /**
+     * Prueba para actualizar un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void update[c.name/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        [c.getEntityName()/] pojoEntity = factory.manufacturePojo([c.getEntityName()/].class);
+
+        pojoEntity.setId(entity.getId());
+
+        [bean/].update[c.name/](fatherEntity.getId(), pojoEntity);
+
+        [c.getEntityName()/] resp = em.find([c.getEntityName()/].class, entity.getId());
+
+        [for (prop : Property | c.attribute->reject(a2| c.isGeneralization() and a2.existAttribute(c.getGeneralizationClass())))]
+        Assert.assertEquals(pojoEntity.[prop.getter()/](), resp.[prop.getter()/]());
+        [/for]
+    }
+[else]
+    /**
+     * Prueba para crear un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void create[c.name/]Test() {
+        [c.getEntityName()/] newEntity = factory.manufacturePojo([c.getEntityName()/].class);
+        [c.getEntityName()/] result = [bean/].create[c.name/](newEntity);
+        Assert.assertNotNull(result);
+        [c.getEntityName()/] entity = em.find([c.getEntityName()/].class, result.getId());
+        [for (prop : Property | c.attribute->reject(a2| c.isGeneralization() and a2.existAttribute(c.getGeneralizationClass())))]
+        Assert.assertEquals(newEntity.[prop.getter()/](), entity.[prop.getter()/]());
+        [/for]
+    }
+
+    /**
+     * Prueba para consultar la lista de [c.name/]s
+     *
+     * @generated
+     */
+    @Test
+    public void get[c.name/]sTest() {
+        List<[c.getEntityName()/]> list = [bean/].get[c.name/]s();
+        Assert.assertEquals(data.size(), list.size());
+        for ([c.getEntityName()/] entity : list) {
+            boolean found = false;
+            for ([c.getEntityName()/] storedEntity : data) {
+                if (entity.getId().equals(storedEntity.getId())) {
+                    found = true;
+                }
+            }
+            Assert.assertTrue(found);
+        }
+    }
+
+    
+    /**
+     * Prueba para consultar un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void get[c.name/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        [c.getEntityName()/] resultEntity = [bean/].get[c.name/](entity.getId());
+        Assert.assertNotNull(resultEntity);
+        [for (prop : Property | c.attribute->reject(a2| c.isGeneralization() and a2.existAttribute(c.getGeneralizationClass())))]
+        Assert.assertEquals(entity.[prop.getter()/](), resultEntity.[prop.getter()/]());
+        [/for]
+    }
+
+    /**
+     * Prueba para eliminar un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void delete[c.name/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        [for (a : Property | c.getNonCompositeCollectionAttributes())]
+        [if(c.name <> a.getClass().name)]
+        [bean/].remove[a.name.toUpperFirst()/](entity.getId(), [a.getListVar()/].get(0).getId());
+        [/if]
+        [/for]
+        [bean/].delete[c.name/](entity.getId());
+        [c.getEntityName()/] deleted = em.find([c.getEntityName()/].class, entity.getId());
+        Assert.assertNull(deleted);
+    }
+
+    /**
+     * Prueba para actualizar un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void update[c.name/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        [c.getEntityName()/] pojoEntity = factory.manufacturePojo([c.getEntityName()/].class);
+
+        pojoEntity.setId(entity.getId());
+
+        [bean/].update[c.name/](pojoEntity);
+
+        [c.getEntityName()/] resp = em.find([c.getEntityName()/].class, entity.getId());
+
+        [for (prop : Property | c.attribute->reject(a2| c.isGeneralization() and a2.existAttribute(c.getGeneralizationClass())))]
+        Assert.assertEquals(pojoEntity.[prop.getter()/](), resp.[prop.getter()/]());
+        [/for]
+    }
+[/if]
+    [for (a : Property | c.getNonCompositeCollectionAttributes()->reject(at | c.name=at.getClass().name))]
+
+    /**
+     * Prueba para obtener una instancia de [a.name.toUpperFirst()/] asociada a una instancia [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void get[a.name.toUpperFirst()/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        [a.getClass().getEntityName()/] [a.getClass().getEntityLower()/] = [a.getListVar()/].get(0);
+        [a.getClass().getEntityName()/] response = [bean/].get[a.name.toUpperFirst()/](entity.getId(), [a.getClass().getEntityLower()/].getId());
+
+        [for (prop : Property | a.getClass().attribute)]
+        Assert.assertEquals([a.getClass().getEntityLower()/].[prop.getter()/](), response.[prop.getter()/]());
+        [/for]
+    }
+
+    /**
+     * Prueba para obtener una colección de instancias de [a.name.toUpperFirst()/] asociadas a una instancia [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void list[a.name.toUpperFirst()/]Test() {
+        List<[a.getClass().getEntityName()/]> list = [bean/].list[a.name.toUpperFirst()/](data.get(0).getId());
+        Assert.assertEquals(1, list.size());
+    }
+
+    /**
+     *Prueba para asociar un [a.name.toUpperFirst()/] existente a un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void add[a.name.toUpperFirst()/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        [a.getClass().getEntityName()/] [a.getClass().getEntityLower()/] = [a.getListVar()/].get(1);
+        [a.getClass().getEntityName()/] response = [bean/].add[a.name.toUpperFirst()/](entity.getId(), [a.getClass().getEntityLower()/].getId());
+
+        Assert.assertNotNull(response);
+        Assert.assertEquals([a.getClass().getEntityLower()/].getId(), response.getId());
+    }
+
+    /**
+     * Prueba para remplazar las instancias de [a.name.toUpperFirst()/] asociadas a una instancia de [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void replace[a.name.toUpperFirst()/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        List<[a.getClass().getEntityName()/]> list = [a.getListVar()/].subList(1, 3);
+        [bean/].replace[a.name.toUpperFirst()/](entity.getId(), list);
+
+        entity = [bean/].get[c.name/](entity.getId());
+        Assert.assertFalse(entity.[a.getter()/]().contains([a.getListVar()/].get(0)));
+        Assert.assertTrue(entity.[a.getter()/]().contains([a.getListVar()/].get(1)));
+        Assert.assertTrue(entity.[a.getter()/]().contains([a.getListVar()/].get(2)));
+    }
+
+    /**
+     * Prueba para desasociar un [a.name.toUpperFirst()/] existente de un [c.name/] existente
+     *
+     * @generated
+     */
+    @Test
+    public void remove[a.name.toUpperFirst()/]Test() {
+        [bean/].remove[a.name.toUpperFirst()/](data.get(0).getId(), [a.getListVar()/].get(0).getId());
+        [a.getClass().getEntityName()/] response = [bean/].get[a.name.toUpperFirst()/](data.get(0).getId(), [a.getListVar()/].get(0).getId());
+        Assert.assertNull(response);
+    }
+    [/for]
+}
+
+[/file]
+[/let]
+
+[/template]
+
+[template private getEntityLower(c : Class)]
+[c.name.toLowerFirst().concat('Entity')/]
+[/template]
+
+[template private getBeanLower(c : Class)]
+[c.name.toLowerFirst().concat('Logic')/]
+[/template]
+
+[template private getListVar(a : Property)]
+[a.name.toLowerFirst()/]Data
+[/template]
+
+[template private getTestName(c : Class)]
+[c.name.concat('LogicTest')/]
+[/template]
+
+[query public existAttribute(a : Property, cl : Class) : Boolean = 
+cl.allAttributes()->select(a1 | a1.name=a.name)->notEmpty()
+/]

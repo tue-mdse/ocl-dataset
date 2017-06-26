@@ -1,0 +1,38 @@
+[module uml2services('http://www.eclipse.org/uml2/2.1.0/UML')/]
+	[import dao /]
+	
+[query public hasStereotype(e : Element,s :String ) : Boolean = 
+	e.getAppliedStereotypes()->select(name = s)->size() > 0
+/]
+
+[query public getFirstNavigableMemberEnd(a : Association) : Property = 
+	a.memberEnd->select(isNavigable())->at(1)
+/]
+
+[query public getFirstNotNavigableMemberEnd(a : Association) : Property = 
+	a.memberEnd->select(!isNavigable())->at(1)
+/]
+
+[query public isAssociation(p : Property) : Boolean =
+	p.association->size() > 0
+/] 
+
+[query public isBidirectional(a : Association) : Boolean =
+	a.navigableOwnedEnd->size() > 1
+/]
+
+[query public getSource(a : Association) : Property =
+	a.memberEnd->at(1)
+/]
+
+[query public getTarget(a : Association) : Property =
+	a.memberEnd->at(2)
+/]
+
+[query public isSelfAssociation(a : Association) : Boolean =
+	getSource(a).qualifiedName = getTarget(a).qualifiedName
+/]
+
+[query public daoMustBeGenerated(class : Class) : Boolean =
+	class.qualifiedName.startsWith(getProperty('tv.vial.generator.php.properties.dao','dao.generate')) and hasStereotype(class, 'Entity')
+/]

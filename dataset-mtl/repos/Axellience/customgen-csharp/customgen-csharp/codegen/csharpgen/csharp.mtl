@@ -1,0 +1,148 @@
+[comment encoding = UTF-8 /]
+[**
+ * The name of module must be the same as the mtl file.
+*/]
+[module csharp('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[**
+ * The main entry - looks over the UML diagram, if the owner of class is UML Package, creates one cs file per class.
+ * The cs file will be created in the folder with the package name.
+ * @param c UML Class.
+*/]
+[template public generate(c : Class) ? (c.owner->selectByKind(Model)->isEmpty() and c.name.isValid())]
+[comment @main/]
+[file ('src/'.concat(c.qualifiedName.path()).concat('.cs'), false, 'UTF-8')]
+
+/* Generated from GenMyModel */
+
+[c.genUsing()/][c.generalization->any(true)->asBag().genUsing()/]
+namespace [c.getNearestPackage().qualifiedName.nameSpace()/]
+{
+	[c.genClass()/]
+}
+[/file]
+[/template]
+
+[**
+ * The main entry - looks over the UML diagram, if the owner of class is UML Model, creates one cs file per class.
+ * @param c UML Class.
+*/]
+[template public generate(c : Class) ? (not c.owner->selectByKind(Model)->isEmpty() and c.name.isValid())]
+[comment @main/]
+[file ('src/'.concat(c.name).concat('.cs'), false, 'UTF-8')]
+
+/* Generated from GenMyModel */
+
+[c.genUsing()/][c.generalization->any(true)->asBag().genUsing()/]
+namespace [c.getModel().name/]
+{
+	[c.genClass()/]
+}
+[/file]
+[/template]
+
+[**
+ * The main entry - generate a cs main file.
+ * @param m UML Model.
+*/]
+[template public generate(m : Model)]
+[comment @main/]
+[file ('src/Main.cs', false, 'UTF-8')]
+
+/* Generated from GenMyModel */
+
+class Program
+{
+	static void Main() 
+	{
+		
+	}
+}
+[/file]
+[/template]
+
+[**
+ * Generates the class.
+ * @param c UML Class.
+*/]
+[template public genClass(c : Class) ? (c.name.isValid())]
+class [c.name/][c.generalization->any(true)->asBag().genGeneralization()/]
+{
+	[c.attribute.genAttribute()/]
+}['\n'/]
+[/template]
+
+[**
+ * Generates attribute code (name and visibility).
+ * If the attribute visibility is set to "package", then it will be considered as protected. 
+ * @param p UML Property.
+*/]
+[template public genAttribute(p : Property) ? ((p.type <> null) and p.type.name.isValid())]
+[if (p.visibility <> VisibilityKind::_package)][p.visibility/][else]protected[/if] [p.type.name.toType().trim()/] [p.name/];['\n'/]
+[/template]
+
+[**
+ * Translates UML Type to it's equivalent in cs.
+ * @param s String.
+*/]
+[template public toType(s : String)]
+[if (s.equalsIgnoreCase('Integer'))]	int
+	[elseif (s.equalsIgnoreCase('Boolean'))]	bool
+	[elseif (s.equalsIgnoreCase('ByteArray'))]	byte
+	[elseif (s.equalsIgnoreCase('Date'))]	DateTime
+	[elseif (s.equalsIgnoreCase('Real'))]	double
+	[elseif (s.equalsIgnoreCase('UnlimitedNatural'))]	uint
+	[elseif (s.equalsIgnoreCase('Long') or s.equalsIgnoreCase('String') or s.equalsIgnoreCase('Char'))]	[s.toLower()/]
+[else] [s/]	
+[/if]
+[/template]
+
+[**
+ * Generates "using System" link when a class containt a "DateTime" type.
+ * @param c UML Class.
+*/]
+[template public genUsing(c : Class) ? (c.ownedAttribute->select(type <> null)->exists(type.name = 'Date'))]
+using System;['\n'/]
+[/template]
+
+[**
+ * Generates "using" link when a class inherits from an other class.
+ * @param g UML Generalization.
+*/]
+[template public genUsing(g : Generalization) ? ( g.general <> null)]
+using [g.general.getNearestPackage().qualifiedName.nameSpace()/];['\n'/]
+[/template]
+
+[**
+ * Generates class inheritance (i.e., when a class inherits from an other one).
+ * @param g UML Generalization (Generalisation is the ineheritance link between two classes or two interfaces).
+*/]
+[template public genGeneralization(g : Generalization)]
+ : [g.general.name/]
+[/template]
+
+[**
+ * Verify if the given string is not null and not empty.
+ * @param n String.
+*/]
+[query public isValid(n : String) : Boolean =
+	 n <> null and n <> ''
+/]
+
+[**
+ * Translates the given string to a path.
+ * Example : A::B::C::D produces B/C/D.
+ * @param n String.
+*/]
+[query public path(n : String) : String =
+	 n.replaceAll('[^:]*::(.*)', '$1').replaceAll('::', '/')
+/]
+
+[**
+ * Translates the given string to a nameSpace.
+ * Example : A::B::C::D produces A.B.C.D
+ * @param n String.
+*/]
+[query public nameSpace(n : String) : String =
+	 n.replaceAll('::', '.')
+/]

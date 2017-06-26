@@ -1,0 +1,21 @@
+context Process
+inv nameIsDefined: -- is the name of process correct?
+    if  self.name.oclIsUndefined() then
+	false
+    else
+	self.name <> ''
+    endif
+
+context Process
+inv containmentConsistency:
+  let elements : Set(ProcessElement) = self.processElements in
+    let wds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(WorkDefinition)) in
+      let wss: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(WorkSequence)) in
+        -- WS linked to a process WD are elements of this process
+        wds->forAll(wd: ProcessElement |
+            elements->includesAll(wd.oclAsType(WorkDefinition).linksToPredecessors)
+            and elements->includesAll(wd.oclAsType(WorkDefinition).linksToSuccessors))
+        -- source and target of a process WS are elements of this process
+        and wss->forAll(ws: ProcessElement |
+            elements->includes(ws.oclAsType(WorkSequence).predecessor)
+            and elements->includes(ws.oclAsType(WorkSequence).successor))

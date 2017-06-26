@@ -1,0 +1,61 @@
+[comment encoding = UTF-8 /]
+[**
+ * Copyright 2012 jccastrejon
+ * 
+ * This file is part of Model2Roo.
+ * Model2Roo is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ * 
+ * Model2Roo is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Model2Roo.  If not, see <http://www.gnu.org/licenses/>.
+ */]
+[module Entities('http://www.eclipse.org/emf/2002/Ecore')]
+
+
+[import fr::imag::model2roo::ecore::common::Common /]
+
+[**
+ * Generates the required Spring Roo commands for each Class contained in an Ecore package. 
+ * @param aPackage Ecore package.
+ */]
+[template public generateEntities(aPackage : EPackage) post(trim())]
+[comment] Base classes [/comment]
+[for (anElement: EClassifier | aPackage.eClassifiers)]
+  [if anElement.oclIsTypeOf(EClass)]
+    [let childClass : EClass = anElement.oclAsType(EClass)]
+      [if childClass.eAllSuperTypes->isEmpty()] [anElement.oclAsType(EClass).generateEntity()/] [/if]
+    [/let] [/if]
+[/for]
+
+[comment] Child class [/comment]
+[for (anElement: EClassifier | aPackage.eClassifiers)]
+  [if anElement.oclIsTypeOf(EClass)]
+    [let childClass : EClass = anElement.oclAsType(EClass)]
+      [if not childClass.eAllSuperTypes->isEmpty()] [anElement.oclAsType(EClass).generateEntity()/] [/if]
+    [/let] [/if]
+[/for]
+[/template]
+
+[**
+ * Generates the required Spring Roo commands for a particular Ecore class. 
+ * @param class Ecore class.
+ */]
+[template public generateEntity(class : EClass) post(trim())]
+entity jpa --class ~.domain.[class.name/] [if class.abstract] --abstract true [/if] [class.generateExtends()/] [class.getRooDetails()/]
+[/template]
+
+[**
+ * Generates the required Spring Roo commands to express Class generalization. 
+ * @param class Ecore class.
+ */]
+[template public generateExtends(class : EClass)]
+[for (parent : EClass | class.eAllSuperTypes)]
+--extends ~.domain.[parent.name/] [/for]
+[/template]

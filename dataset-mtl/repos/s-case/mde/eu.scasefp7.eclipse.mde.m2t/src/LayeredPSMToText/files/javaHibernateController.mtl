@@ -1,0 +1,659 @@
+[comment encoding = UTF-8 /]
+[module javaHibernateController('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthorizationPSMMetamodel.ecore','platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthenticationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+[template public javaHibernateController(anAnnotationStack : AnnotationStack, strDBMigrator : String)]
+
+[file (anAnnotationStack.hasCorePSM.name  + strDBMigrator + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/utilities/HibernateController.java', false, 'UTF-8')]
+/*
+ * ARISTOTLE UNIVERSITY OF THESSALONIKI
+ * Copyright (C) 2015
+ * Aristotle University of Thessaloniki
+ * Department of Electrical & Computer Engineering
+ * Division of Electronics & Computer Engineering
+ * Intelligent Systems & Software Engineering Lab
+ *
+ * Project             : [anAnnotationStack.hasCorePSM.name/]
+ * WorkFile            : 
+ * Compiler            : 
+ * File Description    : 
+ * Document Description: 
+* Related Documents	   : 
+* Note				   : 
+* Programmer		   : RESTful MDE Engine created by Christoforos Zolotas
+* Contact			   : christopherzolotas@issel.ee.auth.gr
+*/
+
+
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities;
+
+
+[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
+[/if]
+
+[if (anAnnotationStack.bHasAuthorizationLayer)]
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.sql.*;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.ResourceAccessAttribute;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.ResourceAccessCondition;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.ResourceAccessPolicy;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.ResourceAccessPolicySet;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.ResourceAccessRule;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.Action;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.AttributeCategory;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.CombiningAlgorithmEnum;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.OperatorEnum;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.RuleType;
+[/if]
+
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Iterator;
+import org.hibernate.Hibernate;
+import org.hibernate.HibernateException;
+import org.hibernate.Query;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+
+import com.sun.jersey.core.spi.factory.ResponseBuilderImpl;
+
+[for (jRModel : JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel)]
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[jRModel.parentName.toLowerCase()/].[jRModel.name/];
+[/for]
+
+/* HibernateController class is responsible to handle the low level activity between Hibernate and the service database.
+ You may not alter existing functions, or the service may not function properly.
+ Should you need more functions these could be added at the end of this file.
+ You may add any exception handling to existing and/or new functions of this file.*/
+
+public class HibernateController{
+
+    private static HibernateController oHibernateController = new HibernateController();
+
+    /* Since the class follows the singleton design pattern its constructor is kept private. The unique instance of it is accessed through its public API "getHibernateControllerHandle()".*/
+    private HibernateController(){
+		[if (anAnnotationStack.bHasAuthorizationLayer)]
+		initializeAuthorizationTables();
+		[/if]
+	}
+
+    /* Since this class follows the singleton design pattern, this function offers to the rest of the system a handle to its unique instance.*/
+    public static HibernateController getHibernateControllerHandle(){
+        return oHibernateController;
+    }
+
+	[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+	/* This function performs the actual authentication activity by looking up in the database wether the request's user is an authenticated user*/
+	 public [anAnnotationStack.getAuthenticationPerformer().authenticationModelName/] authenticateUser([anAnnotationStack.getAuthenticationPerformer().authenticationModelName/] o[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/])
+	 {
+		 try
+		 {
+			//create a new session and begin the transaction
+		    Session hibernateSession = HibernateUtil.getSessionFactory().openSession();
+			Transaction hibernateTransaction = hibernateSession.beginTransaction();
+			
+			//create the query in HQL language
+			String strQuery = String.format("FROM [anAnnotationStack.getAuthenticationPerformer().authenticationModelName/] WHERE ([anAnnotationStack.getAuthenticationPerformer().getUsernameToken().name/] = '%s' AND [anAnnotationStack.getAuthenticationPerformer().getPasswordToken().name/] = '%s')", o[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/].get[anAnnotationStack.getAuthenticationPerformer().getUsernameToken().name/]() , o[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/].get[anAnnotationStack.getAuthenticationPerformer().getPasswordToken().name/]());
+			Query  hibernateQuery = hibernateSession.createQuery(strQuery);
+			
+			o[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/] = null;
+			
+			//retrieve the unique result, if there is a result at all
+			o[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/] = ([anAnnotationStack.getAuthenticationPerformer().authenticationModelName/]) hibernateQuery.uniqueResult();
+			
+			if(o[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/] == null)
+			{
+	    		throw new WebApplicationException(Response.Status.UNAUTHORIZED);
+			}
+			
+			//commit and terminate the session
+			hibernateTransaction.commit();
+			hibernateSession.close();
+			
+			//return the [anAnnotationStack.getAuthenticationPerformer().authenticationModelName/] of the authenticated user, or null if authentication failed
+			return o[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/] ;
+		}
+		catch (HibernateException exception)
+		{
+			System.out.println(exception.getCause());
+
+			ResponseBuilderImpl builder = new ResponseBuilderImpl();
+			builder.status(Response.Status.BAD_REQUEST);
+			builder.entity(String.format("%s",exception.getCause()));
+			Response response = builder.build();
+			throw new WebApplicationException(response);
+		}
+	 }
+	[/if]
+
+[for (jRM : JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel)]
+	[if (anAnnotationStack.hasCorePSM.hasJavaRCManager->select(jRCManager : JavaResourceControllerManager | jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel->includes(jRM)).JavaRCManagerHasHTTPActivity->exists(httpActivity : HTTPActivity | httpActivity.ActivityHTTPVerb = HTTPVerb::POST))]
+    /* This function handles the low level JPA activities so as to add a new [jRM.parentName/] resource to the service database.*/
+    public [jRM.name/] post[jRM.parentName/]([jRM.name/] o[jRM.name/]){
+
+    	/* Create a new hibernate session and begin the transaction*/
+        Session hibernateSession = HibernateUtil.getSessionFactory().openSession();
+        Transaction hibernateTransaction = hibernateSession.beginTransaction();
+
+        /* Insert the new [jRM.parentName/] to database*/
+        int [jRM.parentName/]Id = (Integer) hibernateSession.save(o[jRM.name/]);
+		o[jRM.name/].set[jRM.parentName/]Id([jRM.parentName/]Id);
+
+        /* Commit and terminate the session*/
+        hibernateTransaction.commit();
+        hibernateSession.close();
+
+        /* Return the [jRM.name/] with updated [jRM.parentName/]Id*/
+        return o[jRM.name/];
+    }
+	
+	[/if]
+	[if (anAnnotationStack.hasCorePSM.hasJavaRController->select(jRController : JavaResourceController | jRController.hasAssociatedJavaRModel->includes(jRM)).JavaRControllerHasHTTPActivity->exists(httpActivity : HTTPActivity | httpActivity.ActivityHTTPVerb = HTTPVerb::PUT) or strDBMigrator.size() > 0)]
+    /* This function handles the low level hibernate activities so as to update an existing [jRM.parentName/] resource of the service database.*/
+    public [jRM.name/] put[jRM.parentName/]([jRM.name/] o[jRM.name/], String strOptionalUpdateRelations, String strOptionalUpdateParent, String strOptionalRelationName, String strOptionalAddRelation, Integer iOptionalResourceId){
+
+    	/* Create a new hibernate session and begin the transaction*/
+        Session hibernateSession = HibernateUtil.getSessionFactory().openSession();
+        Transaction hibernateTransaction = hibernateSession.beginTransaction();
+
+        //if the relations of this resource should also be updated
+        if(strOptionalUpdateRelations != null){
+            if(strOptionalUpdateRelations.equalsIgnoreCase("true")){
+                if(strOptionalUpdateParent.equalsIgnoreCase("true")){//a parent relation must be updated
+					[for (jPRM : JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel->select(jParentRM | jParentRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM)))]
+                    if(strOptionalRelationName.equalsIgnoreCase("[jPRM.parentName/]")){//if towards [jPRM.parentName/] is the required parent relation to be updated
+                        if(strOptionalAddRelation.equalsIgnoreCase("true")){ //then a relation must be added
+                            [jRM.name/] oOld[jRM.name/] = ([jRM.name/]) hibernateSession.get([jRM.name/].class, o[jRM.name/].get[jRM.parentName/]Id());
+							[for (jPRModel : JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel->select(jParentRM | jParentRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM)))]
+                            o[jRM.name/].getSetOfParent[jPRModel.name/]().clear();
+                            o[jRM.name/].getSetOfParent[jPRModel.name/]().addAll(oOld[jRM.name/].getSetOfParent[jPRModel.name/]());
+							[if (jPRModel.parentName.equalsIgnoreCase(jPRM.parentName))]
+
+                            [jPRM.name/] oNew[jPRM.name/] = new [jPRM.name/]();
+                            oNew[jPRM.name/].set[jPRM.parentName/]Id(iOptionalResourceId);
+
+							Boolean bRelationAlreadyExists = false;
+							Iterator<[jPRM.name/]> iterator = oOld[jRM.name/].getSetOfParent[jPRM.name/]().iterator();
+
+                            while(iterator.hasNext()){
+                                [jPRM.name/] oParent[jPRM.name/] = iterator.next();
+                                if(oParent[jPRM.name/].get[jPRM.parentName/]Id() == iOptionalResourceId){
+                                    bRelationAlreadyExists = true;
+									break;
+                                }
+                            }
+							
+							if(bRelationAlreadyExists == false){
+                            	o[jRM.name/].getSetOfParent[jPRM.name/]().add(oNew[jPRM.name/]);
+							}
+							[/if]
+							[/for]
+                            hibernateTransaction.commit();
+                            hibernateSession.close();
+                            hibernateSession = HibernateUtil.getSessionFactory().openSession();
+                            hibernateTransaction = hibernateSession.beginTransaction();
+                        }
+                        else{ //else a relation must be deleted
+                            o[jRM.name/].getSetOfParent[jPRM.name/]().clear();
+                            [jRM.name/] oOld[jRM.name/] = ([jRM.name/]) hibernateSession.get([jRM.name/].class, o[jRM.name/].get[jRM.parentName/]Id());
+                            
+                            Iterator<[jPRM.name/]> iterator = oOld[jRM.name/].getSetOfParent[jPRM.name/]().iterator();
+                            while(iterator.hasNext()){
+                                [jPRM.name/] oParent[jPRM.name/] = iterator.next();
+                                if(oParent[jPRM.name/].get[jPRM.parentName/]Id() != iOptionalResourceId){
+                                    o[jRM.name/].getSetOfParent[jPRM.name/]().add(oParent[jPRM.name/]);
+                                }
+                            }
+                            hibernateSession.close();
+                            hibernateSession = HibernateUtil.getSessionFactory().openSession();
+                            hibernateTransaction = hibernateSession.beginTransaction();
+                        }
+                    }
+					[/for]
+                }
+                else{ //else a child relation must be updated
+					[for (jCRM : JavaResourceModel | jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel)]
+                    if(strOptionalRelationName.equalsIgnoreCase("[jCRM.parentName/]")){//if towards [jCRM.parentName/] is the required child relation to be updated
+                        if(strOptionalAddRelation.equalsIgnoreCase("true")){ //then a relation must be added
+                            [jCRM.name/] oChild[jCRM.name/] = ([jCRM.name/]) hibernateSession.get([jCRM.name/].class, iOptionalResourceId);
+                            oChild[jCRM.name/].getSetOfParent[jRM.name/]().add(o[jRM.name/]);
+                            hibernateSession.update(oChild[jCRM.name/]);
+                        }
+                        else{ //else a relation must be deleted
+                            [jCRM.name/] oChild[jCRM.name/] = ([jCRM.name/]) hibernateSession.get([jCRM.name/].class, iOptionalResourceId);
+
+                            Iterator<[jRM.name/]> iterator = oChild[jCRM.name/].getSetOfParent[jRM.name/]().iterator();
+                            while(iterator.hasNext()){
+                                [jRM.name/] oOld[jRM.name/] = iterator.next();
+                                if(oOld[jRM.name/].get[jRM.parentName/]Id() == o[jRM.name/].get[jRM.parentName/]Id()){
+                                    iterator.remove();
+                                }
+                            }
+                            hibernateSession.update(oChild[jCRM.name/]);
+                            hibernateTransaction.commit();
+                            hibernateSession.close();
+                            hibernateSession = HibernateUtil.getSessionFactory().openSession();
+                            hibernateTransaction = hibernateSession.beginTransaction();
+                        }
+                    }
+					[/for]
+                }
+            }
+        }
+
+        /* Update the existing [jRM.parentName/] of the database*/
+        hibernateSession.update(o[jRM.name/]);
+
+        /* Commit and terminate the session*/
+        hibernateTransaction.commit();
+        hibernateSession.close();
+        return o[jRM.name/];
+    }
+
+	[/if]
+	[if (anAnnotationStack.hasCorePSM.hasJavaRController->select(jRController : JavaResourceController | jRController.hasAssociatedJavaRModel->includes(jRM)).JavaRControllerHasHTTPActivity->exists(httpActivity : HTTPActivity | httpActivity.ActivityHTTPVerb = HTTPVerb::GET))]
+    /* This function handles the low level hibernate activities so as to retrieve an existing [jRM.parentName/] resource from the service database.*/
+    public [jRM.name/] get[jRM.parentName/]([jRM.name/] o[jRM.name/]){
+
+    	/* Create a new hibernate session and begin the transaction*/
+        Session hibernateSession = HibernateUtil.getSessionFactory().openSession();
+        Transaction hibernateTransaction = hibernateSession.beginTransaction();
+
+        /* Retrieve the existing [jRM.parentName/] from the database*/
+        o[jRM.name/] = ([jRM.name/]) hibernateSession.get([jRM.name/].class, o[jRM.name/].get[jRM.parentName/]Id());
+		[for (jPRM : JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel->select(parentRM | parentRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM)))]
+        Hibernate.initialize(o[jRM.name/].getSetOfParent[jPRM.name/]());
+		[/for]
+		[for (jCRM : JavaResourceModel | jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel)]
+		Hibernate.initialize(o[jRM.name/].getSetOf[jCRM.name/]());
+		[/for]
+
+        /* Commit and terminate the session*/
+        hibernateTransaction.commit();
+        hibernateSession.close();
+        return o[jRM.name/];
+    }
+
+	[/if]
+	[if (anAnnotationStack.hasCorePSM.hasJavaRController->select(jRController : JavaResourceController | jRController.hasAssociatedJavaRModel->includes(jRM)).JavaRControllerHasHTTPActivity->exists(httpActivity : HTTPActivity | httpActivity.ActivityHTTPVerb = HTTPVerb::DELETE))]
+    /* This function handles the low level hibernate activities so as to delete an existing [jRM.parentName/] resource from the service database.*/
+    public [jRM.name/] delete[jRM.parentName/]([jRM.name/] o[jRM.name/]){
+
+   		/* Create a new hibernate session and begin the transaction*/
+        Session hibernateSession = HibernateUtil.getSessionFactory().openSession();
+        Transaction hibernateTransaction = hibernateSession.beginTransaction();
+
+        /* Retrieve the existing [jRM.parentName/] from the database*/
+        o[jRM.name/] = ([jRM.name/]) hibernateSession.get([jRM.name/].class, o[jRM.name/].get[jRM.parentName/]Id());
+
+[comment]		[if (jRM.hasRelatedJavaRMManager->size() > 0 or jRM.JavaRModelHasProperty->select( property : PSMComponentProperty | property.bIsUnique = false)->
+														select(property : PSMComponentProperty | property.PropertyHasHibernateAnnotation.HibernateAnnotationText->excludes('@Transient')
+																and
+															   property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@OneToMany') = -1
+																and
+															   property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@ManyToOne') = -1)->size() > 0)
+[/comment]		
+		[if (jRM.hasRelatedJavaRMManager->size() > 0)]
+        /* Delete any child resource related with the existing [jRM.parentName/] from the database.
+        Note: this is needed because hibernate does not cascade delete in the desired way on Many to Many relationships, when a child has multiple parents.*/
+	   	[for (jRCM : JavaResourceModel | jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel)]
+       	Iterator<[jRCM.name/]> iterator[jRCM.parentName.toUpperFirst()/] = o[jRM.name/].getSetOf[jRCM.name/]().iterator();
+        while(iterator[jRCM.parentName.toUpperFirst()/].hasNext()){
+            [jRCM.name/] o[if (jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM))]Source[/if][jRCM.name/] = iterator[jRCM.parentName.toUpperFirst()/].next();
+            o[if (jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM))]Source[/if][jRCM.name/].getSetOfParent[jRM.name/]().remove(o[jRM.name/]);
+            hibernateSession.update(o[if (jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM))]Source[/if][jRCM.name/]);
+			[if (anAnnotationStack.hasCorePSM.hasJavaRController->select(jRC : JavaResourceController | jRC.hasAssociatedJavaRModel->includes(jRCM)).JavaRControllerHasHTTPActivity->exists(httpActivity : HTTPActivity | httpActivity.ActivityHTTPVerb = HTTPVerb::DELETE))]
+			cascadeDelete[jRCM.parentName/](o[if (jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM))]Source[/if][jRCM.name/], hibernateSession);
+			[/if]
+        }
+		[/for]
+		[/if]
+
+        /* Delete the existing [jRM.parentName/] from the database*/
+        hibernateSession.delete(o[jRM.name/]);
+        /* Commit and terminate the session*/
+        hibernateTransaction.commit();
+        hibernateSession.close();
+        return o[jRM.name/];
+    }
+
+    /* This function handles the low level hibernate activities so as to cascade delete any orphan children resources of an existing [jRM.parentName/] resource from the service database.*/
+    private void cascadeDelete[jRM.parentName/]([jRM.name/] o[jRM.name/], Session hibernateSession){
+		
+		//check if this resource has any other parent resources	
+		boolean bHasParents = false;
+
+	   	[for (jRPM : JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel->select(jParentModel | jParentModel.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM)))]
+		if(o[jRM.name/].getSetOfParent[jRPM.name/]().size() > 0 && bHasParents == false){
+			bHasParents = true;
+		}
+
+		[/for]
+		[if (jRM.hasRelatedJavaRMManager->size() > 0)]
+        /* Delete any child resource related with the existing [jRM.parentName/] from the database.
+        Note: this is needed because hibernate does not cascade delete in the desired way on Many to Many relationships, when a child has multiple parents.*/
+		if(bHasParents == false){
+	   	[for (jRCM : JavaResourceModel | jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel)]
+ 	      	Iterator<[jRCM.name/]> iterator[jRCM.parentName.toUpperFirst()/] = o[jRM.name/].getSetOf[jRCM.name/]().iterator();
+    	    while(iterator[jRCM.parentName.toUpperFirst()/].hasNext()){
+        	    [jRCM.name/] o[if (jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM))]Source[/if][jRCM.name/] = iterator[jRCM.parentName.toUpperFirst()/].next();
+            	o[if (jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM))]Source[/if][jRCM.name/].getSetOfParent[jRM.name/]().remove(o[jRM.name/]);
+            	hibernateSession.update(o[if (jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM))]Source[/if][jRCM.name/]);
+				System.out.println("Removed " + o[if (jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM))]Source[/if][jRCM.name/].get[jRCM.parentName/]Id() + " [jRCM.parentName/]");
+				[if (anAnnotationStack.hasCorePSM.hasJavaRCManager->select(jRCManager : JavaResourceControllerManager | jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel->includes(jRCM)).JavaRCManagerHasHTTPActivity->exists(httpActivity : HTTPActivity | httpActivity.ActivityHTTPVerb = HTTPVerb::DELETE))]
+				cascadeDelete[jRCM.parentName/](o[if (jRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM))]Source[/if][jRCM.name/], hibernateSession);
+				[/if]
+        	}
+		[/for]
+		}
+		[/if]
+
+        /* Delete the existing [jRM.parentName/] from the database*/
+		if(bHasParents == false){
+        	hibernateSession.delete(o[jRM.name/]);
+		}       
+    }
+
+	[/if]
+	[if (anAnnotationStack.hasCorePSM.hasJavaRCManager->select(jRCManager : JavaResourceControllerManager | jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel->includes(jRM)).JavaRCManagerHasHTTPActivity->exists(httpActivity : HTTPActivity | httpActivity.ActivityHTTPVerb = HTTPVerb::GET))]
+    [for (jPRModel : JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel->select(javaPRModel : JavaResourceModel | javaPRModel.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM)))]
+	/* This function handles the low level hibernate activities so as to retrieve all the [jRM.parentName/] resources from the service database
+    that are related to a specific [jPRModel.parentName/] resource.*/
+
+    public [jPRModel.name/] get[if (anAnnotationStack.hasCorePSM.hasJavaRModel->select(javaPRModel : JavaResourceModel | javaPRModel.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM))->size() > 1)][jPRModel.parentName/][/if][jRM.parentName/]List([jPRModel.name/] o[jPRModel.name/]){
+
+        /* Create a new hibernate session and begin the transaction*/
+        Session hibernateSession = HibernateUtil.getSessionFactory().openSession();
+        Transaction hibernateTransaction = hibernateSession.beginTransaction();
+
+        /* Find the [jPRModel.parentName/] of which the [jRM.parentName/] resource list is needed*/
+        o[jPRModel.name/] = ([jPRModel.name/]) hibernateSession.get([jPRModel.name/].class, o[jPRModel.name/].get[jPRModel.parentName/]Id());
+		Hibernate.initialize(o[jPRModel.name/].getSetOf[jRM.name/]());
+		[if (anAnnotationStack.hasCorePSM.hasJavaRModel->select(gParent : JavaResourceModel | gParent.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jPRModel))->size() > 1)]
+			    [for (jGPModel : JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel->select(javaGPRModel : JavaResourceModel | javaGPRModel.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jPRModel)))]
+		Hibernate.initialize(o[jPRModel.name/].getSetOfParent[jGPModel.name/]());	
+				[/for]
+		[/if]
+
+        /* Commit and terminate the session*/
+        hibernateTransaction.commit();
+        hibernateSession.close();
+        return o[jPRModel.name/];
+    }
+	[/for]
+	[if (anAnnotationStack.hasCorePSM.hasJavaRModel->select(jPRModel : JavaResourceModel | jPRModel.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRM))->size() = 0)]
+    /* This function handles the low level hibernate activities so as to retrieve all the [jRM.parentName/] resources from the service database.*/
+
+    public Set<[jRM.name/]> get[jRM.parentName/]List(Set<[jRM.name/]> SetOf[jRM.parentName/]List){
+
+        /* Create a new hibernate session and begin the transaction*/
+        Session hibernateSession = HibernateUtil.getSessionFactory().openSession();
+        Transaction hibernateTransaction = hibernateSession.beginTransaction();
+
+        /* Retrieve the list of [jRM.parentName/] resources that are needed.*/
+        String strHibernateQuery = "FROM [jRM.name/]";
+        Query hibernateQuery = hibernateSession.createQuery(strHibernateQuery);
+        SetOf[jRM.parentName/]List = new HashSet(hibernateQuery.list());
+
+        /* Commit and terminate the session*/
+        hibernateTransaction.commit();
+        hibernateSession.close();
+        return SetOf[jRM.parentName/]List;
+    }
+	[/if]
+	[/if]
+[/for]
+	[if (anAnnotationStack.bHasAuthorizationLayer)]
+	public List<ResourceAccessPolicySet> getPolicySetByResource(String resourceType)
+    {
+    	List<ResourceAccessPolicySet> oResourceAccessPolicySet = new ArrayList<ResourceAccessPolicySet>();
+    	try
+    	{
+		    Session hibernateSession = HibernateUtil.getSessionFactory().openSession();
+			Transaction hibernateTransaction = hibernateSession.beginTransaction();
+			
+			//create the query in HQL language
+			String strQuery = String.format("FROM ResourceAccessPolicySet WHERE (auhtorizableResourceName = '%s')", resourceType);
+			Query  hibernateQuery = hibernateSession.createQuery(strQuery);
+			oResourceAccessPolicySet = ((List<ResourceAccessPolicySet>)(hibernateQuery.list()));
+			
+			//commit and terminate the session
+			hibernateTransaction.commit();
+			hibernateSession.close();
+    	}
+		catch (HibernateException exception)
+		{
+			System.out.println(exception.getCause());
+
+			ResponseBuilderImpl builder = new ResponseBuilderImpl();
+			builder.status(Response.Status.BAD_REQUEST);
+			builder.entity(String.format("%s",exception.getCause()));
+			Response response = builder.build();
+			throw new WebApplicationException(response);
+		}
+    	
+    	return oResourceAccessPolicySet;
+    }
+
+	private void initializeAuthorizationTables(){
+
+		dropAuthorizationTables();
+
+		try
+    	{
+		    Session hibernateSession = HibernateUtil.getSessionFactory().openSession();
+			Transaction hibernateTransaction = hibernateSession.beginTransaction();
+			
+			ResourceAccessPolicy policy = null;
+			ResourceAccessRule rule = null;
+			ResourceAccessCondition condition = null;
+
+			[for (anAuthorizableResource : AuthorizableResource | anAnnotationStack.hasAuthorizationLayer.hasAnnotation->selectByType(AuthorizableResource))]
+			[anAuthorizableResource.hasResourceAccessPolicySet.InitializePolicySet(anAnnotationStack)/]
+			[/for]
+	        /* Commit and terminate the session*/
+			hibernateTransaction.commit();
+	        hibernateSession.close();
+    	}
+		catch (HibernateException exception)
+		{
+			System.out.println(exception.getCause());
+
+			ResponseBuilderImpl builder = new ResponseBuilderImpl();
+			builder.status(Response.Status.BAD_REQUEST);
+			builder.entity(String.format("%s",exception.getCause()));
+			Response response = builder.build();
+			throw new WebApplicationException(response);
+		}
+	}
+
+	private void dropAuthorizationTables(){
+
+		System.out.println("Drop authorization tables");
+		Connection con = null;
+		Statement stmt = null;
+		try {
+			
+			 Properties connectionProps = new Properties();
+			 connectionProps.put("user", "[anAnnotationStack.hasCorePSM.serviceDatabaseUsername/]");
+			 connectionProps.put("password", "[anAnnotationStack.hasCorePSM.serviceDatabasePassword/]");
+		     con = DriverManager.getConnection("jdbc:[if (anAnnotationStack.hasCorePSM.serviceDatabaseType.equalsIgnoreCase('PostgreSQL'))]postgresql[else]mysql[/if]://[anAnnotationStack.hasCorePSM.serviceDatabaseIP/]:[anAnnotationStack.hasCorePSM.serviceDatabasePort/]/[anAnnotationStack.hasCorePSM.name.toLowerCase()/]",connectionProps);
+			 System.out.println("Database Exists");
+		      DatabaseMetaData meta = con.getMetaData();
+		      ResultSet res = meta.getTables(null, null, "allowedaction", 
+		         new String['['/]] {"TABLE"});
+		      System.out.println("Droping actions table if exists."); 
+		      while (res.next()) {
+	        	 System.out.println(res.getString("TABLE_NAME"));
+	             stmt = con.createStatement();	             
+	             String sql = "DROP TABLE " + res.getString("TABLE_NAME");
+	             System.out.println(sql);
+	             stmt.executeUpdate(sql);		        	
+		      }
+		      
+		      res = meta.getTables(null, null, "resourceaccesscondition_value", 
+				         new String['['/]] {"TABLE"});
+				      System.out.println("Droping values table if exists."); 
+				      while (res.next()) {
+			        	 System.out.println(res.getString("TABLE_NAME"));
+			             stmt = con.createStatement();	             
+			             String sql = "DROP TABLE " + res.getString("TABLE_NAME");
+			             System.out.println(sql);
+			             stmt.executeUpdate(sql);		        	
+			}
+
+		      res = meta.getTables(null, null, "abaccondition", 
+				         new String['['/]] {"TABLE"});
+				      System.out.println("Droping condition table if exists."); 
+				      while (res.next()) {
+			        	 System.out.println(res.getString("TABLE_NAME"));
+			             stmt = con.createStatement();	             
+			             String sql = "DROP TABLE " + res.getString("TABLE_NAME");
+			             System.out.println(sql);
+			             stmt.executeUpdate(sql);		        	
+			}
+						      
+		      res = meta.getTables(null, null, "rule", 
+				         new String['['/]] {"TABLE"});
+				      System.out.println("Droping rule table if exists."); 
+				      while (res.next()) {
+			        	 System.out.println(res.getString("TABLE_NAME"));
+			             stmt = con.createStatement();	             
+			             String sql = "DROP TABLE " + res.getString("TABLE_NAME");
+			             System.out.println(sql);
+			             stmt.executeUpdate(sql);		        	
+			}
+		      res = meta.getTables(null, null, "policy", 
+				         new String['['/]] {"TABLE"});
+				      System.out.println("Droping policy table if exists."); 
+				      while (res.next()) {
+			        	 System.out.println(res.getString("TABLE_NAME"));
+			             stmt = con.createStatement();	             
+			             String sql = "DROP TABLE " + res.getString("TABLE_NAME");
+			             System.out.println(sql);
+			             stmt.executeUpdate(sql);		        	
+			}					      
+		      res = meta.getTables(null, null, "policyset", 
+				         new String['['/]] {"TABLE"});
+				      System.out.println("Droping policyset table if exists."); 
+				      while (res.next()) {
+			        	 System.out.println(res.getString("TABLE_NAME"));
+			             stmt = con.createStatement();	             
+			             String sql = "DROP TABLE " + res.getString("TABLE_NAME");
+			             System.out.println(sql);
+			             stmt.executeUpdate(sql);		        	
+					}		
+				      
+		      res.close();
+
+		      con.close();
+		    } catch (SQLException e) {
+		      System.err.println("Exception: "+e.getMessage());
+		    }
+	}
+	[/if]
+}
+[/file]
+[/template]
+
+[query private getAuthenticationPerformer(anAnnotationStack : AnnotationStack) : AuthenticationPerformer =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(AuthenticationPerformer))->at(1)
+/]
+
+[query private getPasswordToken(anAuthenticationPerformer : AuthenticationPerformer) : Password =
+	anAuthenticationPerformer.hasAuthenticationToken->select(authenticationToken | authenticationToken.oclIsTypeOf(Password))->at(1)
+/]
+
+[query private getUsernameToken(anAuthenticationPerformer : AuthenticationPerformer) : AuthenticationToken =
+	anAuthenticationPerformer.hasAuthenticationToken->select(authenticationToken | authenticationToken.oclIsTypeOf(Password) = false)->at(1)
+/]
+
+[query private getAuthorizableResourceName(anAuthorizableResource : AuthorizableResource) : String =
+	if anAuthorizableResource.isAuthorizableResourceModel.oclIsUndefined()
+	then anAuthorizableResource.isAuthorizableAlgoModel.annotatesJavaLagoResourceModel.parentName
+	else anAuthorizableResource.isAuthorizableResourceModel.annotatesJavaResourceModel.parentName
+	endif
+/]
+
+[template private InitializePolicySet(aResourceAccessPolicySet : ResourceAccessPolicySet , anAnnotationStack : AnnotationStack)]
+[if (aResourceAccessPolicySet.eContainer().oclIsTypeOf(ResourceAccessPolicySet))]
+ResourceAccessPolicySet ps[aResourceAccessPolicySet.indexOfPSet(anAnnotationStack)/] = new ResourceAccessPolicySet(CombiningAlgorithmEnum.[aResourceAccessPolicySet.policyCombiningAlgorithm/],ps[aResourceAccessPolicySet.eContainer(ResourceAccessPolicySet).indexOfPSet(anAnnotationStack)/]);
+[else]
+ResourceAccessPolicySet ps[aResourceAccessPolicySet.indexOfPSet(anAnnotationStack)/] = new ResourceAccessPolicySet("[aResourceAccessPolicySet.eContainer(AuthorizableResource).getAuthorizableResourceName()/]",CombiningAlgorithmEnum.[aResourceAccessPolicySet.policyCombiningAlgorithm/]);
+[/if]
+hibernateSession.save(ps[aResourceAccessPolicySet.indexOfPSet(anAnnotationStack)/]);
+[for (policy : ResourceAccessPolicy | aResourceAccessPolicySet.hasResourceAccessPolicy)]
+policy = new ResourceAccessPolicy(CombiningAlgorithmEnum.[policy.ruleCombiningAlgorithm/], ps[aResourceAccessPolicySet.indexOfPSet(anAnnotationStack)/]);
+hibernateSession.save(policy);
+[for (rule : ResourceAccessRule | policy.hasResourceAccessRule)]
+rule = new ResourceAccessRule(RuleType.[rule.ruleType/],new HashSet<Action>(Arrays.asList([for (action : AllowedAction | rule.hasAllowedAction)separator (',')]Action.[action.isAllowedAction.annotatesHTTPActivity.ActivityHTTPVerb.toString().toUpperCase()/][/for])),policy);
+hibernateSession.save(rule);
+[for (condition : Condition | rule.hasMatchCondition)]
+condition = new ResourceAccessCondition(OperatorEnum.[condition.operator/],rule,new ResourceAccessAttribute([condition.hasLeftSideOperand.InitializeAttribute()/]),new ResourceAccessAttribute([condition.hasRightSideOperand.InitializeAttribute()/]));
+hibernateSession.save(condition);
+[/for]
+[/for]
+[/for]
+[for (policySet : ResourceAccessPolicySet | aResourceAccessPolicySet.hasResourceAccessPolicySet)]
+[policySet.InitializePolicySet(anAnnotationStack)/]
+[/for]
+[/template]
+
+[query private indexOfPSet(ps : ResourceAccessPolicySet , anAnnotationStack : AnnotationStack) : Integer = 
+	anAnnotationStack.psOrderedSet()->indexOf(ps)
+/]
+
+[query private psOrderedSet(anAnnotationStack : AnnotationStack) : OrderedSet(ResourceAccessPolicySet) = 
+	anAnnotationStack.hasAuthorizationLayer.hasAnnotation->selectByType(AuthorizableResource)->collect(auth | auth.eAllContents(ResourceAccessPolicySet))->flatten()->asOrderedSet()
+/]
+
+[template private InitializeAttribute(attr : Attribute)]
+[if (attr.attributeCategory = AttributeCategory::CONSTANT)]
+new String['['/]]{[for (value : String | attr.value)before ('"')separator ('","')after('"')][value/][/for]},"[attr.eContainer(Condition).hasLeftSideOperand.getAttributePropertyType()/]"[else]
+AttributeCategory.[attr.attributeCategory/],"[attr.getAttributeResourceName()/]","[attr.getAttributePropertyName()/]"[/if]
+[/template]
+
+[query private getAttributeResourceName(attr : Attribute) : String =
+	if attr.isAttributeExistingProperty.oclIsUndefined()
+	then attr.isAttributeNewProperty.belongsToResource.annotatesJavaResourceModel.parentName
+	else attr.isAttributeExistingProperty.annotatesPSMComponentProperty.eContainer(JavaResourceModel).parentName
+	endif
+/]
+
+[query private getAttributePropertyName(attr : Attribute) : String =
+	if attr.isAttributeExistingProperty.oclIsUndefined()
+	then attr.isAttributeNewProperty.name
+	else attr.isAttributeExistingProperty.annotatesPSMComponentProperty.name
+	endif
+/]
+
+[query private getAttributePropertyType(attr : Attribute) : String =
+	if attr.isAttributeExistingProperty.oclIsUndefined()
+	then attr.isAttributeNewProperty.getTypeString()
+	else attr.isAttributeExistingProperty.annotatesPSMComponentProperty.getTypeString()
+	endif
+/]
+
+[query private getTypeString(p : PSMComponentProperty) : String =
+  if p.type.equalsIgnoreCase('int')
+	then 'Integer'
+	else if  p.type.equalsIgnoreCase('double')
+		 then 'Double'
+		 else 'String'
+		 endif
+	endif
+/]
+
+[query private getTypeString(p : NewProperty) : String =
+  if p.type.equalsIgnoreCase('int')
+	then 'Integer'
+	else if  p.type.equalsIgnoreCase('double')
+		 then 'Double'
+		 else 'String'
+		 endif
+	endif
+/]

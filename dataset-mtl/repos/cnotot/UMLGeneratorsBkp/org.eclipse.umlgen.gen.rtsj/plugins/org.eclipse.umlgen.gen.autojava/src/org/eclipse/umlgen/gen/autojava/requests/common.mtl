@@ -1,0 +1,93 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2012, 2014 CNES and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Cedric Notot (Obeo) - initial API and implementation
+[/comment]
+
+[module common('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::umlgen::gen::autojava::specific::lib::type /]
+[import org::eclipse::umlgen::gen::autojava::services::utilServices /]
+[import org::eclipse::umlgen::gen::autojava::services::umlServices /]
+
+[query public getUpper (aParameter : TypedElement) : Integer = aParameter.get('upper')->first().oclAsType(Integer)/]
+
+[query public getReceptionsWithParameters(anInterface : Interface) : Sequence(Reception) = anInterface.getAllReceptions()->select(aRecep : Reception | not aRecep.signal.oclIsUndefined() and aRecep.signal.get('ownedAttribute')->filter(Property)->notEmpty()) /]
+
+[query public getOperationsWithParameters(anInterface : Interface) : Sequence(Operation) = anInterface.getAllOperations()->select(anOp : Operation | not anOp.ownedParameter->select(aParam : uml::Parameter | aParam.direction <> ParameterDirectionKind::return)->isEmpty()) /]
+
+[query public getParams(anOperation : BehavioralFeature) : Sequence(TypedElement) = if (anOperation.oclIsKindOf(Operation)) then anOperation.oclAsType(Operation).getParams() else (if (anOperation.oclIsKindOf(Reception)) then anOperation.oclAsType(Reception).getParams() else OclAny endif) endif/]
+
+[query public getParams(anOperation : Operation) : Sequence(TypedElement) = anOperation.get('ownedParameter')->filter(uml::Parameter)->select(aParam : uml::Parameter | aParam.direction <> ParameterDirectionKind::return) /]
+
+[query public getParams(anOperation : Reception) : Sequence(TypedElement) = anOperation.signal.get('ownedElement')->filter(Property) /]
+
+[query public getAttributes(aClass : Class) : Sequence(Property) = aClass.get('ownedAttribute')->filter(Property)->select(aProp : Property | not aProp.oclIsKindOf(Port))->union(aClass.getAssociations().navigableOwnedEnd->select(end : Property | end.type <> aClass)->asSequence()) /]
+
+[query public getInterfaces(aClass : Class) : Sequence(Interface) = minimize(aClass.get('clientDependency')->filter(Realization).get('supplier'))->filter(Interface) /]
+
+[query public getReturnTypes(anInterface : Interface) : Sequence(Type) = minimize(anInterface.getAllOperations()->select(anOp : Operation | anOp.genReturn() <> 'void' and anOp.type.isJavaPrimitiveObject() and not anOp.isReturnList()).type)->filter(Type) /]
+
+[query public getReturnTypesList(anInterface : Interface) : Sequence(Type) = minimize(anInterface.getAllOperations()->select(anOp : Operation | anOp.genReturn() <> 'void' and anOp.type.isJavaPrimitiveObject() and anOp.isReturnList()).type)->filter(Type) /]
+
+[query public isJavaPrimitiveObject(aType : Type) : Boolean = aType.isJavaPrimitive() or aType.oclIsKindOf(Enumeration) /]
+
+[comment return if it is a primitive type /]
+[query public isJavaPrimitive(aType : Type) : Boolean = 
+	aType.name = 'int'
+	or aType.name.equalsIgnoreCase('Integer')
+	or aType.name.equalsIgnoreCase('float')
+	or aType.name.equalsIgnoreCase('boolean')
+	or aType.name.equalsIgnoreCase('byte')
+	or aType.name.equalsIgnoreCase('long')
+	or aType.name.equalsIgnoreCase('short')
+	or aType.name = 'char'
+	or aType.name = 'Character'
+	or aType.name.equalsIgnoreCase('void')
+	or aType.name = 'String'
+	or aType.name = 'EString'
+	or aType.name.equalsIgnoreCase('double')
+	or aType.name.equalsIgnoreCase('edouble')
+	or aType.name.equalsIgnoreCase('efloat')
+	or aType.name.equalsIgnoreCase('eboolean')
+	or aType.name.equalsIgnoreCase('ebyte')
+	or aType.name.equalsIgnoreCase('elong')
+	or aType.name.equalsIgnoreCase('eshort')
+	or aType.name = 'EChar'
+	or aType.name = 'EInt'
+ /]
+
+[query public isEventData(anInterface : Interface) : Boolean = anInterface.hasStereotype('RTSJ::EventData') /]
+
+[query public getEventDataSize(aReception : Reception) : Integer = if(aReception.hasStereotype('RTSJ::EventDataBuffer')) then aReception.getStereotypeProperty('RTSJ::EventDataBuffer', 'size').toInteger() else 1 endif/]
+
+[query public getRootClass (aModel : Model) : Class = aModel.eAllContents(Class)->select(aClass: Class | aClass.isRoot())->asSequence()->any(true)/]
+
+[query public getAllReceptions(anInterface : Interface) : Sequence(Reception) = anInterface.get('ownedReception')->filter(Reception)->union(anInterface.generalization.general->filter(Interface).getAllReceptions()->asSequence())/]
+
+[query public getAllOperations(anInterface : Interface) : Sequence(Operation) = anInterface.get('ownedOperation')->filter(Operation)->union(anInterface.generalization.general->filter(Interface).getAllOperations()->asSequence())/]
+
+[query public getAllBehavioralFeature(anInterface : Interface) : Sequence(BehavioralFeature) = anInterface.getAllOperations()->union(anInterface.getAllReceptions())/]
+
+[query public getSelfAndAllChildren(aClassifier : Classifier) : Sequence(Classifier) = aClassifier.getAllChildren()->append(aClassifier) /]
+
+[query public getParents(aClassifier : Classifier) : Sequence(Classifier) = aClassifier.get('generalization')->filter(Generalization).general->asSequence() /]
+
+[query public getSelfAndAllParents(aClassifier : Classifier) : Sequence(Classifier) = aClassifier.getAllParents()->append(aClassifier) /]
+
+[comment test if class has root stereotype /]
+[query public isRoot(aClass : Class) : Boolean = hasStereotype('RTSJ::Root') /]
+
+[query protected isReturnList(anOp : Operation) : Boolean = anOp.ownedParameter->select(aParam : uml::Parameter | aParam.direction = ParameterDirectionKind::return and (aParam.upper > 1 or aParam.upper = -1))-> size() > 0 /]
+
+[query protected getAllChildren(aClassifier : Classifier) : Sequence(Classifier) = aClassifier.getChildren()->select(c : Classifier | c <> aClassifier)->union(aClassifier.getChildren()->select(c : Classifier | c <> aClassifier).getAllChildren()) /]
+
+[query protected getChildren(aClassifier : Classifier) : Sequence(Classifier) = aClassifier.eInverse(Generalization).eContainer(Classifier) /]
+
+[query protected getAllParents(aClassifier : Classifier) : Sequence(Classifier) = aClassifier.getParents()->select(c : Classifier | c <> aClassifier)->union(aClassifier.getParents()->select(c : Classifier | c <> aClassifier).getAllParents()) /]

@@ -1,0 +1,44 @@
+[comment encoding = UTF-8 /]
+[module javaAttributeFinderFile('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthorizationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+
+[template public javaAttributeFinderFile(anAnnotationStack : AnnotationStack)]
+
+[file (anAnnotationStack.hasCorePSM.name  + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/utilities/authorization/finders/AttributeFinder.java', false, 'UTF-8')]
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.finders;
+
+import java.util.HashSet;
+import java.util.Set;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.AbstractEvaluationContext;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.ResourceAccessAttribute;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.operators.EvaluationResult;
+
+public class AttributeFinder{
+	
+	private Set<AttributeFinderModule> attributeFinderModules;
+	
+	public AttributeFinder(){
+		attributeFinderModules = new HashSet<AttributeFinderModule>();
+		attributeFinderModules.add(new ConstantsModule());
+		[for (anJRModel : JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel)]
+		attributeFinderModules.add(new [anJRModel.parentName.toUpperFirst()/]FinderModule());
+		[/for]
+		
+		
+	}
+	
+	public EvaluationResult findAttribute(ResourceAccessAttribute attribute, AbstractEvaluationContext evaluationContext){
+		//System.out.println("Resolving attribute : " + attribute.toString());
+		for (AttributeFinderModule module : attributeFinderModules){
+			if (module.getSupportedCategory() != null && module.getSupportedType() != null){
+				if (module.getSupportedCategory().contains(attribute.getAttributeCategory()) && module.getSupportedType().contains(attribute.getResourceType())){
+					return module.findAttribute(attribute, evaluationContext);
+				}	
+			}
+		}		
+		return new EvaluationResult("No attributeFinderModule was found for attribute : " + attribute.toString());
+	}
+}
+
+[/file]
+[/template]

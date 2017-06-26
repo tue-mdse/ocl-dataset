@@ -1,0 +1,110 @@
+[comment encoding = UTF-8 /]
+[module HttpActionHandlerCSharpFile('platform:/plugin/PIM2DotNetPlugin/metamodels/PSMMetamodel.ecore')]
+[import org::eclipse::acceleo::psm2code::utilities::HandlerHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::CreateHypermediaHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyFileHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyClassHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyPropertiesHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyMembersHelpers/]
+
+[template public generateActionHandler(aHTTPActionHandler : HTTPActionHandler , aRESTfulServicePSM : RESTfulServicePSM)]
+[file (aHTTPActionHandler.genHandlerFilePath(aRESTfulServicePSM), false, 'UTF-8')]
+[aHTTPActionHandler.genFileDocumentation(aHTTPActionHandler.Hbrief() , aHTTPActionHandler.Hdetails())/]
+namespace [aRESTfulServicePSM.name/].Handlers
+{
+	using System;
+	using System.Collections.Generic;
+	using System.Linq;
+	using System.Net;
+	using System.Web;
+	
+	using [aRESTfulServicePSM.name/].Models;
+	using [aRESTfulServicePSM.name/].Data;
+
+	[aHTTPActionHandler.genClassDocumentation(aHTTPActionHandler.HCbrief(aRESTfulServicePSM), aHTTPActionHandler.HCdetails())/]
+    public class [aHTTPActionHandler.name/]
+    {
+        private I[aRESTfulServicePSM.hasEntityDatabaseController.name/] [aRESTfulServicePSM.hasEntityDatabaseController.name.toLowerFirst()/] ;
+		private [aHTTPActionHandler.getReturnType()/] [aHTTPActionHandler.getReturnType().toLowerFirst()/];
+		[if ( aHTTPActionHandler.currentIsManager() and aHTTPActionHandler.HandlerHTTPVerb.toString() = 'GET')]
+		private ICollection<[aHTTPActionHandler.getCurrentResource().name/]> [aHTTPActionHandler.getCurrentResource().name.toLowerFirst()/]List ;
+		[/if]		
+		[if (aHTTPActionHandler.currentIsManager() and aHTTPActionHandler.fKParameterExists())]
+		private [aHTTPActionHandler.getParentResource().name/] parent[aHTTPActionHandler.getParentResource().name/] ;
+		[/if]
+        private Uri applicationUri;
+		private HttpStatusCode _code;
+        public HttpStatusCode Code		/// This code indicates the status of the action performed upon completion.
+		{ 
+			get
+			{
+				return this._code;
+			}
+		}
+
+		[aHTTPActionHandler.genHCMemberDocumentation(aHTTPActionHandler)/]
+		public [aHTTPActionHandler.name/]( Uri applicationUri[aHTTPActionHandler.genHandlerParameters()/] )
+        {
+            this.applicationUri = applicationUri;
+
+			[if (aHTTPActionHandler.entityParameterExists())]
+			if ([aHTTPActionHandler.getEntityParameter().name/] == null)
+			{
+				this.[aHTTPActionHandler.getReturnType().toLowerFirst()/] = new [aHTTPActionHandler.getReturnType()/]() ;
+				_code = HttpStatusCode.BadRequest ;
+			}
+			else
+			{
+				this.[aHTTPActionHandler.getReturnType().toLowerFirst()/] = [aHTTPActionHandler.returnParameterInstatiation()/] ;
+			}
+			[else]
+			this.[aHTTPActionHandler.getReturnType().toLowerFirst()/] = [aHTTPActionHandler.returnParameterInstatiation()/] ;			
+			[/if]
+			[if ( aHTTPActionHandler.pKParameterExists())]
+			this.[aHTTPActionHandler.getReturnType().toLowerFirst()/].[aHTTPActionHandler.getCurrentResourcePK().name/] = [aHTTPActionHandler.getPkParameter().name/] ; 
+			[/if]
+			[if ((aHTTPActionHandler.HandlerHTTPVerb.toString() = 'PUT' or aHTTPActionHandler.HandlerHTTPVerb.toString() = 'POST') and aHTTPActionHandler.fKParameterExists())]
+			this.[aHTTPActionHandler.getCurrentResource().name.toLowerFirst()/].[aHTTPActionHandler.getCurrentResourceFK().name/] = [aHTTPActionHandler.getFkParameter().name/];
+			[/if]
+			[if ( aHTTPActionHandler.currentIsManager() and aHTTPActionHandler.fKParameterExists())]
+			this.parent[aHTTPActionHandler.getParentResource().name/] = new [aHTTPActionHandler.getParentResource().name/]() ;
+			this.parent[aHTTPActionHandler.getParentResource().name/].[aHTTPActionHandler.getParentResourcePK().name/] = [aHTTPActionHandler.getFkParameter().name/] ;
+			[/if]
+		}
+		
+		[aHTTPActionHandler.genHMMemberDocumentation(aHTTPActionHandler)/]
+		public [aHTTPActionHandler.getReturnType()/] [aHTTPActionHandler.HandlerHTTPVerb.toString().toLower()/][aHTTPActionHandler.getReturnType()/]()
+        {
+			[if (aHTTPActionHandler.HandlerHTTPVerb.toString() = 'POST' or aHTTPActionHandler.HandlerHTTPVerb.toString() = 'PUT')]
+			if (this.Code != HttpStatusCode.BadRequest)
+			{
+				[aHTTPActionHandler.handlerBody2(aRESTfulServicePSM)/]
+			}
+			[else]
+			[aHTTPActionHandler.handlerBody2(aRESTfulServicePSM)/]
+			[/if]
+
+			return createHypermedia() ; 
+		}
+
+        private [aHTTPActionHandler.getReturnType()/] createHypermedia()
+        {
+			[aHTTPActionHandler.ParentLinks()/]
+			[aHTTPActionHandler.SiblingLinks()/]
+			[if ((aHTTPActionHandler.HandlerHTTPVerb.toString() = 'GET') or (aHTTPActionHandler.HandlerHTTPVerb.toString() = 'POST') )]
+			if (this.Code == HttpStatusCode.[aHTTPActionHandler.SuccessCode()/])
+			{
+				[aHTTPActionHandler.ChildLinks()/]
+			}
+			[else]
+			[aHTTPActionHandler.ChildLinks()/]
+			[/if]						
+			[aHTTPActionHandler.AlgoLinks()/]		
+			return this.[aHTTPActionHandler.getReturnType().toLowerFirst()/];
+        }
+
+
+	}
+}
+[/file]
+[/template]

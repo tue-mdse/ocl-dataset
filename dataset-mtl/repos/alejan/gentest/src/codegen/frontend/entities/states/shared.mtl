@@ -1,0 +1,107 @@
+[comment encoding = UTF-8 /]
+[module shared('http://www.eclipse.org/uml2/5.0.0/UML') extends frontend::entities::main ]
+[import ::utils /]
+
+[template public mainShared(a : Property, path : String)]
+[let filePath : String = path.concat('list/')]
+    [a.genListTemplate(filePath)/]
+    [a.genListCtrl(filePath)/]
+[/let]
+[let filePath : String = path.concat('edit/')]
+    [a.genEditTemplate(filePath)/]
+    [a.genEditCtrl(filePath)/]
+[/let]
+[/template]
+
+[template private genListTemplate(a : Property, path : String)]
+[file (path.concat(a.getOwner().getName() + '.' + a.name + '.list.tpl.html'), false, 'UTF-8')]
+<!--
+[a.getClass().getModel().license()/]
+-->
+<header>
+    <toolbar name="model.name" display-name="model.displayName" actions='actions'></toolbar>
+</header>
+<list-records fields="model.fields" records="records"></list-records>
+[/file]
+[/template]
+
+[template private genListCtrl(a : Property, path : String)]
+[file (path.concat(a.getOwner().getName() + '.' + a.name + '.list.ctrl.js'), false, 'UTF-8')]
+/*
+[a.getClass().getModel().license()/]
+*/
+(function (ng) {
+    var mod = ng.module('[a.getOwner().getModule()/]');
+
+    mod.controller('[a.getSharedListCtrlName()/]', ['['/]'$scope', '[a.name/]', 'model', '$state',
+        function ($scope, [a.name/], model, $state) {
+            $scope.records = [a.name/];
+            $scope.model = model;
+            $scope.actions = {
+                edit: {
+                    displayName: 'Edit',
+                    icon: 'ok',
+                    fn: function () {
+                        $state.go('[a.getSharedEditState()/]');
+                    }
+                },
+                cancel: {
+                    displayName: 'Go back',
+                    icon: 'arrow-left',
+                    fn: function () {
+                        $state.go('[a.getOwner().getDetailStateName()/]');
+                    }
+                }
+            };
+        }[']'/]);
+})(window.angular);
+[/file]
+[/template]
+
+[template private genEditTemplate(a : Property, path : String)]
+[file (path.concat(a.getOwner().getName() + '.' + a.name + '.edit.tpl.html'), false, 'UTF-8')]
+<!--
+[a.getClass().getModel().license()/]
+-->
+<header>
+    <toolbar name="model.name" display-name="model.displayName" actions='actions'></toolbar>
+</header>
+<move-lists selected="records" available="available"></move-lists>
+[/file]
+[/template]
+
+[template private genEditCtrl(a : Property, path : String)]
+[file (path.concat(a.getOwner().getName() + '.' + a.name + '.edit.ctrl.js'), false, 'UTF-8')]
+/*
+[a.getClass().getModel().license()/]
+*/
+(function (ng) {
+    var mod = ng.module('[a.getOwner().getModule()/]');
+
+    mod.controller('[a.getSharedEditCtrlName()/]', ['['/]'$scope', '[a.name/]', 'pool', 'model', '$state',
+        function ($scope, [a.name/], available, model, $state) {
+            $scope.records = [a.name/];
+            $scope.model = model;
+            $scope.available = available.plain();
+            $scope.actions = {
+                save: {
+                    displayName: 'Save',
+                    icon: 'save',
+                    fn: function () {
+                        $scope.records.customPUT().then(function () {
+                            $state.go('[a.getSharedListState()/]', null, {reload: true});
+                        });
+                    }
+                },
+                cancel: {
+                    displayName: 'Cancel',
+                    icon: 'remove',
+                    fn: function () {
+                        $state.go('[a.getSharedListState()/]');
+                    }
+                }
+            };
+        }[']'/]);
+})(window.angular);
+[/file]
+[/template]

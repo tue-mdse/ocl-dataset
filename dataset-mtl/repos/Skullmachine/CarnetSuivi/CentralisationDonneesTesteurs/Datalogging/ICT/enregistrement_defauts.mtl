@@ -1,0 +1,164 @@
+(* version 08 du 04 Janvier 2004 *)
+(******************************* mettre *******************************************
+
+library "enregistrement_defauts.mtl", enregistrement_defauts;
+enregistrement_defauts.init_defauts();			avant premier discharge(); contacts();
+enregistrement_defauts.sauver_defauts(true,"VBG",MID,posage);	a la fin de board test avant board.end 
+
+Creer un repertoire c:\traces
+creer le fichier resultats.csv dans le repertoire c:\traces
+
+**********************************************************************************)
+
+%nb_champs_enregistres=20;(*5defauts fois 4 champs par defaut*)
+%nb_defauts_enregistres=5;
+%nb_mesure_defauts=400;
+:ligne_data_defauts[1..nb_mesure_defauts] string;
+:pas_de_test_defauts int;
+
+:separateur,separateur2 string;
+separateur:=";";
+separateur2:=";";
+
+:chemin_fichier_defauts string;
+chemin_fichier_defauts:="c:\\traces\\";
+:nom_fichier_defauts string;
+nom_fichier_defauts:="resultats";
+:extension_fichier_defauts string;
+extension_fichier_defauts:=".csv";
+
+:type_testeur string;
+type_testeur:="ICT";
+
+:code_operateur string;
+code_operateur:="0000";
+
+:Vers_Prg_test string;
+Vers_Prg_test:="01";
+
+:date_France(choix_date string) string
+{
+:date_fab string;
+:jour, mois,annee,heure string;
+
+date_fab :="";
+
+if (time.ascii(time.current)[5..7]="Jan") { mois:="01" }
+if (time.ascii(time.current)[5..7]="Feb") { mois:="02" }
+if (time.ascii(time.current)[5..7]="Mar") { mois:="03" }
+if (time.ascii(time.current)[5..7]="Apr") { mois:="04" }
+if (time.ascii(time.current)[5..7]="May") { mois:="05" }
+if (time.ascii(time.current)[5..7]="Jun") { mois:="06" }
+if (time.ascii(time.current)[5..7]="Jul") { mois:="07" }
+if (time.ascii(time.current)[5..7]="Aug") { mois:="08" }
+if (time.ascii(time.current)[5..7]="Sep") { mois:="09" }
+if (time.ascii(time.current)[5..7]="Oct") { mois:="10" }
+if (time.ascii(time.current)[5..7]="Nov") { mois:="11" }
+if (time.ascii(time.current)[5..7]="Dec") { mois:="12" }
+
+jour:=time.ascii(time.current)[9..10];
+annee:=time.ascii(time.current)[21..24];
+heure:=time.ascii(time.current)[12..19];
+
+if(choix_date="pour interieur fichier")
+{
+date_fab := jour + "/" + mois + "/" + annee + separateur + heure;
+}
+if(choix_date="pour le nom du fichier")
+{
+date_fab := annee+"_"+mois+"_"+jour;
+}
+
+return(date_fab);
+
+}
+
+
+:resultat_contact() void
+{
+
+(**********
+ligne_data_defauts[pas_de_test_defauts]:=sprintf ("%s%-10.10s%s%s%s",separateur,Test.Ident,separateur2,separateur2,separateur2) ;
+************)
+
+ (* test.faults donne le nombre de contact *) 
+(* affichage du dernier contact*)
+ligne_data_defauts[pas_de_test_defauts]:=sprintf ("%s%-10.10s%s%d%s%d%s%p",separateur,Test.Ident,separateur2,Test.Faults,separateur2,Test.Faults,separateur2,Result.ContactFaults[Test.Faults]) ;
+
+}
+
+:resultat_defauts() void
+{
+
+
+if(pas_de_test_defauts>nb_defauts_enregistres){return;};
+
+case(Test.type)
+{
+	_DISCHARGE : ligne_data_defauts[pas_de_test_defauts]:=sprintf ("%s%-10.10s%s%s%s",separateur,Test.Ident,separateur2,separateur2,separateur2) ;
+	_LINK : ligne_data_defauts[pas_de_test_defauts]:=sprintf ("%s%-10.10s%s%s%s",separateur,Test.Ident,separateur2,separateur2,separateur2) ;
+	_CONTACT : resultat_contact() ;
+	_TRACK : ligne_data_defauts[pas_de_test_defauts]:=sprintf ("%s%-10.10s%s%s%s",separateur,Test.Ident,separateur2,separateur2,separateur2) ;
+	_TESTMODULE : ligne_data_defauts[pas_de_test_defauts]:=sprintf ("%s%-10.10s%s%s%s",separateur,Test.Ident,separateur2,separateur2,separateur2) ;
+
+	else	
+	ligne_data_defauts[pas_de_test_defauts]:=sprintf ("%s%-10.10s%s%-8v%s%-8v%s%-10v",separateur,Test.Ident,separateur2,Result.Lolimit,separateur2,Result.Hilimit,separateur2,Result.Measured) ;
+
+}
+
+
+pas_de_test_defauts:=pas_de_test_defauts+1;
+
+ }
+
+:init_defauts() void
+{
+        pas_de_test_defauts:=1;
+        Prog.Onfault:=resultat_defauts;
+
+
+}
+
+
+
+:sauver_defauts(defaut boolean,type_produit string,code_barres string,cote_posage string) void
+{
+:i,j int;
+
+if (chemin_fichier_defauts+nom_fichier_defauts+ extension_fichier_defauts != findfile(nom_fichier_defauts+ extension_fichier_defauts,chemin_fichier_defauts)) (* recherche sur le disque si le fichier existe *)
+{
+return;
+}
+
+   fd := fopen (chemin_fichier_defauts+nom_fichier_defauts+date_France("pour le nom du fichier")+extension_fichier_defauts,"a");
+   fprintf (fd,"%s%s%s%s%s%s%s%s%s%s%s%s%s",type_testeur,separateur,type_produit,separateur,code_barres,separateur,date_France("pour interieur fichier"),separateur,cote_posage,separateur,code_operateur,separateur,Vers_Prg_test) 
+   if(Prog.Pass)    
+	fprintf (fd,"%s%s%s%s%s%s%s%s%s%s%s%s",separateur,"BON",separateur,code_barres,separateur,code_barres,separateur,code_barres,separateur,code_barres,separateur,code_barres) 
+	else  
+	fprintf (fd,"%s%s%s%s%s%s%s%s%s%s%s%s",separateur,"MAUVAIS",separateur,code_barres,separateur,code_barres,separateur,code_barres,separateur,code_barres,separateur,code_barres) ;
+
+   if(Prog.Pass){
+(*enregistrement de 20 champs vide*)
+	 for (j:=1; j<=nb_champs_enregistres; j:=j+1) {fprintf (fd,"%s",separateur) ;}
+	}
+	else
+	{
+	   for (i:=1; i<= pas_de_test_defauts; i:=i+1)
+	        {
+	       	 fprintf(fd,"%s",ligne_data_defauts[i]);
+		 ligne_data_defauts[i]:=""; (*effacement apres enregistrement*) 
+      	         }
+(*************
+	(*enregistrement de 5 champs vide*)
+	 for (j:=i-1; j<=nb_defauts_enregistres; j:=j+1) {fprintf (fd,"%s",separateur) ;}
+**************)
+
+(*enregistrement de 20 champs vide*)
+	 for (j:=((pas_de_test_defauts-1)*4); j<nb_champs_enregistres; j:=j+1) {fprintf (fd,"%s",separateur) ;}
+	}
+
+        fprintf (fd,"\n");
+	        fclose(fd);
+       	 prog.ontest:=void;
+}
+

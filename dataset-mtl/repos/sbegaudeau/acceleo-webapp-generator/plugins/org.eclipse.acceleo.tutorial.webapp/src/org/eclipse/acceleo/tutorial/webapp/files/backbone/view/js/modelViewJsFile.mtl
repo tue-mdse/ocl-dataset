@@ -1,0 +1,266 @@
+[comment encoding = UTF-8 /]
+[module modelViewJsFile('http://www.eclipse.org/acceleo/tutorial/webapp')]
+
+[import org::eclipse::acceleo::tutorial::webapp::common::fileUtils /]
+[import org::eclipse::acceleo::tutorial::webapp::services::stringFormat /]
+
+[template private modelViewJsFile(aModelView : ModelView)]
+[aModelView.genJsDirectoryPath()/]/[aModelView.genViewsDirectory()/]/[aModelView.genVarName()/].js
+[/template]
+
+[template public genModelViewJsFile(aModelView : ModelView)]
+[file (aModelView.modelViewJsFile(), false, 'UTF-8')]
+[aModelView.genJsCopyrightHeader()/]
+
+var [aModelView.application.genTypeName()/] = [aModelView.application.genTypeName()/] || {};
+[aModelView.application.genTypeName()/].[aModelView.genTypeName()/] = Backbone.View.extend({
+	el: $("#container"),
+	render: function() {
+		var self = this;
+		var myEl = self.el;
+
+		$.get('[aModelView.genTemplatesDirectoryPath()/]/[aModelView.genVarName()/].html', function(page) {
+			var templates = $(page).filter('#[aModelView.name.reqTextToHtmlId()/]-template');
+			var templates_dialog = $(page).filter('#dialog-template');
+			if (templates.length === 1 && templates_dialog.length === 1) {
+				var tableTemplate = _.template($(templates['['/]0[']'/]).html(), {
+				[let aModel : Model = aModelView.collection.model]
+				[let namedElements : OrderedSet(NamedElement) = aModel.references->union(aModel.attributes)->asOrderedSet()->sortedBy('name')]
+					columnNames: ['['/][columnNames(aModel.attributes)/][if (aModel.attributes->size()>0)], [/if][columnNames(aModel.references)/][']'/],
+					columnWidths: ['['/][columnWidths(aModel.attributes)/][if (aModel.attributes->size()>0)], [/if][columnWidths(aModel.references)/][']'/],
+					attributesToConsider: ['['/][attributesToConsider(aModel.attributes)/][if (aModel.attributes->size()>0)], [/if][attributesToConsider(aModel.references)/][']'/],
+					attributesToLinkWithPlaceholder: {[attributesToLinkWithPlaceholder(aModel.references, aModelView.application)/]},
+					linkedAttributesMapping: {[linkedAttributesMapping(aModel.references)/]},
+					objects: _.toArray([aModelView.application.genTypeName()/].[aModelView.collection.genVarName()/])
+
+				[/let]
+				[/let]
+				});
+				$(self.el).addClass('container').removeClass('main-banner');
+				$(self.el).html(tableTemplate);
+				$(self.el).find('input').each(function(i, elem){
+					if ($(elem).attr('name') !== 'checkBoxDelete') {
+						$(elem).hide();
+					}
+				});
+				
+				
+				[aModelView.editable()/]
+
+				[aModelView.newButton()/]
+
+				[aModelView.deleteButton()/]
+
+				[if (aModelView.collection.model.references->size()>0)][aModelView.linkPlaceHolder()/][/if]
+				
+			$('.active').removeClass('active');
+			$('#[aModelView.name.reqTextToHtmlId()/]-menu').addClass('active');
+			}
+		}
+		/* [protected ('additional features */')]
+		/* [/protected] */
+	);
+	}[if (aModelView.operations->size() > 0)],[/if]
+	[for (anOperation : Operation | aModelView.operations)]
+	[anOperation.genVarName()/]: function([anOperation.parameters.genVarName()->sep(', ')/]) {
+		
+	}
+	[/for]
+});
+[/file]
+[/template]
+
+[template private columnWidths (namedElements : OrderedSet(NamedElement)) ]
+[for (aNamedElem : NamedElement | namedElements)][aNamedElem.name.size()/][if (i<namedElements->size())], [/if][/for]
+[/template]
+
+[template private attributesToConsider (namedElements : OrderedSet(NamedElement)) ]
+[for (aNamedElem : NamedElement | namedElements)]'[aNamedElem.genVarName()/]'[if (i<namedElements->size())], [/if][/for]
+[/template]
+
+[template private columnNames (namedElements : OrderedSet(NamedElement)) ]
+[for (aNamedElem : NamedElement | namedElements)]'[aNamedElem.name/]'[if (i<namedElements->size())], [/if][/for]
+[/template]
+
+[template private attributesToLinkWithPlaceholder (references : OrderedSet(Reference), anApplication : Application) ]
+[for (aReference : Reference | references)]'[aReference.genVarName()/]': [anApplication.genTypeName()/].[ anApplication.collections->select(model = aReference.type)->first().genVarName()/][if (i<references->size())], [/if][/for]
+[/template]
+
+[template private linkedAttributesMapping (references : OrderedSet(Reference)) ]
+[for (aReference : Reference | references)]'[aReference.genVarName()/]': '[aReference.type.attributes->first().genVarName()/]'[if (i<references->size())], [/if][/for]
+[/template]
+
+[template private newButton (aModelView : ModelView) ]
+$('#new-btn').bind('click', function(){
+	[aModelView.application.genTypeName()/].[aModelView.collection.genVarName()/].create(new [aModelView.application.genTypeName()/].[aModelView.collection.model.genTypeName()/]());
+	webkitNotifications.requestPermission(function() {
+		var permission = webkitNotifications.checkPermission();
+		if (permission === 0) {
+			var notification = webkitNotifications.createNotification('assets/images/acceleo.png', '[aModelView.application.name.toUpperFirst()/]', 'New [aModelView.collection.model.name/] created');
+			notification.show();
+		}
+	});
+	[aModelView.application.genTypeName()/].[aModelView.application.router.genVarName()/].show[aModelView.genTypeName()/]();
+	return false;
+});
+[/template]
+
+[template public deleteButton (aModelView : ModelView) 
+{ aModel : Model = aModelView.collection.model; }]
+$('#delete-btn').bind('click', function(){
+	var modelArray = ['['/][']'/];
+	var i = 0;
+	$('input').each(function(index, elem) {
+		if ($(elem).attr('name') === 'checkBoxDelete' && elem.checked === true) {
+			var data_num = $(elem).data('num');
+			var model = [aModelView.application.genTypeName()/].[aModelView.collection.genVarName()/].at(data_num);
+			modelArray['['/]i[']'/] = model;
+			i = i + 1;
+		}
+	});
+
+	[for (aReference : Reference | aModel.references)]
+	[let referencedCollection : Collection = aModelView.application.collections->select(model = aReference.type)->first()]
+	[if (aReference.type.references->select(type = aModel)->size() > 0)]
+	[let oppositeReference : String = aReference.type.references->select(type = aModel)->first().genVarName()]
+	$(_.toArray([aModelView.application.genTypeName()/].[referencedCollection.genVarName()/])).each(function(i, elem){
+		$(elem.get('[oppositeReference/]')).each(function(j, [aModel.genVarName()/]){
+			if (_.include(_.map(modelArray, function(deleted[aModel.genTypeName()/]){return deleted[aModel.genTypeName()/].id;}), [aModel.genVarName()/])) {
+				var new[aModel.genTypeName()/]Ids = _.without(elem.get('[oppositeReference/]'), [aModel.genVarName()/]);
+				elem.save({'[oppositeReference/]': new[aModel.genTypeName()/]Ids});
+			}
+		});
+	});
+	[/let]
+	[/if]
+	[/let]
+	[/for]
+
+	[comment // unlink other objects /]
+	for (var c = 0; c < modelArray.length; c++) {
+		var model =	modelArray['['/]c[']'/];
+		model.destroy();
+	}
+	
+	[aModelView.application.genTypeName()/].[aModelView.application.router.genVarName()/].show[aModelView.genTypeName()/]();
+	return false;
+});
+[/template]
+
+
+
+[template private editable (aModelView : ModelView) ]
+$('.editable').each(function(i, elem) {
+	$(elem).bind('click', function(){
+		var currentValue = '';
+		if (elem.childNodes.length === 1) {
+			if (elem.childNodes['['/]0[']'/] instanceof Text) {
+				currentValue = $(elem).html();
+			}
+		}
+		var data_attribute_name = $(elem).data('attribute-name');
+		[for (anAttribute : Attribute | aModelView.collection.model.attributes)]
+		[if (i=1)]if[else]else if[/if] (data_attribute_name === '[anAttribute.genVarName()/]') {
+			/* [protected ('attribute UI ' + anAttribute.name + ' */')]
+			$(elem).html('<input class="large" size="30" type="text"/>');
+			if (currentValue.length > 0) {
+				elem.childNodes['['/]0[']'/].value = currentValue;
+			}
+			/* [/protected] */
+		}
+		[/for]
+
+		var firstChild = $(elem).children(':first-child')['['/]0[']'/];
+		firstChild.focus();
+		$(firstChild).keypress(function(e){
+			if(e.which === 13) {
+				var newValue = firstChild.value;
+				$(elem).html(newValue);
+				var data_num = $(elem).data('num');
+				var data_attribute_name = $(elem).data('attribute-name');
+				var model = [aModelView.application.genTypeName()/].[aModelView.collection.genVarName()/].at(data_num);
+				var valueToSet = {};
+				valueToSet['['/]data_attribute_name[']'/] = newValue;
+				model.save(valueToSet);
+			}
+		});
+	});
+});
+[/template]
+
+[template public linkPlaceHolder(aModelView : ModelView) 
+{ aModel : Model = aModelView.collection.model; }]
+
+$('.link-placeholder').bind('click', function(){
+	var index = $(this.parentNode).data('num');
+	var [aModel.genVarName()/] = [aModelView.application.genTypeName()/].[aModelView.collection.genVarName()/].at(index);
+	var target = $(this).attr('href');
+	$(target).find('.title').each(function(i, elem) {
+		[for (aReference : Reference | aModel.references )]
+		[let referencedCollection : Collection = aModelView.application.collections->select(model = aReference.type)->first()]
+		[if (i=1)]if[else]else if[/if] (target === '#[aReference.genVarName()/]') {
+			$(elem).html('[aReference.name/]');
+			/* [protected ('linkPlaceHolder ' + aReference.name + ' */')]
+			var dialogTemplate = _.template($(templates_dialog['['/]0[']'/]).html(), {
+				dialogColumnNames: ['['/]'[aReference.type.attributes->first().name/]'[']'/],
+				dialogColumnWidths: ['['/]100[']'/],
+				attributesToConsider: ['['/]'[aReference.type.attributes->first().genVarName()/]'[']'/],
+				dialogObjects: _.toArray([aModelView.application.genTypeName()/].[referencedCollection.genVarName()/]),
+				objectsToSelect: _.toArray(_.filter(_.toArray([aModelView.application.genTypeName()/].[referencedCollection.genVarName()/]), function(val){
+												var [aReference.genVarName()/]Ids = [aModel.genVarName()/].get('[aReference.genVarName()/]');
+												var found = false;
+												_.each([aReference.genVarName()/]Ids, function([aReference.genVarName()/]Id){
+													if ([aReference.genVarName()/]Id === val.id) {
+														found = true;
+													}
+												});
+												return found;
+											}))
+			});
+			/* [/protected] */
+			$(target).find('.modal-body').each(function(j, element){
+				$(element).html(dialogTemplate);
+			});
+			$(target).find('.dialogSave').each(function(j, element){
+				$(element).bind('click', function() {
+					var modelArray = ['['/][']'/];
+					var i = 0;
+					$('input').each(function(index, elem) {
+						if ($(elem).attr('name') === 'checkBoxDeleteDialog' && elem.checked === true) {
+							var data_num = $(elem).data('num');
+							var model = [aModelView.application.genTypeName()/].[referencedCollection.genVarName()/].at(data_num);
+							modelArray['['/]i[']'/] = model.id;
+							i = i + 1;
+						}
+					});
+					
+					var valueToSet = {};
+					valueToSet['['/]'[aReference.genVarName()/]'[']'/] = modelArray;
+					[aModel.genVarName()/].save(valueToSet);
+					[if (aReference.type.references->select(type = aModel)->size() > 0)]
+					[let oppositeReference : String = aReference.type.references->select(type = aModel)->first().genVarName()]
+					/* bidirectional link */
+					/* [protected ('bidirectional link ' + aReference.name + ' */')]
+					$(_.toArray([aModelView.application.genTypeName()/].[referencedCollection.genVarName()/])).each(function(i, elem){
+						if(_.include(modelArray, elem.id)) {
+							var [aModel.genVarName()/]Ids = elem.get('[oppositeReference/]');
+							if (!(_.include([aModel.genVarName()/]Ids, [aModel.genVarName()/].id))) {
+								[aModel.genVarName()/]Ids.push([aModel.genVarName()/].id);
+								elem.save({'[oppositeReference/]': [aModel.genVarName()/]Ids});
+							}
+						} else {
+							elem.save({'[oppositeReference/]': _.without(elem.get('[oppositeReference/]'), [aModel.genVarName()/].id)});
+						}
+					});
+					/* [/protected] */
+					[/let]
+					[/if]
+					[aModelView.application.genTypeName()/].[aModelView.application.router.genVarName()/].show[aModelView.genTypeName()/]();
+				});
+			});
+		}
+		[/let]
+		[/for]
+	});
+});
+[/template]

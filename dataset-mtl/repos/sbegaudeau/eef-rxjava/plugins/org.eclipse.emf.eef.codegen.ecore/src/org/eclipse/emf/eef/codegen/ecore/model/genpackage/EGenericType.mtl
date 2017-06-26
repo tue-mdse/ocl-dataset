@@ -1,0 +1,44 @@
+[comment encoding = UTF-8 /]
+[module EGenericType('http://www.eclipse.org/emf/2002/GenModel', 'http://www.eclipse.org/emf/2002/Ecore')/]
+
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenModel /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenPackage /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenClassifier /]
+
+[query public depth(eGenericType : EGenericType) : Integer =
+	eGenericType.ancestors(EGenericType)->size()
+/]
+
+[query public type(eGenericType : EGenericType, genModel : GenModel, genPackage : GenPackage) : String =
+	if (eGenericType.eClassifier <> null) then
+		let genClassifier : GenClassifier = genModel.findGenClassifier(eGenericType.eClassifier) in
+			genPackage.getPackageInstanceVariable(genClassifier.genPackage)
+				+ '.get' + genClassifier.getClassifierAccessorName() + '()'
+	else
+		if (eGenericType.eTypeParameter <> null) then
+			let eTypeParameter : ETypeParameter = eGenericType.eTypeParameter in
+				if (eTypeParameter.eContainer().oclIsKindOf(EClass)) then
+					genModel.findGenClassifier(
+						eTypeParameter.eContainer().oclAsType(EClass))
+						.getClassifierInstanceName()
+						+ '_' + eGenericType.eTypeParameter.name
+				else
+					't' + eTypeParameter.eContainer().oclAsType(EOperation).eTypeParameters->indexOf(eTypeParameter)
+				endif
+		else
+			''
+		endif
+	endif
+/]
+
+[query public accessor(eGenericType : EGenericType) : String =
+	if (eGenericType.depth() > 0) then
+		if (eGenericType.eContainmentFeature().many) then
+			'getE' + eGenericType.eContainmentFeature().name.substring(2) + '().add'
+		else
+			'setE' + eGenericType.eContainmentFeature().name.substring(2)
+		endif
+	else
+		''
+	endif
+/]

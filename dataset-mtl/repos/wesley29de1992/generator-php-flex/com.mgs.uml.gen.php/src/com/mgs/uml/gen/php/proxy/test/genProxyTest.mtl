@@ -1,0 +1,141 @@
+[comment encoding = UTF-8 /]
+[module genProxyTest('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::gen::php::common::phpUtils /]
+[import com::mgs::uml::gen::php::proxy::proxyCommon /]
+[import com::mgs::uml::gen::php::dao::daoCommon /]
+[import com::mgs::uml::common::umlUtils /]
+[import com::mgs::uml::gen::php::proxy::genProxy /]
+
+
+
+[template public genProxyTest(c : Class) ? (profile_isEntity())]
+	
+[comment @main /]
+[file ('test/proxy/' + c.proxyName() + 'Test.php', false, 'UTF-8')]
+<?php
+
+class [c.proxyName()/]Test extends PHPUnit_Framework_TestCase {
+
+	public function testConstruct(){
+		$id = 40;
+		$proxy = new [c.proxyName()/]($id);
+		$this->assertEquals($id, $proxy->getId());
+		$this->assertFalse($proxy->isUpToDate());
+	}
+[for (p : Property | c.profile_propertiesEntity()) ? (isSimplePrimitive() and upper = 1)]
+	public function testAccessor[p.name.toUpperFirst()/]InCache(){
+		$proxy = new [c.proxyName()/]();
+		$this->assertNull($proxy->[p.getterName()/](false));	
+		
+		$value = [p.php_genTestValue()/];
+		$proxy->[p.setterName()/]($value);
+		$this->assertEquals($value, $proxy->[p.getterName()/](false));
+		
+		$proxy->[p.setterName()/](null);
+		$this->assertNull($proxy->[p.getterName()/](false));
+	}
+	
+[/for]
+[for (p : Property | c.profile_propertiesEntity()) ? (not isSimplePrimitive() and upper = 1)]
+	public function test[p.name.toUpperFirst()/]Unload(){
+		$proxy = new [c.proxyName()/]();
+		$this->assertFalse($proxy->[p.isRelationLoaded()/]());
+		
+		$proxyLink = new [p.type->filter(Class).proxyName()/]();
+		$proxy->[p.setterName()/]($proxyLink);
+		$this->assertTrue($proxy->[p.isRelationLoaded()/]());
+		
+		$proxy->[p.unloadRelationName()/]();
+		
+		$this->assertFalse($proxy->[p.isRelationLoaded()/]());
+	}
+	
+	public function testAccessor[p.name.toUpperFirst()/]InCache(){
+		$proxy = new [c.proxyName()/]();
+		$this->assertNull($proxy->[p.getterName()/](false));	
+		
+		$proxyLink = new [p.type->filter(Class).proxyName()/]();
+		$proxy->[p.setterName()/]($proxyLink);
+		$this->assertEquals($proxyLink, $proxy->[p.getterName()/](false));
+		$this->assertFalse($proxy->isUpToDate());
+		
+		$proxy->[p.setterName()/](null);
+		$this->assertNull($proxy->[p.getterName()/](false));
+		$this->assertFalse($proxy->isUpToDate());	
+	}
+	
+	public function testAccessor[p.name.toUpperFirst()/]LazyLoading(){
+		$connection = Connection::createNewConnection();
+		$connection->open();
+		// create a Proxy and an Proxy linked
+		$proxy = new [c.proxyName()/]();
+		$proxyLink = new [p.type->filter(Class).proxyName()/]();
+		$proxy->[p.setterName()/]($proxyLink);
+		
+		$dao = new [c.daoName()/](); 
+		$dao->[c.daoCreate()/]($connection, $proxy);
+		
+		// test getter with lazy loading.
+		$proxyFound = $dao->findById($connection, $proxy->getId());
+		$proxyLinkFound = $proxyFound->[p.getterName()/](true, $connection);
+		$this->assertNotNull($proxyLinkFound);
+		$connection->close();
+	}
+[/for]
+[for (p : Property | c.profile_propertiesEntity()) ? (not isSimplePrimitive() and upper <> 1)]
+	public function test[p.name.toUpperFirst()/]Unload(){
+		$proxy = new [c.proxyName()/]();
+		$this->assertFalse($proxy->[p.isRelationLoaded()/]());
+		
+		$proxyLink = new [p.type->filter(Class).proxyName()/]();
+		$array = array();
+		array_push($array, $proxyLink);
+		$proxy->[p.setterName()/]($array);
+		$this->assertTrue($proxy->[p.isRelationLoaded()/]());
+		
+		$proxy->[p.unloadRelationName()/]();
+		
+		$this->assertFalse($proxy->[p.isRelationLoaded()/]());
+	}
+	public function testAccessor[p.name.toUpperFirst()/]InCache(){
+		$proxy = new [c.proxyName()/]();
+		$this->assertNull($proxy->[p.getterName()/](false));	
+		
+		// test add.
+		$proxyLink = new [p.type->filter(Class).proxyName()/]();
+		$proxy->[p.adderName()/]($proxyLink);
+		$array = $proxy->[p.getterName()/](false);
+		$this->assertEquals($proxyLink, $array['[0]'/]);
+		
+		$array = array();
+		$proxy->[p.setterName()/]($array);
+		$this->assertEquals($array, $proxy->[p.getterName()/](false));
+	}
+	
+	public function testAccessor[p.name.toUpperFirst()/]LazyLoading(){
+		$connection = Connection::createNewConnection();
+		$connection->open();
+		// create a Proxy and an Proxy linked
+		$proxy = new [c.proxyName()/]();
+		$proxyLink = new [p.type->filter(Class).proxyName()/]();
+		$proxy->[p.adderName()/]($proxyLink);
+		
+		$dao = new [c.daoName()/](); 
+		$dao->[c.daoCreate()/]($connection, $proxy);
+		
+		// test getter with lazy loading.
+		$proxyFound = $dao->findById($connection, $proxy->getId());
+		$array = $proxyFound->[p.getterName()/](true, $connection);
+		$this->assertNotNull($array['[0]'/]);
+		$this->assertEquals($proxyLink->getId(), $array['[0]'/]->getId());
+		$connection->close();
+	}
+[/for]
+	
+}
+
+?>
+[/file]
+	
+[/template]

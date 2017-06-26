@@ -1,0 +1,174 @@
+[comment encoding = UTF-8 /]
+[module CreateMenuJava('http://www.eclipse.org/emf/2002/Ecore','http://mondo.org/runtimePatterns','http://www.eclipse.org/emf/2002/GenModel')]
+[import org::mondo::generate::modular::project::main::requests::global_queriesModularProject /]
+
+[template public CreateMenuJava(anProjectName : String, anPatternInstance : PatternInstance, anPackageName: String, anEObjectGenModel : GenModel)]
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name') + '.' + anPatternInstance.Get_ProjectClassRoleInstance().element.name).replaceAll('\\.','/').concat('/CreateMenu.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/];
+
+import java.io.IOException;
+import java.util.HashMap;
+
+import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IProjectNature;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.jface.viewers.TreeSelection;
+import org.eclipse.ui.ISelectionService;
+import org.eclipse.ui.menus.CommandContributionItem;
+import org.eclipse.ui.menus.CommandContributionItemParameter;
+import org.eclipse.ui.menus.ExtensionContributionFactory;
+import org.eclipse.ui.menus.IContributionRoot;
+import org.eclipse.ui.services.IServiceLocator;
+
+import [anProjectName.toLower()/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/].wizard.[anPatternInstance.Get_ProjectClass().name/]NewProjectNature;
+[for (c : ClassRoleInstance | Get_FolderClassRoleInstance(anPatternInstance)->union(anPatternInstance.Get_ProjectClassRoleInstance()
+																						 ->select(anClassRoleInstance : ClassRoleInstance | anClassRoleInstance.referenceInstances
+																						 ->select(ref : ReferenceRoleInstance | ref.element.eType.name.toString() = anClassRoleInstance.element.name.toString())->size() > 0)->asSequence()))]
+import [generateEClassImport(c.element)/];
+[/for]
+public class CreateMenu extends ExtensionContributionFactory {
+
+	public CreateMenu() {	
+	}
+
+	@Override
+	public void createContributionItems(IServiceLocator serviceLocator,
+			IContributionRoot additions) {
+		
+		ISelectionService serv = (ISelectionService) serviceLocator.getService(ISelectionService.class);
+		ISelection selection = serv.getSelection();
+		TreeSelection treeselection = (TreeSelection)selection;
+		Object firstelement = treeselection.getFirstElement();
+			
+		if(firstelement instanceof IProject || firstelement instanceof IFolder){
+			IProject pro = null;
+			if(firstelement instanceof IProject)
+				pro = (IProject)firstelement;	
+			if(firstelement instanceof IFolder)
+				pro = ((IFolder)firstelement).getProject();			
+			try {
+				IProjectNature nature = pro.getNature([anPatternInstance.Get_ProjectClass().name/]NewProjectNature.ID);
+				if(nature==null)
+					return;
+				
+				nature = pro.getNature("[anProjectName.toLower()/].[getProperty('prefix_name')/].generalmodularnature");
+				if(nature != null)
+					return;				
+				
+			} catch (CoreException e) {
+				
+				e.printStackTrace();
+			}
+
+			MenuManager menu = new MenuManager();
+			menu.setMenuText("New [Get_ProjectClass(anPatternInstance).name.toUpperFirst() /]");			
+			if(firstelement instanceof IProject)
+			{
+				CommandContributionItemParameter pcommand = new CommandContributionItemParameter(serviceLocator,
+			"", "org.eclipse.ui.newWizard", CommandContributionItem.STYLE_PUSH);
+				pcommand.parameters = new HashMap<String,String>();
+			
+			[for (ref : ReferenceRoleInstance | Get_ProjectClassRoleInstance(anPatternInstance).referenceInstances->
+												asSequence()->iterate(elementRef; result: Sequence(ReferenceRoleInstance) = Sequence{} | 
+													if result->select(refer : ReferenceRoleInstance | refer.element.name.toString() = elementRef.element.name.toString())->size() <= 0 then 
+														result->including(elementRef)
+														else
+														result
+														endif))]
+
+			[if(anPatternInstance.IsEClassContainerElement(ref.element.eType) = true)]
+				[if(anPatternInstance.IsEClassPackageInstance(ref.element.eType) = true or anPatternInstance.IsEClassProjectInstance(ref.element.eType) = true)]
+				pcommand.parameters.put("newWizardId", "[anProjectName/].[ref.element.eType.name.toLower()/].[ref.element.eType.name.toLower()/]NewPackage");
+				[else]
+				pcommand.parameters.put("newWizardId", "[anProjectName/].[ref.element.eType.name.toLower()/].[ref.element.eType.name.toLower()/]NewFile");
+				[/if]
+				CommandContributionItem item[ref.element.name/] = new CommandContributionItem(pcommand);
+				menu.add(item[ref.element.name/]);
+			[else]
+				[for(anClassRoleInstance : ClassRoleInstance|anPatternInstance.IsEClassSuperTypeClassRoleInstance(ref.element.eType))]
+				[if(anClassRoleInstance.role.ref->asSequence()->first().name.toString() = 'Package' or anClassRoleInstance.role.ref->asSequence()->first().name='Project')]
+					[comment anPatternInstance.IsEClassPackageInstance(ref.element.eType) = true )/]
+				pcommand.parameters.put("newWizardId", "[anProjectName/].[anClassRoleInstance.element.name.toLower()/].[anClassRoleInstance.element.name.toLower()/]NewPackage");
+				[else]
+				pcommand.parameters.put("newWizardId", "[anProjectName/].[anClassRoleInstance.element.name.toLower()/].[anClassRoleInstance.element.name.toLower()/]NewFile");
+				[/if]
+				CommandContributionItem item[anClassRoleInstance.element.name/] = new CommandContributionItem(pcommand);
+				menu.add(item[anClassRoleInstance.element.name/]);
+				[/for]
+			[/if]				
+					
+			[/for]				
+			}
+			else if(firstelement instanceof IFolder)
+			{
+				IFolder fol = (IFolder)firstelement;
+				IPath filePath = fol.getFullPath().append("/"+fol.getName().concat(".xmi"));
+				XMI_File file = new XMI_File(URI.createPlatformResourceURI(filePath.toString(), true), true);
+				EObject root = null;
+				try {
+					root = file.Get_Root();
+				} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+				}
+				
+				if(root!=null)
+				{					
+					[for (c : ClassRoleInstance | Get_FolderClassRoleInstance(anPatternInstance)->union(anPatternInstance.Get_ProjectClassRoleInstance()
+																						 ->select(anClassRoleInstance : ClassRoleInstance | anClassRoleInstance.referenceInstances
+																						 ->select(ref : ReferenceRoleInstance | ref.element.eType.name.toString() = anClassRoleInstance.element.name.toString())->size() > 0)->asSequence()))]
+					if(root instanceof [c.element.name /])
+					{
+						CommandContributionItemParameter pcommand = new CommandContributionItemParameter(serviceLocator,
+						"", "org.eclipse.ui.newWizard", CommandContributionItem.STYLE_PUSH);
+						pcommand.parameters = new HashMap<String,String>();
+						[for (ref : ReferenceRoleInstance | c.referenceInstances->
+												asSequence()->iterate(elementRef; result: Sequence(ReferenceRoleInstance) = Sequence{} | 
+													if result->select(refer : ReferenceRoleInstance | refer.element.name.toString() = elementRef.element.name.toString())->size() <= 0 then 
+														result->including(elementRef)
+														else
+														result
+														endif))]
+						
+						[if(anPatternInstance.IsEClassContainerElement(ref.element.eType) = true)]
+							[if(anPatternInstance.IsEClassPackageInstance(ref.element.eType) = true or anPatternInstance.IsEClassProjectInstance(ref.element.eType) = true)]
+						pcommand.parameters.put("newWizardId", "[anProjectName/].[ref.element.eType.name.toLower()/].[ref.element.eType.name.toLower()/]NewPackage");
+							[else]
+						pcommand.parameters.put("newWizardId", "[anProjectName/].[ref.element.eType.name.toLower()/].[ref.element.eType.name.toLower()/]NewFile");
+							[/if]
+						CommandContributionItem item[ref.element.name/] = new CommandContributionItem(pcommand);
+						menu.add(item[ref.element.name/]);
+						[else]
+							[for(anClassRoleInstance : ClassRoleInstance|anPatternInstance.IsEClassSuperTypeClassRoleInstance(ref.element.eType))]
+								[if(anClassRoleInstance.role.ref->asSequence()->first().name.toString() = 'Package' or anClassRoleInstance.role.ref->asSequence()->first().name='Project')]
+							[comment anPatternInstance.IsEClassPackageInstance(ref.element.eType) = true )/]
+						pcommand.parameters.put("newWizardId", "[anProjectName/].[anClassRoleInstance.element.name.toLower()/].[anClassRoleInstance.element.name.toLower()/]NewPackage");
+								[else]
+						pcommand.parameters.put("newWizardId", "[anProjectName/].[anClassRoleInstance.element.name.toLower()/].[anClassRoleInstance.element.name.toLower()/]NewFile");
+								[/if]
+						CommandContributionItem item[anClassRoleInstance.element.name/] = new CommandContributionItem(pcommand);
+						menu.add(item[anClassRoleInstance.element.name/]);
+							[/for]
+						[/if]		
+						[/for]
+						
+					}
+					[/for]				
+				}				
+			}
+			additions.addContributionItem(menu, null);
+		}
+	}
+
+				
+}
+
+[/file]
+
+[/template]

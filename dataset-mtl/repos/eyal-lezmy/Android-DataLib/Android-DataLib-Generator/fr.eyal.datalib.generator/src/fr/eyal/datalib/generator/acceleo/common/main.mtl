@@ -1,0 +1,99 @@
+[comment encoding = UTF-8 /]
+[module main('http://www.eyal.fr/android/datalib', 'http://www.eyal.fr/android/datalib/content', 'http://www.eyal.fr/android/datalib/model')/]
+[import fr::eyal::datalib::generator::acceleo::common::BusinessObject/]
+[import fr::eyal::datalib::generator::acceleo::common::BusinessObjectBase/]
+[import fr::eyal::datalib::generator::acceleo::common::BusinessObjectBaseDAO/]
+[import fr::eyal::datalib::generator::acceleo::common::BusinessObjectDAO/]
+[import fr::eyal::datalib::generator::acceleo::common::DataManager/]
+[import fr::eyal::datalib::generator::acceleo::common::Provider/]
+[import fr::eyal::datalib::generator::acceleo::common::Activity/]
+[import fr::eyal::datalib::generator::acceleo::common::ResponseBusinessObject/]
+[import fr::eyal::datalib::generator::acceleo::common::ResponseBusinessObjectBase/]
+[import fr::eyal::datalib::generator::acceleo::common::ResponseBusinessObjectImage/]
+[import fr::eyal::datalib::generator::acceleo::common::ResponseBusinessObjectImageBase/]
+[import fr::eyal::datalib::generator::acceleo::common::ResponseBusinessObjectBaseDAO/]
+[import fr::eyal::datalib::generator::acceleo::common::ResponseBusinessObjectDAO/]
+[import fr::eyal::datalib::generator::acceleo::common::ResponseBusinessObjectParserSAX/]
+[import fr::eyal::datalib::generator::acceleo::common::ResponseBusinessObjectParserIMAGE/]
+[import fr::eyal::datalib::generator::acceleo::common::Service/]
+[import fr::eyal::datalib::generator::acceleo::common::ServiceHelper/]
+[import fr::eyal::datalib::generator::acceleo::common::WebServiceConfig/]
+
+[template public mainDataLibProject(aDataLibProject : DataLibProject)]
+	
+	[comment @main /]
+	[aDataLibProject.dataManager()/]
+	[aDataLibProject.Provider()/]
+	[aDataLibProject.service()/]
+	[aDataLibProject.serviceHelper()/]
+	[aDataLibProject.activity()/]
+
+	[for (aWebService : WebService | aDataLibProject.webservices)]
+		[mainWebService(aWebService)/]
+	[/for]
+	
+	
+[/template]
+[template public mainWebService(aWebService : WebService)]
+	
+	[aWebService.webServiceConfig()/]
+
+	[if (aWebService.parseType = ParseType::IMAGE)]
+		[aWebService.contentResponse.businessObjectParserIMAGE()/]
+		
+		[aWebService.contentResponse.responseBusinessObjectImage()/]
+		[aWebService.contentResponse.responseBusinessObjectImageBase()/]
+
+	[else]
+		[aWebService.contentResponse.businessObjectParserSAX()/]
+
+		[for (aBusinessObject : ResponseBusinessObject | aWebService.contentResponse)]
+			[if (aWebService.cached)]
+			[mainResponseBusinessObjectDAO(aBusinessObject.oclAsType(ResponseBusinessObjectDAO), aWebService)/]
+			[else]
+			[mainResponseBusinessObject(aBusinessObject)/]
+			[/if]
+		[/for]
+	[/if]
+	
+[/template]
+[template public mainResponseBusinessObject(aResponseBusinessObject : ResponseBusinessObject)]
+	
+	[aResponseBusinessObject.responseBusinessObject()/]
+	[aResponseBusinessObject.responseBusinessObjectBase()/]
+
+	[for (businessObject : BusinessObject | aResponseBusinessObject.childs)]
+		[mainBusinessObject(businessObject)/]
+	[/for]
+	
+[/template]
+[template public mainResponseBusinessObjectDAO(aResponseBusinessObjectDAO : ResponseBusinessObjectDAO, aWebService : WebService)]
+	
+	[aResponseBusinessObjectDAO.responseBusinessObjectBaseDAO(aWebService)/]
+	[aResponseBusinessObjectDAO.responseBusinessObjectDAO()/]
+
+	[for (businessObject : BusinessObject | aResponseBusinessObjectDAO.childs)]
+		[mainBusinessObjectDAO(businessObject.oclAsType(BusinessObjectDAO))/]
+	[/for]
+	
+[/template]
+[template public mainBusinessObject(aBusinessObject : BusinessObject)]
+	
+	[aBusinessObject.businessObject()/]
+	[aBusinessObject.businessObjectBase()/]
+	
+	[for (businessObject : BusinessObject | aBusinessObject.childs)]
+		[mainBusinessObject(businessObject)/]
+	[/for]
+
+[/template]
+[template public mainBusinessObjectDAO(aBusinessObjectDAO : BusinessObjectDAO)]
+	
+	[aBusinessObjectDAO.businessObjectDAO()/]
+	[aBusinessObjectDAO.businessObjectBaseDAO()/]
+
+	[for (businessObject : BusinessObject | aBusinessObjectDAO.childs)]
+		[mainBusinessObjectDAO(businessObject.oclAsType(BusinessObjectDAO))/]
+	[/for]
+	
+[/template]

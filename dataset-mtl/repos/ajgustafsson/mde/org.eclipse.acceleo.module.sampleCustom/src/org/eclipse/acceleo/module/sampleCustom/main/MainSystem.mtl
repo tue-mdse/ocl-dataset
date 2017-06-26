@@ -1,0 +1,171 @@
+ [comment encoding = UTF-8 /]
+[module MainSystem('Group2')]
+
+[template public mainSystem(aMainSystem : MainSystem)]
+[file ('Starter.java', false, 'UTF-8')]
+
+package org.eclipse.acceleo.module.sampleCustom.genv1;
+
+import java.util.Map;
+
+import org.eclipse.emf.common.util.EList;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+
+import Engine.EnginePackage;
+import Engine.MainSystem;
+import Engine.User;
+import Engine.Workflow;
+
+public class Starter {
+	
+
+	public static void main(String['['/][']'/] args) {
+[comment]	load xmi model through *.xmi file[/comment]
+		
+[comment]		//arg[0] == user and arg[1] == 1[/comment]
+		String username = args['['/] 0 [']'/];
+		String workflowName = args['['/] 1 [']'/];
+[comment]		//init model[/comment]
+		EnginePackage.eINSTANCE.eClass();
+		
+		Resource.Factory.Registry reg = Resource.Factory.Registry.INSTANCE;
+		
+		Map<String, Object> m = reg.getExtensionToFactoryMap();
+	    m.put("xmi", new XMIResourceFactoryImpl());
+
+[comment]	    // Obtain a new resource set[/comment]
+	    ResourceSet resSet = new ResourceSetImpl();
+	    
+[comment]	    // Get the resource[/comment]
+    	Resource resource = resSet.getResource(URI.createURI("xmi/MainSystem.xmi"), true);
+	    [comment]// Get the first model element and cast it to the right type, in my
+	    // example everything is hierarchical included in this first node[/comment]
+	
+		[aMainSystem.eClass().name/] system = (MainSystem) resource.getContents().get(0);
+			
+		[aMainSystem.workflows.eClass().name/] workflow = getWorkflow(workflowName, system.getWorkflows());
+		if (workflow == null) {
+	    	throw new NullPointerException("No workflow can be found with name: " + workflowName);
+	    }
+		    
+	    User user = getUser(username, system.getUsers());
+	    if (user == null) {
+	    	throw new NullPointerException("No user can be found with name: " + user);
+	    }    
+	    workflow.start(user);
+					
+	}
+
+	private static User getUser(String username, EList<User> users) {
+		for (User user : users) {
+			if (user.getName().equals(username)) {
+				return user;
+			}
+		}
+		return null;
+		
+	}   
+	private static Workflow getWorkflow(String workflowName, EList<Workflow> workflows) {
+		for (Workflow wf : workflows) {
+			if (wf.getName().equals(workflowName)) {
+				return wf;
+			}
+		}
+		return null;
+	}
+}
+
+
+
+
+
+	[comment][for (workflow : Workflow | aMainSystem.workflows)]
+
+		Workflow [workflow.name/] = EngineFactory.eINSTANCE.createWorkflow();
+		List<Node> nodes = [workflow.name/].getNodes();
+		[for (task : Task | workflow.nodes->select(oclIsKindOf(Task)).oclAsType(Task))]
+		
+			Task [task.name/] = EngineFactory.eINSTANCE.createTask();
+			[task.name/].setName("[task.name/]");
+			[task.name/].setState(TaskState.[task.state/]);
+			[task.name/].setEnd([task.end/]);
+			[task.name/].setStart([task.start/]);
+			nodes.put([task.name/].getName(), [task.name/]);
+			System.out.println([task.name/].getName() + [task.name/].getState());
+
+[comment]	`		[task.transition./][/comment]
+			
+		[/for]
+
+	workflows.put("[workflow.name/]", [workflow.name/]);
+	[/for]
+	}
+
+
+}
+	
+[for (workflow : Workflow | aMainSystem.workflows)]
+[file (workflow.eClass().name + '.java', false, 'UTF-8')]
+package model;
+import java.util.Map;
+import Engine.EnginePackage;
+import Engine.impl.TaskImpl;
+import Engine.TaskState;
+
+public class [workflow.eClass().name/] {
+	
+//	public HashMap<String,Transition> transitions = new HashMap<String,Transition>();
+
+
+
+
+	public Workflow() {}
+
+
+	public static void main(String args) {
+		Map<String,TaskImpl> tasks = new HashMap<String,TaskImpl>();
+	
+		[for (task : Task | workflow.nodes->select(oclIsKindOf(Task)).oclAsType(Task))]
+		
+			Task [task.name/] = EngineFactory.createTask();
+			[task.name/].setName("[task.name/]");
+			[task.name/].setState(TaskState.[task.state/]);
+			[task.name/].setEnd([task.end/]);
+			[task.name/].setStart([task.start/]);
+			tasks.put([task.name/].getName(), [task.name/]);
+			tasks.put("asdf", [task/]);
+			System.out.println([task.name/].getName() + [task.name/].getState());
+			
+		[/for]
+	}
+	[for (simple : Simple | workflow.nodes->select(oclIsKindOf(Simple)).oclAsType(Simple))]
+    SimpleImpl [simple.name/] = new SimpleImpl([simple.name/], tasks.get("[simple.task/]"), tasks.get("[simple.previousTasks/]"));
+	[simple.name/].setName([simple.name/]);
+	[simple.name/].setTask([simple.task/]);
+[comment]	[simple.name/].setPreviousTask([simple.previousTasks]);[/comment]
+	transitions.put("[simple/]","[simple.name/]");
+	[/for]
+	
+	
+	}		
+	[/file]
+	[/for]
+
+
+[/comment]
+[/file]
+[/template]
+[comment]
+[template public instansiateNode(node : Node)]
+[file ('noodes' + '.java', false, 'UTF-8')]
+public abstract class Node {
+ 
+	public [node.name/];
+	
+}
+[/file]
+[/template][/comment]

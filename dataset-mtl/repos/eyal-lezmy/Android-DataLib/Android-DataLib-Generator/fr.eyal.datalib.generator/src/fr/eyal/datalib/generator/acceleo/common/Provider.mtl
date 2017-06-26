@@ -1,0 +1,243 @@
+[comment encoding = UTF-8 /]
+[module Provider('http://www.eyal.fr/android/datalib')]
+[import fr::eyal::datalib::generator::acceleo::common::Tools /]
+[import fr::eyal::datalib::generator::acceleo::common::BusinessObjectTool /]
+
+[template public Provider(aProject : DataLibProject){
+_package:String = aProject._package+'.model';
+_directory:String = getDirectoryFromPackage(_package);
+}]
+[file (_directory + aProject.name.toUpperFirst() + 'Provider.java', false, 'UTF-8')]
+package [_package/];
+
+import android.content.UriMatcher;
+import android.net.Uri;
+import fr.eyal.lib.data.model.provider.BusinessObjectProvider;
+[addImports(aProject)/]
+// [protected (aProject.name.toUpperFirst()+'Provider imports')]
+// You can add here your personal imports
+// DO NOT MODIFY THE GENERATED COMMENTS "Start of user code" and "End of user code"
+// [/protected]
+
+public class [aProject.name.toUpperFirst()/]Provider extends BusinessObjectProvider {
+
+    public static final String AUTHORITY = "[aProject.authority/]";
+
+    /**
+     * Tables' Codes
+     */
+	[declareCodes(aProject)/]
+
+    static {
+
+        DATABASE_NAME = "[aProject.databaseName/]";
+        DATABASE_VERSION = [aProject.databaseVersion/];
+
+        //Tables' names list
+        String['['/]] LOCAL_DATABASE_TABLES_NAMES = {
+				[listTables(aProject)/]
+        };
+        DATABASE_TABLES_NAMES = LOCAL_DATABASE_TABLES_NAMES;
+
+        //Tables' fields' names list
+        String['['/]]['['/]] LOCAL_DATABASE_TABLES_FIELDS_NAMES = {
+                [listFieldsTables(aProject)/]
+        };
+        DATABASE_TABLES_FIELDS_NAMES = LOCAL_DATABASE_TABLES_FIELDS_NAMES;
+
+        //Tables' fields' names list
+        String['['/]] LOCAL_CREATE_TABLES = {
+				[listCreateTables(aProject)/]
+        };
+        CREATE_TABLES = LOCAL_CREATE_TABLES;
+
+        //Email URI matching table
+        UriMatcher matcher = sUriMatcher;
+
+        //We add each URIs into the matcher
+		[matchURIs(aProject)/]
+    }
+
+    @Override
+    protected String getTableName(final int match) {
+        switch (match) {
+			[getTableNamesCases(aProject)/]
+            
+            default:
+                return null;
+        }
+    }
+
+    @Override
+    public String getType(final Uri uri) {
+
+        switch (sUriMatcher.match(uri)) {
+			[getTypeCases(aProject)/]
+
+            default:
+                return null;
+        }
+    }
+
+// [protected (aProject.name.toUpperFirst()+'Provider')]
+// You can add here your personal content
+// DO NOT MODIFY THE GENERATED COMMENTS "Start of user code" and "End of user code"
+// [/protected]
+
+}
+
+
+
+[/file]
+[/template]
+
+[template public getTypeCases (aProject : DataLibProject) post (trim()) ]
+[for (webService : WebService | aProject.webservices)]
+[if (webService.cached and webService.parseType <> ParseType::IMAGE)]
+case CODE_[webService.contentResponse.name.toUpper()/]:
+    return [webService.contentResponse.name.toUpperFirst()/].CONTENT_URL;
+	[for (businessObject : BusinessObject | webService.contentResponse.childs)]
+[getTypeCases (businessObject) /]
+	[/for]
+[/if]
+
+[/for]
+[/template]
+
+[template public getTypeCases (aBusinessObject : BusinessObject) post (trim()) ]
+case CODE[getCompleteNameToUpper(aBusinessObject, '_')/]:
+    return [aBusinessObject.javaName.toUpperFirst()/].CONTENT_URL;
+	[for (businessObject : BusinessObject | aBusinessObject.childs)]
+[getTypeCases (businessObject) /]
+	[/for]
+[/template]
+
+[template public getTableNamesCases (aProject : DataLibProject) post (trim()) ]
+[for (webService : WebService | aProject.webservices)]
+[if (webService.cached and webService.parseType <> ParseType::IMAGE)]
+case CODE_[webService.contentResponse.javaName.toUpper()/]:
+    return [webService.contentResponse.javaName.toUpperFirst()/].DATABASE_TABLE_NAME;
+	[for (businessObject : BusinessObject | webService.contentResponse.childs)]
+[getTableNamesCases (businessObject) /]
+	[/for]
+
+[/if]
+[/for]
+[/template]
+
+[template public getTableNamesCases (aBusinessObject : BusinessObject) post (trim())]
+case CODE[getCompleteNameToUpper(aBusinessObject, '_')/]:
+    return [aBusinessObject.javaName.toUpperFirst()/].DATABASE_TABLE_NAME;
+	[for (businessObject : BusinessObject | aBusinessObject.childs)]
+[getTableNamesCases (businessObject) /]
+	[/for]
+[/template]
+
+[template public matchURIs (aProject : DataLibProject) post (trim())]
+[for (webService : WebService | aProject.webservices) ]
+[if (webService.cached and webService.parseType <> ParseType::IMAGE)]
+matcher.addURI(AUTHORITY, [webService.contentResponse.name.toUpperFirst()/].CONTENT_PATH, CODE_[webService.contentResponse.name.toUpper()/]);
+	[for (businessObject : BusinessObject | webService.contentResponse.childs)]
+[matchURIs (businessObject) /]
+	[/for]
+[/if]
+[/for]
+[/template]
+
+[template public matchURIs (aBusinessObject : BusinessObject) post (trim())]
+matcher.addURI(AUTHORITY, [aBusinessObject.javaName.toUpperFirst()/].CONTENT_PATH, CODE[getCompleteNameToUpper(aBusinessObject, '_')/]);
+[for (businessObject : BusinessObject | aBusinessObject.childs)]
+[matchURIs (businessObject) /]
+[/for]
+[/template]
+
+[template public listCreateTables (aProject : DataLibProject) post (trim())]
+[for (webService : WebService | aProject.webservices)]
+[if (webService.cached and webService.parseType <> ParseType::IMAGE)]
+[webService.contentResponse.name.toUpperFirst()/].CREATE_TABLE,
+	[for (businessObject : BusinessObject | webService.contentResponse.childs)]
+[listCreateTables (businessObject) /]
+	[/for]
+[/if]
+[/for]
+[/template]
+
+[template public listCreateTables (aBusinessObject : BusinessObject) post (trim()) ]
+[aBusinessObject.javaName.toUpperFirst()/].CREATE_TABLE,
+[for (businessObject : BusinessObject | aBusinessObject.childs)]
+[listCreateTables (businessObject) /]
+[/for]
+[/template]
+
+[template public listFieldsTables (aProject : DataLibProject) post (trim()) ]
+[for (webService : WebService | aProject.webservices)]
+[if (webService.cached and webService.parseType <> ParseType::IMAGE)]
+[webService.contentResponse.name.toUpperFirst()/].DATABASE_TABLE_FIELDS_NAMES,
+	[for (businessObject : BusinessObject | webService.contentResponse.childs)]
+[listFieldsTables (businessObject) /]
+	[/for]
+[/if]
+[/for]
+[/template]
+
+[template public listFieldsTables (aBusinessObject : BusinessObject) post (trim()) ]
+[aBusinessObject.javaName.toUpperFirst()/].DATABASE_TABLE_FIELDS_NAMES,
+[for (businessObject : BusinessObject | aBusinessObject.childs)]
+[listFieldsTables (businessObject) /]
+[/for]
+[/template]
+
+[template public listTables (aProject : DataLibProject) post (trim())]
+[for (webService : WebService | aProject.webservices) ]
+[if (webService.cached and webService.parseType <> ParseType::IMAGE)]
+[webService.contentResponse.name.toUpperFirst()/].DATABASE_TABLE_NAME,
+[comment][trace (webService.contentResponse.toString())][/comment]
+	[for (businessObject : BusinessObject | webService.contentResponse.childs)]
+[listTables (businessObject) /]
+	[/for]
+[comment]	[/trace][/comment]
+[/if]
+[/for]
+[/template]
+
+[template public listTables (aBusinessObject : BusinessObject) post (trim())]
+[aBusinessObject.javaName.toUpperFirst()/].DATABASE_TABLE_NAME,
+[for (businessObject : BusinessObject | aBusinessObject.childs)]
+[listTables (businessObject) /]
+[/for]
+[/template]
+
+[template public declareCodes (aProject : DataLibProject) post (trim())]
+[for (webService : WebService | aProject.webservices) ]
+[if (webService.cached and webService.parseType <> ParseType::IMAGE)]public static final int CODE_[webService.contentResponse.javaName.toUpper()/] = [webService.contentResponse.parseId/];
+[for (businessObject : BusinessObject | webService.contentResponse.childs)]
+[declareCodes (businessObject, webService.contentResponse.javaName.toUpper()+'_') /]
+[/for]
+
+[/if][/for]
+[/template]
+
+[template public declareCodes (aBusinessObject : BusinessObject, prefix : String) post (trim())]
+public static final int CODE_[prefix/][aBusinessObject.javaName.toUpper()/] = [aBusinessObject.parseId/];
+[for (businessObject : BusinessObject | aBusinessObject.childs)]
+[declareCodes (businessObject, prefix+aBusinessObject.javaName.toUpper()+'_') /]
+[/for]
+[/template]
+
+[template public addImports (aProject : DataLibProject) ]
+[for (webService : WebService | aProject.webservices) ]
+[if (webService.cached and webService.parseType <> ParseType::IMAGE)]
+import [webService.contentResponse._package/].model.[webService.contentResponse.name.toLower()/].*;
+	[comment][for (businessObject : BusinessObject | webService.contentResponse.childs)]
+[addImports (businessObject) /]
+	[/for][/comment]
+[/if]
+[/for]
+[/template]
+
+[template public addImports (aBusinessObject : BusinessObject) ]
+import [aBusinessObject._package/].model.[aBusinessObject.parent.javaName.toLower()/].[aBusinessObject.javaName.toUpperFirst()/];
+	[for (businessObject : BusinessObject | aBusinessObject.childs)]
+[addImports (businessObject) /]
+	[/for]
+[/template]

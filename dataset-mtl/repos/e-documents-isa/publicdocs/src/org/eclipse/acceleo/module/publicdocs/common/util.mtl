@@ -1,0 +1,112 @@
+[comment encoding = UTF-8 /]
+[module util('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::acceleo::module::publicdocs::common::date::givedate /]
+[import org::eclipse::acceleo::module::publicdocs::common::configuration::giveconfiguration /]
+
+[query public getDependencies (pack : Package, prop: Property) : Set(Dependency) 
+= pack.packagedElement->select(oclIsTypeOf(Dependency) and 
+  (oclAsType(Dependency).client->any(true) = prop or not prop.owner.oclAsType(Class).general->isEmpty() and oclAsType(Dependency).client->any(true) = prop.getParentProperty()))/]
+
+[query public getPropertyDependencies (prop: Property, type : String) : Set(Dependency) 
+= prop.getModel().getPackageWithName(getNS('xs')).packagedElement->select(oclIsTypeOf(Dependency) and (oclAsType(Dependency).client->any(true).name) = type)/]
+
+[query public getDerivationsOf (model: Model, elt: Element) : Set(Generalization) 
+= model.allOwnedElements()->select(oclIsTypeOf(Generalization) and oclAsType(Generalization).target->any(true) = elt)/]
+
+[query public getDirectDependencies (pack : Package, elt: Element) : Set(Dependency) 
+= pack.packagedElement->select(oclIsTypeOf(Dependency) and oclAsType(Dependency).client->any(true) = elt)/]
+
+[query public getPackageWithName (model: Model, namePackage : String) : Package 
+= model.packagedElement->select(oclIsTypeOf(Package) and name = namePackage)->any(true).oclAsType(Package) /]
+
+[query public getParentProperty (prop: Property) : Property 
+= prop.owner.oclAsType(Class).general->any(true).oclAsType(Class).ownedAttribute->select(name = prop.name)->any(true).oclAsType(Property) /]
+
+
+[query public belongSamePackage (class1: Class, class2: Class) : Boolean
+= class1.namespace.name = class2.namespace.name/]
+
+[query public hasDerivations (model: Model, elt: Element) : Boolean 
+= getDerivationsOf(model, elt)->size() > 0/]
+
+[query public hasStereotype (packageableElement : PackageableElement, name: String) : Boolean 
+= packageableElement.getAppliedStereotype(name)->notEmpty()/]
+
+[query public hasStereotypeISA (packageableElement : PackageableElement) : Boolean 
+= hasStereotype(packageableElement, 'isa::xsdSchema')/]
+
+[query public hasStereotype (property : Property, name: String) : Boolean 
+= property.getAppliedStereotype(name)->notEmpty()/]
+
+[query public isAttribute (property : Property) : Boolean 
+= property.name.startsWith('_')/]
+
+[query public isChoice (class : Class) : Boolean 
+= class.getAppliedStereotype('isa::xsdChoice')->notEmpty()/]
+
+[query public isGlobalElement (class : Class) : Boolean 
+= class.getAppliedStereotype('isa::xsdGlobalElement')->notEmpty()/]
+
+[query public isLocal (type : PackageableElement): Boolean 
+= type.oclIsTypeOf(Class) and (type.oclAsType(Class).isChoice() or type.oclAsType(Class).ownedAttribute->isEmpty())/]
+
+
+[query public getFilename (name: String, suffix : String, version : String, extension : String ) : String
+= name.concat(suffix).concat(version).concat(extension)/]
+
+[query public getFullFilename (path : String, name: String, suffix : String, version : String, extension : String ) : String
+= getConf(path).concat(getFilename(name, suffix, version, extension))/]
+
+[query public getFilename2 (path : String, name: String, extension : String ) : String
+= getConf(path).concat(name).concat('.htm')/]
+
+[query public getFilename2 (path : String, name: String, pack: String, extension : String ) : String
+= getConf(path).concat(name).concat('/').concat(pack).concat('.htm')/]
+
+[query public getFilenameXSD (path : String, name: String, suffix : String, version : String ) : String
+= getFullFilename(path, name, suffix, version, '.xsd')/]
+
+[query public getFQDN (class: Class) : String
+= class.namespace.name.concat(':').concat(class.name)/]
+
+[query public getFQDN2 (el: NamedElement) : String
+= el.namespace.name.concat(':').concat(el.name)/]
+
+[query public getFQDN3 (prop: Property) : String
+= prop.type.owner.oclAsType(Package).name.concat(':').concat(prop.type.name)/]
+
+[query public getTodayDate (format: String) : String
+= getDate(format)/]
+
+[query public getConf (config: String) : String
+= getConfig(config)/]
+
+[query public getURIFromPackName (packname: String) : String
+= getConf('url_'.concat(packname))/]
+
+[query public getPathFromPackName (packname: String) : String
+= getConf('path_'.concat(packname))/]
+
+[query public getSuffix (type: String) : String
+= getConf('suffix_'.concat(type))/]
+
+[query public getVersion (name: String) : String
+= getConf('version_'.concat(name))/]
+
+[query public getName (name: String) : String
+= getConf('name_'.concat(name))/]
+
+[query public getEmail (name: String) : String
+= getConf('email_'.concat(name))/]
+
+[query public getNDR (name: String) : String
+= getConf('ndr_'.concat(name))/]
+
+[query public getNS (name: String) : String
+= getConf('ns_'.concat(name))/]
+
+[template public debug(text : String)]
+[file ('stdout', false)]DEBUG:[text/]
+[/file]
+[/template]

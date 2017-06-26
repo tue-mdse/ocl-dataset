@@ -1,0 +1,119 @@
+[comment encoding = UTF-8 /]
+[module config(
+	'http://cs.manchester.ac.uk/mdsd/ObjectRelationalMapping',
+	'http://cs.manchester.ac.uk/mdsd/Service',
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::orm::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::orm::m2t::doctrine::files/]
+[import uk::ac::man::cs::mdsd::orm::m2t::doctrine::names/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::files/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::files/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::names/]
+
+
+[template public configServices(model : WafModel)]
+[file (model.configDirectory().concat('/').concat('services').concat(model.ymlExtension()), false)]
+# Learn more about services, parameters and containers at
+# http://symfony.com/doc/current/book/service_container.html
+parameters:
+#    parameter_name: value
+
+services:
+[if (model.isLocallyAuthenticated())]
+[let authentication : LocalAuthenticationSystem = model.localAuthentication()]
+    app.encoder.legacy:
+        class: AppBundle\Security\Encoder\LegacyEncoder
+
+	[if (authentication.useCaptcha)]
+    app.form.registration:
+        class: [authentication.formTypeNamespace()/]\[authentication.typeClassName('Registration')/]
+        tags:
+            - { name: form.type, alias: app_user_registration }
+
+	[/if]
+[/let]
+[elseif (model.isCasAuthenticated())]
+    app.cas_authenticator:
+        class: McrCsMdsd\CasBundle\Security\CasAuthenticator
+        arguments: ['['/] "@logger" [']'/]
+
+[/if]
+[if (model.persistence.databaseTechnology = DatabaseTechnologies::Oracle)]
+	[comment may only be needed if have date columns/]
+    oracle.listener:
+        class: Doctrine\DBAL\Event\Listeners\OracleSessionInit
+        tags:
+            - { name: doctrine.event_listener, event: postConnect }
+
+[/if]
+[if (model.persistence.timestampCreation or model.persistence.timestampUpdates)]
+    gedmo.listener.timestampable:
+        class: Gedmo\Timestampable\TimestampableListener
+        tags:
+            - { name: doctrine.event_subscriber, connection: default }
+        calls:
+            - ['['/] setAnnotationReader, ['['/] "@annotation_reader" [']'/] [']'/]
+
+[/if]
+[for (entity : EntityOrView | model.persistence.entitiesAndViews->sortedBy(e | e.name))]
+    app.normalizer.[entity.instanceName()/]:
+        class: [entity.normalizerNamespace()/]\[entity.normalizerClassName()/]
+        arguments:
+            - "@serializer.mapping.class_metadata_factory"
+            - null
+            - "@serializer.property_accessor"
+            - null # "@property_info"
+        tags:
+            - { name: serializer.normalizer }
+
+[/for]
+    twig.extension.text:
+        class: Twig_Extensions_Extension_Text
+        tags:
+            - { name: twig.extension }
+
+[if (model.persistence.enumerationTypes()->notEmpty())]
+    twig.extension.enum:
+        class: [model.twigExtensionsNamespace()/]\EnumerationTypes
+        tags:
+            - {name:twig.extension }
+
+[/if]
+[if (model.hasImageUnits())]
+    app.aws_s3:
+        class: Aws\S3\S3Client
+        arguments:
+            -
+                credentials: { key: %aws.s3.key%, secret: %aws.s3.secret% }
+                region:      %aws.s3.region%
+                version:     %aws.s3.version%
+
+    app.imagine.cache.resolver.aws_s3:
+        class: Liip\ImagineBundle\Imagine\Cache\Resolver\AwsS3Resolver
+        arguments:
+            - "@app.aws_s3"
+            - "%aws.s3.bucket%"
+        tags:
+            - { name: 'liip_imagine.cache.resolver', resolver: 'image_cache' }
+
+[/if]
+[for (service : Service | model.business.services->sortedBy(s | s.name))]
+    [service.instanceName()/]:
+        class: [service.appBundleName()/]\Service\[service.className()/]
+        arguments: ['['/]"@doctrine"[if (service.serves.hasPseudoAssociations())]
+, "@doctrine.orm.entity_manager"[/if][if (model.isAuthenticated())]
+[if (service = model.userService())], "@security.token_storage"[else]
+, "@[model.userService().instanceName()/]"[/if][/if][']'/]
+
+[/for]
+[for (type : EnumerationType | model.persistence.enumerationTypes())]
+    app.form.type.[type.formTypeName()/]:
+        class: [type.formTypeNamespace()/]\[type.typeClassName()/]
+        tags:
+            - { name: form.type, alias: [type.formTypeName()/] }
+
+[/for]
+[/file]
+[/template]

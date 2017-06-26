@@ -1,0 +1,329 @@
+[comment encoding = UTF-8 /]
+[module relationship-accessors('http://www.intrawarez.de/dbca')]
+
+[import de::intrawarez::dbca::m2t::common::database/]
+[import de::intrawarez::dbca::m2t::common::attributes/]
+[import de::intrawarez::dbca::m2t::common::entities/]
+[import de::intrawarez::dbca::m2t::common::relationships/]
+[import de::intrawarez::dbca::m2t::common::accessors/]
+
+[import de::intrawarez::dbca::m2t::dbca2mysql::types/]
+[import de::intrawarez::dbca::m2t::dbca2mysql::names/]
+
+
+[template private createAccessorSelectAllSources(r : Relationship)]
+-- ================================================================================
+-- accessor for Relationship [r.selectSource().name/].[r.name/] ([r.type/] : [r.selectSource().name/] -> [r.selectTarget().name/])
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameSelectAllSources()/];
+CREATE PROCEDURE [r.accessorNameSelectAllSources()/] (
+[for (a : Attribute| r.accessorParametersSelectAllSources()) separator(',')]
+	[r.accessorParameterNamesSelectAllSources()->at(i).prefix('p')/] [a.mysqlType()/]
+[/for]
+) 
+BEGIN
+
+	SELECT * 
+	FROM [r.mysqlName()/]
+	JOIN [r.selectSource().mysqlName()/] ON 
+	[for (a : Attribute | r.selectSource().selectPrimaryProperties()) separator(' AND ')]
+		[a.mysqlName()/]=[r.mysqlName()/].[a.mysqlName(r.selectSource())/]
+	[/for]
+	WHERE 
+	[for (a : Attribute | r.selectTarget().selectPrimaryProperties()) separator(' AND ')]
+		[r.mysqlName()/].[a.mysqlName(r.selectTarget())/]=[a.mysqlParameterName(r.selectTarget())/]
+	[/for];
+
+END$$
+-- ================================================================================
+[/template]
+
+
+[template private createAccessorSelectOneSource(r : Relationship)]
+-- ================================================================================
+-- accessor for Relationship [r.selectSource().name/].[r.name/] ([r.type/] : [r.selectSource().name/] -> [r.selectTarget().name/])
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameSelectOneSource()/];
+CREATE PROCEDURE [r.accessorNameSelectOneSource()/] (
+[for (a : Attribute| r.accessorParametersSelectOneSource()) separator(',')]
+	[r.accessorParameterNamesSelectOneSource()->at(i).prefix('p')/] [a.mysqlType()/]
+[/for]
+) 
+BEGIN
+
+	SELECT * 
+	FROM [r.mysqlName()/]
+	JOIN [r.selectSource().mysqlName()/] ON 
+	[for (a : Attribute | r.selectSource().selectPrimaryProperties()) separator(' AND ')]
+		[a.mysqlName()/]=[r.mysqlName()/].[a.mysqlName(r.selectSource())/]
+	[/for]
+	WHERE 
+	[for (a : Attribute | r.selectTarget().selectPrimaryProperties()) separator(' AND ')]
+		[r.mysqlName()/].[a.mysqlName(r.selectTarget())/]=[a.mysqlParameterName(r.selectTarget())/]
+	[/for];
+
+END$$
+-- ================================================================================
+[/template]
+
+
+[template private createAccessorSelectAllTargets(r : Relationship)]
+-- ================================================================================
+-- accessor for Relationship [r.selectSource().name/].[r.name/] ([r.type/] : [r.selectSource().name/] -> [r.selectTarget().name/])
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameSelectAllTargets()/];
+CREATE PROCEDURE [r.accessorNameSelectAllTargets()/] (
+[for (a : Attribute| r.accessorParametersSelectAllTargets()) separator(',')]
+	[r.accessorParameterNamesSelectAllTargets()->at(i).prefix('p')/] [a.mysqlType()/]
+[/for]
+) 
+BEGIN
+
+	SELECT * 
+	FROM [r.mysqlName()/]
+	JOIN [r.selectTarget().mysqlName()/] ON 
+	[for (a : Attribute | r.selectTarget().selectPrimaryProperties()) separator(' AND ')]
+		[a.mysqlName()/]=[r.mysqlName()/].[a.mysqlName(r.selectTarget())/]
+	[/for]
+	WHERE 
+	[for (a : Attribute | r.selectSource().selectPrimaryProperties()) separator(' AND ')]
+		[r.mysqlName()/].[a.mysqlName(r.selectSource())/]=[a.mysqlParameterName(r.selectSource())/]
+	[/for];
+
+END$$
+-- ================================================================================
+[/template]
+
+
+[template private createAccessorSelectOneTarget(r : Relationship)]
+-- ================================================================================
+-- accessor for Relationship [r.selectSource().name/].[r.name/] ([r.type/] : [r.selectSource().name/] -> [r.selectTarget().name/])
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameSelectOneTarget()/];
+CREATE PROCEDURE [r.accessorNameSelectOneTarget()/] (
+[for (a : Attribute| r.accessorParametersSelectOneTarget()) separator(',')]
+	[r.accessorParameterNamesSelectOneTarget()->at(i).prefix('p')/] [a.mysqlType()/]
+[/for]
+) 
+BEGIN
+
+	SELECT * 
+	FROM [r.mysqlName()/]
+	JOIN [r.selectTarget().mysqlName()/] ON 
+	[for (a : Attribute | r.selectTarget().selectPrimaryProperties()) separator(' AND ')]
+		[a.mysqlName()/]=[r.mysqlName()/].[a.mysqlName(r.selectTarget())/]
+	[/for]
+	WHERE 
+	[for (a : Attribute | r.selectSource().selectPrimaryProperties()) separator(' AND ')]
+		[r.mysqlName()/].[a.mysqlName(r.selectSource())/]=[a.mysqlParameterName(r.selectSource())/]
+	[/for];
+
+END$$
+-- ================================================================================
+[/template]
+
+
+[template private createAccessorInsert(r : Relationship)]
+-- ================================================================================
+-- accessor for Relationship [r.selectSource().name/].[r.name/] ([r.type/] : [r.selectSource().name/] -> [r.selectTarget().name/])
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameInsert()/];
+CREATE PROCEDURE [r.accessorNameInsert()/] (
+[for (a : Attribute | r.accessorParametersInsert()) separator(',')]
+	[r.accessorParameterNamesInsert()->at(i).prefix('p')/] [a.mysqlType()/]
+[/for]
+) 
+BEGIN
+
+	INSERT INTO [r.mysqlName()/] ([r.selectSource().selectPrimaryProperties().mysqlName(r.selectSource())
+										->union(r.selectTarget().selectPrimaryProperties().mysqlName(r.selectTarget()))
+										->union(r.selectOwnAttributes().mysqlName())
+										->sep(',')/]) 
+	VALUES ([r.selectSource().selectPrimaryProperties().mysqlParameterName(r.selectSource())
+				->union(r.selectTarget().selectPrimaryProperties().mysqlParameterName(r.selectTarget()))
+				->union(r.selectOwnAttributes().mysqlParameterName())
+				->sep(',')/]);
+
+END$$
+-- ================================================================================
+[/template]
+
+[template private createAccessorUpdate(r : Relationship)]
+-- ================================================================================
+-- accessor for Relationship [r.selectSource().name/].[r.name/] ([r.type/] : [r.selectSource().name/] -> [r.selectTarget().name/])
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameUpdate()/];
+CREATE PROCEDURE [r.accessorNameUpdate()/] (
+[for (a : Attribute | r.accessorParametersUpdate()) separator(',')]
+	[r.accessorParameterNamesUpdate()->at(i).prefix('p')/] [a.mysqlType()/]
+[/for]
+) 
+BEGIN
+
+[if (r.isOneToMany())]
+
+	UPDATE [r.mysqlName()/] SET
+	[for (a : Attribute | r.selectOwnAttributes()) separator(',')]
+		[a.mysqlName()/]=[a.mysqlParameterName()/]
+	[/for]
+	[for (a : Attribute | r.selectSource().selectPrimaryProperties()->sortedBy(name)) before(',') separator(',')]
+		[a.mysqlParameterName(r.selectSource())/]=[a.mysqlParameterName(r.selectSource())/]
+	[/for]
+	WHERE 
+	[for (a : Attribute | r.selectTarget().selectPrimaryProperties()) separator(' AND ')]
+		[a.mysqlName(r.selectTarget())/]=[a.mysqlParameterName(r.selectTarget())/]
+	[/for]
+
+[elseif (r.isManyToOne())]
+
+	UPDATE [r.mysqlName()/] SET
+	[for (a : Attribute | r.selectOwnAttributes()) separator(',')]
+		[a.mysqlName()/]=[a.mysqlParameterName()/]
+	[/for]
+	[for (a : Attribute | r.selectTarget().selectPrimaryProperties()->sortedBy(name)) before(',') separator(',')]
+		[a.mysqlParameterName(r.selectTarget())/]=[a.mysqlParameterName(r.selectTarget())/]
+	[/for]
+	WHERE 
+	[for (a : Attribute | r.selectSource().selectPrimaryProperties()) separator(' AND ')]
+		[a.mysqlName(r.selectSource())/]=[a.mysqlParameterName(r.selectSource())/]
+	[/for]
+
+[else]
+
+	UPDATE [r.mysqlName()/] SET
+	[for (a : Attribute | r.selectOwnAttributes()) separator(',')]
+		[a.mysqlName()/]=[a.mysqlParameterName()/]
+	[/for]
+	WHERE 
+	[for (a : Attribute | r.selectSource().selectPrimaryProperties()) separator(' AND ')]
+		[a.mysqlName(r.selectSource())/]=[a.mysqlParameterName(r.selectSource())/]
+	[/for]
+	[for (a : Attribute | r.selectTarget().selectPrimaryProperties()->sortedBy(name)) before(' AND ') separator(' AND ')]
+		[a.mysqlParameterName(r.selectTarget())/]=[a.mysqlParameterName(r.selectTarget())/]
+	[/for]
+
+[/if];
+
+END$$
+-- ================================================================================
+[/template]
+
+
+[template private createAccessorSave(r : Relationship)]
+-- ================================================================================
+-- accessor for Relationship [r.selectSource().name/].[r.name/] ([r.type/] : [r.selectSource().name/] -> [r.selectTarget().name/])
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameSave()/];
+CREATE PROCEDURE [r.accessorNameSave()/] (
+[for (a : Attribute | r.accessorParametersSave()) separator(',')]
+	[r.accessorParameterNamesSave()->at(i).prefix('p')/] [a.mysqlType()/]
+[/for]
+) 
+BEGIN
+
+	DECLARE ex bool;
+	
+	SET ex = (
+		SELECT count(*) > 0
+		FROM [r.mysqlName()/]
+		WHERE
+	[if (r.isOneToMany())]
+		[for (a : Attribute| r.selectTarget().selectPrimaryProperties()) separator('\t\tAND ')]
+			[a.mysqlName(r.selectTarget())/]=[a.mysqlParameterName(r.selectTarget())/]
+		[/for]
+	[elseif (r.isManyToOne())]
+		[for (a : Attribute| r.selectSource().selectPrimaryProperties()) separator('\t\tAND ')]
+			[a.mysqlName(r.selectSource())/]=[a.mysqlParameterName(r.selectSource())/]
+		[/for]
+	[else]
+		[for (a : Attribute| r.selectSource().selectPrimaryProperties()) separator('\t\tAND ')]
+			[a.mysqlName(r.selectSource())/]=[a.mysqlParameterName(r.selectSource())/]
+		[/for]
+		[for (a : Attribute| r.selectTarget().selectPrimaryProperties()) before('\t\tAND ') separator('\t\tAND ')]
+			[a.mysqlName(r.selectTarget())/]=[a.mysqlParameterName(r.selectTarget())/]
+		[/for]
+	[/if]
+	);
+	
+	IF ex THEN
+	
+		CALL [r.accessorNameUpdate()/]([r.selectSource().selectPrimaryProperties().mysqlParameterName(r.selectSource())
+											->union(r.selectTarget().selectPrimaryProperties().mysqlParameterName(r.selectTarget()))
+											->union(r.selectOwnAttributes().mysqlParameterName())
+											->sep(',')/]);
+	
+	ELSE
+	
+		CALL [r.accessorNameInsert()/]([r.selectSource().selectPrimaryProperties().mysqlParameterName(r.selectSource())
+											->union(r.selectTarget().selectPrimaryProperties().mysqlParameterName(r.selectTarget()))
+											->union(r.selectOwnAttributes().mysqlParameterName())
+											->sep(',')/]);
+
+END IF;
+
+END$$
+-- ================================================================================
+[/template]
+
+
+[template private createAccessorDelete(r : Relationship)]
+-- ================================================================================
+-- accessor for Relationship [r.selectSource().name/].[r.name/] ([r.type/] : [r.selectSource().name/] -> [r.selectTarget().name/])
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameDelete()/];
+CREATE PROCEDURE [r.accessorNameDelete()/] (
+[for (a : Attribute | r.accessorParametersDelete()) separator(',')]
+	[r.accessorParameterNamesDelete()->at(i).prefix('p')/] [a.mysqlType()/]
+[/for]
+) 
+BEGIN
+
+	DELETE FROM [r.mysqlName()/] WHERE
+[if (r.isOneToMany())]
+	[for (a : Attribute| r.selectSource().selectPrimaryProperties()) separator(' AND ')]
+		[a.mysqlName(r.selectSource())/]=[a.mysqlParameterName(r.selectSource())/]
+	[/for]
+[elseif (r.isManyToOne())]
+	[for (a : Attribute| r.selectTarget().selectPrimaryProperties()) separator(' AND ')]
+		[a.mysqlName(r.selectTarget())/]=[a.mysqlParameterName(r.selectTarget())/]
+	[/for]
+[else]
+	[for (a : Attribute| r.selectSource().selectPrimaryProperties()) separator(' AND ')]
+		[a.mysqlName(r.selectSource())/]=[a.mysqlParameterName(r.selectSource())/]
+	[/for]
+	[for (a : Attribute| r.selectTarget().selectPrimaryProperties()) before(' AND ') separator(' AND ')]
+		[a.mysqlName(r.selectTarget())/]=[a.mysqlParameterName(r.selectTarget())/]
+	[/for]
+[/if];
+
+END$$
+-- ================================================================================
+[/template]
+
+
+[template public generateAccessors(r : Relationship)]
+[r.createAccessorSelectAllSources()/]
+[r.createAccessorSelectOneSource()/]
+[r.createAccessorSelectAllTargets()/]
+[r.createAccessorSelectOneTarget()/]
+[r.createAccessorInsert()/]
+[r.createAccessorUpdate()/]
+[r.createAccessorSave()/]
+[r.createAccessorDelete()/]
+[/template]

@@ -1,0 +1,155 @@
+[comment encoding = UTF-8 
+
+Copyright (c) 2012 Obeo
+All rights reserved.  This program and the accompanying materials
+are made available under the terms of the Eclipse Public License 1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+You can apply any license to the files generated with this module and Acceleo.
+
+Contributors :
+	Mathieu Cartaud (Obeo) - initial API and implementation
+/]
+[module newWizardJavaFile('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel', 'http://www.obeonetwork.org/dsl/eclipse')]
+
+[import org::obeonetwork::dsl::gen::eclipse::common::normalizeName /]
+[import org::obeonetwork::dsl::gen::eclipse::common::javaImports /]
+
+
+[template private newWizardJavaFile(aWizard : Wizard)]
+[aWizard.eContainer(Bundle).genBundleJavaPath()/]/wizards/[aWizard.name.replaceAll(' ', '_').toUpperFirst()/].java
+[/template]
+
+[template public genNewWizardJavaFile(aWizard : Wizard)]
+[file (newWizardJavaFile(), false, 'UTF-8')]
+package [aWizard.ancestors(Bundle).genBundleID()/].wizards;
+
+
+[aWizard.genWizardImport()/]
+
+//[protected (': add wizard imports for ' + aWizard.name)]
+//[/protected]
+
+/**
+ * this class create a new wizard.
+[aWizard.eContainer(Bundle).genMail()/]
+ * @generated
+ */
+public class [aWizard.name.replaceAll(' ', '_').toUpperFirst()/] extends Wizard implements INewWizard {
+
+[if (aWizard.oclIsKindOf(ProjectWizard))]
+	/**
+	 * The project page attribute.
+	 * @generated
+	 */
+	private [aWizard.name.replaceAll(' ', '_').toUpperFirst()/]ProjectPage [aWizard.name.replaceAll(' ', '_').toLowerFirst()/]ProjectPage;
+[else]
+	/**
+	 * The file page attribute.
+	 * @generated
+	 */
+	private [aWizard.name.replaceAll(' ', '_').toUpperFirst()/]FilePage [aWizard.name.replaceAll(' ', '_').toLowerFirst()/]FilePage;
+	
+	/**
+	 * The current selection.
+	 * @generated
+	 */
+	private IStructuredSelection selection;
+[/if]
+	//[protected (': add wizard attributes for ' + aWizard.name)]
+	//[/protected]
+
+	/**
+	 * the constructor.
+	 * @generated
+	 */
+	public [aWizard.name.replaceAll(' ', '_').toUpperFirst()/]() {
+		super();		
+		setNeedsProgressMonitor(true);
+		setWindowTitle("[aWizard.title/]");
+	}
+	
+	/**
+	 * add pages.
+	 * @generated
+	 */
+	@Override
+	public void addPages() {
+[if (aWizard.oclIsKindOf(ProjectWizard))]
+		[aWizard.name.replaceAll(' ', '_').toLowerFirst()/]ProjectPage = new [aWizard.name.replaceAll(' ', '_').toUpperFirst()/]ProjectPage();
+		addPage([aWizard.name.replaceAll(' ', '_').toLowerFirst()/]ProjectPage);
+[else]
+		[aWizard.name.replaceAll(' ', '_').toLowerFirst()/]FilePage = new [aWizard.name.replaceAll(' ', '_').toUpperFirst()/]FilePage("[aWizard.title/]" , selection);
+		addPage([aWizard.name.replaceAll(' ', '_').toLowerFirst()/]FilePage);
+[/if]	
+	}
+
+	/**
+	 * actions to do at the end.
+	 * @return a boolean
+	 * @generated
+	 */
+	@Override
+	public boolean performFinish() {
+[if (aWizard.oclIsKindOf(ProjectWizard))]
+		String projectName = [aWizard.name.replaceAll(' ', '_').toLowerFirst()/]ProjectPage.getProjectName();
+		final IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(projectName);
+		if (!project.exists()) {
+[else]
+		IPath filePath = [aWizard.name.replaceAll(' ', '_').toLowerFirst()/]FilePage.getContainerFullPath();
+		final IFile file = ResourcesPlugin.getWorkspace().getRoot().getFile(filePath);
+		if (!file.exists()) {
+[/if]	
+			IRunnableWithProgress runnable = new IRunnableWithProgress() {
+
+				public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
+					try {
+						[for (aNature : Nature | aWizard.ancestors(Bundle).natures)][if (aWizard.oclIsKindOf(ProjectWizard))]
+						[aNature.name.replaceAll(' ', '_').toUpperFirst()/] [aNature.name.replaceAll(' ', '_').toLowerFirst()/] = new [aNature.name.replaceAll(' ', '_').toUpperFirst()/]();
+						[aNature.name.replaceAll(' ', '_').toLowerFirst()/].setProject(project);
+						[aNature.name.replaceAll(' ', '_').toLowerFirst()/].configure();[/if][/for]
+
+						[if (aWizard.oclIsKindOf(ProjectWizard))]	
+						project.create(monitor);
+						project.open(monitor);
+						[else]
+						InputStream inputStream = new ByteArrayInputStream("".getBytes());
+						file.create(inputStream, true, monitor);
+						[/if]
+					} catch (CoreException e) {
+						e.printStackTrace();
+					}					
+				}
+			};
+			try {
+				PlatformUI.getWorkbench().getProgressService().run(false, false, runnable);
+			} catch (InvocationTargetException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * initialize the wizard.
+	 * @param arg0 the workbench
+	 * @param select
+	 * 			the current selection
+	 * @generated
+	 */
+	public void init(IWorkbench arg0, IStructuredSelection select) {
+		[if (aWizard.oclIsKindOf(ProjectWizard))]
+		// TODO Auto-generated method stub	
+		[else]
+		this.selection = select;
+		[/if]
+	}
+
+	//[protected (': add wizard methods for ' + aWizard.name)]
+	//[/protected]
+}
+[/file]
+[/template]

@@ -1,0 +1,81 @@
+[comment encoding = UTF-8 /]
+[module createMenuFile('http://www.eclipse.org/emf/2002/Ecore', 'http://mondo.org/runtimePatterns')]
+[import org::mondo::generate::modular::project::general::create::project::request::generalQueries /]
+
+
+[template public generateCreateMenuFile(anProjectName : String, anPatternInstances : PatternInstances)]
+
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name')).replaceAll('\\.','/').concat('/nature/CreateMenu.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].nature;
+
+import java.util.HashMap;
+
+import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IProjectNature;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.jface.viewers.TreeSelection;
+import org.eclipse.ui.ISelectionService;
+import org.eclipse.ui.menus.CommandContributionItem;
+import org.eclipse.ui.menus.CommandContributionItemParameter;
+import org.eclipse.ui.menus.ExtensionContributionFactory;
+import org.eclipse.ui.menus.IContributionRoot;
+import org.eclipse.ui.services.IServiceLocator;
+
+public class CreateMenu extends ExtensionContributionFactory {
+
+	public CreateMenu() {
+	}
+	
+	@SuppressWarnings("unchecked")
+	@Override
+	public void createContributionItems(IServiceLocator serviceLocator, IContributionRoot additions) {
+		
+		ISelectionService serv = (ISelectionService) serviceLocator.getService(ISelectionService.class);
+		ISelection selection = serv.getSelection();
+		TreeSelection treeselection = (TreeSelection)selection;
+		Object firstelement = treeselection.getFirstElement();
+			
+		if(firstelement instanceof IProject){
+	
+			IProject pro = null;
+			if(firstelement instanceof IProject)
+				pro = (IProject)firstelement;	
+			if(firstelement instanceof IFolder)
+				pro = ((IFolder)firstelement).getProject();			
+			try {
+				IProjectNature nature = pro.getNature(GeneralProjectNature.ID);
+				if(nature==null)
+					return;
+			} catch (CoreException e) {
+				
+				e.printStackTrace();
+			}
+
+			MenuManager menu = new MenuManager();
+			menu.setMenuText("New General Modular Project");
+
+			[for(c : ClassRoleInstance | anPatternInstances.getClassesRoleProject())]
+			{
+					CommandContributionItemParameter pcommand = new CommandContributionItemParameter(serviceLocator,
+														"", "org.eclipse.ui.newWizard", CommandContributionItem.STYLE_PUSH);
+														pcommand.parameters = new HashMap<String,String>();
+							
+	
+					pcommand.parameters.put("newWizardId", "[anProjectName/].[c.element.name.toLower()/].[getProperty('prefixGeneral')/].[c.element.name.toLower()/]NewPackage");
+					CommandContributionItem item = new CommandContributionItem(pcommand);
+					menu.add(item);
+			}			
+			[/for]
+
+			additions.addContributionItem(menu, null);			
+		}
+			
+	}
+
+}
+
+[/file]
+[/template]

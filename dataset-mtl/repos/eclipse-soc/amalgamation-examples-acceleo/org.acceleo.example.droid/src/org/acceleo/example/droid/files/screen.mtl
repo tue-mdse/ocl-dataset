@@ -1,0 +1,53 @@
+[comment encoding = UTF-8 /]
+[module screen('http://www.xtext.org/example/droid/Droid')/]
+
+[import org::acceleo::example::droid::files::action /]
+
+[template public generateScreen(aScreen : Screen)]
+[file ('src-gen/'.concat(aScreen.eContainer(Application).packageName.replaceAll('\\.', '/').concat('/').concat(aScreen.name.concat('Activity.java'))), false, 'UTF-8')]
+package [aScreen.eContainer(Application).packageName/];
+
+import org.android.example.droid.R;
+import android.app.Activity;
+import android.os.Bundle;
+import android.view.View;
+import android.content.Intent;
+import android.net.Uri;
+
+public class [aScreen.name.toUpperFirst()/]Activity extends Activity {
+    /** Called when the activity is first created. */
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+[if (aScreen.layout <> null)]
+		setContentView(R.layout.[aScreen.layout.name/]);
+[/if]
+[if (aScreen.widgets <> null)]
+		setContentView(R.layout.[aScreen.name.toLower()/]_screen);
+[/if]
+    }
+
+[if (false = aScreen.layout.oclIsUndefined())]
+[for (action : Action | aScreen.layout.eAllContents(Action))]
+	[action.generateCallback()/]
+[/for]
+[/if]
+
+[for (action : Action | aScreen.eAllContents(Action))]
+	[action.generateCallback()/]
+[/for]
+}
+[/file]
+[/template]
+
+[import org::acceleo::example::droid::files::layout /]
+
+[template public generateLayout(screen : Screen)]
+[if (screen.widgets <> null)]
+  [if screen.widgets.views->size() = 1 and screen.widgets.views->first().oclIsKindOf(Layout) ]
+    [screen.widgets.views->first().oclAsType(Layout).generateLayout(screen.name.toLower().concat('_screen'))/]
+  [else]
+    [screen.widgets.generateLayout(screen.name.toLower().concat('_screen'))/]
+  [/if]
+[/if]
+[/template]

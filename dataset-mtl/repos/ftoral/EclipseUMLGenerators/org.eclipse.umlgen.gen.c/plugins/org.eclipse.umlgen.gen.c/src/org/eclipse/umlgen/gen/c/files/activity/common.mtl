@@ -1,0 +1,85 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2010, 2014 Obeo and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Stephane Thibaudeau (Obeo) - initial API and implementation
+ *     Fabien Toral (CS Information Systems) - Circular dependencies and other corrections for PolarSys migration
+[/comment]
+[module common('http://www.eclipse.org/uml2/4.0.0/UML','http://www.eclipse.org/emf/2002/Ecore')/]
+
+[comment] === Services Helpers === [/comment]
+
+[query public eResourceName(e : EObject) : String = 
+	invoke('org.eclipse.umlgen.gen.c.services.UML2Services', 'eResourceName(org.eclipse.emf.ecore.EObject)', Sequence{}) 
+/]
+
+[query public getCorrespondingMergeNode(decisionNode : DecisionNode) : MergeNode = 
+	invoke('org.eclipse.umlgen.gen.c.services.UML2Services', 'getCorrespondingMergeNode(org.eclipse.uml2.uml.DecisionNode)', Sequence{}) 
+/]
+
+[query public isReferencedByClause(node : ActivityNode) : Boolean = 
+	invoke('org.eclipse.umlgen.gen.c.services.UML2Services', 'isReferencedByClause(org.eclipse.uml2.uml.ActivityNode)', Sequence{}) 
+/]
+
+[query public usesFallthrough(clause : Clause) : Boolean = 
+	invoke('org.eclipse.umlgen.gen.c.services.UML2Services', 'usesFallthrough(org.eclipse.uml2.uml.Clause)', Sequence{}) 
+/]
+
+[comment] === Comments generation  === [/comment]
+
+[template public commentBefore(node : Element)]
+[node.eAnnotations->select(source = 'http://www.eclipse.org/documentation').details->select(key = 'COMMENT_BEFORE').value/]
+[/template]
+
+[template public commentInline(node : Element)]
+[node.eAnnotations->select(source = 'http://www.eclipse.org/documentation').details->select(key = 'COMMENT_INLINE').value/]
+[/template]
+
+[template public commentSameLine(node : Element)]
+[node.eAnnotations->select(source = 'http://www.eclipse.org/documentation').details->select(key = 'COMMENT_SAME_LINE').value/]
+[/template]
+
+[template public commentLastLine(node : Element)]
+[node.eAnnotations->select(source = 'http://www.eclipse.org/documentation').details->select(key = 'COMMENT_LAST_LINE').value/]
+[/template]
+
+[comment] === Generator Helpers === [/comment]
+
+[template public next (node : ActivityNode) post (trim())]
+[node.outgoing.target->reject(isReferencedByClause()).gen()/]
+[/template]
+
+[template public gen (node : ActivityNode) ]
+/* TODO: implement gen for [node.eClass()/] (seen as ActivityNode)*/
+[next()/]
+[/template]
+
+[template public gen (node : InitialNode) post (trim())]
+[next()/]
+[/template]
+
+[template public gen (node : ActivityFinalNode) ]
+[/template]
+
+[template public gen (flowFinal : FlowFinalNode) ? (name = 'break') post (trim())]
+[commentBefore()/]
+break; [commentSameLine()/]
+[/template]
+
+[template public gen (flowFinal : FlowFinalNode) ? (name = 'continue') post (trim())]
+[commentBefore()/]
+continue; [commentSameLine()/]
+[/template]
+
+[template public gen (flowFinal : FlowFinalNode) post (trim())]
+[commentBefore()/]
+[commentSameLine()/]
+[/template]
+
+[template public gen (mergeNode : MergeNode) post (trim())]
+[/template]

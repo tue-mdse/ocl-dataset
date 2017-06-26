@@ -1,0 +1,63 @@
+[comment encoding = UTF-8 /]
+[module validationProfile('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::common::umlUtils /]
+
+
+[query public addError(e : Element, message : String) : OclVoid =
+	invoke('com.mgs.uml.common.ValidationService', 'addError(org.eclipse.uml2.uml.Element, java.lang.String)', Sequence{e, message})
+/]
+
+[template public validationProfile(e : Element)]
+[comment metaclass rule dispatcher/]
+[comment @main /]
+[if (e.oclIsKindOf(Class))]
+[rule_class(e.oclAsType(Class))/]
+[/if]
+[if (e.oclIsKindOf(Property))]
+[rule_property(e.oclAsType(Property))/]
+[/if]
+	
+[/template]
+
+[template private rule_class(c : Class)]
+[comment class rule dispatcher/]
+[c.rule_class_name()/]
+[c.rule_class_propertiesUnicity()/]
+[/template]
+
+[template private rule_class_name(c : Class)]
+[if (name.size() = 0)]
+[addError(c, 'name is empty')/]
+[/if]
+[if (name.toLower() = 'public')]
+[addError(c, 'name public is reserved')/]
+[/if]
+[/template]
+
+[template private rule_class_propertiesUnicity(c : Class)]
+[for (p : Property | c.allProperties())]
+	[if (c.allProperties()->select(name.toLower() = p.name.toLower())->size() > 1)]
+		[addError(c, 'some property names conflicts : ' + p.name)/]
+		[addError(p, 'property name conflicts')/]
+	[/if]
+[/for]
+[/template]
+
+[template private rule_property(p : Property)]
+[comment rule_property rule dispatcher/]
+[p.rule_rule_property_validity()/]
+[/template]
+
+[template private rule_rule_property_validity(p : Property) ? (profile_isValidity())]
+[comment rule_property rule dispatcher/]
+[if (p.type.name = 'String')]
+	[if (p.profile_validity_getMax() >= 0 and 
+		p.profile_validity_getMax() < p.profile_validity_getMin())]
+		[addError(p, 'Max must not be lower than min')/]
+	[/if]
+[else]
+	[addError(p, 'Validity stereotype is reserved to String')/]
+[/if]
+[/template]
+

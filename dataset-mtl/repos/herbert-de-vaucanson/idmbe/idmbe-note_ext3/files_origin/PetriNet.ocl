@@ -1,0 +1,22 @@
+MainModel : http://petrinet
+
+-- 1. Un arc se situe entre une place et une transition (ou inversement)
+context Arc
+inv arcEstValide:
+	(self.source.oclIsTypeOf(Place) and self.target.oclIsTypeOf(Transition)) or (self.source.oclIsTypeOf(Transition) and self.target.oclIsTypeOf(Place))
+
+-- 2. Une transition contient au moins un "incoming" et un "outgoing"
+context Transition
+inv transitionValide:
+	self.incomings->notEmpty() and self.outgoings->notEmpty()
+
+-- 3. Il y a au moins un jeton dans le réseau de Petri
+context PetriNet
+inv marquageNonVide:
+	self.nodes->select( e | e.oclIsTypeOf(Place))->exists(p : Place | p.marking > 0)
+
+-- 4. Il ne peut pas y avoir de boucle sur un Node avec un Arc
+context Arc
+inv pasDeBoucle:
+	self.source <> self.target
+

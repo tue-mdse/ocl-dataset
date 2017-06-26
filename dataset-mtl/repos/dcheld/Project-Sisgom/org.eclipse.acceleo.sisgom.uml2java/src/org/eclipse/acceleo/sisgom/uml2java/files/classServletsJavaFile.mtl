@@ -1,0 +1,224 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module classJavaFile.
+ */]
+[module classServletsJavaFile('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import org::eclipse::acceleo::sisgom::uml2java::common::fileUtils /]
+[import org::eclipse::acceleo::sisgom::uml2java::common::stereotypeUtils /]
+[import org::eclipse::acceleo::sisgom::properties::properties /]
+
+[**
+ * The documentation of the template genClassJavaFile.
+ * @param aClass
+ */]
+
+[template public genClassJavaServletDelete(aClass : Class){tipo:String = 'Deletar';}]
+[file (aClass.genFilePathServlets(tipo), false, 'UTF-8')]
+package [aClass.genPackageValue() + '.' + aClass.getServletsNamespace()/];
+
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+// [protected ('imports do Servlet' + tipo)]
+import [aClass.genPackageEntity() + '.' + aClass.name + aClass.getEntitySuffix()/];
+import [aClass.genPackageDao() + '.' + aClass.name + aClass.getDaoSuffix()/];
+import [aClass.genPackageValue() + '.' + aClass.getUtilsNamespace() + '.' + aClass.getDaoFactory()/];
+// [/protected]
+
+@WebServlet(urlPatterns = "/[aClass.name.toLowerFirst()/]/[tipo.toLowerCase()/]")
+public class [aClass.name + tipo + aClass.getServletsSuffix() /] extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	private [aClass.name + aClass.getDaoSuffix()/] [aClass.name.toLowerFirst() + aClass.getDaoSuffix()/] = DaoFactory.[aClass.name.toLowerFirst()/]Instance();
+	
+	@Override
+	protected void service(HttpServletRequest req, HttpServletResponse resp)
+			throws ServletException, IOException {
+		String id = req.getParameter("id");
+		String destino = "/[aClass.name.toLowerFirst()/]/list";
+
+		if (id == null) {
+			destino += "?error=Id não encontrado.";
+			return;
+		}
+		else {
+			try {
+				[aClass.name + aClass.getEntitySuffix()/] entity = this.[aClass.name.toLowerFirst() + aClass.getDaoSuffix()/].findById(Integer.parseInt(id));
+	
+				if (entity != null) {
+					this.[aClass.name.toLowerFirst() + aClass.getDaoSuffix()/].delete(entity);
+				} else {
+					destino += "?error=Cliente não encontrado.";
+				}
+			} catch (Exception ex) {
+				destino += "?error=" + ex.getMessage();
+			}
+		}
+
+		resp.sendRedirect(destino);
+	}
+}
+[/file]
+[/template]
+
+[template public genClassJavaServletEdit(aClass : Class){tipo:String = 'Editar';}]
+[file (aClass.genFilePathServlets(tipo), false, 'UTF-8')]
+package [aClass.genPackageValue() + '.' + aClass.getServletsNamespace()/];
+
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.apache.log4j.Logger;
+import org.apache.commons.beanutils.BeanUtils;
+
+import [aClass.genPackageDao() + '.' + aClass.name + aClass.getDaoSuffix()/];
+import [aClass.genPackageValue() + '.' + aClass.getUtilsNamespace() + '.' + aClass.getDaoFactory()/];
+// [protected ('imports do Servlet' + tipo)]
+import [aClass.genPackageEntity() + '.' + aClass.name + aClass.getEntitySuffix()/];
+// [/protected]
+@WebServlet(urlPatterns = "/[aClass.name.toLowerCase()/]/[tipo.toLowerCase()/]")
+public class [aClass.name.toUpperFirst() + tipo + aClass.getServletsSuffix() /] extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	private static final Logger LOGGER = Logger.getLogger([aClass.name + tipo + aClass.getServletsSuffix() /].class);
+	private [aClass.name.toUpperFirst() + aClass.getDaoSuffix()/] [aClass.name.toLowerFirst() + aClass.getDaoSuffix()/] = DaoFactory.[aClass.name.toLowerFirst()/]Instance();
+
+	@Override
+	protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		String id = req.getParameter("[aClass.getPropertyId().name.toLowerFirst()/]");
+		String destino = "";
+
+		if ((id == null) || id.trim().isEmpty()) {
+			destino = "/WEB-INF/[aClass.name.toLowerCase()/]/addEdit.jsp";
+
+			RequestDispatcher rd = req.getRequestDispatcher(destino);
+			rd.forward(req, resp);
+		} else {
+			try {
+				[aClass.name.toUpperFirst() + aClass.getEntitySuffix()/] [aClass.name.toLowerCase()/] = this.[aClass.name.toLowerFirst() + aClass.getDaoSuffix()/].findById(Integer.parseInt(id));
+	
+				if ([aClass.name.toLowerCase()/] != null) {
+					// [protected ('Editando ' + aClass.name.toLowerCase())]
+					req.setAttribute("[aClass.name.toLowerCase()/]", [aClass.name.toLowerCase()/]);
+
+					destino = "/WEB-INF/[aClass.name.toLowerCase()/]/addEdit.jsp";
+					RequestDispatcher rd = req.getRequestDispatcher(destino);
+					rd.forward(req, resp);
+					// [/protected];
+	
+					destino = "/WEB-INF/[aClass.name.toLowerFirst()/]/addEdit.jsp";
+				} else {
+					destino = String.format("/WEB-INF/[aClass.name.toLowerFirst()/]/list.jsp?error=[aClass.name/] ['[%s]'/] não foi encontrado.", id);
+					resp.sendRedirect(destino);
+				}
+			} catch (Exception ex) {
+				LOGGER.error(ex.getMessage(), ex);
+				destino = "/WEB-INF/[aClass.name.toLowerCase() /]/list.jsp?error=" + ex.getMessage();
+				resp.sendRedirect(destino);
+			}
+		}
+	}
+
+	@Override
+	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+		String destino = "";
+		try {
+			[aClass.name.toUpperFirst() + aClass.getEntitySuffix()/] entity = this.parseToBean(req);
+
+			if (entity.get[aClass.getPropertyId().name.toUpperFirst()/]() != 0) {
+				this.[aClass.name.toLowerFirst() + aClass.getDaoSuffix()/].update(entity);
+			} else {
+				this.[aClass.name.toLowerFirst() + aClass.getDaoSuffix()/].save(entity);
+			}
+
+			destino = "/WEB-INF/[aClass.name.toLowerFirst() /]/list";
+		} catch (Exception ex) {
+			LOGGER.error(ex.getMessage(), ex);
+			destino = String.format("/WEB-INF/[aClass.name.toLowerFirst() /]/list?error=%s", ex.getMessage());
+		}
+
+		resp.sendRedirect(destino);
+	}
+
+	private [aClass.name.toUpperFirst() + aClass.getEntitySuffix()/] parseToBean(HttpServletRequest req) {
+
+		[aClass.name.toUpperFirst() + aClass.getEntitySuffix()/] bean = new [aClass.name.toUpperFirst() + aClass.getEntitySuffix()/]();
+
+		try {
+			BeanUtils.populate(bean, req.getParameterMap());
+		} catch (IllegalAccessException | InvocationTargetException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return bean;
+	}
+}
+[/file]
+[/template]
+
+[template public genClassJavaServletList(aClass : Class){tipo:String = 'Listar';}]
+[file (aClass.genFilePathServlets(tipo), false, 'UTF-8')]
+package [aClass.genPackageValue() + '.' + aClass.getServletsNamespace()/];
+
+import java.io.IOException;
+import java.util.List;
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.apache.log4j.Logger;
+// [protected ('imports do Servlet' + tipo)]
+import [aClass.genPackageDao() + '.' + aClass.name + aClass.getDaoSuffix()/];
+import [aClass.genPackageValue() + '.' + aClass.getUtilsNamespace() + '.' + aClass.getDaoFactory()/];
+import [aClass.genPackageEntity() + '.' + aClass.name + aClass.getEntitySuffix()/];
+// [/protected]
+@WebServlet(urlPatterns = "/[aClass.name.toLowerFirst()/]/[tipo.toLowerCase()/]")
+public class [aClass.name.toUpperFirst() + tipo + aClass.getServletsSuffix() /] extends HttpServlet {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	private static final Logger LOGGER = Logger.getLogger([aClass.name.toUpperFirst() + tipo + aClass.getServletsSuffix() /].class);
+	private [aClass.name.toUpperFirst() + aClass.getDaoSuffix()/] [aClass.name.toLowerFirst() + aClass.getDaoSuffix()/] = DaoFactory.[aClass.name.toLowerFirst()/]Instance();
+	
+	@Override
+	protected void service(HttpServletRequest req, HttpServletResponse resp)
+			throws ServletException, IOException {
+		
+		String destino = "";
+
+		try {
+			List<[aClass.name.toUpperFirst() + aClass.getEntitySuffix()/]> lista[aClass.name.toUpperFirst()/] = this.[aClass.name.toLowerFirst() + aClass.getDaoSuffix() /].findAll();
+
+			if (lista[aClass.name.toUpperFirst()/] != null) {
+				req.setAttribute("lista[aClass.name.toUpperFirst()/]", lista[aClass.name.toUpperFirst()/]);
+				destino = "/WEB-INF/[aClass.name.toLowerCase()/]/list.jsp";
+			} else {
+				destino = "/WEB-INF/[aClass.name.toLowerCase()/]/list.jsp?error=Cliente não encontrado.";
+			}
+		} catch (Exception ex) {
+			LOGGER.error(ex.getMessage(), ex);
+			destino = "/WEB-INF/[aClass.name.toLowerCase()/]/list.jsp?error=" + ex.getMessage();
+		}
+		
+		RequestDispatcher rd = req.getRequestDispatcher(destino);
+		rd.forward(req, resp);
+	}
+}
+[/file]
+[/template]

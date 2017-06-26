@@ -1,0 +1,61 @@
+[comment encoding = UTF-8 /]
+[module generate('http:///org/eclipse/bpel/model/bpel.ecore', 'http://www.eclipse.org/wsdl/2003/WSDL')/]
+[import org::eclipse::acceleo::module::bpel2java::reqRes::files::processJavaFile /]
+[import org::eclipse::acceleo::module::bpel2java::reqRes::files::partnerLinkJavaFile /]
+[import org::eclipse::acceleo::module::bpel2java::reqRes::files::partnerLinkClientJavaFile /]
+
+
+[template public generate(aProcess : Process)
+	{clientPLName : String = 'client';
+	
+	varTypesClientList : Sequence(String) = Sequence{aProcess.name.toUpperFirst()+'Request', aProcess.name.toUpperFirst()+'Response'};
+	varNamesClientList : Sequence(String) = Sequence{'input','output'};
+	varTypesPL1List : Sequence(String) = Sequence{'GetAutographByCognomeEasyResponse','GetAutographByCognomeEasy'};
+	varNamesPL1List : Sequence(String) = Sequence{'AuthorWSParterLinkResponse','AuthorWSParterLinkRequest'}
+	
+	}]
+	[comment @main /]
+	
+
+	[comment Generate the file containing the workflow /]
+	[comment] [genProcessJavaFile(aProcess, 
+	varTypesClientList, getPLVariablesTypes(aProcess, varNamesClientList),	varTypesPL1List, getPLVariablesTypes(aProcess, varNamesPL1List))/] [/comment]
+	[genProcessJavaFile(aProcess)/]
+	
+	[file ('test', false, 'UTF-8')]
+	[comment Generate the files containing the partner links (or stub-services) corresponding to the real services
+			 These files are used to contain the java code to call the real WebServices deployed on some servers./]
+	[for (aPartnerLink : PartnerLink | aProcess.eAllContents(PartnerLink))]
+		
+		[if (i=1) and (aPartnerLink.name=clientPLName)]
+			[comment ]
+			Create the client PartnerLink file.
+			Its variables names and Types are passed as a Sequence of String [/comment]
+			[genPartnerLinkClientJavaFile(aProcess, aPartnerLink, varTypesClientList, getPLVariablesTypes(aProcess, varNamesClientList))/]			
+		
+		[elseif (i=2)]
+			[comment ]
+			Create a PartnerLink STUB file for a generic PL 
+			Its variables names and Types are passed as a Sequence of String [/comment]
+			[genPartnerLinkJavaFile(aProcess, aPartnerLink, varTypesPL1List, getPLVariablesTypes(aProcess, varNamesPL1List))/]
+		[else]
+		[/if]			
+[/for]
+
+[/file]
+[/template]
+
+
+[query getPLVariablesTypes(aProc : Process, varNames : Sequence(String)) : Sequence(Variable) = aProc.eAllContents(Variable)->select(aVarab : Variable | varNames->includes(aVarab.name))->asSequence() /]
+
+[comment]
+
+[query getPLVariablesTypes2(aProc : Process, pl : PartnerLink) : Sequence(Variable) = 
+aProc.eAllContents(Receive)->select(aRec : Receive | pl.name=aRec.partnerLink.name)->asSequence()->eAllContents(Variable)->asSet()->
+union
+(aProc.eAllContents(Reply)->select(aInv : Reply | pl.name=aInv.partnerLink.name)->asSequence()->eAllContents(Variable)->asSet() 
+)->asSequence() /]
+
+[query getPLVariablesNames(aSequenceOfString : Sequence(String)) : Sequence(String) = aSequenceOfString/]
+
+[/comment]

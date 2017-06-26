@@ -1,0 +1,973 @@
+import namespaces : 'Infrastructure.xmi#Core-Abstractions-Namespaces'
+import multiplicities : 'Infrastructure.xmi#Core-Abstractions-Multiplicities'
+import basic : 'Infrastructure.xmi#Core-Basic'
+import constraints : 'Infrastructure.xmi#Core-Abstractions-Constraints'
+import constructs : 'Infrastructure.xmi#Core-Constructs'
+import infrastructureLibrary : 'Infrastructure.xmi#_0'
+import instances : 'Infrastructure.xmi#Core-Abstractions-Instances'
+import generalizations : 'Infrastructure.xmi#Core-Abstractions-Generalizations'
+import classifiers : 'Infrastructure.xmi#Core-Abstractions-Classifiers'
+import ownerships : 'Infrastructure.xmi#Core-Abstractions-Ownerships'
+import profiles : 'Infrastructure.xmi#Profiles'
+import abstractions : 'Infrastructure.xmi#Core-Abstractions'
+import redefinitions : 'Infrastructure.xmi#Core-Abstractions-Redefinitions'
+import super : 'Infrastructure.xmi#Core-Abstractions-Super'
+import types : 'http://www.eclipse.org/uml2/4.0.0/Types#/'
+import visibilities : 'Infrastructure.xmi#Core-Abstractions-Visibilities'
+import core : 'Infrastructure.xmi#Core'
+import typedElements : 'Infrastructure.xmi#Core-Abstractions-TypedElements'
+import expressions : 'Infrastructure.xmi#Core-Abstractions-Expressions'
+import multiplicityExpressions : 'Infrastructure.xmi#Core-Abstractions-MultiplicityExpressions'
+
+package infrastructureLibrary::InfrastructureLibrary
+
+endpackage
+
+package infrastructureLibrary::Core
+
+endpackage
+
+package infrastructureLibrary::Profiles
+
+	context Class
+
+	context Class::extension() : Set(profiles::Extension)
+	body:
+		true
+
+	context Extension 
+	/**
+	 * The non-owned end of an Extension is typed by a Class.
+	 */
+	inv non_owned_end:
+		metaclassEnd()->notEmpty() and metaclass()->oclIsKindOf(Class) 
+	/**
+	 * An Extension is binary, i.e., it has only two memberEnds.
+	 */
+	inv is_binary:
+		memberEnd->size() = 2
+
+	context Extension::isRequired() : types::Boolean
+	body:
+		(ownedEnd.lowerBound() = 1)
+
+	context Extension::metaclass() : profiles::Class
+	body:
+		metaclassEnd().type
+
+	context Extension::metaclassEnd() : constructs::Property
+	body:
+		memberEnd->reject(ownedEnd)
+
+	context ExtensionEnd 
+	/**
+	 * The multiplicity of ExtensionEnd is 0..1 or 1.
+	 */
+	inv multiplicity:
+		(self.lowerBound() = 0 or self.lowerBound() = 1) and self.upperBound() = 1 
+
+	context Stereotype 
+	/**
+	 * Stereotypes may only participate in binary associations.
+	 */
+	inv binaryAssociationsOnly:
+		ownedAttribute.association->forAll(memberEnd->size()=2) 
+	/**
+	 * Stereotype names should not clash with keyword names for the extended model element.
+	 */
+	inv name_not_clash:
+		true 
+	/**
+	 * A Stereotype may only generalize or specialize another Stereotype.
+	 */
+	inv generalize:
+		generalization.general->forAll(e |e.oclIsKindOf(Stereotype)) and generalization.specific->forAll(e | e.oclIsKindOf(Stereotype)) 
+	/**
+	 * 
+	 * Where a stereotype’s property is an association end for an association other than a kind of extension, and the other end is not a stereotype, the other end must be owned by the association itself.
+	 * 
+	 */
+	inv associationEndOwnership:
+		ownedAttribute
+		->select(association->notEmpty() and not association.oclIsKindOf(Extension) and not type.oclIsKindOf(Stereotype))
+		->forAll(opposite.owner = association)
+
+	context Stereotype::containingProfile() : profiles::Profile
+	body:
+		self.namespace.oclAsType(Package).containingProfile()
+
+	context Stereotype::profile() : profiles::Profile
+	body:
+		self.containingProfile()
+
+	context Profile 
+	/**
+	 * An element imported as a metaclassReference is not specialized or generalized in a Profile.
+	 */
+	inv metaclass_reference_not_specialized:
+		self.metaclassReference.importedElement->
+			select(c | c.oclIsKindOf(Classifier) and
+				(c.generalization.namespace = self or	c.specialization.namespace = self))->isEmpty() 
+	/**
+	 * All elements imported either as metaclassReferences or through metamodelReferences are members of the same base reference metamodel.
+	 */
+	inv references_same_metamodel:
+		self.metamodelReference.importedPackage.elementImport.importedElement.allOwningPackages()->
+		  union(self.metaclassReference.importedElement.allOwningPackages() )->notEmpty()
+
+	context Package
+
+	context Package::allApplicableStereotypes() : Set(profiles::Stereotype)
+	body:
+		
+		self.ownedStereotype->union(self.ownedMember->
+			select(oclIsKindOf(Package)).oclAsType(Package).allApplicableStereotypes()->flatten())->asSet()
+
+	context Package::containingProfile() : profiles::Profile
+	body:
+		if self.oclIsKindOf(Profile) then 
+			self.oclAsType(Profile)
+		else
+			self.namespace.oclAsType(Package).containingProfile()
+		endif
+
+	context Package::ownedStereotype() : Set(profiles::Stereotype)
+	body:
+		true
+
+	context NamedElement
+
+	context NamedElement::allOwningPackages() : Set(profiles::Package)
+	body:
+		self.namespace->select(p | p.oclIsKindOf(Package))->union(p.allOwningPackages())
+
+endpackage
+
+package core::Abstractions
+
+endpackage
+
+package core::Basic
+
+	context MultiplicityElement 
+	/**
+	 * The lower bound must be a non-negative integer literal.
+	 */
+	inv lower_ge_0:
+		lowerBound()->notEmpty() implies lowerBound() >= 0 
+	/**
+	 * The upper bound must be greater than or equal to the lower bound.
+	 */
+	inv upper_ge_lower:
+		(upperBound()->notEmpty() and lowerBound()->notEmpty()) implies upperBound() >= lowerBound()
+
+	context MultiplicityElement::includesCardinality(C : types::Integer) : types::Boolean
+	body:
+		(lowerBound() <= C) and (upperBound() >= C)
+
+	context MultiplicityElement::includesMultiplicity(M : basic::MultiplicityElement) : types::Boolean
+	body:
+		(self.lowerBound() <= M.lowerBound()) and (self.upperBound() >= M.upperBound())
+
+	context MultiplicityElement::isMultivalued() : types::Boolean
+	body:
+		upperBound() > 1
+
+	context MultiplicityElement::lowerBound() : types::Integer
+	body:
+		if lower->notEmpty() then lower else 1 endif
+
+	context MultiplicityElement::upperBound() : types::UnlimitedNatural
+	body:
+		if upper->notEmpty() then upper else 1 endif
+
+endpackage
+
+package core::Constructs
+
+	context Association 
+	/**
+	 * Only binary associations can be aggregations.
+	 */
+	inv binary_associations:
+		self.memberEnd->exists(isComposite) implies self.memberEnd->size() = 2 
+	/**
+	 * When an association specializes another association, every end of the specific association corresponds to an end of the general association, and the specific end reaches the same type or a subtype of the more general end.
+	 */
+	inv specialized_end_types:
+		Sequence{1..self.memberEnd->size()}->
+			forAll(i | self.general->select(oclIsKindOf(Association)).oclAsType(Association)->
+				forAll(ga |self.memberEnd->at(i).type.conformsTo(ga.memberEnd->at(i).type))) 
+	/**
+	 * Association ends of associations with more than two ends must be owned by the association.
+	 */
+	inv association_ends:
+		memberEnd->size() > 2 implies ownedEnd->includesAll(memberEnd) 
+	/**
+	 * An association specializing another association has the same number of ends as the other association.
+	 */
+	inv specialized_end_number:
+		parents()->select(oclIsKindOf(Association)).oclAsType(Association)->forAll(p | p.memberEnd->size() = self.memberEnd->size())
+
+	context Association::endType() : OrderedSet(constructs::Type)
+	body:
+		self.memberEnd->collect(e | e.type)
+
+	context Classifier 
+	/**
+	 * Generalization hierarchies must be directed and acyclical. A classifier can not be both a transitively general and transitively specific classifier of the same classifier.
+	 */
+	inv no_cycles_in_generalization:
+		not self.allParents()->includes(self) 
+	/**
+	 * A classifier may only specialize classifiers of a valid type.
+	 */
+	inv specialize_type:
+		self.parents()->forAll(c | self.maySpecializeType(c))
+
+	context Classifier::allFeatures() : Set(constructs::Feature)
+	body:
+		member->select(oclIsKindOf(Feature))
+
+	context Classifier::allParents() : Set(constructs::Classifier)
+	body:
+		self.parents()->union(self.parents()->collect(p | p.allParents()))
+
+	context Classifier::conformsTo(other : constructs::Classifier) : types::Boolean
+	body:
+		(self=other) or (self.allParents()->includes(other))
+
+	context Classifier::general() : Set(constructs::Classifier)
+	body:
+		self.parents()
+
+	context Classifier::hasVisibilityOf(n : constructs::NamedElement) : types::Boolean
+	body:
+		(n.visibility <> constructs::VisibilityKind::private)
+
+	context Classifier::inherit(inhs : Set(constructs::NamedElement)) : Set(constructs::NamedElement)
+	body:
+		inhs
+
+	context Classifier::inheritableMembers(c : constructs::Classifier) : Set(constructs::NamedElement)
+	body:
+		member->select(m | c.hasVisibilityOf(m))
+
+	context Classifier::inheritedMember() : Set(constructs::NamedElement)
+	body:
+		self.inherit(self.parents()->collect(p|p.inheritableMembers(self))->asSet())
+
+	context Classifier::maySpecializeType(c : constructs::Classifier) : types::Boolean
+	body:
+		self.oclIsKindOf(c.oclType())
+
+	context Classifier::parents() : Set(constructs::Classifier)
+	body:
+		generalization.general
+
+	context Namespace 
+	/**
+	 * All the members of a Namespace are distinguishable within it.
+	 */
+	inv members_distinguishable:
+		membersAreDistinguishable()
+
+	context Namespace::excludeCollisions(imps : Set(constructs::PackageableElement)) : Set(constructs::PackageableElement)
+	body:
+		imps->reject(imp1 | imps->exists(imp2 | not imp1.isDistinguishableFrom(imp2, self)))
+
+	context Namespace::getNamesOfMember(element : constructs::NamedElement) : Set(types::String)
+	body:
+		if self.ownedMember->includes(element)
+		then Set{element.name}
+		else let elementImports: ElementImport = self.elementImport->select(ei | ei.importedElement = element) in
+		  if elementImports->notEmpty()
+		  then elementImports->collect(el | el.getName())
+		  else self.packageImport->select(pi | pi.importedPackage.visibleMembers()->includes(element))->collect(pi | pi.importedPackage.getNamesOfMember(element))
+		  endif
+		endif
+
+	context Namespace::importMembers(imps : Set(constructs::PackageableElement)) : Set(constructs::PackageableElement)
+	body:
+		self.excludeCollisions(imps)->select(imp | self.ownedMember->forAll(mem | mem.imp.isDistinguishableFrom(mem, self)))
+
+	context Namespace::importedMember() : Set(constructs::PackageableElement)
+	body:
+		self.importMembers(self.elementImport.importedElement->asSet()->union(self.packageImport.importedPackage->collect(p | p.visibleMembers())))
+
+	context Namespace::membersAreDistinguishable() : types::Boolean
+	body:
+		self.member->forAll( memb |
+			self.member->excluding(memb)->forAll(other |
+				memb.isDistinguishableFrom(other, self)))
+
+	context NamedElement 
+	/**
+	 * When there is a name, and all of the containing namespaces have a name, the qualified name is constructed from the names of the containing namespaces.
+	 */
+	inv has_qualified_name:
+		(self.name->notEmpty() and self.allNamespaces()->select(ns | ns.name->isEmpty())->isEmpty()) implies
+		  self.qualifiedName = self.allNamespaces()->iterate( ns : Namespace; result: String = self.name | ns.name->union(self.separator())->union(result)) 
+	/**
+	 * If there is no name, or one of the containing namespaces has no name, there is no qualified name.
+	 */
+	inv has_no_qualified_name:
+		(self.name->isEmpty() or self.allNamespaces()->select(ns | ns.name->isEmpty())->notEmpty())
+		  implies self.qualifiedName->isEmpty() 
+	/**
+	 * If a NamedElement is not owned by a Namespace, it does not have a visibility.
+	 */
+	inv visibility_needs_ownership:
+		namespace->isEmpty() implies visibility->isEmpty()
+
+	context NamedElement::allNamespaces() : OrderedSet(constructs::Namespace)
+	body:
+		if self.namespace->isEmpty()
+		then Sequence{}
+		else self.namespace.allNamespaces()->prepend(self.namespace)
+		endif
+
+	context NamedElement::isDistinguishableFrom(n : constructs::NamedElement, ns : constructs::Namespace) : types::Boolean
+	body:
+		if self.oclIsKindOf(n.oclType()) or n.oclIsKindOf(self.oclType())
+		then ns.getNamesOfMember(self)->intersection(ns.getNamesOfMember(n))->isEmpty()
+		else true
+		endif
+
+	context NamedElement::qualifiedName() : types::String
+	body:
+		if self.name->notEmpty() and self.allNamespaces()->select(ns | ns.name->isEmpty())->isEmpty()
+		then 
+		    self.allNamespaces()->iterate( ns : Namespace; result: String = self.name | ns.name->union(self.separator())->union(result))
+		else
+		    Set{}
+		endif
+
+	context NamedElement::separator() : types::String
+	body:
+		'::'
+
+	context Element 
+	/**
+	 * Elements that must be owned must have an owner.
+	 */
+	inv has_owner:
+		self.mustBeOwned() implies owner->notEmpty() 
+	/**
+	 * An element may not directly or indirectly own itself.
+	 */
+	inv not_own_self:
+		not self.allOwnedElements()->includes(self)
+
+	context Element::allOwnedElements() : Set(constructs::Element)
+	body:
+		ownedElement->union(ownedElement->collect(e | e.allOwnedElements()))
+
+	context Element::mustBeOwned() : types::Boolean
+	body:
+		true
+
+	context ElementImport 
+	/**
+	 * The visibility of an ElementImport is either public or private.
+	 */
+	inv visibility_public_or_private:
+		self.visibility = constructs::VisibilityKind::public or self.visibility = constructs::VisibilityKind::private 
+	/**
+	 * An importedElement has either public visibility or no visibility at all.
+	 */
+	inv imported_element_is_public:
+		self.importedElement.visibility->notEmpty() implies self.importedElement.visibility = constructs::VisibilityKind::public
+
+	context ElementImport::getName() : types::String
+	body:
+		if self.alias->notEmpty() then 
+		  self.alias
+		else
+		  self.importedElement.name
+		endif
+
+	context Constraint 
+	/**
+	 * The value specification for a constraint must evaluate to a Boolean value.
+	 */
+	inv value_specification_boolean:
+		self.specification.booleanValue().oclIsKindOf(Boolean) 
+	/**
+	 * A constraint cannot be applied to itself.
+	 */
+	inv not_apply_to_self:
+		not constrainedElement->includes(self)
+
+	context ValueSpecification
+
+	context ValueSpecification::booleanValue() : types::Boolean
+	body:
+		Set{}
+
+	context ValueSpecification::integerValue() : types::Integer
+	body:
+		Set{}
+
+	context ValueSpecification::isComputable() : types::Boolean
+	body:
+		false
+
+	context ValueSpecification::isNull() : types::Boolean
+	body:
+		false
+
+	context ValueSpecification::realValue() : types::Real
+	body:
+		Set{}
+
+	context ValueSpecification::stringValue() : types::String
+	body:
+		Set{}
+
+	context ValueSpecification::unlimitedValue() : types::UnlimitedNatural
+	body:
+		Set{}
+
+	context Type
+
+	context Type::conformsTo(other : constructs::Type) : types::Boolean
+	body:
+		false
+
+	context Package 
+	/**
+	 * If an element that is owned by a package has visibility, it is public or private.
+	 */
+	inv elements_public_or_private:
+		self.ownedElements->forAll(e | e.visibility->notEmpty() implies e.visbility = constructs::VisibilityKind::public or e.visibility = constructs::VisibilityKind::private)
+
+	context Package::makesVisible(el : constructs::NamedElement) : types::Boolean
+	body:
+		(ownedMember->includes(el)) or
+		   (elementImport->
+		      select(ei|ei.visibility = constructs::VisibilityKind::public)->
+		         collect(ei|ei.importedElement)->includes(el)) or
+		   (packageImport->
+		      select(pi|pi.visibility = constructs::VisibilityKind::public)->
+		        collect(pi|
+		           pi.importedPackage.member->includes(el))->notEmpty())
+
+	context Package::nestedPackage() : Set(constructs::Package)
+	body:
+		true
+
+	context Package::ownedType() : Set(constructs::Type)
+	body:
+		true
+
+	context Package::visibleMembers() : Set(constructs::PackageableElement)
+	body:
+		member->select( m | self.makesVisible(m))
+
+	context PackageImport 
+	/**
+	 * The visibility of a PackageImport is either public or private.
+	 */
+	inv public_or_private:
+		self.visibility = constructs::VisibilityKind::public or self.visibility = constructs::VisibilityKind::private
+
+	context Property 
+	/**
+	 * A derived union is derived.
+	 */
+	inv derived_union_is_derived:
+		isDerivedUnion implies isDerived 
+	/**
+	 * A property may not subset a property with the same name.
+	 */
+	inv subsetted_property_names:
+		true 
+	/**
+	 * A redefined property must be inherited from a more general classifier containing the redefining property.
+	 */
+	inv redefined_property_inherited:
+		redefinedProperty->notEmpty() implies
+		  (redefinitionContext->notEmpty() and
+		      redefinedProperty->forAll(rp|
+		        ((redefinitionContext->collect(fc|
+		          fc.allParents()))->asSet())->collect(c| c.allFeatures())->asSet()->includes(rp)) )
+	/**
+	 * A subsetting property may strengthen the type of the subsetted property, and its upper bound may be less.
+	 */
+	inv subsetting_rules:
+		self.subsettedProperty->forAll(sp |
+		  self.type.conformsTo(sp.type) and
+		    ((self.upperBound()->notEmpty() and sp.upperBound()->notEmpty()) implies
+		      self.upperBound()<=sp.upperBound() )) 
+	/**
+	 * Subsetting may only occur when the context of the subsetting property conforms to the context of the subsetted property.
+	 */
+	inv subsetting_context_conforms:
+		self.subsettedProperty->notEmpty() implies
+		  (self.subsettingContext()->notEmpty() and self.subsettingContext()->forAll (sc |
+		    self.subsettedProperty->forAll(sp |
+		      sp.subsettingContext()->exists(c | sc.conformsTo(c))))) 
+	/**
+	 * A multiplicity of a composite aggregation must not have an upper bound greater than 1.
+	 */
+	inv multiplicity_of_composite:
+		isComposite implies (upperBound()->isEmpty() or upperBound() <= 1)
+
+	context Property::isAttribute(p : constructs::Property) : types::Boolean
+	body:
+		Classifier->allInstances->exists(c | c.attribute->includes(p))
+
+	context Property::isNavigable() : types::Boolean
+	body:
+		not class->isEmpty() or
+		association.owningAssociation.navigableOwnedEnd->includes(self)
+
+	context Property::opposite() : constructs::Property
+	body:
+		if owningAssociation->isEmpty() and association.memberEnd->size() = 2
+		  then
+		    let otherEnd = (association.memberEnd->excluding(self))->any(true) in
+		      if otherEnd.owningAssociation->isEmpty() then otherEnd else Set{} endif
+		    else Set {}
+		    endif
+
+	context Property::subsettingContext() : Set(constructs::Classifier)
+	body:
+		if association->notEmpty()
+		then association.endType->excluding(type) 
+		else if class->notEmpty() then Set{class} else Set{} endif
+		endif
+
+	context RedefinableElement 
+	/**
+	 * A redefining element must be consistent with each redefined element.
+	 */
+	inv redefinition_consistent:
+		self.redefinedElement->forAll(re | re.isConsistentWith(self)) 
+	/**
+	 * At least one of the redefinition contexts of the redefining element must be a specialization of at least one of the redefinition contexts for each redefined element.
+	 */
+	inv redefinition_context_valid:
+		self.redefinedElement->forAll(e | self.isRedefinitionContextValid(e)) 
+	/**
+	 * A redefinable element can only redefine non-leaf redefinable elements
+	 */
+	inv non_leaf_redefinition:
+		self.redefinedElement->forAll(not isLeaf)
+
+	context RedefinableElement::isConsistentWith(redefinee : constructs::RedefinableElement) : types::Boolean
+	body:
+		false
+
+	context RedefinableElement::isRedefinitionContextValid(redefined : constructs::RedefinableElement) : types::Boolean
+	body:
+		redefinitionContext->exists(c | c.allParents()->includes(redefined.redefinitionContext))
+
+	context MultiplicityElement 
+	/**
+	 * The lower bound must be a non-negative integer literal.
+	 */
+	inv lower_ge_0:
+		lowerBound()->notEmpty() implies lowerBound() >= 0 
+	/**
+	 * The upper bound must be greater than or equal to the lower bound.
+	 */
+	inv upper_ge_lower:
+		(upperBound()->notEmpty() and lowerBound()->notEmpty()) implies upperBound() >= lowerBound()
+
+	context MultiplicityElement::includesCardinality(C : types::Integer) : types::Boolean
+	body:
+		(lowerBound() <= C) and (upperBound() >= C)
+
+	context MultiplicityElement::includesMultiplicity(M : constructs::MultiplicityElement) : types::Boolean
+	body:
+		(self.lowerBound() <= M.lowerBound()) and (self.upperBound() >= M.upperBound())
+
+	context MultiplicityElement::isMultivalued() : types::Boolean
+	body:
+		upperBound() > 1
+
+	context MultiplicityElement::lowerBound() : types::Integer
+	body:
+		if lower->notEmpty() then lower else 1 endif
+
+	context MultiplicityElement::upperBound() : types::UnlimitedNatural
+	body:
+		if upper->notEmpty() then upper else 1 endif
+
+	context Operation 
+	/**
+	 * A bodyCondition can only be specified for a query operation.
+	 */
+	inv only_body_for_query:
+		bodyCondition->notEmpty() implies isQuery 
+	/**
+	 * An operation can have at most one return parameter; i.e., an owned parameter with the direction set to 'return'
+	 */
+	inv at_most_one_return:
+		self.ownedParameter->select(par | par.direction = constructs::ParameterDirectionKind::return)->size() <= 1
+
+	context Operation::isOrdered() : types::Boolean
+	body:
+		if returnResult()->size() = 1 then returnResult()->any(true).isOrdered else false endif
+
+	context Operation::isUnique() : types::Boolean
+	body:
+		if returnResult()->size() = 1 then returnResult()->any(true).isUnique else true endif
+
+	context Operation::lower() : types::Integer
+	body:
+		if returnResult()->size() = 1 then returnResult()->any(true).lower else Set{} endif
+
+	context Operation::returnResult() : Set(constructs::Parameter)
+	body:
+		ownedParameter->select (par | par.direction = constructs::ParameterDirectionKind::return)
+
+	context Operation::type() : constructs::Type
+	body:
+		if returnResult()->size() = 1 then returnResult()->any(true).type else Set{} endif
+
+	context Operation::upper() : types::UnlimitedNatural
+	body:
+		if returnResult()->size() = 1 then returnResult()->any(true).upper else Set{} endif
+
+	context OpaqueExpression 
+	/**
+	 * If the language attribute is not empty, then the size of the body and language arrays must be the same.
+	 */
+	inv language_body_size:
+		language->notEmpty() implies (body->size() = language->size())
+
+endpackage
+
+package abstractions::Namespaces
+
+	context NamedElement 
+	/**
+	 * If there is no name, or one of the containing namespaces has no name, there is no qualified name.
+	 */
+	inv has_no_qualified_name:
+		(self.name->isEmpty() or self.allNamespaces()->select(ns | ns.name->isEmpty())->notEmpty())
+		  implies self.qualifiedName->isEmpty() 
+	/**
+	 * When there is a name, and all of the containing namespaces have a name, the qualified name is constructed from the names of the containing namespaces.
+	 */
+	inv has_qualified_name:
+		(self.name->notEmpty() and self.allNamespaces()->select(ns | ns.name->isEmpty())->isEmpty()) implies
+		  self.qualifiedName = self.allNamespaces()->iterate( ns : Namespace; result: String = self.name | ns.name + self.separator() + result)
+
+	context NamedElement::allNamespaces() : OrderedSet(namespaces::Namespace)
+	body:
+		if self.namespace->isEmpty()
+		then Sequence{}
+		else self.namespace.allNamespaces()->prepend(self.namespace)
+		endif
+
+	context NamedElement::isDistinguishableFrom(n : namespaces::NamedElement, ns : namespaces::Namespace) : types::Boolean
+	body:
+		if self.oclIsKindOf(n.oclType()) or n.oclIsKindOf(self.oclType())
+		then ns.getNamesOfMember(self)->intersection(ns.getNamesOfMember(n))->isEmpty()
+		else true
+		endif
+
+	context NamedElement::qualifiedName() : types::String
+	body:
+		if self.name->notEmpty() and self.allNamespaces()->select(ns | ns.name->isEmpty())->isEmpty()
+		then 
+		    self.allNamespaces()->iterate( ns : Namespace; result: String = self.name | ns.name + self.separator() + result)
+		else
+		    Set{}
+		endif
+
+	context NamedElement::separator() : types::String
+	body:
+		'::'
+
+	context Namespace 
+	/**
+	 * All the members of a Namespace are distinguishable within it.
+	 */
+	inv members_distinguishable:
+		membersAreDistinguishable()
+
+	context Namespace::getNamesOfMember(element : namespaces::NamedElement) : Set(types::String)
+	body:
+		if member->includes(element) then Set{element.name} else Set{} endif
+
+	context Namespace::membersAreDistinguishable() : types::Boolean
+	body:
+		self.member->forAll( memb |
+		self.member->excluding(memb)->forAll(other |
+		memb.isDistinguishableFrom(other, self)))
+
+endpackage
+
+package abstractions::Ownerships
+
+	context Element 
+	/**
+	 * Elements that must be owned must have an owner.
+	 */
+	inv has_owner:
+		self.mustBeOwned() implies owner->notEmpty() 
+	/**
+	 * An element may not directly or indirectly own itself.
+	 */
+	inv not_own_self:
+		not self.allOwnedElements()->includes(self)
+
+	context Element::allOwnedElements() : Set(ownerships::Element)
+	body:
+		ownedElement->union(ownedElement->collect(e | e.allOwnedElements()))
+
+	context Element::mustBeOwned() : types::Boolean
+	body:
+		true
+
+endpackage
+
+package abstractions::Classifiers
+
+	context Classifier
+
+	context Classifier::allFeatures() : Set(classifiers::Feature)
+	body:
+		member->select(oclIsKindOf(Feature))
+
+endpackage
+
+package abstractions::TypedElements
+
+	context Type
+
+	context Type::conformsTo(other : typedElements::Type) : types::Boolean
+	body:
+		false
+
+endpackage
+
+package abstractions::Constraints
+
+	context Constraint 
+	/**
+	 * The value specification for a constraint must evaluate to a Boolean value.
+	 */
+	inv value_specification_boolean:
+		self.specification.booleanValue().oclIsKindOf(Boolean) 
+	/**
+	 * A constraint cannot be applied to itself.
+	 */
+	inv not_apply_to_self:
+		not constrainedElement->includes(self)
+
+endpackage
+
+package abstractions::Expressions
+
+	context ValueSpecification
+
+	context ValueSpecification::booleanValue() : types::Boolean
+	body:
+		Set{}
+
+	context ValueSpecification::integerValue() : types::Integer
+	body:
+		Set{}
+
+	context ValueSpecification::isComputable() : types::Boolean
+	body:
+		false
+
+	context ValueSpecification::isNull() : types::Boolean
+	body:
+		false
+
+	context ValueSpecification::realValue() : types::Real
+	body:
+		Set{}
+
+	context ValueSpecification::stringValue() : types::String
+	body:
+		Set{}
+
+	context ValueSpecification::unlimitedValue() : types::UnlimitedNatural
+	body:
+		Set{}
+
+endpackage
+
+package abstractions::Generalizations
+
+	context Classifier
+
+	context Classifier::conformsTo(other : generalizations::Classifier) : types::Boolean
+	body:
+		(self=other) or (self.allParents()->includes(other))
+
+	context Classifier::general() : Set(generalizations::Classifier)
+	body:
+		self.parents()
+
+	context Classifier::parents() : Set(generalizations::Classifier)
+	body:
+		generalization.general
+
+endpackage
+
+package abstractions::Instances
+
+	context InstanceSpecification 
+	/**
+	 * The defining feature of each slot is a structural feature (directly or inherited) of a classifier of the instance specification.
+	 */
+	inv slots_are_defined:
+		slot->forAll(s |
+		classifier->exists(c | c.allFeatures()->includes(s.definingFeature))
+		) 
+	/**
+	 * One structural feature (including the same feature inherited from multiple classifiers) is the defining feature of at most one slot in an instance specification.
+	 */
+	inv no_duplicate_slots:
+		classifier->forAll(c |
+		c.allFeatures()->forAll(f | slot->select(s | s.definingFeature = f)->size() <= 1)
+		)
+
+endpackage
+
+package abstractions::Multiplicities
+
+	context MultiplicityElement 
+	/**
+	 * The upper bound must be greater than or equal to the lower bound.
+	 */
+	inv upper_ge_lower:
+		(upperBound()->notEmpty() and lowerBound()->notEmpty()) implies upperBound() >= lowerBound() 
+	/**
+	 * The lower bound must be a non-negative integer literal.
+	 */
+	inv lower_ge_0:
+		lowerBound()->notEmpty() implies lowerBound() >= 0
+
+	context MultiplicityElement::includesCardinality(C : types::Integer) : types::Boolean
+	body:
+		(lowerBound() <= C) and (upperBound() >= C)
+
+	context MultiplicityElement::includesMultiplicity(M : basic::MultiplicityElement) : types::Boolean
+	body:
+		(self.lowerBound() <= M.lowerBound()) and (self.upperBound() >= M.upperBound())
+
+	context MultiplicityElement::isMultivalued() : types::Boolean
+	body:
+		upperBound() > 1
+
+	context MultiplicityElement::lowerBound() : types::Integer
+	body:
+		if lower->notEmpty() then lower else 1 endif
+
+	context MultiplicityElement::upperBound() : types::UnlimitedNatural
+	body:
+		if upper->notEmpty() then upper else 1 endif
+
+endpackage
+
+package abstractions::MultiplicityExpressions
+
+	context MultiplicityElement
+
+	context MultiplicityElement::lower() : types::Integer
+	body:
+		lowerBound()
+
+	context MultiplicityElement::lowerBound() : types::Integer
+	body:
+		if lowerValue->isEmpty() then 1 else lowerValue.integerValue() endif
+
+	context MultiplicityElement::upper() : types::UnlimitedNatural
+	body:
+		upperBound()
+
+	context MultiplicityElement::upperBound() : types::UnlimitedNatural
+	body:
+		if upperValue->isEmpty() then 1 else upperValue.unlimitedValue() endif
+
+endpackage
+
+package abstractions::Redefinitions
+
+	context RedefinableElement 
+	/**
+	 * A redefining element must be consistent with each redefined element.
+	 */
+	inv redefinition_consistent:
+		self.redefinedElement->forAll(re | re.isConsistentWith(self)) 
+	/**
+	 * At least one of the redefinition contexts of the redefining element must be a specialization of at least one of the redefinition contexts for each redefined element.
+	 */
+	inv redefinition_context_valid:
+		self.redefinedElement->forAll(e | self.isRedefinitionContextValid(e))
+
+	context RedefinableElement::isConsistentWith(redefinee : redefinitions::RedefinableElement) : types::Boolean
+	body:
+		false
+
+	context RedefinableElement::isRedefinitionContextValid(redefined : redefinitions::RedefinableElement) : types::Boolean
+	body:
+		redefinitionContext->exists(c | c.allParents()->includes (redefined.redefinitionContext))
+
+endpackage
+
+package abstractions::Super
+
+	context Classifier 
+	/**
+	 * A classifier may only specialize classifiers of a valid type.
+	 */
+	inv specialize_type:
+		self.parents()->forAll(c | self.maySpecializeType(c)) 
+	/**
+	 * Generalization hierarchies must be directed and acyclical. A classifier can not be both a transitively general and transitively specific classifier of the same classifier.
+	 */
+	inv no_cycles_in_generalization:
+		not self.allParents()->includes(self)
+
+	context Classifier::allParents() : Set(super::Classifier)
+	body:
+		self.parents()->union(self.parents()->collect(p | p.allParents()))
+
+	context Classifier::hasVisibilityOf(n : namespaces::NamedElement) : types::Boolean
+	body:
+		if (self.inheritedMember->includes (n)) then (n.visibility <> constructs::VisibilityKind::private) else true endif
+
+	context Classifier::inherit(inhs : Set(namespaces::NamedElement)) : Set(namespaces::NamedElement)
+	body:
+		inhs
+
+	context Classifier::inheritableMembers(c : super::Classifier) : Set(namespaces::NamedElement)
+	body:
+		member->select(m | c.hasVisibilityOf(m))
+
+	context Classifier::inheritedMember() : Set(namespaces::NamedElement)
+	body:
+		self.inherit(self.parents()->collect(p | p.inheritableMembers(self)))
+
+	context Classifier::maySpecializeType(c : super::Classifier) : types::Boolean
+	body:
+		self.oclIsKindOf(c.oclType())
+
+	context Classifier::parents() : Set(super::Classifier)
+	body:
+		general
+
+endpackage
+
+package abstractions::Visibilities
+
+	context NamedElement 
+	/**
+	 * If a NamedElement is not owned by a Namespace, it does not have a visibility.
+	 */
+	inv visibility_needs_ownership:
+		namespace->isEmpty() implies visibility->isEmpty()
+
+endpackage

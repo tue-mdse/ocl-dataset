@@ -1,0 +1,137 @@
+[comment encoding = UTF-8 /]
+[module generateHtml('http://pouexmm/1.0')]
+[import dmss::pouex::acceleo::main::generateUtils/]
+
+[template public generateGameHtml(aGame : Game)]
+[comment @main/]
+[file (aGame.name.generateUnderscoreName() +'.html', false, 'UTF-8')] 
+<!doctype html>
+<html lang="en" ng-app="PouexApp">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pouex Game</title>
+  <link href="libs/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+  <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+  <!--[ '[' /]if lt IE 9]>
+    <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+    <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+  <![ '[' /]endif]-->
+
+  <link href="css/[aGame.name.generateUnderscoreName()/].css" rel="stylesheet">
+</head>
+<body ng-controller="CtrlMenu">
+
+  
+   <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+     <div class="container">
+       <div class="navbar-header">
+         <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+           <span class="sr-only">Toggle navigation</span>
+           <span class="icon-bar"></span>
+           <span class="icon-bar"></span>
+           <span class="icon-bar"></span>
+         </button>
+         <a class="navbar-brand" href="#" onclick="javascript:$('#modal-set-name').modal();">{{$storage.game.pouex.name}}</a>
+       </div>
+       <div class="navbar-collapse collapse">
+         <ul class="nav navbar-nav">
+           <li class="active"><a href="#">Home</a></li>
+           [aGame.pouex.actions->selectByType(PouexAction).generateHtmlMenuAction()/]
+           <li><a href="#new-game" ng-click="PouexNewGame()">New Game</a></li>
+         </ul>
+       </div><!--/.nav-collapse -->
+     </div>
+   </div>
+
+  <div class="container main" role="main">
+    <div class="jumbotron row">
+      <div class="game-panel col-md-4"></div>
+
+      <div class="game-panel col-md-4">
+        <div class="game-panel-body">
+          [aGame.pouex.bodyparts.generateHtmlBodyParts()/]
+        </div><!-- /.game-content-body -->
+      </div><!-- /.game-content -->
+
+      <div class="panel panel-default game-dashboard col-md-4">
+        <div class="panel-body">
+          Birthday of {{$storage.game.pouex.name}}: {{$storage.game.pouex.birthday | date:'dd-MM-yyyy'}}<br>
+          [aGame.pouex.features.generateDashboard()/]
+          [aGame.pouex.states.generateDashboard()/]
+        </div>
+      </div><!-- /.pouex-info -->
+
+    </div><!-- /.jumbotron -->
+  </div><!-- /.main -->
+
+  <!-- modal -->
+
+  <div class="modal fade" id="state-dead" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">The End</div>
+        <div class="modal-body">
+          Sorry, {{$storage.game.pouex.name}} was died...
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary btn-lg new-game" onclick="javascript:document.location.reload()">New Game</button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /.state-dead -->
+
+  <div class="modal fade" id="modal-set-name" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">Get a new name for Pouex</div>
+        <div class="modal-body">
+          <input ng-model="$storage.game.pouex.name">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /.modal-set-name -->
+
+  <script src="libs/jquery/jquery.min.js"></script>
+  <script src="libs/bootstrap/js/bootstrap.min.js"></script>
+  <script src="libs/angularjs/angular.js"></script>
+  <script src="libs/angular-ngStorage/ngStorage.js"></script>
+  <script src="js/[aGame.name.generateUnderscoreName() +'Controller.js'/]"></script>
+</body>
+</html>
+[/file]
+[/template]
+
+
+[template public generateHtmlMenuAction(a : Action)]
+  <li><a href="#[a.name.generateUnderscoreName()/]" ng-click="executeAction('[a.name.generateUnderscoreName()/]')">[a.name.generateUnderscoreName()/]</a></li>
+[/template]
+
+[template public generateHtmlBodyParts(b : BodyPart) post(trim() + '\n')]
+  <div id="[b.generateBodyCssFullyQualifiedName()/]" class="body-part" style="background-image: url({{$storage.game.pouex.body.[b.generateBodyFullyQualifiedName()/].imageUrl}})">
+    [b.subparts.generateHtmlBodyParts()/]
+  </div>  
+[/template]
+
+[template public generateDashboard(f : Feature)]
+  [f.name.generateUnderscoreName()/]: {{$storage.game.pouex.features[ '[' /]'[f.name.generateUnderscoreName()/]'].value}} [f.MeasurementUnit/]<br>
+  <div class="progress">
+    <div class="progress-bar" role="progressbar" aria-valuenow="60" 
+      aria-valuemin="0" aria-valuemax="100" style="width: {{getFeaturePercValue('[f.name.generateUnderscoreName()/]')}}%;">
+        {{getFeaturePercValue('[f.name.generateUnderscoreName()/]') |number:2}}%
+    </div>
+  </div><!-- /.progress -->
+
+[/template]
+
+[template public generateDashboard(s : State)]
+  <div ng-show="$storage.game.pouex.states[ '[' /] '[s.name.generateUnderscoreName()/]'].active">
+    <span class="glyphicon glyphicon-ok"></span> [s.name.generateUnderscoreName()/]
+  </div>
+
+[/template]

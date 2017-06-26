@@ -1,0 +1,106 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2015, 2016 Spacebel SA.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Johan Hardy (Spacebel) - initial API and implementation
+[/comment]
+[module include('http://www.eclipse.org/uml2/5.0.0/UML')/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::namedelement/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::usage/]
+[import org::eclipse::umlgen::gen::embedded::c::services::queries/]
+
+[template private genHIncludeParentPackage(c : uml::Class) post(trim())]
+[if not(ancestors(Package)->asOrderedSet()->select(oclIsTypeOf(uml::Package))->first().oclIsUndefined())]
+/* Dependency with parent package */
+#include "[getFullFilePath()/][ancestors(Package)->asOrderedSet()->select(oclIsTypeOf(uml::Package))->first().name/].h"
+[/if]
+[/template]
+
+[template private genHIncludeParentPackage(p : uml::Package) post(trim())]
+[if not(ancestors(Package)->asOrderedSet()->select(oclIsTypeOf(uml::Package))->first().oclIsUndefined())]
+/* Dependency with parent package */
+#include "[getFullFilePath()/][ancestors(Package)->asOrderedSet()->select(oclIsTypeOf(uml::Package))->first().name/].h"[/if]
+[/template]
+
+[template private genCIncludeOwnHeader(c : uml::Class) post(trim())]
+/* Dependency with own header */
+#include "[getFullFilePath()/][name/].h"
+[/template]
+
+[template private genCIncludeOwnHeader(p : uml::Package) post(trim())]
+/* Dependency with own header */
+#include "[getFullFilePath()/][name/]/[name/].h"
+[/template]
+
+[template private genInclude(supplier : uml::NamedElement) ? (supplier.oclIsTypeOf(uml::Class) or supplier.oclIsTypeOf(uml::Package)) post(trim())]
+#include "[supplier.oclAsType(uml::NamedElement).getFullFilePath()/][if supplier.oclIsTypeOf(uml::Package)][supplier.name/]/[/if][supplier.name/].h"
+[/template]
+
+[template private genInclude(supplier : uml::NamedElement) ? (supplier.oclIsTypeOf(uml::Interface)) post(trim())]
+#include [supplier.oclAsType(uml::Interface).name/]
+[/template]
+
+[template private genComment(u : uml::Usage) post(trim())]
+[if ownedComment->notEmpty()]
+/* [ownedComment.format('', false, ' *  ', 120)/] */
+[else]
+/* Dependency with [supplier.name/]. */
+[/if]
+[/template]
+
+[template public genHIncludes(p : uml::Package) post(trim())]
+[genHIncludeParentPackage()/]
+[let seq : Sequence(uml::Usage) = getAllPublicUsage(ownedElement->filter(uml::Usage)->asSequence())]
+[for (u : uml::Usage | seq->orderByContents())]
+[if client->notEmpty() and (not(client->excludes(p)))]
+[u.genComment()/]
+[supplier.genInclude()/]
+[/if]
+[/for]
+[/let]
+[/template]
+
+[template public genCIncludes(p : uml::Package) post(trim())]
+[genCIncludeOwnHeader()/]
+[let seq : Sequence(uml::Usage) = getAllPrivateUsage(ownedElement->filter(uml::Usage)->asSequence())]
+[for (u : uml::Usage | seq->orderByContents())]
+[if client->notEmpty() and (not(client->excludes(p)))]
+[u.genComment()/]
+[supplier.genInclude()/]
+[/if]
+[/for]
+[/let]
+[/template]
+
+[template public genHIncludes(c : uml::Class) post(trim())]
+[genHIncludeParentPackage()/]
+[if not(ancestors(Package)->asOrderedSet()->select(oclIsTypeOf(uml::Package))->first()->isEmpty())]
+[let seq : Sequence(uml::Usage) = getAllPublicUsage(ancestors(Package)->select(oclIsTypeOf(uml::Package))->first().ownedElement->filter(uml::Usage)->asSequence())]
+[for (u : uml::Usage | seq->orderByContents())]
+[if client->notEmpty() and (not(client->excludes(c)))]
+[u.genComment()/]
+[supplier.genInclude()/]
+[/if]
+[/for]
+[/let]
+[/if]
+[/template]
+
+[template public genCIncludes(c : uml::Class) post(trim())]
+[genCIncludeOwnHeader()/]
+[if not(ancestors(Package)->asOrderedSet()->select(oclIsTypeOf(uml::Package))->first()->isEmpty())]
+[let seq : Sequence(uml::Usage) = getAllPrivateUsage(ancestors(Package)->select(oclIsTypeOf(uml::Package))->first().ownedElement->filter(uml::Usage)->asSequence())]
+[for (u : uml::Usage | seq->orderByContents())]
+[if client->notEmpty() and (not(client->excludes(c)))]
+[u.genComment()/]
+[supplier.genInclude()/]
+[/if]
+[/for]
+[/let]
+[/if]
+[/template]

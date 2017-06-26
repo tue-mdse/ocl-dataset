@@ -1,0 +1,81 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2012, 2014 CNES and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Cedric Notot (Obeo) - initial API and implementation
+[/comment]
+
+[module asyncUserFile('http://www.eclipse.org/uml2/5.0.0/UML','http://www.eclipse.org/umlgen/dsl/asl','http://www.eclipse.org/umlgen/dsl/eth')]
+
+[import org::eclipse::umlgen::gen::autojava::specific::port /]
+[import org::eclipse::umlgen::gen::autojava::specific::lib::type /]
+[import org::eclipse::umlgen::gen::autojava::requests::port /]
+[import org::eclipse::umlgen::gen::autojava::requests::common /]
+[import org::eclipse::umlgen::gen::autojava::services::rtsjServices /]
+[import org::eclipse::umlgen::gen::autojava::services::utilServices /]
+[import org::eclipse::umlgen::gen::autojava::common::parameters /]
+[import org::eclipse::umlgen::gen::autojava::common::common /]
+
+[template public genAsyncUserFileBody(anInterface : Interface, aPort : Port)]
+[aPort.genFilePath().genPackageDeclaration()/]
+
+import org.eclipse.umlgen.rtsj.framework.*;
+import org.eclipse.umlgen.rtsj.framework.types.*;
+import [anInterface.genPackagePath()/].[anInterface.name/];
+[if (anInterface.getReceptionsWithParameters()->notEmpty())]
+import [anInterface.genPackagePath()/].params.*;
+[/if]
+[for (aType : Type | minimize(getAllReceptions().get('ownedElement')->filter(TypedElement)->select(aProp : TypedElement | not aProp.type.isJavaPrimitive() and not aProp.type.oclIsKindOf(Enumeration)).type)->filter(Type))]
+import [aType.genDecoratorPackagePath() + '.' + aType.genName()/];
+[/for]
+[for (aType : Type | minimize(getAllReceptions().signal.get('ownedElement')->filter(TypedElement)->select(aProp : TypedElement | not aProp.type.isJavaPrimitive() and not aProp.type.oclIsKindOf(Enumeration)).type)->filter(Type))]
+import [aType.genDecoratorPackagePath() + '.' + aType.genName()/];
+[/for]
+
+public class [aPort.genClassPortName(anInterface, 'User','Async')/] implements [anInterface.genName()/]{
+
+	String ident;
+	String sender;
+[for (anOperation : Reception | anInterface.getReceptionsWithParameters())]
+	[anOperation.genParametersClassInstantiation(false)/]
+[/for]
+	ArgsBuffer argsBuffer = new ArgsBuffer([if (aPort.isLossyBuffer())][aPort.getPortSize()/][else][computePortSize(0, anInterface)/][/if]);
+	CommunicationLayer communicationLayer;
+	int signalPriority = 1;
+
+	public [aPort.genClassPortName(anInterface, 'User','Async')/](String ident, String sender, CommunicationLayer communicationLayer) {
+		this.ident = ident;
+		this.sender = sender;
+		this.communicationLayer = communicationLayer;
+	}
+
+	public [anInterface.genName()/] setSignalPriority(int priority) {
+		this.signalPriority = priority;
+		return this;
+	}
+
+[for (anOperation : Reception | anInterface.getAllReceptions()->select(aReception : Reception | aReception.signal <> null))]
+	[anOperation.genMethod(aPort)/]
+		
+[/for]
+}
+[/template]
+
+[template protected genMethod(anOperation : Reception, aPort : Port) ]
+public void [anOperation.signal.genName()/]([anOperation.signal.get('ownedAttribute')->filter(Property).genMethodParam()->sep(', ')/]) throws ServiceNotFoundException {
+[for (aProperty : Property | anOperation.signal.get('ownedAttribute')->filter(Property))]
+	[anOperation.name/]Params.[aProperty.genName()/] = [aProperty.genName()/];
+[/for]
+[if (anOperation.signal.get('ownedAttribute')->filter(Property)->size() > 0)]
+	argsBuffer.dequeue(argsBuffer.getUsed());
+	[anOperation.name/]Params.writeObject(argsBuffer);
+[/if]
+	communicationLayer.callAsynchronous("[anOperation.signal.genName()/][anOperation.getParams().genTypeName()->sep('_')/]", ident, sender, argsBuffer, this.signalPriority);
+	this.setSignalPriority(1);
+}
+[/template]

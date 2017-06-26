@@ -1,0 +1,279 @@
+[module dto('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(class : Class) ? (class.isDto())]
+[if (class.isDto())]
+	[if (getProperty('useDtoPackage') = 'no')]
+[class.pathToMainJava()/]/[class.dtoPackage().toPath()/]/[class.name/].java
+	[else]
+[class.pathToMainJava()/]/[class.dtoPackage().toPath()/]/[class.name/]Dto.java
+	[/if]
+[/if]
+
+[/template][/comment]
+
+[query private dtoClassName(class : Class) : String = 
+if (getProperty('useDtoPackage') = 'no') then
+class.name 
+else
+class.name.concat('Dto')
+endif
+/]
+
+[query private pathToDtoClassName(class : Class) : String =
+class.fullFilePath(class.pathToMainJava(), class.dtoPackage().toPath(), class.dtoClassName().concat('.java')) 
+/]
+
+
+[template public generateSpringDto(class : Class) ? (class.isDto()) ]
+
+[comment This template is called by the main module file /]
+[file (class.pathToDtoClassName(), false))]
+package [class.dtoPackage()/];
+
+// [protected('import')]  
+import java.io.Serializable;
+[if (class.classAttributes()->select((upper = -1 or upper > 1))->notEmpty())]
+import java.util.Collections;
+	[if (class.classAttributes()->select((upper = -1 or upper > 1) and isOrdered)->notEmpty())]
+import java.util.List;
+import java.util.ArrayList;
+	[/if]
+	[if (class.classAttributes()->select((upper = -1 or upper > 1) and isUnique and not (isOrdered))->notEmpty())]
+import java.util.Set;
+import java.util.HashSet;
+	[/if]
+	[if (class.classAttributes()->select((upper = -1 or upper > 1) and not (isUnique) and not (isOrdered))->notEmpty())]
+import java.util.Collection;
+		[if (class.classAttributes()->select((upper = -1 or upper > 1) and isOrdered)->notEmpty())]
+import java.util.ArrayList;
+		[/if]
+	[/if]
+[elseif (class.ownedOperation.ownedParameter->select(upper = -1)->notEmpty())]
+import java.util.Collection;
+[/if]
+
+// [/protected]  for import
+
+[class.generateJavadoc()/]
+public class [class.dtoClassName()/][class.extensions()/] {
+[comment][if (getProperty('useDtoPackage') = 'no')]
+public class [class.name/][class.extensions()/] {
+[else]
+public class [class.name/]Dto[class.extensions()/] {
+[/if][/comment]
+
+	// serialVersionUID is used for serialization.
+	private static final long serialVersionUID = 1L;
+
+[comment  Generate attributes /]
+[for (prop:Property|class.classAttributes())]
+	protected [prop.convertToJavaType()/] [prop.name/];
+[/for]
+
+
+	/**
+	 * Default constructor 
+	 */
+	public [class.dtoClassName()/]() {
+		super();
+[comment  initialize list /]
+[for (prop:Property|class.classAttributes())]
+	[if (prop.upper <> 1)]
+		[if (prop.isOrdered or (not (isOrdered) and not (isUnique)))]
+		this.[prop.name/] = new ArrayList<[prop.type.name/]>();
+		[else]
+		this.[prop.name/] = new HashSet<[prop.type.name/]>();
+		[/if]
+	[/if]
+[/for]
+	}
+
+[if (class.classAttributes()->notEmpty())]
+	/**
+	 * Constructor with all parameters initialized
+	[for (prop:Property|class.classAttributes())]
+	 * @param [prop.name/] [prop.ownedComment._body/]
+	[/for]
+	 */	
+	public [class.dtoClassName()/]([getConstructorArgs()/]) {	
+	[for (prop:Property|class.classAttributes())]
+		this.[prop.name/] = [prop.name/];
+	[/for]
+	}	
+[/if]
+
+[comment  Generate getters and setters /]
+[for (prop:Property|class.classAttributes())]
+
+[comment  Deals with Lists /]
+	[if (prop.upper = -1)]
+		[prop.generateOpForList()/]
+	[else]
+		[prop.generateOp()/]
+	[/if]
+	
+[/for]
+
+[for (oper:Operation|class.ownedOperation)]
+	[oper.generateJavadoc()/]
+	public [oper.generateReturn()/] [oper.name/]([oper.generateRawParameters()/]) {
+    	// [protected ('implements')]        	
+		// TODO implement [oper.name/]
+            throw new UnsupportedOperationException("Method not yet implemented");
+		// [/protected]
+	}
+[/for]
+
+/** 
+ * Equality test based attributes values
+ * @param value Value to compare
+ */
+public boolean equals(Object other) {
+	if (this == other) {
+		return true;	
+	}
+	if ( ! (other instanceof [name/])) {
+		return false;
+	}
+	
+	final [name/] [name.toLowerFirst()/] = ([name/]) other;
+	
+[for (prop:Property|class.ownedAttribute)]
+	[if (prop.type.isJavaPrimitiveType())]
+	if ( [prop.name/] != [prop.class.name.toLowerFirst()/].get[prop.name.toUpperFirst()/]()  ) return false;
+	[else]
+	if ( (	[prop.name/] == null && [prop.class.name.toLowerFirst()/].get[prop.name.toUpperFirst()/]() != null) || 
+		 (	[prop.name/] != null && ![prop.name/].equals([prop.class.name.toLowerFirst()/].get[prop.name.toUpperFirst()/]()) ) 
+	   ) return false;
+	[/if]
+[/for]
+	
+	return true;
+}
+
+}
+[/file]
+[/template]
+
+
+[template public extensions(class : Class)]
+[class.inheritances()/][class.implements()/]
+[/template]
+
+
+[template public inheritances(class : Class)]
+[if (class.general->notEmpty())] extends [class.general.name/][/if]
+[/template]
+
+
+[template public implements(class : Class)]
+ implements Serializable[if (class.interfaceRealization->notEmpty())], [class.interfaceRealization.supplier.name->sep(', ')/][/if]
+[/template]
+
+
+[template public getConstructorArgs(class : Class)]
+[class.classAttributes().asParameter()->sep(', ')/]
+[/template]
+
+
+[template public asParameter(property : Property)]
+[property.convertToJavaType()/] [property.name/]
+[/template]
+
+
+[template public generateOp(property : Property)]
+	/**
+	 * Return [property.name/]
+	 * @return [property.ownedComment._body/]
+	 */
+	public [property.convertToJavaType()/] get[property.name.toUpperFirst()/]() {
+		return [property.name/];
+	}
+
+	/**
+	 * Set a value to parameter [name/].
+	 * @param [name/] [ownedComment._body/]
+	 */
+	public void set[property.name.toUpperFirst()/]([property.convertToJavaType()/] [property.name/]) {
+		this.[property.name/] = [property.name/];
+[if (property.opposite <> null)]
+		this.[property.name/].set[property.featuringClassifier.name/](this);
+[/if]
+	}
+[/template]
+
+
+[template public generateOpForList(property : Property)]
+	/**
+	 * Return [property.name/]
+	 * @return A list of [property.type/]. [property.ownedComment._body/]
+	 */
+	public [property.convertToJavaType()/] get[property.name.toUpperFirst()/]() {		
+[if (property.isOrdered)]
+		return Collections.unmodifiableList([property.name/]);
+[elseif (property.isUnique)]
+		return Collections.unmodifiableSet([property.name/]);
+[else]
+		return Collections.unmodifiableCollection([property.name/]);
+[/if]
+	}
+
+	/**
+	 * Set a value to parameter [property.name/].
+	 * @param [property.name/] A list of [property.type/].[property.ownedComment._body/]
+	 */
+	public void set[property.name.toUpperFirst()/]([property.convertToJavaType()/] [property.name/]) {
+		this.[property.name/] = [property.name/];
+	}
+	
+	/**
+	 * Add an element to the list [property.name/].
+	 * @param elementToAdd Element of type [property.type/] to add
+	 */
+	public void add[property.name.toUpperFirst()/]([property.type.convertDtoToJavaType()/] elementToAdd) {
+		this.[name/].add(elementToAdd);
+[if (property.opposite <> null)]
+	[if (property.upper <> 1)]
+		elementToAdd.add[property.owner/](this);
+	[else]
+		elementToAdd.set[property.owner/](this);
+	[/if]
+[/if]
+	}
+	
+	/**
+	 * Remove an element to the list [property.name/].
+	 * @param elementToRevmoe Element of type [property.type/] to add
+	 */
+	public void remove[property.name.toUpperFirst()/]([property.type.convertDtoToJavaType()/] elementToRemove) {
+		this.[property.name/].remove(elementToRemove);
+[if (property.opposite <> null)]
+	[if (property.upper <> 1)]
+		elementToAdd.remove[property.owner/](this);
+	[else]
+		elementToAdd.set[property.owner/](null);
+	[/if]
+[/if]
+	}
+[/template]
+
+[template public convertDtoToJavaType(type : Type)]
+[if (type.hasStereotype('Dto'))][type.name/]Dto[else][type.convertToJavaType()/][/if]
+[/template]
+
+

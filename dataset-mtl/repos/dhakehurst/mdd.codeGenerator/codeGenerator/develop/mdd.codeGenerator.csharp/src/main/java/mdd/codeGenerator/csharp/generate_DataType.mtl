@@ -1,0 +1,127 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_DataType('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Operation /]
+[import mdd::codeGenerator::csharp::generate_Property /]
+[import mdd::codeGenerator::csharp::generate_Classifier/]
+[import mdd::codeGenerator::csharp::generate_PortType/]
+
+[template public generate(c : DataType, srcDir:String)]
+[file (srcDir+getProperty('artifact.codeFolder')+'/'+c.qualifiedName('/')+'.cs', false, 'UTF-8')]
+
+namespace [c.namespace.qualifiedName('.')/] {
+	using System.Linq;
+
+	/// <summary> DataType Description </summary>
+	public[(if self.isAbstract then ' abstract ' else ' ' endif)/]class [self.name/]
+	[self.gen_Implements()/]
+	{
+	
+	  /// <summary> Constructor Description </summary>
+	  public [self.name/](){
+		global::framework.os.OsRef os = new global::framework.os.OsRef();
+		#region Composite Properties
+		[for (pr : Property | self.compositeOrPrimitiveProperties())]
+		  [pr.generateDataTypeComposite()/]
+		[/for]
+		#endregion
+      }
+  
+	  #region Properties
+	  [for (pr : Property | c.ownedAttribute)]
+		[pr.generate()/]
+	  [/for]
+	  #endregion
+	
+	  #region Operations
+	  [for (op : Operation | c.ownedOperation->reject(op2|op2.name = c.name))]
+		[op.generate()/]
+	  [/for]
+      #endregion
+
+	  #region framework Specific
+		/// <summary> deepClone </summary>
+        public [if (not self.generalization->isEmpty())]override[else]virtual[/if] object _deepClone() {
+	  [if (self.isAbstract)]
+			throw new System.NotImplementedException();
+      [else]
+			global::framework.os.OsRef os = new global::framework.os.OsRef();
+			[self.name/] clone = new [self.name/]();
+		  [for (p : Property | self.allCompositeOrPrimitiveOrEnumProperties())]
+			clone.[p.name/] = [p.generateClone()/];
+		  [/for]
+			return clone;
+      [/if]
+        }
+
+		/// <summary> deepClone </summary>
+        public [if (not self.generalization->isEmpty())]new[/if] [self.name/] deepClone() { return this._deepClone() as [self.name/]; }
+	  #endregion
+
+	  #region C# Specific
+		/// <summary> ToString </summary>
+        public override string ToString() {
+			string result = "[self.name/] {";
+			[for (p : Property | self.allCompositeOrPrimitiveOrEnumProperties())]
+				result += "[p.name/]="+(null==this.[p.name/]?"null":this.[p.name/].ToString()) + ", ";
+			[/for]
+			result += "}";
+            return result;
+        }
+		/// <summary> Equals </summary>
+        public override bool Equals(object other) {
+			if (null==other) return false;
+			[self.name/] otherTyped = other as [self.name/];
+			if (null==otherTyped) return false;
+			bool result = true;
+			[for (p : Property | self.allCompositeOrPrimitiveOrEnumProperties())]
+				result = result && ((null==this.[p.name/]) ? null==otherTyped.[p.name/] :  this.[p.name/].Equals( otherTyped.[p.name/]) );
+			[/for]
+            return result;
+        }
+		/// <summary> GetHashCode </summary>
+        public override int GetHashCode() {
+			int result = 0;
+			[for (p : Property | self.allCompositeOrPrimitiveOrEnumProperties())]
+				if(null!=this.[p.name/]) result = result ^ this.[p.name/].GetHashCode();
+			[/for]
+			return result;
+        }
+
+      #endregion
+	}
+}
+[/file]
+[/template]
+
+[template public gen_Implements(arg : DataType)]
+[if self.implements()->isEmpty()][else]
+: [for (i : Type | self.implements()) separator (', ') ][i.fullName()/][/for][/if]
+[/template]
+
+[query public compositeOrPrimitiveProperties(arg : DataType) : Set(Property) =
+  self.ownedAttribute->reject(a|a.oclIsTypeOf(Port))->select(a:Property|a.isComposite or a.type.oclIsTypeOf(PrimitiveType))
+/]
+
+[query public allCompositeOrPrimitiveProperties(arg : DataType) : Set(Property) =
+  self.allOwnedElements2()->filter(Property)->reject(a|a.oclIsTypeOf(Port))->select(a:Property|a.isComposite or a.type.oclIsTypeOf(PrimitiveType))
+/]
+
+[query public compositeOrPrimitiveOrEnumProperties(arg : DataType) : Set(Property) =
+  self.ownedAttribute->reject(a|a.oclIsTypeOf(Port))->select(a:Property|a.isComposite or a.type.oclIsTypeOf(PrimitiveType) or a.type.oclIsTypeOf(Enumeration))
+/]
+
+[query public allCompositeOrPrimitiveOrEnumProperties(arg : DataType) : Set(Property) =
+  self.allOwnedElements2()->filter(Property)->reject(a|a.oclIsTypeOf(Port))->select(a:Property|a.isComposite or a.type.oclIsTypeOf(PrimitiveType) or a.type.oclIsTypeOf(Enumeration))
+/]

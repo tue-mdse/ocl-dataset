@@ -1,0 +1,196 @@
+(*
+	Fichier Ticket_Faute_Standard.mtl Version 3.0
+	Date de creation 08/02/2008
+	R.Chaumet
+*)
+
+
+:Pin2Tp ( PinTest Pin ) string
+{
+	:Tp string;
+	:CodeError int ;
+	:i int;
+	
+	CodeError := 0 ;
+	Tp := "" ;
+	
+	Dbase.ErrorMode := ErrorReturn ;
+	Dbase.TestPin := PinTest ;
+	CodeError := Dbase.ErrorCode ;
+	if ( CodeError = 0 )
+	{
+		for ( i:= 1 ; i<Dbase.DeviceCount; i:=i+1 )
+		{
+			if ( Dbase.DeviceIdent[i][1..2] = "TP" )
+			{
+				Tp := sprintf ( "%s",  Dbase.DeviceIdent[i] ) ;
+				i := Dbase.DeviceCount + 1 ;
+			}
+		}
+	}	
+	return (Tp) ;
+}
+
+:Ticket( ) void
+{
+	:unite string;
+	:i int;
+	:Str string;
+	
+	
+	
+	if (test.fail)
+	{
+		(* Determination de l'unite *)
+		case(Test.type)
+		{
+			_RES:unite := "ohms";
+			_CAP:unite := "farads";
+			_IND:unite := "henrys";
+                        _TRANSF:unite := " ";
+			_DCV,_ACV,_ZENER,_OPTO: unite:="volts";
+			_DCI: unite:="amperes";
+			_DIODE,_TRAN,_LED:
+			      case(test.mode)
+				{
+					OFF: unite := "amperes";
+					ON: unite := "volts";
+					else unite := "None" ;
+				}
+                       _FET:
+                              case(test.mode)
+                                {
+                                	OFF: unite := "volts";
+                                	ON: unite := "volts";
+                                	RDS: unite := "ohms";
+                                	else unite := "None" ;
+                                }
+		       _PULSE:
+                              case(test.mode)
+                                {
+                                	TIME,PERIOD: unite := "secondes";
+                                	FREQ: unite := "hertzs";
+                                	else unite := "None" ;
+                                }
+                
+			else
+				unite:=" "
+		}
+	
+		(* Limites et mesure du test *)
+		if ( (Test.type<>_CONTACT) && (Test.type<>_TRACK) && (Test.type<>_LINK) && (Test.type<>_TESTMODULE) )
+		{
+			fprintf(sys.print.channel,"%s\nMini: %v%s\n",Test.ident,Result.lolimit,unite);
+			
+			fprintf(sys.print.channel,"Maxi: %v%s\n",Result.hilimit,unite);
+			
+			if (result.inrange = 1)
+				fprintf(sys.print.channel,"Mesure: %v%s\n",result.Measured,unite);
+			
+			if (result.outofrangehi = 1)
+				fprintf(sys.print.channel,"Mesure: infiniment grande\n");
+			
+			if (result.outofrangelo = 1)
+				fprintf(sys.print.channel,"Mesure: infiniment petite\n");
+ 		}
+ 		
+ 		(* sortie des canaux testeurs *)
+		case (test.type)
+		{
+			_RES,_CAP,_IND,_DCV,_DCI,_ACV:
+				fprintf( sys.print.channel,"Live: %p(%s)\nRef:  %p(%s)\n\n", pins.live,Pin2Tp(pins.live),pins.ref,Pin2Tp(pins.ref));
+			
+			_TRANSF:
+				fprintf(sys.print.channel,"Prim1: %p(%s)\nPrim2:  %p(%s)\nSecond1: %p(%s)\nSecond2: %p(%s)\n",pins.primary1,Pin2Tp(pins.primary1),pins.primary2,Pin2Tp(pins.primary2)
+														,pins.secondary1,Pin2Tp(pins.secondary1),pins.secondary2,Pin2Tp(pins.secondary2) );
+
+
+	       		_DIODE,_ZENER,_LED:
+				fprintf(sys.print.channel,"Anode: %p(%s)\nCathode: %p(%s)\n\n",pins.anode,Pin2Tp(pins.anode),pins.cathode,Pin2Tp(pins.cathode) );
+				
+			_TRAN:
+				fprintf(sys.print.channel,"emetteur: %p(%s)\nbase: %p(%s)\ncollecteur: %p(%s)\n\n",pins.emitter,Pin2Tp(pins.emitter)
+														,pins.base,Pin2Tp(pins.base)
+														,pins.collector,Pin2Tp(pins.collector) );
+
+			_FET:
+				fprintf(sys.print.channel,"source: %p(%s)\ngate:  %p(%s)\ndrain%p(%s)\n\n",pins.source,Pin2Tp(pins.source),pins.gate,Pin2Tp(pins.gate),pins.drain,Pin2Tp(pins.drain) );
+
+			_OPTO:
+			{
+				fprintf(sys.print.channel,"Anode: %p(%s)\nCathode: %p(%s)\n\n",pins.anode,Pin2Tp(pins.anode),pins.cathode,Pin2Tp(pins.cathode) );
+				fprintf(sys.print.channel,"emetteur: %p(%s)\ncollecteur: %p(%s)\n\n",pins.emitter,Pin2Tp(pins.emitter),pins.collector,Pin2Tp(pins.collector) );
+			}
+
+			_PULSE:
+	           		fprintf(sys.print.channel,"live: %p(%s)\n\n",pins.live,Pin2Tp(pins.live) );
+	           		
+	           	_CONTACT :
+			(*if ( Result.Netlist <> 0  )*)
+	           	{
+				fprintf(sys.print.channel,"Defaut de contactage.\n"  );
+				fprintf(sys.print.channel,"Nbr de defauts : %d\n", Test.Faults  );
+				i := 1; 
+				while ( i<10 && i<Test.faults+1 )
+				{
+					fprintf(sys.print.channel,"-Defaut en %p(%s)\n", Result.ContactFaults[i], Pin2Tp(Result.ContactFaults[i]) );
+					i:=i+1;
+				}
+	           	}
+
+			_TRACK:
+			{
+				fprintf(sys.print.channel,"Defaut de Court-circuit.\n"  );
+	           		fprintf(sys.print.channel,"Nbr de defauts : %d\n", Test.Faults  );
+	           		i := 1; 
+	           		while ( i<6 && i<Test.faults+1 )
+	           		{
+					fprintf(sys.print.channel,"-Entre %p(%s) et %p(%s)\n", Result.TrackFaults[i][1], Pin2Tp(Result.TrackFaults[i][1])
+											, Result.TrackFaults[i][2], Pin2Tp(Result.TrackFaults[i][2]) );
+					i:=i+1;
+				}
+			}
+			
+			_LINK :
+			{
+				fprintf(sys.print.channel,"Defaut de Continuite.\n"  );
+	           		fprintf(sys.print.channel,"Nbr de defauts : %d\n", Test.Faults  );
+	           		i := 1; 
+	           		while ( i<6 && i<Test.faults+1 )
+	           		{
+					fprintf(sys.print.channel,"%s entre %p(%s) et %p(%s)\n", Test.Ident, Result.LinkFaults[i], Pin2Tp(Result.LinkFaults[i])
+											, Result.LinkFaults[i+1], Pin2Tp(Result.LinkFaults[i+1]) );
+					i:=i+2;
+				}
+			}
+			_TESTMODULE :
+			{
+				fprintf(sys.print.channel,"%s Device Error\n",Test.Ident);
+(*				i := 1; 
+	           		while ( i<6 && i<Test.faults+1 )
+	           		{	
+	           			case ( Logic.TPStatus ( Logic.TPFaults(i) ) )
+					{
+						Pass : 	Str:= "PASS";
+						Low : 	Str:= "Low";
+						High : 	Str:= "High" ;
+						else 		Str:= "Nc" ;
+					}
+
+					fprintf(sys.print.channel,"-Pin %s : %p(%s)\n",Logic.DevicePinName(Logic.TPFaults(i)), Logic.TPFaults(i), Pin2Tp(Logic.TPFaults(i)) );
+
+					fprintf(sys.print.channel,"-Pin Status : %s\n",Str);
+					i:=i+1 ;
+				}
+*)
+			}
+                       		
+			else  
+				fprintf(sys.print.channel,"%s\n",Test.Ident);
+		}
+		
+		fflush(sys.print.channel);
+	
+	}
+
+}

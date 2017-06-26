@@ -1,0 +1,318 @@
+[comment encoding = UTF-8 /]
+[module getResourceListHandlerNoParents('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthorizationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthenticationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+[template public getResourceListHandlerNoParents(anAnnotationStack : AnnotationStack, httpVerb : HTTPVerb, jRCManager : JavaResourceControllerManager)]
+[file (anAnnotationStack.hasCorePSM.name + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/' + jRCManager.parentName.toLowerCase() + '/' + 'Get'  + jRCManager.parentName + 'ListHandler.java', false, 'UTF-8')]
+/*
+ * ARISTOTLE UNIVERSITY OF THESSALONIKI
+ * Copyright (C) 2015
+ * Aristotle University of Thessaloniki
+ * Department of Electrical & Computer Engineering
+ * Division of Electronics & Computer Engineering
+ * Intelligent Systems & Software Engineering Lab
+ *
+ * Project             : [anAnnotationStack.hasCorePSM.name/]
+ * WorkFile            : 
+ * Compiler            : 
+ * File Description    : 
+ * Document Description: 
+* Related Documents	   : 
+* Note				   : 
+* Programmer		   : RESTful MDE Engine created by Christoforos Zolotas
+* Contact			   : christopherzolotas@issel.ee.auth.gr
+*/
+
+
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[jRCManager.parentName.toLowerCase()/];
+
+
+import javax.ws.rs.core.UriInfo;
+[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+[if (anAnnotationStack.hasGuestMode(jRCManager.parentName) = false)]
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
+import com.sun.jersey.core.util.Base64;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toLowerCase()/].[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/];
+[/if]
+[/if]
+[if (anAnnotationStack.bHasAuthorizationLayer and anAnnotationStack.isParentAuhtorizableResource(jRCManager))]		
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.AzPDP;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.AzRequest;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.Action;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.AuthorizationResultCode;
+[/if]
+
+import java.util.Iterator;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.HypermediaLink;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.HibernateController;
+import java.util.Set;
+import java.util.HashSet;
+
+/* This class processes GET requests for [jRCManager.parentName/] resources and creates the hypermedia to be returned to the client*/
+
+public class Get[jRCManager.parentName/]ListHandler{
+
+    private HibernateController oHibernateController;
+    private UriInfo oApplicationUri; //Standard datatype that holds information on the URI info of this request
+	private String strResourcePath; //relative path to the current resource
+    private Set<[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/]> SetOf[jRCManager.parentName/]Model = new HashSet<[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/]>(); // Since this resource is not related of any other, this HashSet will hold the list to be sent back to client.
+	[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+	[if (anAnnotationStack.hasGuestMode(jRCManager.parentName) = false)]
+	private String authHeader;
+	private [anAnnotationStack.getAuthenticationPerformer().authenticationModelName/] oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/];
+	private Boolean bIsClientAuthenticated = false;
+	[/if]
+	[/if]
+	[if (anAnnotationStack.bHasAuthorizationLayer and anAnnotationStack.isParentAuhtorizableResource(jRCManager))]		
+	private AzPDP pdp;
+	[/if]
+
+    public Get[jRCManager.parentName/]ListHandler([if (anAnnotationStack.bHasAuthenticationAnnotation)][if (anAnnotationStack.hasGuestMode(jRCManager.parentName) = false)]String authHeader, [/if][/if]UriInfo oApplicationUri){
+        this.oHibernateController = HibernateController.getHibernateControllerHandle();
+        this.oApplicationUri = oApplicationUri;
+		this.strResourcePath = calculateProperResourcePath();
+		[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+		[if (anAnnotationStack.hasGuestMode( jRCManager.parentName) = false)]
+		this.authHeader = authHeader;
+		this.oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/] = new [anAnnotationStack.getAuthenticationPerformer().authenticationModelName/](); 
+		[/if] 
+		[/if]
+		[if (anAnnotationStack.bHasAuthorizationLayer and anAnnotationStack.isParentAuhtorizableResource(jRCManager))]		
+		this.pdp = new AzPDP();
+		[/if]
+    }
+
+	public String calculateProperResourcePath(){
+    	if(this.oApplicationUri.getPath().lastIndexOf('/') == this.oApplicationUri.getPath().length() - 1){
+        	return this.oApplicationUri.getPath().substring(0, this.oApplicationUri.getPath().length() - 1);
+    	}
+    	else{
+        	return this.oApplicationUri.getPath();
+    	}
+	}
+
+    public [jRCManager.hasAssociatedRMManager.name/] get[jRCManager.hasAssociatedRMManager.name/](){
+
+		[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+		[if (anAnnotationStack.hasGuestMode(jRCManager.parentName) = false)]
+    	//check if there is a non null authentication header
+    	if(authHeader == null){
+    		throw new WebApplicationException(Response.Status.FORBIDDEN);
+    	}
+		[if (anAnnotationStack.hasBothModeAuthentication(jRCManager.parentName))]
+		else if(authHeader.equalsIgnoreCase("guest")){ //if guest and authentication mode are allowed, check if the request originates from a guest user
+			this.SetOf[jRCManager.parentName/]Model = oHibernateController.get[jRCManager.parentName/]List(this.SetOf[jRCManager.parentName/]Model);
+        	return createHypermedia();
+		}
+		[/if]
+		else{
+	    	//decode the auth header
+    		decodeAuthorizationHeader();
+
+        	//authenticate the user against the database
+        	oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/] = oHibernateController.authenticateUser(oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/]);
+
+			//check if the authentication failed
+			if(oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/] == null){
+        		throw new WebApplicationException(Response.Status.UNAUTHORIZED);
+        	}
+			else{
+				this.bIsClientAuthenticated = true;
+			}
+		}
+		[/if] 
+		[/if]
+
+        this.SetOf[jRCManager.parentName/]Model = oHibernateController.get[jRCManager.parentName/]List(this.SetOf[jRCManager.parentName/]Model);
+        return createHypermedia();
+    }
+
+	[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+	[if (anAnnotationStack.hasGuestMode(jRCManager.parentName) = false)]
+	/* This function performs the decoding of the authentication header */
+    public void decodeAuthorizationHeader()
+    {
+    	//check if this request has basic authentication
+    	if( !authHeader.contains("Basic "))
+    	{
+    		throw new WebApplicationException(Response.Status.BAD_REQUEST);
+    	}
+    	
+        authHeader = authHeader.substring("Basic ".length());
+        String['['/][']'/] decodedHeader;
+        decodedHeader = Base64.base64Decode(authHeader).split(":");
+        
+        if( decodedHeader == null)
+        {
+        	throw new WebApplicationException(Response.Status.BAD_REQUEST);
+        }
+        
+        oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/].set[anAnnotationStack.getUsernameToken().name/](decodedHeader['['/]0[']'/]);
+        oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/].set[anAnnotationStack.getPasswordToken().name/](decodedHeader['['/]1[']'/]);
+    }
+	[/if]
+	[/if]
+
+    /* This function produces hypermedia links to be sent to the client so as it will be able to forward the application state in a valid way.*/
+    public [jRCManager.hasAssociatedRMManager.name/] createHypermedia(){
+        [jRCManager.hasAssociatedRMManager.name/] o[jRCManager.hasAssociatedRMManager.name/] = new [jRCManager.hasAssociatedRMManager.name/]();
+
+	[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+		[if (anAnnotationStack.hasAuthenticationOnlyMode(jRCManager.parentName))]
+			[if (anAnnotationStack.bHasAuthorizationLayer and anAnnotationStack.isParentAuhtorizableResource(jRCManager))]
+		[anAnnotationStack.createHypermediaABACChecks(httpVerb, jRCManager)/]
+			[else]
+		[anAnnotationStack.createHypermediaNoChecks(httpVerb, jRCManager)/]
+			[/if]
+		[else]
+			[if (anAnnotationStack.bHasAuthorizationLayer and anAnnotationStack.isParentAuhtorizableResource(jRCManager))]
+		if (this.bIsClientAuthenticated == true){ //if the user is authenticated apply ABAC checks
+		[anAnnotationStack.createHypermediaABACChecks(httpVerb, jRCManager)/]
+		}
+		else{ //otherwise apply first Basic Authentication checks and then ABAC
+		[anAnnotationStack.createHypermediaBasicAuthThenABACChecks(httpVerb, jRCManager)/]
+		}
+			[else]
+		if (this.bIsClientAuthenticated == true){ //if the user is authenticated provide all the hypermedia links
+		[anAnnotationStack.createHypermediaNoChecks(httpVerb, jRCManager)/]
+		}
+		else{ //otherwise provide only hypermedia links accessible by guests
+		[anAnnotationStack.createHypermediaBasicAuthChecks(httpVerb, jRCManager)/]
+		}
+			[/if]
+		[/if]
+	[else]
+		[anAnnotationStack.createHypermediaNoChecks(httpVerb, jRCManager)/]
+	[/if]
+
+
+        return o[jRCManager.hasAssociatedRMManager.name/];
+    }
+}
+[/file]
+[/template]
+
+[template public createHypermediaNoChecks(anAnnotationStack : AnnotationStack, httpVerb : HTTPVerb, jRCManager : JavaResourceControllerManager)]
+        /* Create hypermedia links towards this specific [jRCManager.parentName/] resource. These must be GET and POST as it is prescribed in the meta-models.*/
+        o[jRCManager.hasAssociatedRMManager.name/].getlinklist().add(new HypermediaLink(String.format("%s%s", oApplicationUri.getBaseUri(), this.strResourcePath), "Get all [jRCManager.parentName/]s", "GET", "Sibling"));
+        o[jRCManager.hasAssociatedRMManager.name/].getlinklist().add(new HypermediaLink(String.format("%s%s", oApplicationUri.getBaseUri(), this.strResourcePath), "Create a new [jRCManager.parentName/]", "POST", "Sibling"));
+
+        /* Then calculate the relative path to any related resource of this one and add for each one a hypermedia link to the Linklist.*/
+        String oRelativePath;
+        oRelativePath = this.strResourcePath;
+        Iterator<[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/]> setIterator = this.SetOf[jRCManager.parentName/]Model.iterator();
+        while(setIterator.hasNext()){
+            [jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/] oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/] = new [jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/]();
+            oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/] = setIterator.next();
+            o[jRCManager.hasAssociatedRMManager.name/].getlinklist().add(new HypermediaLink(String.format("%s%s/%d", oApplicationUri.getBaseUri(), oRelativePath, oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.parentName/]Id()), String.valueOf(oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.JavaRModelHasProperty->select(property : PSMComponentProperty | property.bIsNamingProperty = true)->at(1).name/]()), "GET", "Child", oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.parentName/]Id()));
+        }
+
+[/template]
+
+[template public createHypermediaBasicAuthChecks(anAnnotationStack : AnnotationStack, httpVerb : HTTPVerb, jRCManager : JavaResourceControllerManager)]
+        /* Create hypermedia links towards this specific [jRCManager.parentName/] resource. These must be GET and POST as it is prescribed in the meta-models.*/
+        o[jRCManager.hasAssociatedRMManager.name/].getlinklist().add(new HypermediaLink(String.format("%s%s", oApplicationUri.getBaseUri(), this.strResourcePath), "Get all [jRCManager.parentName/]s", "GET", "Sibling"));
+			[if (anAnnotationStack.hasAuthenticationOnlyModeCRUDVerbActivity(jRCManager.parentName, 'Post') = false)]
+        o[jRCManager.hasAssociatedRMManager.name/].getlinklist().add(new HypermediaLink(String.format("%s%s", oApplicationUri.getBaseUri(), this.strResourcePath), "Create a new [jRCManager.parentName/]", "POST", "Sibling"));
+			[/if]
+        /* Then calculate the relative path to any related resource of this one and add for each one a hypermedia link to the Linklist.*/
+        String oRelativePath;
+        oRelativePath = this.strResourcePath;
+        Iterator<[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/]> setIterator = this.SetOf[jRCManager.parentName/]Model.iterator();
+        while(setIterator.hasNext()){
+            [jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/] oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/] = new [jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/]();
+            oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/] = setIterator.next();
+            o[jRCManager.hasAssociatedRMManager.name/].getlinklist().add(new HypermediaLink(String.format("%s%s/%d", oApplicationUri.getBaseUri(), oRelativePath, oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.parentName/]Id()), String.valueOf(oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.JavaRModelHasProperty->select(property : PSMComponentProperty | property.bIsNamingProperty = true)->at(1).name/]()), "GET", "Child", oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.parentName/]Id()));
+        }
+
+[/template]
+
+[template public createHypermediaABACChecks(anAnnotationStack : AnnotationStack, httpVerb : HTTPVerb, jRCManager : JavaResourceControllerManager)]
+        /* Create hypermedia links towards this specific [jRCManager.parentName/] resource. These must be GET and POST as it is prescribed in the meta-models.*/
+        o[jRCManager.hasAssociatedRMManager.name/].getlinklist().add(new HypermediaLink(String.format("%s%s", oApplicationUri.getBaseUri(), this.strResourcePath), "Get all [jRCManager.parentName/]s", "GET", "Sibling"));
+        if (pdp.getPermission(oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/], "[jRCManager.parentName/]", null, null, Action.POST).equals(AuthorizationResultCode.PERMIT)){
+	        o[jRCManager.hasAssociatedRMManager.name/].getlinklist().add(new HypermediaLink(String.format("%s%s", oApplicationUri.getBaseUri(), this.strResourcePath), "Create a new [jRCManager.parentName/]", "POST", "Sibling"));
+		}
+
+        /* Then calculate the relative path to any related resource of this one and add for each one a hypermedia link to the Linklist.*/
+        String oRelativePath;
+        oRelativePath = this.strResourcePath;
+        Iterator<[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/]> setIterator = this.SetOf[jRCManager.parentName/]Model.iterator();
+        while(setIterator.hasNext()){
+            [jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/] oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/] = new [jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/]();
+            oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/] = setIterator.next();
+        	if (pdp.getPermission(oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/], "[jRCManager.hasAssociatedRMManager.parentName/]", Integer.toString(oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.parentName/]Id()), null, Action.GET).equals(AuthorizationResultCode.PERMIT)){
+	            o[jRCManager.hasAssociatedRMManager.name/].getlinklist().add(new HypermediaLink(String.format("%s%s/%d", oApplicationUri.getBaseUri(), oRelativePath, oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.parentName/]Id()), String.valueOf(oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.JavaRModelHasProperty->select(property : PSMComponentProperty | property.bIsNamingProperty = true)->at(1).name/]()), "GET", "Child", oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.parentName/]Id()));
+			}
+        }
+
+[/template]
+
+[template public createHypermediaBasicAuthThenABACChecks(anAnnotationStack : AnnotationStack, httpVerb : HTTPVerb, jRCManager : JavaResourceControllerManager)]
+        /* Create hypermedia links towards this specific [jRCManager.parentName/] resource. These must be GET and POST as it is prescribed in the meta-models.*/
+        o[jRCManager.hasAssociatedRMManager.name/].getlinklist().add(new HypermediaLink(String.format("%s%s", oApplicationUri.getBaseUri(), this.strResourcePath), "Get all [jRCManager.parentName/]s", "GET", "Sibling"));
+			[if (anAnnotationStack.hasAuthenticationOnlyModeCRUDVerbActivity(jRCManager.parentName, 'Post') = false)]
+        if (pdp.getPermission("[jRCManager.hasAssociatedRMManager.parentName/]", null, null, Action.POST).equals(AuthorizationResultCode.PERMIT)){
+	        o[jRCManager.hasAssociatedRMManager.name/].getlinklist().add(new HypermediaLink(String.format("%s%s", oApplicationUri.getBaseUri(), this.strResourcePath), "Create a new [jRCManager.parentName/]", "POST", "Sibling"));
+		}
+			[/if]
+		[if (anAnnotationStack.hasAuthenticationOnlyModeCRUDVerbActivity(jRCManager.parentName, 'Get') = false)]
+        /* Then calculate the relative path to any related resource of this one and add for each one a hypermedia link to the Linklist.*/
+        String oRelativePath;
+        oRelativePath = this.strResourcePath;
+        Iterator<[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/]> setIterator = this.SetOf[jRCManager.parentName/]Model.iterator();
+        while(setIterator.hasNext()){
+            [jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/] oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/] = new [jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/]();
+            oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/] = setIterator.next();
+        	if (pdp.getPermission("[jRCManager.hasAssociatedRMManager.parentName/]", Integer.toString(oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.parentName/]Id()), null, Action.GET).equals(AuthorizationResultCode.PERMIT)){
+	            o[jRCManager.hasAssociatedRMManager.name/].getlinklist().add(new HypermediaLink(String.format("%s%s/%d", oApplicationUri.getBaseUri(), oRelativePath, oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.parentName/]Id()), String.valueOf(oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.JavaRModelHasProperty->select(property : PSMComponentProperty | property.bIsNamingProperty = true)->at(1).name/]()), "GET", "Child", oNext[jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel.name/].get[jRCManager.parentName/]Id()));
+			}
+        }
+		[/if]
+
+[/template]
+
+
+[query private hasBothModeAuthentication(anAnnotationStack : AnnotationStack, resourceName : String) : Boolean =
+	getAuthenticationLayerBothModeAnnotations(anAnnotationStack)->exists(bothModeAnnotation | bothModeAnnotation.HTTPActivityHandlerHasAuthenticationMode->exists(annHTTPActivityHandler | annHTTPActivityHandler.annotatesHTTPActivityHandler.name = 'Get' + resourceName + 'Handler'))
+/]
+
+[query private getAuthenticationLayerBothModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(BothMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(BothMode))->asSequence()
+/]
+
+[query private hasAuthenticationOnlyMode(anAnnotationStack : AnnotationStack, resourceName : String) : Boolean =
+	getAuthenticationLayerAuthenticationOnlyModeAnnotations(anAnnotationStack)->exists(authenticationOnlyMode | authenticationOnlyMode.HTTPActivityHandlerHasAuthenticationMode->exists(annHTTPActivityHandler | annHTTPActivityHandler.annotatesHTTPActivityHandler.name = 'Get' + resourceName + 'Handler'))
+/]
+
+[query private hasAuthenticationOnlyModeCRUDVerbActivity(anAnnotationStack : AnnotationStack, resourceName : String, httpVerb : String) : Boolean =
+	getAuthenticationLayerAuthenticationOnlyModeAnnotations(anAnnotationStack)->exists(authenticationOnlyMode | authenticationOnlyMode.HTTPActivityHandlerHasAuthenticationMode->exists(annHTTPActivityHandler | annHTTPActivityHandler.annotatesHTTPActivityHandler.name = httpVerb + resourceName + 'Handler'))
+/]
+
+[query private getAuthenticationLayerAuthenticationOnlyModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(AuthenticationOnlyMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(AuthenticationOnlyMode))->asSequence()
+/]
+
+[query private hasGuestMode(anAnnotationStack : AnnotationStack, resourceName : String) : Boolean =
+	getAuthenticationLayerGuestModeAnnotations(anAnnotationStack)->exists(guestMode | guestMode.HTTPActivityHandlerHasAuthenticationMode->exists(annHTTPActivityHandler | annHTTPActivityHandler.annotatesHTTPActivityHandler.name = 'Get' + resourceName + 'Handler'))
+/]
+
+[query private getAuthenticationLayerGuestModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(GuestMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(GuestMode))->asSequence()
+/]
+
+[query private getAuthenticationPerformer(anAnnotationStack : AnnotationStack) : AuthenticationPerformer =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(AuthenticationPerformer))->at(1)
+/]
+
+[query private getPasswordToken(anAnnotationStack : AnnotationStack) : Password =
+	anAnnotationStack.getAuthenticationPerformer().hasAuthenticationToken->select(authenticationToken | authenticationToken.oclIsTypeOf(Password))->at(1)
+/]
+
+[query private getUsernameToken(anAnnotationStack : AnnotationStack) : AuthenticationToken =
+	anAnnotationStack.getAuthenticationPerformer().hasAuthenticationToken->select(authenticationToken | authenticationToken.oclIsTypeOf(Password) = false)->at(1)
+/]
+
+[query private isParentAuhtorizableResource(anAnnotationStack : AnnotationStack, jRCManager : JavaResourceControllerManager) : Boolean =
+	anAnnotationStack.hasAuthorizationLayer.hasAnnotation->selectByType(AuthorizableResource)->select(authResource | not authResource.isAuthorizableResourceModel.oclIsUndefined())->one(authResource | authResource.isAuthorizableResourceModel.annotatesJavaResourceModel = jRCManager.hasAssociatedRMManager.hasRelatedJavaRModel)
+/]

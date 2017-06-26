@@ -1,0 +1,68 @@
+[comment encoding = UTF-8 /]
+[**
+ * Copyright 2012 jccastrejon
+ * 
+ * This file is part of Model2Roo.
+ * Model2Roo is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ * 
+ * Model2Roo is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Model2Roo.  If not, see <http://www.gnu.org/licenses/>.
+ */]
+[module RelationalDataModel('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import fr::imag::model2roo::common::Common/]
+
+[**
+ * Generate the finders infrastructure, based on a relational model.
+ * @param aPackage UML2 package.
+*/]
+[template public generateRelationalFinders(aPackage : Package) post(trim())]
+  web mvc finder all
+[/template]
+
+[**
+ * Generate the appropriate setup for relational data models.
+ * @param aPackage UML2 package.
+*/]
+[template public generateRelationalSetup(aPackage : Package) post(trim())]
+  jpa setup ['persistenceProvider'.getPropertyValue('--provider ', 'rooCommand::RooModelCommand', aPackage)/] ['persistenceDatabase'.getPropertyValue('--database ', 'rooCommand::RooModelCommand', aPackage)/]
+[/template]
+
+[**
+ * Generate the appropriate commands for a relational representation of the given class.
+ * @param aClass UML2 Class.
+*/]
+[template public generateRelationalEntity(aClass : Class) post(trim())]
+  entity jpa --class ~.domain.[aClass.name/] [if aClass.isAbstract] --abstract true [/if] [aClass.generateExtends()/] [aClass.getRooDetails()/]
+[/template]
+
+[**
+ * Generate the properties of the classes contained in the specified package.
+ * @param aPackage UML package.
+ */]
+[template public generateRelationalEntitiesProperties(aPackage : Package) post(trim())]
+[for (anElement: Element | aPackage.ownedElement)]
+  [if anElement.oclIsTypeOf(Class)]
+    [let aClass : Class = anElement.oclAsType(Class)]
+      [aClass.generateEntityProperties(aClass)/]
+    [/let]
+  [/if]
+[/for]
+[/template]
+
+[**
+ * Generates the required Spring Roo commands to express Class generalization. 
+ * @param class UML2 class.
+ */]
+[template public generateExtends(class : Class)]
+[for (parent : Class | class.superClass)]
+--extends ~.domain.[parent.name/] [/for]
+[/template]

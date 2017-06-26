@@ -1,0 +1,183 @@
+[comment encoding = UTF-8 /]
+[comment]
+/*****************************************************************************
+ * Copyright (c) 2013 INTEMPORA S.A.
+ *
+ * This software is a computer program whose purpose is to transform RobotML models
+ * into RTMaps diagrams and RTMaps components via source code generation techniques.
+ * 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *  Nicolas DU LAC (INTEMPORA) - Initial API and implementation
+ *
+ *****************************************************************************/
+[/comment]
+
+[module generate_rtmaps_macrocomponent_rtmc('http://www.eclipse.org/uml2/3.0.0/UML', 'http://Papyrus/RobotML/1')]
+
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::GeneralQueries /]
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::ArchitectureQueries /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::RTMapsDataTypeQueries /]
+
+[template public generateRTMapsMacroComponentPackage(root_model : Model)]
+	[for (elt: NamedElement | getComponentModels(root_model))]
+		[let c : Class = elt.oclAsType(Class)]
+			[if (isMacroComponent(c))]
+				[file (c.name + '.rtmc', false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<MacroPackage xmlns="http://schemas.intempora.com/RTMaps/2011/RTMapsFiles" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="4.1" xsi:schemaLocation="http://schemas.intempora.com/RTMaps/2011/RTMapsFiles http://www.intempora.com/schemas/RTMaps/2011/RTMapsDiagram.xsd http://schemas.intempora.com/RTMaps/2011/RTMapsFiles http://www.intempora.com/schemas/RTMaps/2011/RTMapsDiagram_RTBoardView.xsd">
+    <RequiredPackages>
+	    <File><!['['/]CDATA['['/]/dummy/absolute/path/for/rtmaps_[root_model.name/].pck[']'/][']'/]>
+	      <Relative><!['['/]CDATA['['/]%RTMAPS_DIAGRAMDIR%/user_sdk/[getPckOutputDir('dummy')/]rtmaps_[root_model.name/].pck[']'/][']'/]></Relative>
+	    </File>
+    </RequiredPackages>
+    <RequiredMacroPackages>
+	[for (prop: Property | getLevel1SubComponentsForComponent(c))]
+		[if (prop.type.oclAsType(Class).hasRTMapsNativeImplementation() = true)]
+		<File><!['['/]CDATA['['/][prop.type.oclAsType(Class).getRTMapsNativeLibraryPathFromGenericAttribute()/][']'/][']'/]>
+	      <Relative><!['['/]CDATA['['/][prop.type.oclAsType(Class).getRTMapsNativeLibraryPathFromGenericAttribute()/][']'/][']'/]></Relative>
+	    </File>
+		[elseif (isMacroComponent(prop.type.oclAsType(Class)))]
+		<File><!['['/]CDATA['['/]/dummy/absolute/path/for/[prop.type.name/].rtmc[']'/][']'/]>
+	      <Relative><!['['/]CDATA['['/]%RTMAPS_DIAGRAMDIR%/[prop.type.name/].rtmc[']'/][']'/]></Relative>
+	    </File>
+		[else]
+			[comment]BOOOOOOOO: [prop.type.oclAsType(Class).name/][/comment]
+		[/if]
+	[/for]
+	</RequiredMacroPackages>
+		  <MacroComponentModel Model="macro_[c.name/]" Version="">
+		    <MacroComponentDefinitions/>
+			[for (prop: Property | getLevel1SubComponentsForComponent(c))]
+				[if (prop.type.oclAsType(Class).hasRTMapsNativeImplementation() = true)]
+					[comment]Do nothing: it will be instanciated as a native macro-component.[/comment]
+				[elseif (isMacroComponent(prop.type.oclAsType(Class)) = false)]
+		    	<Component InstanceName="[prop.name/]" Model="[prop.type.name/]" x="[i * 50 + 50/]" y="[i * 50 + 50/]" z="0">
+				  [comment]
+			      <Input LongName="RGB2YUV_7.input" Name="input">
+			        <Property LongName="RGB2YUV_7.input.readerType" Type="1">0</Property>
+			        <Property LongName="RGB2YUV_7.input.subsampling" Type="1">1</Property>
+			      </Input>
+				  [/comment]
+				  [for (p : Port | getOutputPortsForElement(prop.type.oclAsType(Element)))]
+					[let buffsize : Integer = getOutputPortBufferSize(p)]
+					[if (buffsize > 0)]
+				      <Output LongName="[prop.name/].[p.name/]" Name="[p.name/]">
+				        <Property LongName="[prop.name/].[p.name/].fifosize" Type="1">[buffsize/]</Property>
+				        <Property LongName="[prop.name/].[p.name/].periodic" Type="0">false</Property>
+				        <Property LongName="[prop.name/].[p.name/].subsampling" Type="1">1</Property>
+				      </Output>
+					[/if]
+					[/let]
+				  [/for]
+			      [comment]
+			      <Output LongName="RGB2YUV_7.output" Name="output">
+			        <Property LongName="RGB2YUV_7.output.fifosize" Type="1">16</Property>
+			        <Property LongName="RGB2YUV_7.output.periodic" Type="0">false</Property>
+			        <Property LongName="RGB2YUV_7.output.subsampling" Type="1">1</Property>
+			      </Output>
+			      <Property LongName="RGB2YUV_7.planar" Type="0">false</Property>
+				  [/comment]
+		    	</Component>
+				[/if]
+			[/for]
+			[for (prop: Property | getLevel1SubComponentsForComponent(c))]
+				[if (prop.type.oclAsType(Class).hasRTMapsNativeImplementation() = true)]
+			    <MacroComponent InstanceName="[prop.name/]" Model="[prop.type.oclAsType(Class).getRTMapsNativeComponentNameFromGenericAttribute()/]" x="[i * 50 + 50/]" y="[i * 50 + 150/]" z="0">
+			      [comment]
+				  <InputPropertyOverload LongName="stream_in.readerType" Type="1">0</InputPropertyOverload>
+			      <OutputPropertyOverload LongName="position.fifosize" Type="1">16</OutputPropertyOverload>
+				  [/comment]
+				  [for (p : Port | getOutputPortsForElement(prop.type.oclAsType(Element)))]
+					[let buffsize : Integer = getOutputPortBufferSize(p)]
+					[if (buffsize > 0)]
+				      <OutputPropertyOverload LongName="[p.name/].fifosize" Type="1">[buffsize/]</OutputPropertyOverload>
+					[/if]
+					[/let]
+				  [/for]
+			    </MacroComponent>					
+				[elseif (isMacroComponent(prop.type.oclAsType(Class)))]
+			    <MacroComponent InstanceName="[prop.name/]" Model="macro_[prop.type.name/]" x="[i * 50 + 50/]" y="[i * 50 + 150/]" z="0">
+			      [comment]
+				  <InputPropertyOverload LongName="stream_in.readerType" Type="1">0</InputPropertyOverload>
+			      <OutputPropertyOverload LongName="position.fifosize" Type="1">16</OutputPropertyOverload>
+				  [/comment]
+				  [for (p : Port | getOutputPortsForElement(prop.type.oclAsType(Element)))]
+					[let buffsize : Integer = getOutputPortBufferSize(p)]
+					[if (buffsize > 0)]
+				      <OutputPropertyOverload LongName="[p.name/].fifosize" Type="1">[buffsize/]</OutputPropertyOverload>
+					[/if]
+					[/let]
+				  [/for]
+			    </MacroComponent>
+				[/if]
+			[/for]
+			[for (conn : Connector | getInternalConnectors(c))]
+			[let dst_comp : Property = getDestComponentForConnector(conn)]
+			[let src_comp : Property = getSourceComponentForConnector(conn)]
+			<Connection Input="[dst_comp.name/].[getDestPortName(conn)/]" Output="[src_comp.name/].[getSourcePortName(conn)/]"/>
+		    [comment]<Connection Input="GPS_NMEA0183_3.iStream8" Output="SerialPort_2.streamOutput"/>[/comment]
+			[/let]
+			[/let]
+			[/for]
+			[for (conn : Connector | getExternalInputConnectors(c))]
+			[let dst_comp : Property = getDestComponentForConnector(conn)]
+		    <Input Name="[getSourcePortName(conn)/]" Target="[dst_comp.name/].[getDestPortName(conn)/]"/>
+			[/let]
+		    [comment]<Input Name="stream_in" Target="SerialPort_2.streamInput"/>[/comment]
+			[/for]
+			[for (conn : Connector | getExternalOutputConnectors(c))]
+			[let src_comp : Property = getSourceComponentForConnector(conn)]
+		    <Output Name="[getDestPortName(conn)/]" Target="[src_comp.name/].[getSourcePortName(conn)/]"/>
+			[/let]
+			[comment] <Output Name="position" Target="GPS_machin.oPosition"/>[/comment]
+			[/for]
+		[comment]
+		[/comment]
+			[comment]
+		    <Connection Input="GPS_NMEA0183_3.iStream8" Output="SerialPort_2.streamOutput"/>
+		    <Input Name="stream_in" Target="SerialPort_2.streamInput"/>
+		    <Output Name="position" Target="GPS_NMEA0183_3.oPosition"/>
+			[/comment]
+		    <RTBoardView ID="JavaStudio1.0">
+		      <Description/>
+				[for (prop: Property | getLevel1SubComponentsForComponent(c))]
+			      <ComponentBox InstanceName="[prop.name/]" reversed="false">
+			        <Description/>
+					[comment]
+			        <InputInfos Name="stream_in">
+			          <Description/>
+			        </InputInfos>
+			        <OutputInfos Name="position">
+			          <Description/>
+			        </OutputInfos>
+			        <OutputInfos Name="utc_time">
+			          <Description/>
+			        </OutputInfos>
+					[/comment]
+			      </ComponentBox>
+				[/for]
+					[let elt : Element = c.oclAsType(Element)]
+					[for (port : Port | getInputPortsForElement(elt))]
+		      	<InputBox InstanceName="[port.name/]" reversed="false" x="50" y="[100 + i*50/]" z="-1">
+		        <Description/>
+		      	</InputBox>
+				  	[/for]
+					[for (port : Port | getOutputPortsForElement(elt))]
+			      <OutputBox InstanceName="[port.name/]" reversed="false" x="600" y="[100 + i*50/]" z="-1">
+			        <Description/>
+			      </OutputBox>
+					[/for]
+					[/let]
+		    </RTBoardView>
+	  </MacroComponentModel>
+</MacroPackage>
+				[/file]
+			[/if]
+		[/let]
+	[/for]
+[/template]

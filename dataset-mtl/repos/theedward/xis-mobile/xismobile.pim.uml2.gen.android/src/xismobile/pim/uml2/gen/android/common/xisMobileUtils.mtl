@@ -1,0 +1,1023 @@
+[comment encoding = UTF-8 /]
+[module xisMobileUtils('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+
+[**
+ * Domain View queries
+ */]
+
+[query public needsDbHelper(cl : Sequence(Class)) : Boolean =
+	cl->size() > 0 and cl->exists(c : Class | c.isPersistent())
+/]
+
+[query public needsEntityManager(cl : Sequence(Class)) : Boolean =
+	cl->size() > 0 and cl->exists(c : Class | not c.isPersistent())
+/]
+
+[query public getXisEntity(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisEntity')
+/]
+
+[query public isXisEntity(c : Class) : Boolean =
+	not c.getXisEntity().oclIsUndefined()
+/]
+
+[query public getXisEntityByName(m : Model, entityName : String) : OrderedSet(Class) =
+	m.allOwnedElements()->selectByType(Class)->select(
+		c : Class | c.isXisEntity() and c.name = entityName)
+/]
+
+[query public getXisEntityAssociation(a : Association) : Stereotype =
+	a.getAppliedStereotype('XIS-Mobile::XisEntityAssociation')
+/]
+
+[query public isXisEntityAssociation(a : Association) : Boolean =
+	not a.getXisEntityAssociation().oclIsUndefined()
+/]
+
+[query public isPersistent(el : Element) : Boolean =
+	el.getTaggedValue('XIS-Mobile::XisEntity', 'persistent') = true
+/]
+
+[query public hasXisEntityAttributes(c : Class) : Boolean = 
+	c.ownedAttribute->size() > 0 and c.getXisEntityAttributes()->size() > 0
+/]
+
+[query public getXisEntityAttributes(c : Class) : Set(Property) =
+	c.ownedAttribute->select(p : Property | p.isXisEntityAttribute())
+	->sortedBy(p : Property | p.eContainer().eContents()->indexOf(p))
+/]
+
+[query public getXisEntityAttribute(p : Property) : Stereotype =
+	p.getAppliedStereotype('XIS-Mobile::XisEntityAttribute')
+/]
+
+[query public isXisEntityAttribute(p : Property) : Boolean =
+	not p.getXisEntityAttribute().oclIsUndefined()
+/]
+
+[query public getXisEntityAttributeName(p : Property) : String =
+	p.name
+/]
+
+[query public getXisEntityAttributeValue(p : Property) : String =
+	p.getTaggedValue('XIS-Mobile::XisEntityAttribute', 'value')
+/]
+
+[query public getXisEntityAttributeType(p : Property) : String =
+	let type : OclAny = p.getTaggedValue('XIS-Mobile::XisEntityAttribute', 'type') in
+	if type.oclIsUndefined()
+	then p.type.name
+	else type.oclAsType(EnumerationLiteral).name
+	endif
+/]
+
+[query public isNullable(p : Property) : Boolean =
+	p.getTaggedValue('XIS-Mobile::XisEntityAttribute', 'nullable') = true
+/]
+
+[query public isKey(p : Property) : Boolean =
+	p.getTaggedValue('XIS-Mobile::XisEntityAttribute', 'isKey') = true
+/]
+
+[query public getAllXisEntities(m : Model) : OrderedSet(Class) =
+	m.allOwnedElements()->selectByType(Class)->select(
+		c : Class | c.isXisEntity())
+/]
+
+[query public getXisEntityAssociations(c : Class) : Set(Association) = 
+	c.getAssociations()->select(a : Association | a.isXisEntityAssociation())
+/]
+
+[**
+ * BusinessEntity View queries 
+ */]
+[query public getXisBusinessEntity(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisBusinessEntity')
+/]
+
+[query public isXisBusinessEntity(c : Class) : Boolean = 
+	not c.getXisBusinessEntity().oclIsUndefined()
+/]
+
+[query public getAllBusinessEntities(m : Model) : OrderedSet(Class) =
+	m.allOwnedElements()->selectByType(Class)->select(
+		c : Class | c.isXisBusinessEntity())
+/]
+
+[**
+ * InteractionSpace View Queries  
+ */]
+
+[query public getXisInteractionSpace(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisInteractionSpace')
+/]
+
+[query public isXisInteractionSpace(c : Class) : Boolean =
+	not c.getXisInteractionSpace().oclIsUndefined()
+/]
+
+[query public getAllXisInteractionSpaces(m : Model) : OrderedSet(Class) =
+	m.allOwnedElements()->selectByType(Class)->select(
+		c : Class | c.isXisInteractionSpace())
+/]
+
+[query public getXisInteractionSpaceAssociation(a : Association) : Stereotype = 
+	a.getAppliedStereotype('XIS-Mobile::XisInteractionSpaceAssociation')
+/]
+
+[query public isXisInteractionSpaceAssociation(a : Association) : Boolean = 
+	not a.getXisInteractionSpaceAssociation().oclIsUndefined()
+/]
+
+[query public isMainScreen (el : Element) : Boolean =
+	el.getTaggedValue('XIS-Mobile::XisInteractionSpace', 'isMainScreen') = true
+/]
+
+[query public hasTitle (c : Class) : Boolean =
+	not c.getValue(c.getXisInteractionSpace(), 'title').oclIsUndefined()
+/]
+
+[query public getTitle (c : Class) : String =
+	c.getValue(c.getXisInteractionSpace(), 'title')
+/]
+
+[query public getXisCompositeWidget(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisCompositeWidget')
+/]
+
+[query public isXisCompositeWidget(c : Class) : Boolean =
+	not c.getXisCompositeWidget().oclIsUndefined()
+/]
+
+[query public getXisDialog(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisDialog')
+/]
+
+[query public isXisDialog(c : Class) : Boolean =
+	not c.getXisDialog().oclIsUndefined()
+/]
+
+[query public getXisDialogTitle (c : Class) : String =
+	c.getValue(c.getXisDialog(), 'title')
+/]
+
+[query public xisDialogHasTitle (c : Class) : Boolean =
+	not c.getXisDialogTitle().oclIsUndefined()
+/]
+
+[query public getXisDialogMessage (c : Class) : String =
+	c.getValue(c.getXisDialog(), 'message')
+/]
+
+[query public xisDialogHasMessage (c : Class) : Boolean =
+	not c.getXisDialogMessage().oclIsUndefined()
+/]
+
+[query public getXisDialogIcon (c : Class) : String =
+	c.getValue(c.getXisDialog(), 'icon')
+/]
+
+[query public xisDialogHasIcon (c : Class) : Boolean =
+	not c.getXisDialogIcon().oclIsUndefined()
+/]
+
+[query public getXisDialogButtons(c : Class) : OrderedSet(Class) =
+	c.allOwnedElements()->selectByType(Class)->
+		select(b : Class | b.isXisButton())
+/]
+
+[query public xisDialogHasButtons(c : Class) : Boolean =
+	c.getXisDialogButtons()->size() > 0
+/]
+
+[query public getXisIS_DialogAssociation(a : Association) : Stereotype =
+	a.getAppliedStereotype('XIS-Mobile::XisIS-DialogAssociation')
+/]
+
+[query public isXisIS_DialogAssociation(a : Association) : Boolean =
+	not a.getXisIS_DialogAssociation().oclIsUndefined()
+/]
+
+[query public getXisMenu(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisMenu')
+/]
+
+[query public isXisMenu(c : Class) : Boolean =
+	not c.getXisMenu().oclIsUndefined()
+/]
+
+[query public isOptionsMenu(c : Class) : Boolean =
+	c.getEnumValue(c.getValue(
+		c.getXisMenu(), 'type')
+	) = 'OptionsMenu'
+/]
+
+[query public isContextMenu(c : Class) : Boolean =
+	c.getEnumValue(c.getValue(
+		c.getXisMenu(), 'type')
+	) = 'ContextMenu'
+/]
+
+[query public getXisIS_MenuAssociation(a : Association) : Stereotype =
+	a.getAppliedStereotype('XIS-Mobile::XisIS-MenuAssociation')
+/]
+
+[query public isXisIS_MenuAssociation(a : Association) : Boolean =
+	not a.getXisIS_MenuAssociation().oclIsUndefined()
+/]
+
+[query public getXisMenuGroup(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisMenuGroup')
+/]
+
+[query public isXisMenuGroup(c : Class) : Boolean =
+	not c.getXisMenuGroup().oclIsUndefined()
+/]
+
+[query public getXisMenuItem(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisMenuItem')
+/]
+
+[query public isXisMenuItem(c : Class) : Boolean =
+	not c.getXisMenuItem().oclIsUndefined()
+/]
+
+[query public menuPerformsCrudOperations(c : Class) : Boolean =
+	let items : OrderedSet(Class) = c.getXisMenuItems() in
+	if items->oclIsUndefined()
+	then false
+	else items->select(i : Class | i.hasXisAction() and
+		(let op : Operation = i.getXisAction() in op.isCreateAction() or op.isReadAction()
+		or op.isUpdateAction() or op.isDeleteteAction() or op.isOKAction()))->size() > 0
+	endif
+/]
+
+[query public getXisList(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisList')
+/]
+
+[query public isXisList(c : Class) : Boolean =
+	not c.getXisList().oclIsUndefined()
+/]
+
+[query public getXisLists(c : Class) : Set(Class) =
+	c.allOwnedElements()->selectByType(Class)->select(c : Class | c.isXisList())
+/]
+
+[query public xisListIsSearchable(c : Class) : Boolean = 
+	not c.getValue(c.getXisList(), 'searchBy').oclIsUndefined()
+/]
+
+[query public getXisListGroup(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisListGroup')
+/]
+
+[query public isXisListGroup(c : Class) : Boolean =
+	not c.getXisListGroup().oclIsUndefined()
+/]
+
+[query public getXisListItem(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisListItem')
+/]
+
+[query public isXisListItem(c : Class) : Boolean =
+	not c.getXisListItem().oclIsUndefined()
+/]
+
+[query public itemIsSelectable(c : Class) : Boolean =
+	c.getValue(c.getXisListItem(), 'selectable')
+/]
+
+[query public getXisListGroups(c : Class) : OrderedSet(Class) = 
+	c.ownedElement->selectByType(Class)->select(
+		i : Class | i.isXisListGroup())
+/]
+
+[query public getXisListItems(c : Class) : OrderedSet(Class) = 
+	c.ownedElement->selectByType(Class)->select(
+		i : Class | i.isXisListItem())
+/]
+
+[query public getXisVisibilityBoundary(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisVisibilityBoundary')
+/]
+
+[query public isXisVisibilityBoundary(c : Class) : Boolean =
+	not c.getXisVisibilityBoundary().oclIsUndefined()
+/]
+
+[query public getXisVisibilityBoundaryCreate(c : Class) : Boolean =
+	c.getValue(c.getXisVisibilityBoundary(), 'Create')
+/]
+
+[query public getXisVisibilityBoundaryView(c : Class) : Boolean =
+	c.getValue(c.getXisVisibilityBoundary(), 'View')
+/]
+
+[query public getXisVisibilityBoundaryEdit(c : Class) : Boolean =
+	c.getValue(c.getXisVisibilityBoundary(), 'Edit')
+/]
+
+[query public getXisForm(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisForm')
+/]
+
+[query public isXisForm(c : Class) : Boolean =
+	not c.getXisForm().oclIsUndefined()
+/]
+
+[query public isTab(c : Class) : Boolean =
+	getEnumValue(c.getValue(
+		c.getXisCompositeWidget(), 'type')
+	) = 'Tab'
+/]
+
+[query public getChildren(c : Class) : OrderedSet(Class) = 
+	c.ownedElement->selectByType(Class)
+/]
+
+[query public isXisAction(o : Operation) : Boolean =
+	not o.getXisAction().oclIsUndefined()
+/]
+
+[query public hasXisAction(c : Class) : Boolean =
+	c.ownedOperation->select(o : Operation | o.isXisAction() = true)->size() > 0
+/]
+
+[query public getXisAction(o : Operation) : Stereotype =
+	o.getAppliedStereotype('XIS-Mobile::XisAction')
+/]
+
+[query public getXisAction(c : Class) : Operation =
+	c.ownedOperation->select(o : Operation | o.isXisAction())->at(1)
+/]
+
+[query public getXisActionByName(m : Model, name : String) : Operation =
+	m.allOwnedElements()->selectByType(Operation)->select(
+		o : Operation | o.isXisAction() and o.name = name)
+/]
+
+[query public getXisActionByName(c : Class, name : String) : Operation =
+	let op : OrderedSet(Operation) = c.ownedOperation->select(
+		o : Operation | o.isXisAction() and o.name = name) in
+	if op->size() = 1
+	then op->at(1)
+	else null
+	endif
+/]
+
+[query public performsNavigation(o : Operation) : Boolean = 
+	not o.getValue(o.getXisAction(), 'navigation').oclIsUndefined()
+/]
+
+[query public getNavigation(o : Operation) : String = 
+	o.getValue(o.getXisAction(), 'navigation')
+/]
+
+[query public isOKAction(o : Operation) : Boolean = 
+	getEnumValue(o.getValue(
+		o.getXisAction(), 'type')
+	) = 'OK'
+/]
+
+[query public isCancelAction(o : Operation) : Boolean = 
+	getEnumValue(o.getValue(
+		o.getXisAction(), 'type')
+	) = 'Cancel'
+/]
+
+[query public isCreateAction(o : Operation) : Boolean = 
+	getEnumValue(o.getValue(
+		o.getXisAction(), 'type')
+	) = 'Create'
+/]
+
+[query public isReadAction(o : Operation) : Boolean = 
+	getEnumValue(o.getValue(
+		o.getXisAction(), 'type')
+	) = 'Read'
+/]
+
+[query public isUpdateAction(o : Operation) : Boolean = 
+	getEnumValue(o.getValue(
+		o.getXisAction(), 'type')
+	) = 'Update'
+/]
+
+[query public isDeleteteAction(o : Operation) : Boolean = 
+	getEnumValue(o.getValue(
+		o.getXisAction(), 'type')
+	) = 'Delete'
+/]
+
+[query public isDeleteteAllAction(o : Operation) : Boolean = 
+	getEnumValue(o.getValue(
+		o.getXisAction(), 'type')
+	) = 'DeleteAll'
+/]
+
+[query public isCrudAction(o : Operation) : Boolean =
+	o.isCreateAction() or o.isReadAction() or o.isUpdateAction() 
+	or o.isDeleteteAction() or o.isDeleteteAllAction()
+/]
+
+[query public isOpenBrowserAction(o : Operation) : Boolean = 
+	getEnumValue(o.getValue(
+		o.getXisAction(), 'type')
+	) = 'OpenBrowser'
+/]
+
+[query public getOpenBrowserActionUrl(o : Operation) : String =
+	if o.ownedParameter->size() = 1 and o.ownedParameter.name.toLower() = 'url'
+	then o.ownedParameter.default
+	else null
+	endif
+/]
+
+[query public isWebServiceAction(o : Operation) : Boolean = 
+	getEnumValue(o.getValue(
+		o.getXisAction(), 'type')
+	) = 'WebService'
+/]
+
+[query public isNavigateAction(o : Operation) : Boolean = 
+	getEnumValue(o.getValue(
+		o.getXisAction(), 'type')
+	) = 'Navigate'
+/]
+
+[query public isCustomAction(o : Operation) : Boolean = 
+	getEnumValue(o.getValue(
+		o.getXisAction(), 'type')
+	) = 'Custom'
+/]
+
+[query public getAllCustomActions(c : Class) : Set(Operation) = 
+	let ops : Collection(Operation) = c.allOwnedElements()->selectByType(Operation) in
+	ops->select(o : Operation | o.isCustomAction())
+/]
+
+[query public getAllWebServiceActions(c : Class) : Set(Operation) = 
+	let ops : Collection(Operation) = c.allOwnedElements()->selectByType(Operation) in
+	ops->select(o : Operation | o.isWebServiceAction())
+/]
+
+[query public getWSActionURL(o : Operation) : String = 
+	o.getXisArgumentValueByName('url', 'value')
+/]
+
+[query public getInParameters(o : Operation) : OrderedSet(Parameter) =
+	o.ownedParameter->select(p : Parameter | p.direction.toString() = 'in')
+/]
+
+[query public getXisArgument(p : Parameter) : Stereotype = 
+	p.getAppliedStereotype('XIS-Mobile::XisArgument')
+/]
+
+[query public isXisArgument(p : Parameter) : Boolean = 
+	not p.getXisArgument().oclIsUndefined()
+/]
+
+[query public getXisArguments(o : Operation) : OrderedSet(Parameter) =
+	o.ownedParameter->select(p : Parameter | p.isXisArgument())
+/]
+
+[query public getXisArgumentValue(p : Parameter, key : String) : String = 
+	p.getValue(p.getXisArgument(), key)
+/]
+
+[query public XisArgumentExists(o : Operation, name : String, key : String) : Boolean =
+	not o.getXisArgumentValueByName(name, key).oclIsUndefined()
+/]
+
+[query public getXisArgumentValueByName(o : Operation, name : String) : String =
+	let par : Sequence(Parameter) = o.ownedParameter->select(
+		p : Parameter | p.isXisArgument() and p.name = name)->asSequence() in
+	if not par->oclIsUndefined() and par->size() = 1
+	then par->at(1).default
+	else null
+	endif
+/]
+
+[query public getXisArgumentValueByName(o : Operation, name : String, key : String) : String = 
+	let par : Sequence(Parameter) = o.ownedParameter->select(
+		p : Parameter | p.isXisArgument() and p.name = name)->asSequence() in
+	if not par->oclIsUndefined() and par->size() = 1
+	then par->at(1).getXisArgumentValue(key)
+	else null
+	endif
+/]
+
+[query public getXisArgumentName(p : Parameter) : String = 
+	let n : String = p.getXisArgumentValue('name') in
+	if n.oclIsUndefined()
+	then p.name.toLowerFirst()
+	else n.toLowerFirst()
+	endif
+/]
+
+[query public getXisArgumentType(p : Parameter) : String = 
+	let type : String = p.getXisArgumentValue('type') in
+	if type.oclIsUndefined()
+	then p.type.name
+	else type
+	endif
+/]
+
+[query public widgetsHaveGestures(c : Class) : Boolean = 
+	let widgets : Collection(Class) = c.getChildren()->select(
+		w : Class | not w.isXisCompositeWidget() and w.getAssociations()->size() > 0) in
+	if widgets->size() > 0
+	then widgets.getAssociations().endType->selectByType(Class)->select(
+			g : Class | g.isXisGesture())->size() > 0
+	else false
+	endif
+/]
+
+[query public getWidgetsWithGestures(c : Class) : OrderedSet(Class) = 
+	let widgets : Collection(Class) = c.getChildren()->select(
+		w : Class | not w.isXisCompositeWidget() and w.getAssociations()->size() > 0
+			and w.getAssociations().endType->selectByType(Class).isXisGesture()->size() > 0) in
+	if widgets->size() > 0
+	then widgets
+	else OrderedSet(Class){}
+	endif
+/]
+
+[query public getWidgetGestures(c : Class) : OrderedSet(Class) = 
+	let gestures : Collection(Class) = c.getAssociations().endType->selectByType(Class)
+		->select(g : Class | g.isXisGesture()) in
+	if gestures->size() > 0
+	then gestures
+	else OrderedSet(Class){}
+	endif
+/]
+
+[query public getDefaultOnTapGesture(c : Class, s : Stereotype) : Operation = 
+	let op : OclAny = c.getValue(s, 'onTap') in
+	if op.oclIsUndefined()
+	then null
+	else c.getXisActionByName(op.oclAsType(String))
+	endif
+/]
+
+[query public isTapGesture(c : Class) : Boolean = 
+	getEnumValue(c.getValue(c.getXisGesture(), 'type')) = 'Tap'
+/]
+
+[query public isDoubleTapGesture(c : Class) : Boolean = 
+	getEnumValue(c.getValue(c.getXisGesture(), 'type')) = 'DoubleTap'
+/]
+
+[query public isLongTapGesture(c : Class) : Boolean = 
+	getEnumValue(c.getValue(c.getXisGesture(), 'type')) = 'LongTap'
+/]
+
+[query public isSwipeGesture(c : Class) : Boolean = 
+	getEnumValue(c.getValue(c.getXisGesture(), 'type')) = 'Swipe'
+/]
+
+[query public isStretchGesture(c : Class) : Boolean = 
+	getEnumValue(c.getValue(c.getXisGesture(), 'type')) = 'Stretch'
+/]
+
+[query public isPinchGesture(c : Class) : Boolean = 
+	getEnumValue(c.getValue(c.getXisGesture(), 'type')) = 'Pinch'
+/]
+
+[query public getXisMenuItems(c : Class) : OrderedSet(Class) = 
+	c.allOwnedElements()->selectByType(Class)->select(
+		i : Class | i.isXisMenuItem())
+/]
+
+[query public getXisWidget(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisWidget')
+/]
+
+[query public getXisWidgetValue(c : Class, s : Stereotype) : String =
+	c.getValue(s, 'value')
+/]
+
+[query public getXisWidgetValueFromExpression(c : Class, s : Stereotype) : String =
+	c.getValue(s, 'valueFromExpression')
+/]
+
+[query public getXisLabel(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisLabel')
+/]
+
+[query public isXisLabel(c : Class) : Boolean =
+	not c.getXisLabel().oclIsUndefined()
+/]
+
+[query public getXisTextBox(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisTextBox')
+/]
+
+[query public isXisTextBox(c : Class) : Boolean =
+	not c.getXisTextBox().oclIsUndefined()
+/]
+
+[query public getXisTexBoxLines(c : Class) : Integer =
+	c.getValue(c.getXisTextBox(), 'lines')
+/]
+
+[query public xisTextBoxHasHint(c : Class) : Boolean =
+	not c.getValue(c.getXisTextBox(), 'hint').oclIsUndefined()
+/]
+
+[query public getXisTexBoxHint(c : Class) : String =
+	c.getValue(c.getXisTextBox(), 'hint')
+/]
+
+[query public getXisCheckBox(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisCheckBox')
+/]
+
+[query public isXisCheckBox(c : Class) : Boolean =
+	not c.getXisCheckBox().oclIsUndefined()
+/]
+
+[query public getCheckBoxLabel(c : Class) : String =
+	c.getValue(c.getXisCheckBox(), 'label')
+/]
+
+[query public getXisButton(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisButton')
+/]
+
+[query public isXisButton(c : Class) : Boolean =
+	not c.getXisButton().oclIsUndefined()
+/]
+
+[query public getXisLink(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisLink')
+/]
+
+[query public isXisLink(c : Class) : Boolean =
+	not c.getXisLink().oclIsUndefined()
+/]
+
+[query public getXisLinkURL(c : Class) : String = 
+	c.getValue(c.getXisLink(), 'url')
+/]
+
+[query public isXisImage(c : Class) : Boolean =
+	not c.getAppliedStereotype('XIS-Mobile::XisImage').oclIsUndefined()
+/]
+
+[query public getXisImage(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisImage')
+/]
+
+[query public getXisImagePath(c : Class) : String = 
+	c.getValue(c.getXisImage(), 'path')
+/]
+
+[query public getXisDatePicker(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisDatePicker')
+/]
+
+[query public isXisDatePicker(c : Class) : Boolean =
+	not c.getXisDatePicker().oclIsUndefined()
+/]
+
+[query public getXisTimePicker(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisTimePicker')
+/]
+
+[query public isXisTimePicker(c : Class) : Boolean =
+	not c.getXisTimePicker().oclIsUndefined()
+/]
+
+[query public hasDatePicker(cl : Set(Class)) : Boolean = 
+	cl->select(c : Class | c.isXisDatePicker())->size() > 0
+/]
+
+[query public hasTimePicker(cl : Set(Class)) : Boolean = 
+	cl->select(c : Class | c.isXisTimePicker())->size() > 0
+/]
+
+[query public getXisWebView(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisWebView')
+/]
+
+[query public isXisWebView(c : Class) : Boolean =
+	not c.getXisWebView().oclIsUndefined()
+/]
+
+[query public getXisMapView(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisMapView')
+/]
+
+[query public isXisMapView(c : Class) : Boolean =
+	not c.getXisMapView().oclIsUndefined()
+/]
+
+[query public mapHasCenter(c : Class) : Boolean =
+	not c.getMapLatitute().oclIsUndefined() and not c.getMapLongitude().oclIsUndefined()
+/]
+
+[query public getMapLatitute(c : Class) : Real =
+	c.getValue(c.getXisMapView(), 'latitude')
+/]
+
+[query public getMapLongitude(c : Class) : Real =
+	c.getValue(c.getXisMapView(), 'longitude')
+/]
+
+[query public mapHasZoom(c : Class) : Boolean =
+	not c.getMapZoom().oclIsUndefined()
+/]
+
+[query public getMapZoom(c : Class) : Integer =
+	c.getValue(c.getXisMapView(), 'zoom')
+/]
+
+[query public getXisMarker(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisMarker')
+/]
+
+[query public isXisMarker(c : Class) : Boolean =
+	not c.getXisMarker().oclIsUndefined()
+/]
+
+[query public markerHasTitle(c : Class) : Boolean =
+	not c.getMarkerTitle().oclIsUndefined()
+/]
+
+[query public getMarkerTitle(c : Class) : String =
+	c.getValue(c.getXisMarker(), 'title')
+/]
+
+[query public markerHasDescription(c : Class) : Boolean =
+	not c.getMarkerDescription().oclIsUndefined()
+/]
+
+[query public getMarkerDescription(c : Class) : String =
+	c.getValue(c.getXisMarker(), 'description')
+/]
+
+[query public markerHasLatitude(c : Class) : Boolean =
+	not c.getMarkerLatitude().oclIsUndefined()
+/]
+
+[query public getMarkerLatitude(c : Class) : Real =
+	c.getValue(c.getXisMarker(), 'latitude')
+/]
+
+[query public markerHasLongitude(c : Class) : Boolean =
+	not c.getMarkerLongitude().oclIsUndefined()
+/]
+
+[query public getMarkerLongitude(c : Class) : Real =
+	c.getValue(c.getXisMarker(), 'longitude')
+/]
+
+[query public markerHasIcon(c : Class) : Boolean =
+	not c.getMarkerIcon().oclIsUndefined()
+/]
+
+[query public getMarkerIcon(c : Class) : String =
+	c.getValue(c.getXisMarker(), 'icon')
+/]
+
+[query public markerHasOnTap(c : Class) : Boolean =
+	not c.getMarkerOnTap().oclIsUndefined()
+/]
+
+[query public getMarkerOnTap(c : Class) : String =
+	c.getValue(c.getXisMarker(), 'onTap')
+/]
+
+[query public getMapMarkers(c : Class) : OrderedSet(Class) =
+	c.ownedElement->selectByType(Class)->
+		select(m : Class | m.isXisMarker())
+/]
+
+[query public mapHasMarkers(c : Class) : Boolean =
+	c.getMapMarkers()->size() > 0
+/]
+
+[query public hasMapViews(m : Model) : Boolean = 
+	m.allOwnedElements()->selectByType(Class)->
+		select(c : Class | c.isXisMapView())->size() > 0
+/]
+
+[query public getXisDropdown(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisDropdown')
+/]
+
+[query public isXisDropdown(c : Class) : Boolean =
+	not c.getXisDropdown().oclIsUndefined()
+/]
+
+[query public getXisRadioButton(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisRadioButton')
+/]
+
+[query public isXisRadioButton(c : Class) : Boolean =
+	not c.getXisRadioButton().oclIsUndefined()
+/]
+
+[query public getXisSimpleWidgetEntityAttributeName(c : Class, s : Stereotype) : String =
+	c.getValue(s, 'entityAttributeName')
+/]
+
+[query public getXisCompositeWidgetEntityName(c : Class, s : Stereotype) : String =
+	c.getValue(s, 'entityName')
+/]
+
+[query public getXisGesture(c : Class) : Stereotype =
+	c.getAppliedStereotype('XIS-Mobile::XisGesture')
+/]
+
+[query public isXisGesture(c : Class) : Boolean = 
+	not c.getXisGesture().oclIsUndefined()
+/]
+
+[query public getXisProvider(c : Class) : Stereotype = 
+	c.getAppliedStereotype('XIS-Mobile::XisProvider')
+/]
+
+[query public isXisProvider(c : Class) : Boolean = 
+	not c.getXisProvider().oclIsUndefined()
+/]
+
+[query public getXisInternalProvider(c : Class) : Stereotype = 
+	c.getAppliedStereotype('XIS-Mobile::XisInternalProvider')
+/]
+
+[query public isXisInternalProvider(c : Class) : Boolean = 
+	not c.getXisInternalProvider().oclIsUndefined()
+/]
+
+[query public isXisLocationProvider(c : Class) : Boolean = 
+	not c.getXisInternalProvider().oclIsUndefined() and
+	c.getEnumValue(c.getValue(
+		c.getXisInternalProvider(), 'type')
+	) = 'Location'
+/]
+
+[query public getAllXisLocationProviders(m : Model) : OrderedSet(Class) =
+	m.allOwnedElements()->selectByType(Class)->select(p : Class | p.isXisLocationProvider())
+/]
+
+[query public isXisContactsProvider(c : Class) : Boolean = 
+	not c.getXisInternalProvider().oclIsUndefined() and
+	c.getEnumValue(c.getValue(
+		c.getXisInternalProvider(), 'type')
+	) = 'Contacts'
+/]
+
+[query public getAllXisContactsProviders(m : Model) : OrderedSet(Class) =
+	m.allOwnedElements()->selectByType(Class)->select(p : Class | p.isXisContactsProvider())
+/]
+
+[query public isXisCalendarProvider(c : Class) : Boolean = 
+	not c.getXisInternalProvider().oclIsUndefined() and
+	c.getEnumValue(c.getValue(
+		c.getXisInternalProvider(), 'type')
+	) = 'Calendar'
+/]
+
+[query public getAllXisCalendarProviders(m : Model) : OrderedSet(Class) =
+	m.allOwnedElements()->selectByType(Class)->select(p : Class | p.isXisCalendarProvider())
+/]
+
+[query public isXisMediaProvider(c : Class) : Boolean = 
+	not c.getXisInternalProvider().oclIsUndefined() and
+	c.getEnumValue(c.getValue(
+		c.getXisInternalProvider(), 'type')
+	) = 'Media'
+/]
+
+[query public getAllXisMediaProviders(m : Model) : OrderedSet(Class) =
+	m.allOwnedElements()->selectByType(Class)->select(p : Class | p.isXisMediaProvider())
+/]
+
+[query public isXisCustomProvider(c : Class) : Boolean = 
+	not c.getXisInternalProvider().oclIsUndefined() and
+	c.getEnumValue(c.getValue(
+		c.getXisInternalProvider(), 'type')
+	) = 'Custom'
+/]
+
+[query public getAllXisCustomProviders(m : Model) : OrderedSet(Class) =
+	m.allOwnedElements()->selectByType(Class)->select(p : Class | p.isXisCustomProvider())
+/]
+
+[query public getXisService(i : Interface) : Stereotype = 
+	i.getAppliedStereotype('XIS-Mobile::XisService')
+/]
+
+[query public isXisService(i : Interface) : Boolean = 
+	not i.getXisService().oclIsUndefined()
+/]
+
+[query public getXisInternalService(i : Interface) : Stereotype = 
+	i.getAppliedStereotype('XIS-Mobile::XisInternalService')
+/]
+
+[query public isXisInternalService(i : Interface) : Boolean = 
+	not i.getXisInternalService().oclIsUndefined()
+/]
+
+[query public getXisRemoteService(i : Interface) : Stereotype = 
+	i.getAppliedStereotype('XIS-Mobile::XisRemoteService')
+/]
+
+[query public isXisRemoteService(i : Interface) : Boolean = 
+	not i.getXisRemoteService().oclIsUndefined()
+/]
+
+[query public getAllXisRemoteServices(m : Model) : OrderedSet(Interface) =
+	m.allOwnedElements()->selectByType(Interface)->select(s : Interface | s.isXisRemoteService())
+/]
+
+[query public getRemoteServiceUrl(i : Interface) : String =
+	i.getRelationships()->selectByType(InterfaceRealization)
+		.source.oclAsType(Class).getXisServerAddress()
+	+ '/' + i.name
+/]
+
+[query public getXisServer(c : Class) : Stereotype = 
+	c.getAppliedStereotype('XIS-Mobile::XisServer')
+/]
+
+[query public isXisServer(c : Class) : Boolean = 
+	not c.getXisServer().oclIsUndefined()
+/]
+
+[query public getXisServerAddress(c : Class) : String =
+	c.getValue(c.getXisServer(), 'address')
+/]
+
+[query public getXisServiceMethods(i: Interface) : OrderedSet(Operation) = 
+	i.ownedOperation->select(o : Operation | o.isXisServiceMethod())
+/]
+
+[query public getXisServiceMethod(o : Operation) : Stereotype =
+	o.getAppliedStereotype('XIS-Mobile::XisServiceMethod')
+/]
+
+[query public isXisServiceMethod(o : Operation) : Boolean =
+	not o.getXisServiceMethod().oclIsUndefined()
+/]
+
+[**
+ * Checks if the application needs Internet to work properly.
+ * Searches for WebService actions, MapView or WebView widgets. 
+ */]
+[query public needsInternetPermission(m : Model) : Boolean = 
+	let cls : Collection(Class) = m.allOwnedElements()->selectByType(Class),
+	acts : Collection(Operation) = m.allOwnedElements()->selectByType(Operation)  in
+	cls->select(c : Class | c.isXisMapView() or c.isXisWebView())->size() > 0 or
+	acts->select(o : Operation | o.isXisAction() and o.isWebServiceAction())->size() > 0
+/]
+
+[query public needsLocationPermissions(m : Model) : Boolean = 
+	m.allOwnedElements()->selectByType(Class)->select(
+		c : Class | c.isXisLocationProvider())->size() > 0
+/]
+
+[query public needsContactsPermissions(m : Model) : Boolean = 
+	m.allOwnedElements()->selectByType(Class)->select(
+		c : Class | c.isXisContactsProvider())->size() > 0
+/]
+
+[query public needsCalendarPermissions(m : Model) : Boolean = 
+	m.allOwnedElements()->selectByType(Class)->select(
+		c : Class | c.isXisCalendarProvider())->size() > 0
+/]
+
+[query public getEnumValue(el : OclAny) : OclAny =
+	let eValue : EnumerationLiteral = el.oclAsType(EnumerationLiteral) in
+	if not eValue.oclIsUndefined() then
+		eValue.name
+	else 
+		null
+	endif
+/]
+
+[query public getTaggedValue(stereotypedElement : Element, stereotypeName : String, propertyName : String) : OclAny =
+	let stereotype : Stereotype = stereotypedElement.getAppliedStereotype(stereotypeName) in
+	if not stereotype.oclIsUndefined() then
+		stereotypedElement.getValue(stereotype, propertyName)
+	else 
+		null
+	endif
+/]
+
+[**
+ * Templates Area
+ */]
+
+[template public writeTODO(a : OclAny)]
+// TODO: To be implemented...
+[/template]
+
+[template public getWidgetsBoundtoEntity(intSpace : Class, entName : String)]
+[entName.toLowerFirst()/].set
+[/template]

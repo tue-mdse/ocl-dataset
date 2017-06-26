@@ -1,0 +1,134 @@
+[
+  {
+    "name": "Session",
+    "expressions": [
+      {
+        "operations": {
+          "computeRelative": 1,
+          "excludes": 2,
+          "or": 1,
+          "allInstances": 1,
+          "includes": 2,
+          "flatten": 2,
+          "contains": 1,
+          "oclIsTypeOf": 1,
+          "and": 1,
+          "oclAsSet": 1,
+          "asSet": 2,
+          "notEmpty": 1,
+          "=": 1
+        },
+        "name": "relativeLocationRoleEnablingPL2",
+        "body": "\nlet r1 : Role = Role.allInstances()\n->select(r : Role | r.idRole = 'agencyAdmin')->any(true) , \nspatialContext : Set(SpatialContext) = r1.roleContextEnabling->select(c|c.oclIsTypeOf(SpatialContext)),\nloc : Set(Location) = spatialContext.location\n       ->select(l | l.relativelocation->notEmpty())->flatten()->asSet() , \n       relativeLoc : Set(Location) = loc->collect(l | l.computeRelative(l.relativelocation))->flatten()->asSet()\nin if relativeLoc\n\t->exists(l | self.user.userLocation.location\n\t\t->exists(pos | l.contains(pos)))\nthen self.enabledRoles\n\t->includes(r1) or self.activeRoles\n\t->includes(r1)\nelse self.enabledRoles\n\t->excludes(r1) and self.activeRoles\n\t->excludes(r1)\nendif\n\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 8,
+          "VariableExpImpl": 21,
+          "OperationCallExpImpl": 17,
+          "LetExpImpl": 4,
+          "TypeExpImpl": 2,
+          "StringLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 12,
+          "BooleanLiteralExpImpl": 1
+        },
+        "properties": [
+          "gemRBAC::Session::enabledRoles",
+          "gemRBAC::Session::user",
+          "gemRBAC::SpatialContext::location",
+          "gemRBAC::Location::relativelocation",
+          "gemRBAC::Role::roleContextEnabling",
+          "gemRBAC::User::userLocation",
+          "gemRBAC::Role::idRole",
+          "gemRBAC::Session::activeRoles"
+        ]
+      },
+      {
+        "operations": {
+          "computeRelative": 1,
+          "or": 1,
+          "excludes": 2,
+          "allInstances": 1,
+          "includes": 2,
+          "flatten": 2,
+          "contains": 1,
+          "oclIsTypeOf": 1,
+          "and": 1,
+          "oclAsSet": 1,
+          "asSet": 2,
+          "notEmpty": 1,
+          "=": 1
+        },
+        "name": "relativeLocationRoleEnabling",
+        "body": "\n\nlet r1 : Role = Role.allInstances()\n->select(r : Role | r.idRole = 'missionAdmin')->any(true) , \nspatialContext : Set(SpatialContext) = r1.roleContextEnabling->select(c|c.oclIsTypeOf(SpatialContext)),\nloc : Set(Location) = spatialContext.location\n       ->select(l | l.relativelocation->notEmpty())->flatten()->asSet() , \n       relativeLoc : Set(Location) = loc->collect(l | l.computeRelative(l.relativelocation))->flatten()->asSet()\nin if relativeLoc\n\t->exists(l | self.user.userLocation.location\n\t\t->exists(pos | l.contains(pos)))\nthen self.enabledRoles\n\t->includes(r1) or self.activeRoles\n\t->includes(r1)\nelse self.enabledRoles\n\t->excludes(r1) and self.activeRoles\n\t->excludes(r1)\nendif\n\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 8,
+          "OperationCallExpImpl": 17,
+          "VariableExpImpl": 21,
+          "LetExpImpl": 4,
+          "TypeExpImpl": 2,
+          "StringLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 12,
+          "BooleanLiteralExpImpl": 1
+        },
+        "properties": [
+          "gemRBAC::Session::enabledRoles",
+          "gemRBAC::Session::user",
+          "gemRBAC::SpatialContext::location",
+          "gemRBAC::Location::relativelocation",
+          "gemRBAC::Role::roleContextEnabling",
+          "gemRBAC::User::userLocation",
+          "gemRBAC::Role::idRole",
+          "gemRBAC::Session::activeRoles"
+        ]
+      }
+    ],
+    "properties": []
+  },
+  {
+    "name": "Permission",
+    "expressions": [{
+      "operations": {
+        "excludes": 1,
+        "allInstances": 2,
+        "includes": 1,
+        "oclAsType": 2,
+        "flatten": 1,
+        "oclIsTypeOf": 2,
+        "and": 1,
+        "isContained": 1,
+        "oclAsSet": 1,
+        "getCurrentTime": 1,
+        "notEmpty": 1,
+        "asSet": 1,
+        "=": 3
+      },
+      "name": "AbsoluteBTIPermAssign",
+      "body": "\n   if  self.idPermission = 'noBandWithLimit' then\n   let u : RBACUtility = RBACUtility.allInstances()-> any(true) , \n    r : Role = Role.allInstances() ->select(r : Role | r.idRole = 'missionMember')-> any(true) , \n    temporalContext: Set(TemporalContext) = self.permissionContextAssignment-> select(c|c.oclIsTypeOf(TemporalContext)), \n    timeE : Set(AbsoluteTE) = temporalContext.timeexpression.absolute ->flatten()->asSet() , \n    timeI : Set(AbsoluteTE) = timeE ->select(e | e.oclIsTypeOf(TimeInterval) and e.oclAsType(TimeInterval).end ->notEmpty())\n    in  \n\n    if timeI.oclAsType(TimeInterval)\n\t       ->exists(i : TimeInterval | u.getCurrentTime().isContained(i) = true)\n        then self.roles->includes(r)\n        else self.roles ->excludes(r)\n    endif\n   else\n   true\n   endif\n",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "IteratorExpImpl": 9,
+        "OperationCallExpImpl": 18,
+        "VariableExpImpl": 18,
+        "LetExpImpl": 5,
+        "TypeExpImpl": 6,
+        "StringLiteralExpImpl": 2,
+        "IfExpImpl": 2,
+        "BooleanLiteralExpImpl": 4,
+        "PropertyCallExpImpl": 8
+      },
+      "properties": [
+        "gemRBAC::TimeExpression::absolute",
+        "gemRBAC::TemporalContext::timeexpression",
+        "gemRBAC::Permission::permissionContextAssignment",
+        "gemRBAC::Permission::idPermission",
+        "gemRBAC::TimeInterval::end",
+        "gemRBAC::Role::idRole",
+        "gemRBAC::Permission::roles"
+      ]
+    }],
+    "properties": []
+  }
+]

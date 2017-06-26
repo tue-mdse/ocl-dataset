@@ -1,0 +1,33 @@
+[comment encoding = UTF-8 /]
+[module entities('http://www.obeonetwork.org/dsl/entity/2.0.0', 'http://www.obeonetwork.org/dsl/environment/2.0.0')]
+
+[import com::github::lbroudoux::acceleo::soa::contracts::common::common /]
+[import com::github::lbroudoux::acceleo::soa::contracts::common::types /]
+
+
+[template public genXsdElement(anOclAny : OclAny) post (trim())]
+[if (anOclAny.oclIsKindOf(Attribute))]
+[let att : Attribute = anOclAny.oclAsType(Attribute)]
+[if ((att.multiplicity = MultiplicityKind::ZERO_ONE) or (att.multiplicity = MultiplicityKind::ONE))]
+<xs:element name="[att.name/]" type="[genXsdTypeName(att.type, 'xs')/]" [att.multiplicity.genMultiplicity()/]>
+  [att.genXsdObjectDocumentation('xs')/]
+</xs:element>
+[else]
+<xs:element name="[att.name/]s">
+  [att.genXsdObjectDocumentation('xs')/]
+  [att.genWrappingXsdComplexType()/]
+</xs:element>
+[/if]
+[/let]
+[/if]
+[/template]
+
+[template private genWrappingXsdComplexType(att : Attribute) post (trim())]
+<xs:complexType>
+  <xs:sequence>
+    <xs:element name="[att.name/]" type="[genXsdTypeName(att.type, 'xs')/]" [att.multiplicity.genMultiplicity()/]/>
+  </xs:sequence>
+</xs:complexType>
+[/template]
+
+

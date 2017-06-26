@@ -1,0 +1,232 @@
+[comment]
+  Copyright 2015
+[/comment]
+[module gameRender('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import common/]
+
+[template public generateClassGameRender(c : Class)]
+[c.packageBlock()/]
+
+[_commentBodyBlock()/]
+
+import java.awt.AlphaComposite;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
+import java.awt.image.BufferStrategy;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.swing.JFrame;
+
+import model.Cenario;
+import model.Elemento;
+import model.ImageManager;
+import controller.GameController;
+
+public class GameRenderer extends JFrame {
+	private static final long serialVersionUID = 1L;
+
+	private BufferStrategy bufferStrategy;
+	private BufferedImage tela;
+	private Graphics2D g, g2d;
+
+	private HashMap<String, ArrayList<Elemento>> elementos;
+	private HashMap<String, Cenario> cenarios;
+
+	public GameRenderer(Elemento elemento,
+			HashMap<String, ArrayList<Elemento>> elementos,
+			HashMap<String, Cenario> cenarios) {
+		this.setTitle("SPL de Jogos Digitais");
+		this.setSize(GameController.width, GameController.height);
+		this.setLocationRelativeTo(null);
+		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		this.setUndecorated(true);
+		this.setIgnoreRepaint(true);
+		this.setVisible(true);
+		this.createBufferStrategy(2);
+		this.setPreferredSize(new Dimension(GameController.width,
+				GameController.height));
+		this.setFocusable(true);
+		this.requestFocus();
+
+		this.elementos = elementos;
+		this.cenarios = cenarios;
+
+		bufferStrategy = this.getBufferStrategy();
+
+		g2d = (Graphics2D) bufferStrategy.getDrawGraphics();
+		g2d.setColor(Color.BLACK);
+		g2d.fillRect(0, 0, GameController.width, GameController.height);
+		g2d.dispose();
+		bufferStrategy.show();
+	}
+
+	public void init() {
+		try {
+			for (Cenario cenario : cenarios.values()) {
+				desenhaCamadas(cenario);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Desenha as camadas que compõe o cenário
+	 * 
+	 * @return void
+	 * @throws IOException
+	 */
+
+	private void desenhaCamadas(Cenario cenario) throws IOException {
+		for (Map.Entry<String, int['[][]'/]> entry : cenario.getCamadas().entrySet()) {
+			BufferedImage layer = new BufferedImage(
+					(int) cenario.getPos().width,
+					(int) cenario.getPos().height,
+					BufferedImage.TYPE_4BYTE_ABGR);
+			for (int i = 0; i < cenario.getHeight(); i++) {
+				for (int j = 0; j < cenario.getWidth(); j++) {
+					int tile = (entry.getValue()['[i][j]'/] != 0) ? (entry
+							.getValue()['[i][j]'/] - 1) : 0;
+					int tileRow = (tile / 8) | 0;
+					int tileCol = (tile % 8) | 0;
+					layer.getGraphics().drawImage(
+							ImageManager.getInstance().loadImage(
+									cenario.getSource()),
+							(j * cenario.getTileWidth()),
+							(i * cenario.getTileHeight()),
+							(j * cenario.getTileWidth())
+									+ cenario.getTileWidth(),
+							(i * cenario.getTileHeight())
+									+ cenario.getTileHeight(),
+							(tileCol * cenario.getTileWidth()),
+							(tileRow * cenario.getTileHeight()),
+							(tileCol * cenario.getTileWidth())
+									+ cenario.getTileWidth(),
+							(tileRow * cenario.getTileHeight())
+									+ cenario.getTileHeight(), null);
+				}
+			}
+			cenario.getLayers().put(entry.getKey(), layer);
+		}
+	}
+
+	public void paint() {
+		try {
+			g = (Graphics2D) tela.getGraphics();
+
+			renderInferior(g);
+			renderElementos(g);
+			renderSuperior(g);
+
+			g2d = (Graphics2D) bufferStrategy.getDrawGraphics();
+			g2d.drawImage(
+					tela,
+					(int) cenarios.get(GameController.currentCenario).getPos().x,
+					(int) cenarios.get(GameController.currentCenario).getPos().y,
+					null);
+			g2d.setColor(Color.WHITE);
+			g2d.setComposite(AlphaComposite.SrcOver
+					.derive(GameController.alpha));
+			g2d.fillRect(0, 0, 800, 600);
+			g2d.dispose();
+			bufferStrategy.show();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void currentCenario() {
+		tela = new BufferedImage((int) cenarios.get(
+				GameController.currentCenario).getPos().width, (int) cenarios
+				.get(GameController.currentCenario).getPos().height,
+				BufferedImage.TYPE_4BYTE_ABGR);
+	}
+
+	protected void renderElementos(Graphics2D g) throws IOException {
+		for (Elemento elemento : elementos.get(GameController.currentCenario)) {
+			if (elemento.isVisivel()) {
+				g.drawImage(
+						elemento.getImage(),
+						(int) (elemento.getPos().x),
+						(int) (elemento.getPos().y),
+						(int) (elemento.getPos().x + elemento.getPos().width),
+						(int) (elemento.getPos().y + elemento.getPos().height),
+						(int) ((elemento.getAnimates() % elemento
+								.getNumFrames()) * elemento.getPos().width),
+						(int) (elemento.getDirection() * elemento.getPos().height),
+						(int) (((elemento.getAnimates() % elemento
+								.getNumFrames()) * elemento.getPos().width) + elemento
+								.getPos().width),
+						(int) ((elemento.getDirection() * elemento.getPos().height) + elemento
+								.getPos().height), null);
+			}
+		}
+	}
+
+	/**
+	 * Metodo que desenha uma camada especificada por parametro
+	 * 
+	 * @param g
+	 *            Graphics onde a camada será desenhado
+	 * @param name
+	 *            Nome da camada a ser desenhada
+	 * 
+	 * @return void
+	 */
+	public void render(Graphics2D g, String name) {
+		g.drawImage(cenarios.get(GameController.currentCenario).getLayers()
+				.get(name), 0, 0, null);
+	}
+
+	/**
+	 * Metodo que desenha todas as camadas de uma vez
+	 * 
+	 * @param g
+	 *            Graphics onde todas as camadas seram desenhadas
+	 * 
+	 * @return void
+	 */
+	public void render(Graphics2D g) {
+		for (BufferedImage img : cenarios.get(GameController.currentCenario)
+				.getLayers().values()) {
+			g.drawImage(img, 0, 0, null);
+		}
+	}
+
+	/**
+	 * Metodo que desenha as camadas inferiores
+	 * 
+	 * @param g
+	 *            Graphics onde as camadas bases seram desenhadas
+	 * 
+	 * @return void
+	 */
+	public void renderInferior(Graphics2D g) {
+		for (String string : cenarios.get(GameController.currentCenario)
+				.getLayersInferiores()) {
+			render(g, string);
+		}
+	}
+
+	/**
+	 * Metodo que desenha as camadas superiores
+	 * 
+	 * @param g
+	 *            Graphics onde as camadas da superficie seram desenhadas
+	 * 
+	 * @return void
+	 */
+	public void renderSuperior(Graphics2D g) {
+		for (String string : cenarios.get(GameController.currentCenario)
+				.getLayersSuperiores()) {
+			render(g, string);
+		}
+	}
+
+}
+[/template]

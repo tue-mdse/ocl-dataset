@@ -1,0 +1,59 @@
+[comment encoding = UTF-8 /]
+[module domain('uri:rok/model')/]
+[import rok::generator::service::texttools/]
+[import rok::generator::java::template::common /]
+
+[template public domain_getFilePath(d: Domain) post (clearSpace())]
+java/[d.parentDomains().replaceAll('\\.','/')/]/[d.domainName()/].java
+[/template]
+
+[template public domain_writeFile(d : Domain)]
+[file (d.domain_getFilePath(), false, 'UTF-8')]
+package [d.parentDomains()/];
+
+import java.util.Arrays;
+
+import rok.api.DomainLoader;
+import rok.model.DomainAbstract;
+import rok.model.Domain;
+
+[for (subD : Domain | d.subDomains)]
+import [subD.parentDomains()/].[subD.domainName()/];
+[/for]
+
+public class [d.domainName()/] extends DomainAbstract {
+	public static final [d.domainName()/] [d.domainName().toLowerFirst()/] = new [d.domainName()/]();
+
+	/**
+	 * Constructeur publique utilisé par le chargement IoC (
+	 * {@link java.util.ServiceLoader}) effecté par {@link rok.model.DomainRoot}.
+	 */
+	public [d.domainName()/]() {
+		super(
+			"[d.name/]"  //
+	[for (subD : Domain | d.subDomains)
+		before(', new Domain[] { //\n')
+		separator (', ')
+		after('} //\n')
+	]
+		[subD.domainName()/].[subD.domainName().toLowerFirst()/] //
+	[/for]
+[for (e : MClass | d.resources)]
+	[for (m : MClass | e.getNeatedMClass())]
+		, [m.className_entity()/].m[m.className_entity()/] //
+	[/for]
+[/for]
+				);
+	}
+
+	public static class Loader implements DomainLoader {
+
+		@Override
+		public Domain getInstance() {
+			return [d.domainName().toLowerFirst()/];
+		}
+	}
+}[/file]
+[/template]
+
+[query public getNeatedMClass(c : MClass) : Set(MClass) = c->asSet()->addAll(c.properties->filter(NestedEntityProperty).type.getNeatedMClass()) /]

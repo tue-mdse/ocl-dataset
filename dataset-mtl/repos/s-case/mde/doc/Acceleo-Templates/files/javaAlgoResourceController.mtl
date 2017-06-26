@@ -1,0 +1,149 @@
+[comment encoding = UTF-8 /]
+[module javaAlgoResourceController('file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/AnnotationLayerStack/AnnotationLayerStack.ecore', 'file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/AuthenticationLayer/AuthenticationPSMMetamodel.ecore', 'file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/EMF_ATL_MDE_Engine/CIM_Ecore_metamodel/PSMMetamodel.ecore', 'file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/SearchLayer/SearchLayerPSMMetamodel.ecore')]
+
+
+[template public javaAlgoResourceController(anAnnotationStack : AnnotationStack)]
+
+[for (jAlgoRController : JavaAlgoResourceController | anAnnotationStack.hasCorePSM.hasJavaAlgoController)]
+[file (anAnnotationStack.hasCorePSM.name + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/' + jAlgoRController.parentName + '/' + jAlgoRController.name + '.java', false, 'UTF-8')]
+/*
+ * ARISTOSTLE UNIVERSITY OF THESSALONIKI
+ * Copyright (C) 2015
+ * Aristotle University of Thessaloniki
+ * Department of Electrical & Computer Engineering
+ * Division of Electronics & Computer Engineering
+ * Intelligent Systems & Software Engineering Lab
+ *
+ * Project             : [anAnnotationStack.hasCorePSM.name/]
+ * WorkFile            : 
+ * Compiler            : 
+ * File Description    : 
+ * Document Description: 
+* Related Documents	   : 
+* Note				   : 
+* Programmer		   : RESTful MDE Engine created by Christoforos Zolotas
+* Contact			   : christopherzolotas@issel.ee.auth.gr
+*/
+
+
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[jAlgoRController.parentName/];
+
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.UriInfo;
+[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+import javax.ws.rs.HeaderParam;
+import javax.ws.rs.DefaultValue;
+[/if]
+[if (anAnnotationStack.bHasSearchLayer)]
+[if (jAlgoRController.isSearchResource(anAnnotationStack))]
+import javax.ws.rs.QueryParam; 
+[/if]
+[else]
+//Please add any needed imports here.
+[/if]
+
+[if (anAnnotationStack.bHasSearchLayer)]
+[if (jAlgoRController.isSearchResource(anAnnotationStack))]
+/* [jAlgoRController.name/] class is responsible to handle incoming HTTP requests for the [jAlgoRController.parentName/] resource. More specifically
+this resource controller handles search requests by keyword for the following resources/properties:
+[for (aSearchableResource : SearchableJavaResourceModel | jAlgoRController.getSearchableResources(anAnnotationStack))]
+From resource [aSearchableResource.isSearchableJavaResourceModel.annotatesJavaResourceModel.name/] :
+[for (aSearchableProperty : SearchableProperty | aSearchableResource.hasSearchableProperty)]
+-- [aSearchableProperty.isSearchableProperty.annotatesPSMComponentProperty.name/]
+[/for]
+[/for]
+*/
+[/if]
+[else]
+/* [jAlgoRController.name/] class is responsible to handle incoming http requests for the [jAlgoRController.parentName/] resource. Since this one 
+ is not automatable the developer has to manually define its RESTful API.*/
+[/if]
+[jAlgoRController.AlgoControllerHasJAXRSAnnotation.JAXRSAnnotationText/]
+public class [jAlgoRController.name/]{
+
+    @Context
+    private UriInfo oApplicationUri;
+
+[if (anAnnotationStack.bHasSearchLayer)]
+[if (jAlgoRController.isSearchResource(anAnnotationStack) = false)]
+    //Please add any properties of this controller here.
+[/if]
+[/if]
+[for (httpActivity : HTTPActivity | jAlgoRController.JavaAlgoRControllerHasHTTPActivity->select(activity : HTTPActivity | activity.ActivityHTTPVerb = HTTPVerb::GET or activity.ActivityHTTPVerb = HTTPVerb::POST)) separator('\n')] 
+	/* This function handles http [if (httpActivity.ActivityHTTPVerb = HTTPVerb::POST)] POST [elseif (httpActivity.ActivityHTTPVerb = HTTPVerb::GET)][/if] requests  
+    and returns any response formatted as stated in the @Produces JAX-RS annotation below.*/
+    [for (activityJAXRSAnnotation : JAXRSAnnotation | httpActivity.HTTPActivityHasJAXRSAnnotation)]
+	[activityJAXRSAnnotation.JAXRSAnnotationText/]
+	[/for]
+    public [jAlgoRController.hasAssociatedAlgoModel.name/] [httpActivity.name.toLowerFirst()/]([if (httpActivity.hasBothModeAuthentication(anAnnotationStack))] @DefaultValue("guest") @HeaderParam("authorization") String authHeader[if (jAlgoRController.isSearchResource(anAnnotationStack))], [else] [/if] [elseif (httpActivity.hasAuthenticationOnlyMode(anAnnotationStack))] @HeaderParam("authorization") String authHeader[if (jAlgoRController.isSearchResource(anAnnotationStack))], [else] [/if][/if][if (jAlgoRController.isSearchResource(anAnnotationStack))]@QueryParam("searchKeyword") String searchKeyword, [for (aSearchableResource : SearchableJavaResourceModel | jAlgoRController.getSearchableResources(anAnnotationStack)) separator(', ')][for (aSearchableProperty : SearchableProperty | aSearchableResource.hasSearchableProperty) separator(', ')]@QueryParam("search[aSearchableResource.isSearchableJavaResourceModel.annotatesJavaResourceModel.parentName.toUpperFirst()/][aSearchableProperty.isSearchableProperty.annotatesPSMComponentProperty.name.toUpperFirst()/]") String search[aSearchableResource.isSearchableJavaResourceModel.annotatesJavaResourceModel.parentName.toUpperFirst()/][aSearchableProperty.isSearchableProperty.annotatesPSMComponentProperty.name.toUpperFirst()/][/for][/for][/if]){
+
+		[if (anAnnotationStack.bHasSearchLayer)]
+	    [if (jAlgoRController.isSearchResource(anAnnotationStack))]
+		//create a new [httpActivity.hasHTTPActivityHandler.name/]
+		[httpActivity.hasHTTPActivityHandler.name/] o[httpActivity.hasHTTPActivityHandler.name/] = new [httpActivity.hasHTTPActivityHandler.name/]([if (httpActivity.hasBothModeAuthentication(anAnnotationStack))] authHeader, [elseif (httpActivity.hasAuthenticationOnlyMode(anAnnotationStack))] authHeader, [/if][if (jAlgoRController.isSearchResource(anAnnotationStack))]searchKeyword, [for (aSearchableResource : SearchableJavaResourceModel | jAlgoRController.getSearchableResources(anAnnotationStack)) separator(', ')][for (aSearchableProperty : SearchableProperty | aSearchableResource.hasSearchableProperty) separator(', ')]search[aSearchableResource.isSearchableJavaResourceModel.annotatesJavaResourceModel.parentName.toUpperFirst()/][aSearchableProperty.isSearchableProperty.annotatesPSMComponentProperty.name.toUpperFirst()/][/for][/for], [/if]oApplicationUri);
+		return o[httpActivity.hasHTTPActivityHandler.name/].[httpActivity.name.toLower()/]();
+		[/if]
+		[else]
+        //TODO add any code that uses the according HTTPHandler class in order to satisfy the client request.
+		[/if]
+
+    }
+[/for]
+	[if (anAnnotationStack.bHasSearchLayer)]
+	[if (jAlgoRController.isSearchResource(anAnnotationStack) = false)]
+    //Please add the constructors and any functions of this controller here.
+	[/if]
+	[/if]
+}
+[/file]
+[/for]
+[/template]
+
+
+[query private hasBothModeAuthentication(anHttpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Boolean =
+	getAuthenticationLayerBothModeAnnotations(anAnnotationStack)->exists(bothModeAnnotation | bothModeAnnotation.HTTPActivityHasAuthenticationMode->exists(annHTTPActivity | annHTTPActivity.annotatesHTTPActivity.name = anHttpActivity.name))
+/]
+
+[query private getAuthenticationLayerBothModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(BothMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(BothMode))->asSequence()
+/]
+
+[query private hasAuthenticationOnlyMode(anHttpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Boolean =
+	getAuthenticationLayerAuthenticationOnlyModeAnnotations(anAnnotationStack)->exists(authenticationOnlyMode | authenticationOnlyMode.HTTPActivityHasAuthenticationMode->exists(annHTTPActivity | annHTTPActivity.annotatesHTTPActivity.name = anHttpActivity.name))
+/]
+
+[query private getAuthenticationLayerAuthenticationOnlyModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(AuthenticationOnlyMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(AuthenticationOnlyMode))->asSequence()
+/]
+
+[query private hasGuestMode(anHttpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Boolean =
+	getAuthenticationLayerGuestModeAnnotations(anAnnotationStack)->exists(guestMode | guestMode.HTTPActivityHasAuthenticationMode->exists( annHTTPActivity | annHTTPActivity.annotatesHTTPActivity.name = anHttpActivity.name))
+/]
+
+[query private getAuthenticationLayerGuestModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(GuestMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(GuestMode))->asSequence()
+/]
+
+[query private isSearchResource(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : Boolean =
+	anAnnotationStack.getSearchControllerAnnotations(anAnnotationStack)->exists(searchControllerAnnotation | searchControllerAnnotation.isSearchController.annotatesJavaAlgoController.name = jAlgoResourceController.name) 
+/]
+
+[query private getSearchControllerAnnotations(anAnnotationStack : AnnotationStack) : Sequence(SearchController) =
+	anAnnotationStack.hasSearchLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(SearchController))->asSequence()
+/]
+
+[query private getSearchableResources(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : Sequence(SearchableJavaResourceModel) =
+	anAnnotationStack.getSearchHTTPHandlerAnnotations(anAnnotationStack)->select(HTTPHandlerAnnotation | jAlgoResourceController.JavaAlgoRControllerHasHTTPActivity.hasHTTPActivityHandler->includes(
+		HTTPHandlerAnnotation.isHTTPActivityHandler.annotatesHTTPActivityHandler))->at(1).searchesJavaResourceModel->asSequence()
+/]
+
+[query private getSearchHTTPHandlerAnnotations(anAnnotationStack : AnnotationStack) : Sequence(SearchHTTPHandler) =
+	anAnnotationStack.hasSearchLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(SearchHTTPHandler))->asSequence()
+/]
+

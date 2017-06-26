@@ -1,0 +1,91 @@
+[comment encoding = UTF-8 /]
+[module genInstallSQL('http://www.eclipse.org/emf/2002/Ecore', '/com.github.kanafghan.welipse.joomlagen/model/joomlagen.ecore')]
+
+[import com::github::kanafghan::welipse::joomlagen::generator::acceleo::common::common /]
+[import com::github::kanafghan::welipse::joomlagen::generator::acceleo::common::InitialData2SQLService /]
+
+[template public generateInstallSQL(genModel : JoomlaGenModel)]
+[comment @main/]
+[file ('install.mysql.utf8.sql', false, 'UTF-8')]
+[for (table : DatabaseTable | genModel.databaseTables)]
+CREATE TABLE IF NOT EXISTS [genModel.databaseTablePrefix.concat(table.name)/] (
+	id int(11) NOT NULL AUTO_INCREMENT,
+	[generateTableColumns(table)/]
+	PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;
+
+[/for]
+
+[generateInsertSQL(genModel)/]
+
+[generateForeignKeys(genModel)/]
+
+-- [protected ('Custom SQL')]
+-- Enter custom SQL here (don't remove the above and the below lines)
+-- [/protected]
+
+[/file]
+[/template]
+
+[template public generateTableColumns (table : DatabaseTable) post (trim())]
+[for (column : GenAttribute | table.columns)]
+[column.name/] [generateTableColumnType(column)/][if (not column.nullable)] NOT NULL[/if],
+[/for]
+[for (column : GenReference | table.foreignKeys)]
+[generateForeignKeyName(column, table)/] int(11),
+[/for]
+[/template]
+
+[template public generateTableColumnType (column : GenAttribute) post (trim())]
+[if (column.databaseColumnType = DatabaseColumnType::INT)]
+	int(11)
+[elseif (column.databaseColumnType = DatabaseColumnType::VARCHAR)]
+	varchar(255)
+[elseif (column.databaseColumnType = DatabaseColumnType::DATE)]
+	date
+[elseif (column.databaseColumnType = DatabaseColumnType::TIMESTAMP)]
+	timestamp
+[elseif (column.databaseColumnType = DatabaseColumnType::FLOAT)]
+	float
+[elseif (column.databaseColumnType = DatabaseColumnType::DOUBLE)]
+	double
+[elseif (column.databaseColumnType = DatabaseColumnType::TEXT)]
+	text
+[/if]
+[/template]
+
+[template public generateForeignKeys (genModel : JoomlaGenModel) ]
+[for (table : DatabaseTable | genModel.databaseTables)]
+[if (table.foreignKeys->size() > 0)]
+-- FOREIGN KEY constraints of [genModel.databaseTablePrefix.concat(table.name)/] table
+[for (reference : GenReference | table.foreignKeys)]
+[generateForeignKey(reference, table, genModel)/]
+[/for]
+-- END FOREIGN KEY constraints
+
+[/if]
+[/for]
+[/template]
+
+[template public generateTableForeignKeys (table : DatabaseTable, genModel : JoomlaGenModel) post (trim())]
+[for (reference : GenReference | table.foreignKeys)]
+[generateForeignKey(reference, table, genModel)/],
+[/for]
+[/template]
+
+[template public generateForeignKey(reference : GenReference, table : DatabaseTable, genModel : JoomlaGenModel)]
+ALTER TABLE [genModel.databaseTablePrefix.concat(table.name)/] 
+ADD CONSTRAINT [generateConstraintName(reference, table)/]
+FOREIGN KEY ([generateForeignKeyName(reference, table)/]) 
+REFERENCES [generateReferencedTableName(reference, table, genModel)/](id);
+
+[/template]
+
+[template public generateReferencedTableName (reference : GenReference, table : DatabaseTable, genModel : JoomlaGenModel) post (trim())]
+[if (not table.genClass.ecoreClass.oclIsUndefined() and reference.type.oclAsType(GenClass).databaseTableName = table.name)]
+[genModel.databaseTablePrefix.concat(reference.genClass.databaseTableName)/]
+[else]
+[genModel.databaseTablePrefix.concat(reference.type.oclAsType(GenClass).databaseTableName)/]
+[/if]
+[/template]
+

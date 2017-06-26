@@ -1,0 +1,180 @@
+[module common('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests/]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics/]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure/]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes/]
+
+[template public insertInPackage(element : Element, args0 : String) post(trim())]
+[let propValue : String = getProperty(args0)]
+	[if (propValue <> null and propValue <> '')]
+.[propValue/]
+	[/if]
+[/let]
+[/template]
+
+
+[template public entityPackage(type : Type) post(trim())]
+[if (getProperty('useEntityPackage') = 'no')]
+    [type._package.getCompleteName()/]
+[elseif (getProperty('use.functional.disposition') = 'true')]
+        [type.baseImports()/].[type.projectName()/].[type._package.normalizedName()/][type.insertInPackage('business.package')/]
+[else]
+        [type.baseImports()/].[type.projectName()/][type.insertInPackage('business.package')/].[type._package.normalizedName()/]
+[/if]
+
+[/template]
+
+
+[template public entityQualifiedName(type : Type)]
+[type.entityPackage()/].[type.entityName()/]
+[/template]
+
+
+[template public dtoPackage(type : Type) post(trim())]
+[if (getProperty('useDtoPackage') = 'no' or (type.oclAsType(Classifier).isEntity() and getProperty('generate.dto.per.entity') <> 'yes'))]
+    [type._package.getCompleteName()/]
+[elseif (getProperty('use.functional.disposition') = 'true')]
+    [type.baseImports()/].[type.projectName()/].[type._package.normalizedName()/][type.insertInPackage('business.package')/]
+[else]
+    [type.baseImports()/].[type.projectName()/][type.insertInPackage('business.package')/].[type._package.normalizedName()/]
+[/if]
+
+[/template]
+
+
+[template public dtoQualifiedName(type : Type) ]
+[type.dtoPackage()/].[type.dtoName()/]
+[/template]
+
+
+[template public getCompleteName(element:Element)]
+[self.getCompleteName()/]
+[/template]
+
+
+[template public pathToMainJava(eObject : ecore::EObject) post(trim())]
+[getProperty('path.to.main.java')/]
+[/template]
+
+
+[template public pathToTestJava(eObject : ecore::EObject) post(trim())]
+[getProperty('path.to.test.java')/]
+[/template]
+
+
+[template public pathToMainResources(eObject : ecore::EObject) post(trim())]
+[getProperty('path.to.main.resources')/]
+[/template]
+
+
+[template public pathToTestResources(eObject : ecore::EObject) post(trim())]
+[getProperty('path.to.test.resources')/]
+[/template]
+
+
+[template public pathToMainWebapp(eObject : ecore::EObject) post(trim())]
+[getProperty('path.to.main.webapp')/]
+[/template]
+
+
+[template public pathToTestWebapp(eObject : ecore::EObject) post(trim())]
+[getProperty('path.to.test.webapp')/]
+[/template]
+
+[template public pathToGeneratedMainJava(eObject : ecore::EObject) post(trim())]
+[getProperty('path.to.generated.main.java')/]
+[/template]
+
+
+[template public getPKName(class : Class) post(trim())]
+[if (class.hasPrimaryKey())]
+    [class.getPKAttribute()->filter(Property).name/]
+[else]
+    id
+[/if]
+
+[/template]
+
+
+[template public getPKJavaTypeName(class : Class) post(trim())]
+[if (class.hasPrimaryKey())]
+    [class.getPKAttribute()->filter(Property).type.convertToJavaType()/]
+[else]
+    [class.defaultPKType()/]
+[/if]
+
+[/template]
+
+
+[template public getterItfSignature(property:Property)]
+[property.convertToJavaType()/] [property.getterName()/]()
+[/template]
+
+
+[template public getterSignature(property:Property)]
+public [property.getterItfSignature()/]
+[/template]
+
+
+[template public getterName(property:Property)]
+get[name.toUpperFirst()/]
+[/template]
+
+
+[template public setterName(property:Property)]
+set[name.toUpperFirst()/]
+[/template]
+
+
+[template public setterItfSignature(property:Property)]
+void [property.setterName()/](final [property.convertToJavaType()/] [property.paramName()/])
+[/template]
+
+
+[template public setterSignature(property:Property)]
+public [property.setterItfSignature()/]
+[/template]
+
+
+[template public getterItfDtoSignature(property:Property)]
+[property.convertToJavaDtoType()/] [property.getterName()/]()
+[/template]
+
+
+[template public getterDtoSignature(property:Property)]
+public [property.getterItfDtoSignature()/]
+[/template]
+
+
+[template public setterItfDtoSignature(property:Property)]
+void [property.setterName()/](final [property.convertToJavaDtoType()/] [property.paramName()/])
+[/template]
+
+
+[template public setterDtoSignature(property:Property)]
+public [property.setterItfDtoSignature()/]
+[/template]
+
+
+[template public signature(operation:Operation)]
+public [operation.itfSignature()/]
+[/template]
+
+
+[template public itfSignature(operation:Operation)]
+[operation.generateReturn()/] [operation.name/]([operation.generateParameters()/])
+[/template]
+
+[query public fullFilePath(element : Element, basedPath:String, packagePath:String, classFileName:String):String = 
+basedPath.appendPathSeparator().concat(packagePath.appendPathSeparator()).concat(classFileName)
+/]
+
+[query public appendPathSeparator(path : String) : String = 
+if(not path.oclIsUndefined() and  path.size() > 0) then 
+path.concat('/')
+else
+path
+endif
+/]
+
+

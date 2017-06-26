@@ -1,0 +1,64 @@
+[comment encoding = UTF-8 /]
+[module partnerLinkClientJavaFile('http:///org/eclipse/bpel/model/bpel.ecore')/]
+[import org::eclipse::acceleo::module::bpel2java::reqRes::common::createSetGet /]
+[import org::eclipse::acceleo::module::bpel2java::reqRes::common::genericTemplates /]
+
+[template public genPartnerLinkClientJavaFile(aProcess : Process, aPartnerLink : PartnerLink, 
+                                               varTypeList : Sequence(String), varNameList : Sequence(Variable))]
+	[file ('PL'+aPartnerLink.name.toUpperFirst()+'.java', false, 'UTF-8')]
+// Client PartnerLink, Role: [aPartnerLink.myRole.name/]
+package bpel2java.uni;
+
+import java.util.Scanner;
+
+public class ['PL'+aPartnerLink.name.toUpperFirst()/] {
+	
+[comment Add the variables needed for the communication /]
+[createPrivateAttributes(varTypeList, varNameList)/]
+
+[comment Add the Constructor /]
+[createConstructor(aPartnerLink, varTypeList, varNameList)/]
+
+	/**
+     * Operations    
+     */
+[comment Add the operations (found in the RECEIVEs constructs in the BPEL file) this PL can perform/]
+[for (aReceive : Receive | getOperationsFromReceive(aProcess,aPartnerLink) )]
+public void [aReceive.name/]() {
+	[comment]old arguments [varTypeList->at(varNameList->indexOf(aReceive.variable))/] a[varTypeList->at(varNameList->indexOf(aReceive.variable))/][/comment]
+	
+	//CUSTOM SPECIFIC CODE
+	System.out.println("Enter the name here : ");
+	   
+	   String word;
+ 
+       Scanner scanIn = new Scanner(System.in);
+       word = scanIn.nextLine();
+       scanIn.close();
+       System.out.println("The client inserted " + word + " "); 
+                   
+		[aReceive.variable.name/].setInput(word);
+	//END CUSTOM SPECIFIC CODE   
+}
+	
+[/for]
+[comment Add the operations (found in the REPLYs constructs in the BPEL file) this PL can perform/]
+[for (aReply : Reply | getOperationsFromReply(aProcess,aPartnerLink) )]
+public [varTypeList->at(varNameList->indexOf(aReply.variable))/] [aReply.name/]() {
+	//CUSTOM SPECIFIC CODE     	
+	//END CUSTOM SPECIFIC CODE
+	return get[aReply.variable.name.toUpperFirst()/]();
+}	
+[/for]
+
+
+[comment Add setter and getter /]
+[createSetGet(varTypeList, varNameList)/]	
+}
+	[/file]
+[/template]
+
+[query getOperationsFromReceive(aProcess : Process, aPL : PartnerLink) : Sequence(Receive) =  
+aProcess.eAllContents(Receive)->select( aReceive : Receive | aReceive.partnerLink=aPL )/]
+[query getOperationsFromReply(aProcess : Process, aPL : PartnerLink) : Sequence(Reply) =  
+aProcess.eAllContents(Reply)->select( aReply : Reply | aReply.partnerLink=aPL )/]

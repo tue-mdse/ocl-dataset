@@ -1,0 +1,108 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2015 Spacebel SA.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Johan Hardy (Spacebel) - initial API and implementation
+[/comment]
+[module define('http://www.eclipse.org/uml2/5.0.0/UML')/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::property/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::namedelement/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::enumeration/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::enumerationliteral/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::constraint/]
+[import org::eclipse::umlgen::gen::embedded::c::services::configuration/]
+[import org::eclipse::umlgen::gen::embedded::c::services::queries/]
+
+[template public genHDefines(c : uml::Class) post(trim())]
+[let seqProp : Sequence(uml::Property) = getPublic(getHasNoTypeApplied(ownedAttribute->asSequence()))]
+[for (p : uml::Property | seqProp )]
+[if ownedComment->notEmpty()]
+/*! 
+ * [ownedComment.format('\x5cbrief ', false, ' *        ', 120)/]
+[if (isTraceabilityEnabled())]
+[if (p.isConstrained(getModel().getAllConstraints()))]
+ *
+ * <b>Requirements traceability</b>
+ [p.getRequirementList('*     ')/]
+[/if]
+[/if]
+ */
+[/if]
+#define [p.name/] [p.default/]
+
+[/for]
+[/let]
+[let seqEnum : Sequence(uml::NamedElement) = getPublic(c.ownedElement->filter(uml::Enumeration)->asSequence())]
+[for (en : uml::NamedElement | seqEnum->orderByContents())]
+[en.oclAsType(uml::Enumeration).genEnumerationLiteralDefines()/]
+
+[/for]
+[/let]
+[/template]
+
+[template public genCDefines(c : uml::Class) post(trim())]
+[let seqProp : Sequence(uml::Property) = getPrivate(getHasNoTypeApplied(ownedAttribute->asSequence()))]
+[for (p : uml::Property | seqProp )]
+[if ownedComment->notEmpty()]
+/*! 
+ * [ownedComment.format('\x5cbrief ', false, ' *        ', 120)/]
+[if (isTraceabilityEnabled())]
+[if (p.isConstrained(getModel().getAllConstraints()))]
+ *
+ * <b>Requirements traceability</b>
+ [p.getRequirementList('*     ')/]
+[/if]
+[/if]
+ */
+[/if]
+#define [p.name/] [p.default/]
+
+[/for]
+[/let]
+[let seqEnum : Sequence(uml::NamedElement) = getPrivate(c.ownedElement->filter(uml::Enumeration)->asSequence())]
+[for (en : uml::NamedElement | seqEnum->orderByContents())]
+[en.oclAsType(uml::Enumeration).genEnumerationLiteralDefines()/]
+
+[/for]
+[/let]
+[/template]
+
+[template private genEnumerationLiteralDefines(e : uml::Enumeration) ? (e.hasAtLeastOneConstant()) post(trim())]
+[let seqLit : Sequence(uml::EnumerationLiteral) = getAllConstants(ownedLiteral->asSequence())]
+[for (lit : uml::EnumerationLiteral | seqLit)]
+[if ownedComment->notEmpty()]
+/*! 
+ * [ownedComment.format('\x5cbrief ', false, ' *        ', 120)/]
+[if (isTraceabilityEnabled())]
+[if (e.isConstrained(getModel().getAllConstraints()))]
+ *
+ * <b>Requirements traceability</b>
+ [e.getRequirementList('*     ')/]
+[/if]
+[/if]
+ */
+[/if]
+[if (lit.isConditional())]
+#[lit.getConstantCondition()/] [lit.name/]
+[/if]
+#define [lit.name/] [getConstantDeclaration()/]
+[if (lit.isConditional())]
+#endif
+[/if]
+
+[/for]
+[/let]
+[/template]
+
+[template public genHDefines(p : uml::Package) post(trim())]
+[let seqEnum : Sequence(uml::NamedElement) = p.ownedElement->filter(uml::Enumeration)->asSequence()]
+[for (en : uml::NamedElement | seqEnum->orderByContents())]
+[en.oclAsType(uml::Enumeration).genEnumerationLiteralDefines()/]
+[/for]
+[/let]
+[/template]

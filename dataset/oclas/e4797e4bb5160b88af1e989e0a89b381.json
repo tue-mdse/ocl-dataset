@@ -1,0 +1,147 @@
+[
+  {
+    "name": "Definition",
+    "expressions": [{
+      "operations": {},
+      "name": "ast",
+      "body": "\n\tnull ",
+      "type": "OperationImpl",
+      "constructs": {"NullLiteralExpImpl": 1},
+      "properties": []
+    }],
+    "properties": []
+  },
+  {
+    "name": "Column",
+    "expressions": [{
+      "operations": {"=": 3},
+      "name": "ast",
+      "body": "\nas::RDBColumnDefinition {\n\tidentifierName = as::Name {\n\t\t\t\tnameString = id\n\t\t\t}, \ntype = if type.id = 'NUMBER'  then as::RDBNumber {\n\t\t\t} else if type.id = 'VARCHAR2'  then as::RDBVarchar {\n\t\t\t} else if type.id = 'DATE'  then as::RDBDate else invalid endif endif endif, \nNotNull = if isNull.nonNull then 'false'  else 'true'  endif \n}\n",
+      "type": "OperationImpl",
+      "constructs": {
+        "OperationCallExpImpl": 3,
+        "VariableExpImpl": 5,
+        "StringLiteralExpImpl": 5,
+        "TypeExpImpl": 1,
+        "ShadowExpImpl": 4,
+        "IfExpImpl": 4,
+        "InvalidLiteralExpImpl": 1,
+        "PropertyCallExpImpl": 9
+      },
+      "properties": [
+        "dDL::Column::id",
+        "dDL::Column::type",
+        "dDL::Column::isNull",
+        "dDL::ISNULL::nonNull",
+        "dDL::TYPE::id"
+      ]
+    }],
+    "properties": []
+  },
+  {
+    "name": "Colname",
+    "expressions": [{
+      "operations": {
+        "lookupRDBColumnDefinition": 1,
+        "ast": 1
+      },
+      "name": "ast",
+      "body": "\nas::RDBColumnReference {\n\tname = as::Name {\n\t\t\t\tnameString = id\n\t\t\t}, \nrefersTo = ast().lookupRDBColumnDefinition(id) \n}\n",
+      "type": "OperationImpl",
+      "constructs": {
+        "VariableExpImpl": 3,
+        "OperationCallExpImpl": 2,
+        "ShadowExpImpl": 2,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": ["dDL::Colname::id"]
+    }],
+    "properties": []
+  },
+  {
+    "name": "Constraint",
+    "expressions": [{
+      "operations": {
+        "lookupRDBColumnDefinition": 1,
+        "isUniqueKey": 1,
+        "ast": 6,
+        "at": 2,
+        "isForeignKey": 1,
+        "lookupRDBTableDefinition": 1,
+        "isPrimaryKey": 1,
+        "oclAsType": 5,
+        "first": 1
+      },
+      "name": "ast",
+      "body": "\nif isPrimaryKey()\nthen as::RDBColumnReference {\n\tname = as::Name {\n\t\t\t\tnameString = key.oclAsType(Primary_key).colNames->first().id\n\t\t\t}, \nrefersTo = ast().lookupRDBColumnDefinition(ast().oclAsType(as::RDBColumnReference).name.nameString) \n}\nelse\n\tif isUniqueKey()\n\tthen as::RDBUniqueKey {\n\t\tColumn = key.oclAsType(Unique_key).colNames.ast() \n\t}\n\telse\n\t\tif isForeignKey()\n\t\tthen as::RDBRefIntegrity {\n\t\t\tForeignKey = key.colNames->at(1).ast(), \n\t\tParentKey = key.colNames->at(2).ast(), \n\t\tParentTable = as::RDBTableReference {\n\t\t\t\t\t\tname = as::Name {\n\t\t\t\t\t\t\t\t\tnameString = key.oclAsType(Foreign_key).tabname.basename\n\t\t\t\t\t\t\t\t},\n\t\t\t\t\t\trefersTo = ast().lookupRDBTableDefinition(key.oclAsType(Foreign_key).tabname.basename)\n\t\t\t\t\t} \n\t\t}\n\t\telse\n\t\t\tinvalid\n\t\tendif\n\tendif\nendif\n",
+      "type": "OperationImpl",
+      "constructs": {
+        "IteratorExpImpl": 1,
+        "VariableExpImpl": 13,
+        "OperationCallExpImpl": 19,
+        "IntegerLiteralExpImpl": 2,
+        "TypeExpImpl": 5,
+        "ShadowExpImpl": 6,
+        "IfExpImpl": 3,
+        "InvalidLiteralExpImpl": 1,
+        "PropertyCallExpImpl": 17
+      },
+      "properties": [
+        "dDL::Foreign_key::tabname",
+        "dDL::Colname::id",
+        "dDL::Tabname::basename",
+        "astm::NameReference::name",
+        "dDL::Key::colNames",
+        "dDL::Constraint::key",
+        "astm::Name::nameString"
+      ]
+    }],
+    "properties": []
+  },
+  {
+    "name": "Create_table",
+    "expressions": [{
+      "operations": {
+        "not": 1,
+        "ast": 3,
+        "oclIsKindOf": 2
+      },
+      "name": "ast",
+      "body": "\nas::RDBTableDefinition {\n\tidentifierName = as::Name {\n\t\t\t\tnameString = id\n\t\t\t}, \nColumn = columns.ast(), \nPrimKey = constraints->select(oclIsKindOf(Primary_key)).ast(), \nConstraint = constraints->select(not oclIsKindOf(Primary_key)).ast() \n}\n",
+      "type": "OperationImpl",
+      "constructs": {
+        "IteratorExpImpl": 5,
+        "OperationCallExpImpl": 6,
+        "VariableExpImpl": 9,
+        "TypeExpImpl": 2,
+        "ShadowExpImpl": 2,
+        "PropertyCallExpImpl": 4
+      },
+      "properties": [
+        "dDL::Create_table::constraints",
+        "dDL::Create_table::id",
+        "dDL::Create_table::columns"
+      ]
+    }],
+    "properties": []
+  },
+  {
+    "name": "Data_definition",
+    "expressions": [{
+      "operations": {"ast": 1},
+      "name": "ast",
+      "body": "\nas::Project {\n\tfiles = as::CompilationUnit {\n\t\t\t\tlanguage = 'PL/SQL' ,\n\t\t\t\tfragments = definitions.ast()\n\t\t\t} \n}\n\n",
+      "type": "OperationImpl",
+      "constructs": {
+        "IteratorExpImpl": 1,
+        "VariableExpImpl": 2,
+        "OperationCallExpImpl": 1,
+        "StringLiteralExpImpl": 1,
+        "ShadowExpImpl": 2,
+        "PropertyCallExpImpl": 1
+      },
+      "properties": ["dDL::Data_definition::definitions"]
+    }],
+    "properties": []
+  }
+]

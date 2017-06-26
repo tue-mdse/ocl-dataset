@@ -1,0 +1,255 @@
+[comment encoding = UTF-8 /]
+[**
+ * Documentation of the module genMZNTournee
+ * Le module de generation des contraintes liees a la classe Tournee. Il importe cinq (5) modules afin 
+ * de pouvoir utiliser leurs templates et requetes.
+ * Il depend d'un fichier uml -cette dependance est exprimee en parametre du module- comme tous les autres 
+ * modules du projet.
+ * Il est compose d'un seul template portant le meme nom que lui
+*/]
+[module genMZNTournee('http://www.eclipse.org/uml2/5.0.0/UML') ]
+
+[import org::edf::acceleo::stage::minizinc::request::requetesSurString /]
+[import org::edf::acceleo::stage::minizinc::services::miniZincServices /]
+[import org::edf::acceleo::stage::minizinc::common::declarationContraintesTournee /]
+[import org::edf::acceleo::stage::minizinc::common::contraintesTournee /]
+[import org::edf::acceleo::stage::minizinc::common::affichage /]
+
+[**
+ * 
+ * Documentation of the template genMZNTournee
+ * Le template de generation des contraintes liees a la classe Tournee
+ * Les templates et requetes externes utilises dans ce template et leurs roles :
+ * **templates miniZincFileNane() du module request::miniZincFileNane :
+ * ****Pour recuperer l'exetension du fichier a generer.
+ * **declarationContraintesTournee() du module common::declarationContraintesTournee :
+ * ****Contient la partie declarative -c'est a dire l'entete- du fichier minizinc genere
+ * **contientSigneComparaison() du module services::miniZincServices :
+ * ****Appliquee a une expression, elle retourne un booleen pour dire si cette derniere comporte
+ * ****un signe de comparaison (qui sont <, >, <=, >=, = et <>) ou non.
+ * **getSigneComparaison() du module services::miniZincServices :
+ * ****Elle retourne le signe de comparaison contenu dans une expression donnee
+ * **gaucheDe() du module services::miniZincServices :
+ * ****Prend en parametres deux (2) arguments arg0 et arg1 et retourne la chaine de caracteres
+ * ****commencant par le debut du premier argument et se terminant par la position du deuxieme
+ * ****argument exclue dans le premier.
+ * **droiteDe() du module services::miniZincServices :
+ * ****Prend en parametres deux (2) arguments arg0 et arg1 et retourne la chaine de caracteres
+ * ****commencant par la position du deuxieme argument exclue dans le premier et se terminant par 
+ * ****la fin du premier argument.
+ * **contientSigneOperation() du module services::miniZincServices :
+ * ****Appliquee a une expression, elle retourne un booleen pour dire si cette derniere comporte
+ * ****un signe d'operation arithmetique (qui sont +, -, * et /) ou non.
+ * **getSigneOperation() du module services::miniZincServices :
+ * ****Elle retourne le signe d'operation arithmetique contenu dans une expression donnee
+ * contientOperateurLogique() du module services::miniZincServices :
+ * ****Appliquee a une expression, elle retourne un booleen pour dire si cette derniere comporte
+ * ****un operateur logique (qui sont or, xor, and et implies) ou non.
+ * **getOperateurLogique() du module services::miniZincServices :
+ * ****Elle retourne l'operateur logique contenu dans une expression donnee
+ * **getPartieInteressante() du module services::miniZincServices :
+ * ****Elle comporte trois (3) parametres successivement param1, param2 et param3. Son role est de :
+ * ****considerer param1 s'il est different de param3, sinon param2. Ensuite elle retranche de 
+ * ****l'expression consideree la chaine de caracteres "xor" et retourne la chaine restante.
+ * ****Cette procedure lui permet d'analyser la deuxieme contrainte ocl de la classe Tournee afin
+ * ****d'en extraire la partie qui lui interesse.
+ * **contrainte1() du module common::contraintesTournee :
+ * ****Elle contient le texte a generer correspondant a la premiere contrainte sur la classe Tournee
+ * **contrainte2() du module common::contraintesTournee :
+ * ****Elle contient le texte a generer correspondant a la deuxieme contrainte sur la classe Tournee
+ * **contrainte3() du module common::contraintesTournee :
+ * ****Elle contient le texte a generer correspondant a la troisieme contrainte sur la classe Tournee 
+ * sur la methode kmElec
+ * 
+ * @param aPackage : C'est le packages contenant les classes sur lesquelles sera appliquee le template 
+ * (Nous ne nous interessons qu'a la classe Tournee ici puisqu'elle est la seule a detenir des
+ * contraintes)
+ * @param nomsContraintes : La liste des contraintes OCL dont nous voulons generer les correspondances
+ * en minizinc
+*/]
+[template public genMZNTournee(
+	aPackage : Package, 
+	nomsContraintes : OrderedSet(String)) 
+	post (trim()) 
+]
+[comment]Nous generons tout d'abord la partie declarative du fichier minizinc[/comment]
+[comment]
+Ici, nous partons du principe que toutes les classes sont plac�es dans un package nomm� "Classes" 
+(qui est le premier argument du template).
+Tous les objets de meme type sont places dans un meme package et l'ensemble des packages d'objets
+sont places dans un seul package appele "Objects".
+Nous commeneons par retourner dans une variable la classe "Tournee" et tous les traitements de la
+classe se feront sur cette variable.
+[/comment]
+[let aClass : Class = 
+	aPackage.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.name.toLower().contains('tournee')
+	)->asOrderedSet()->at(1)
+]
+[file (('affectations.mzn'), false, 'UTF-8')]
+[let parentObjectsPackage : Package = aPackage.followingSiblings(Package)->select(
+		p : Package |
+		p.name.toLower().contains('objects')
+	)->at(1)
+]
+[aPackage.declarationContraintesTournee() /]
+[/let]
+
+[comment]
+Ensuite nous parcourons la liste des contraintes de la classe tout en comparant leurs noms
+aux noms de conctraintes fournis en parametre du template par l'argument nomsContraintes. Si nous 
+tombons sur une contrainte dont le nom figure sur la liste de noms de contraintes precis�e en 
+parametre, alors on appelle le template qui correspond au code a generer pour cette contrainte. Et 
+ainsi de suite jusqu'a la fin des contraintes de la classe.
+[/comment]
+
+[for (aConstraint : Constraint | 
+	aClass.ownedRule->filter(Constraint)) 
+	separator ('\n')
+]
+[comment]
+S'il s'agit de la premiere contrainte (dans la liste des contraintes fournie en parametre du template)
+[/comment]
+[comment]
+Nous recuperons l'expression de la contrainte que nous testons par la suite si elle contient un signe
+de comparaison ; si c'est le cas, alors nous recuperons dans des variables le signe de comparaison,
+et les deux valeurs a comparer que nous testerons aussi si elles contiennent des signes d'operation
+arithmetique. L'interet majeur de cette procedure est de scinder l'expression de la contrainte en
+en de petits bouts stoques dans des variables. Ceci rendra facile les appels aux templates contenant
+les codes a generer pour chaque contraintes. Certaines proprietes d'une classe ayant elles aussi des
+proprietes car etant des instances de classes, nous testons donc nos variables si elles contiennent 
+des points (.), ce qui signifie qu'elles sont des instances e classes ; et nous ne gardons que la 
+partie droite de leur contenu car c'est elle qui correspond la propriete (c'est a dire la partie 
+interessante). Et apres tout ceci il nous suffit juste d'appeler le template qu'il nous faut avec les
+parametres appropries
+[/comment]
+[if (aConstraint.name.toString().equalsIgnoreCase(nomsContraintes->at(1)))] 
+[let constraintBody : String = 
+	aConstraint.specification.oclAsType(OpaqueExpression)._body->first().toString() 
+]
+[if (aClass.contientSigneComparaison(constraintBody)) ]
+[let signeComparaison : String  = 
+	aClass.getSigneComparaison(constraintBody) 
+]
+[let comparaisonPartieGauche : String = 
+	constraintBody.gaucheDe(signeComparaison)
+]
+[let comparaisonPartieDroite : String = 
+	constraintBody.droiteDe(signeComparaison)
+]
+[if (aClass.contientSigneOperation(comparaisonPartieGauche)) ]
+[let signeOpeartion : String = 
+	aClass.getSigneOperation(comparaisonPartieGauche) 
+]
+[let operationPartieGauche : String = 
+	comparaisonPartieGauche.gaucheDe(signeOpeartion) 
+]
+[let operationPartieDroite : String = 
+	comparaisonPartieGauche.droiteDe(signeOpeartion) 
+]
+[if (operationPartieGauche.contains('.')) ]
+[let partieGaucheOpGauche : String = 
+	operationPartieGauche.gaucheDe('.')
+]
+[let partieDroiteOpGauche : String = 
+	operationPartieGauche.droiteDe('.')
+]
+[let partieGaucheOpDroite : String = 
+	operationPartieDroite.gaucheDe('.')
+]
+[let partieDroiteOpDroite : String = 
+	operationPartieDroite.droiteDe('.')
+]
+[comment] La premiere contrainte [/comment]
+[aPackage.contrainte1(Sequence{
+	partieDroiteOpGauche.concat('[ve]'), 
+	partieDroiteOpDroite.concat('[ve]'), 
+	comparaisonPartieDroite.concat('[t]')}, 
+	Sequence{signeOpeartion}, signeComparaison)
+/]
+[/let]
+[/let]
+[/let]
+[/let]
+[/if]
+[/let]
+[/let]
+[/let]
+[/if]
+[/let]
+[/let]
+[/let]
+[/if]
+[/let]
+[comment]
+S'il s'agit de la premiere contrainte (dans la liste des contraintes fournie en parametre du template)
+[/comment]
+[comment]
+Tout comme la premiere contrainte nous allons scinder l'expression de la deuxieme contrainte afin
+d'appeler le template correspondant a son code minizinc
+[/comment]
+[elseif (aConstraint.name.toString().equalsIgnoreCase(nomsContraintes->at(2)))]
+[let constraintBody : String = 
+	aConstraint.specification.oclAsType(OpaqueExpression)._body->first().toString() 
+]
+[if (constraintBody.toLower().contains('ve<>oclisundefined()') )]
+[if (aClass.contientOperateurLogique(constraintBody)) ]
+[let operateurLogique : String = 
+	aClass.getOperateurLogique(constraintBody) 
+]
+[if (operateurLogique.trim().equalsIgnoreCase('xor')) ]
+[let opLogPartieGauche : String = 
+	constraintBody.gaucheDe(operateurLogique).trim() 
+]
+[let opLogPartieDroite : String = 
+	constraintBody.droiteDe(operateurLogique).trim() 
+]
+[let partieInteressante : String = 
+	aClass.getPartieInteressante(opLogPartieGauche, opLogPartieDroite, 've<>oclisundefined()') 
+]
+[if (partieInteressante.toLower().contains('vt<>oclisundefined()')) ]
+[comment] La deuxieme contrainte [/comment]
+[aPackage.contrainte2() /]
+[/if]
+[/let]
+[/let]
+[/let]
+[/if]
+[/let]
+[/if]
+[/if]
+[/let]
+[/if]
+[/for]
+[comment]
+Apres les contraintes de la classe, nous allons parcourir les methodes (operations) de la classe
+pour verifier si elles contiennent des contrainntes dont les noms se trouvent parmi ceux passes en
+parametres
+Si c'est le cas, il nous suffit d'analyser l'expression de ces contraintes, et en fonction. du 
+resultat de l'analyse nous appelons le template correspond avec les parametres appropries.
+[/comment]
+[for (o : Operation | aClass.ownedOperation)]
+[for (aConstraint : Constraint | o.ownedRule->filter(Constraint)) ]
+[if (aConstraint.name.toString().equalsIgnoreCase(nomsContraintes->at(3)))]
+[let constraintBody : String = 
+	aConstraint.specification.oclAsType(OpaqueExpression)._body->first().toString() 
+]	
+[if (constraintBody.toLower().contains('allinstances') and 
+	constraintBody.toLower().contains('distancetournee') and 
+	constraintBody.toLower().contains('sum')) ]
+[comment] La troisieme contrainte [/comment]
+[aPackage.contrainte3() /]
+[/if]
+[/let]
+[/if]
+[/for]
+[/for]
+[comment]
+Pour terminer le fichier minizinc, il nous reste l'affichage des resultats
+[/comment]
+[comment] La partie affichage [/comment]
+[aPackage.affichage() /]
+[/file]
+[/let]
+[/template]

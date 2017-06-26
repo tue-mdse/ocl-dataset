@@ -1,0 +1,146 @@
+[comment encoding = UTF-8 /]
+[module JSGenerator('http:///org/gnstudio/apdt/model.ecore')/]
+[import CommentUtils /]
+[import ClassUtils /]
+[import BaseUtils /]
+
+[template public genModel(aModel : Model,aModelName:String,format:String)]
+[comment @main/]
+[comment  gen programs/]
+[if (aModel.programs ->notEmpty())]
+  [for (_program : Program | aModel.programs)]
+    [if(not _program.name.oclIsUndefined() and _program.name.trim().size()>0)]
+            [let lowerName : String = _program.name.toUpper().trim().substituteAll(' ', '_')]
+            [genBase(lowerName)/]
+            [for (_package : PackageElement | _program.packages)]
+                  [genPackage(lowerName, _package,format)/]
+            [/for]
+            [/let]
+    [else]
+        	[let lowerName : String = aModelName.toUpper().trim().substituteAll(' ', '_')]
+            [genBase(lowerName)/]
+            [for (_package : PackageElement | _program.packages)]
+              [genPackage(lowerName, _package,format)/]
+            [/for]
+            [/let]
+    [/if]
+   [/for]/]
+[/if]
+[comment  gen packages/]
+[if (aModel.packages ->notEmpty())]
+  [let lowerName : String = aModelName.toUpper().trim().substituteAll(' ', '_')]
+  [genBase(lowerName)/]
+  [for (_package : PackageElement | aModel.packages)]
+      [genPackage(lowerName, _package,format)/]
+  [/for]
+  [/let]
+[/if]
+[comment  gen class/]
+[if (not aModel.classElement.oclIsUndefined())]
+  [genClassFunction(aModel.classElement)/]
+[/if]
+[/template]
+
+[template private genPackage(aPrgName: String, aPackage : PackageElement ,format:String)  ? (aPackage.classes ->notEmpty())]
+[if (not aPackage.oclIsUndefined() )]
+    [for (_class : ClassElement | aPackage.classes)]
+        [genClassElement(aPrgName,aPackage.name, _class,format)/]
+    [/for]
+[/if]
+[/template]
+
+
+
+[template public genClassElement(aPrgName: String, aPackageName:String, aClass : ClassElement,format:String) ? (format = 'OL' and aClass.extendsElements -> isEmpty())]
+[if ((not aClass.name.oclIsUndefined()) and aClass.name.trim().size()>0)]
+[file ((aClass.name.trim()).concat('.js'), false)]
+var [getNamespace(aPackageName)/] = [aPrgName/].namespace('[aPackageName/]');
+[getComment(aClass.description,null)/]
+[getNamespace(aPackageName)/].[aClass.name/] = (function(){
+    [getClassBody(aClass,'this')/]
+}());
+[/file]
+[/if]
+[/template]
+
+[template public genClassElement(aPrgName: String, aPackageName:String, aClass : ClassElement,format:String) ? (format = 'OL' and aClass.extendsElements -> notEmpty())]
+[if ((not aClass.name.oclIsUndefined()) and aClass.name.trim().size()>0)]
+[let superClass : String = getSuperClassName(aClass, false)]
+[file ((aClass.name.trim()).concat('.js'), false)]
+// In order to handle dependencies between files include and use Labjs (http:/www.labjs.com)
+[if (aClass.extendsElements ->size() >1)]// multiple extension is not supported[/if]
+var [superClass.toUpper()/] = [aPrgName/].namespace('[getSuperClassName(aClass, true)/]');
+var [getNamespace(aPackageName)/] = [aPrgName/].namespace('[aPackageName/]');
+[getComment(aClass.description,null)/]
+[getNamespace(aPackageName)/].[aClass.name/] = (function([superClass.toLower()/]){
+    
+    var [superClass.toLower()/] = [aPrgName/].deepCopy([superClass.toLower()/]);
+    [getClassBody(aClass,superClass.toLower())/]
+}([superClass.toUpper()/]));
+[/file]
+[/let]
+[/if]
+[/template]
+
+[template public genClassElement(aPrgName: String, aPackageName:String, aClass : ClassElement,format:String) ? (format = 'CF' and aClass.extendsElements -> isEmpty())]
+[if ((not aClass.name.oclIsUndefined()) and aClass.name.trim().size()>0)]
+[file ((aClass.name.trim()).concat('.js'), false)]
+var [getNamespace(aPackageName)/] = [aPrgName/].namespace('[aPackageName/]');
+[getComment(aClass.description,null)/]
+[getNamespace(aPackageName)/].[aClass.name/] = function(){
+    [getClassBody(aClass,'this')/]
+};
+[/file]
+[/if]
+[/template]
+
+[template public genClassElement(aPrgName: String, aPackageName:String, aClass : ClassElement,format:String) ? (format = 'CF' and aClass.extendsElements -> notEmpty())]
+[if ((not aClass.name.oclIsUndefined()) and aClass.name.trim().size()>0)]
+[let superClass : String = getSuperClassName(aClass, false)]
+[file ((aClass.name.trim()).concat('.js'), false)]
+[if (aClass.extendsElements.current(1).oclIsUndefined()= false)]// multiple extension is not supported[/if]
+// In order to handle dependencies between files include and use Labjs (http:/www.labjs.com)
+[if (aClass.extendsElements ->size() >1)]// multiple extension is not supported[/if]
+var [superClass.toUpper()/] = [aPrgName/].namespace('[getSuperClassName(aClass, true)/]');
+var [getNamespace(aPackageName)/] = [aPrgName/].namespace('[aPackageName/]');
+[getComment(aClass.description,null)/]
+[getNamespace(aPackageName)/].[aClass.name/] = function([superClass.toLower()/]){
+    
+    var [superClass.toLower()/] = [aPrgName/].deepCopy([superClass.toLower()/]);
+    [getClassBody(aClass,superClass.toLower())/]
+};
+[/file]
+[/let]
+[/if]
+[/template]
+
+[template private getNamespace(pkg : String)]
+[if(pkg.lastIndex('.') >0)][pkg.substring(pkg.lastIndex('.')+1).trim()/][else][pkg.trim()/][/if][/template]
+
+
+[template public genClassFunction( aClass : ClassElement)]
+[if ((not aClass.name.oclIsUndefined()) and aClass.name.trim().size()>0)]
+[file ((aClass.name.trim()).concat('.js'), false)]
+[aClass.name/] = function() {
+    [getClassBody(aClass,'this')/]
+};
+[/file] 
+[/if]
+[/template]
+
+[template private getSuperClassName(aClass : ClassElement,withPkg:Boolean) ]
+[let aSuper : TypeReference = aClass.extendsElements ->first()]
+[if (withPkg)][aSuper.name/][else][getBaseType(aSuper)/][/if][/let]
+[/template]
+
+[template private getBaseType(t : TypeReference) ?
+ ((not t.oclIsUndefined()) and (not t.name.oclIsUndefined()) and isFullQulPath(t))
+ { typename : String = name.trim();
+   baseIndex :Integer = typename.lastIndex('.')+1;
+   typeLength :Integer = typename.size();
+ }]
+[typename.substring(baseIndex, typeLength)/]
+[/template]
+[query private isFullQulPath(t : TypeReference) : Boolean = t.name.index('.')>-1/]
+
+

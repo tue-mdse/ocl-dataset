@@ -1,0 +1,43 @@
+[comment encoding = UTF-8 /]
+[comment]
+ As we handle UML models, we register UML metamodel.
+ Be careful while changing .mtl name, module name MUST 
+ have the same name as its file.
+[/comment]
+[module my-m2t('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[comment]
+ Main entry.
+ * Do NOT change its name, it must be "generate".
+ * You can change input UML type to the one
+   you want (e.g, "m : Model" or "c : Class" ...).
+ * "[file ../]" block can be transfered in other 
+   templates. Main entry does NOT have to contain
+   this block, it can be put in other ones.
+[/comment]
+[template public generate(m : Model)]
+[comment @main/]
+[file (m.name.concat('.md'), false, 'UTF-8')]
+[m.packagedElement.gen()/]
+[/file]
+[/template]
+
+[template public gen(p : PackageableElement) /]
+[template public gen(p : Package) ? (not p.packagedElement->isEmpty())]
+
+# ['['/]PACKAGE] [p.qualifiedName/]
+[p.packagedElement->select(not oclIsKindOf(Package)).gen()/]
+[p.packagedElement->select(oclIsKindOf(Package)).gen()/]
+[/template]
+
+[template public gen(c : Class)]
+
+## ['['/]CLASS] [c.name/]
+[for (p : Property | c.attribute)]
+[p.genProp()/]
+[/for]
+[/template]
+
+[template public genProp(p : Property)]
+* ['['/]Property] __[p.name/]__: *[if (p.type <> null)][p.type.qualifiedName/][else]Undefined[/if]*
+[/template]

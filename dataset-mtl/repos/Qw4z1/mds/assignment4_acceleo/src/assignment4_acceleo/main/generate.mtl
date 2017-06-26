@@ -1,0 +1,126 @@
+[comment encoding = UTF-8 /]
+[module generate('http://com.chalmers.manufacturingSystem')]
+
+
+[template public generateElement(ms : ManufacturingSystem) post(trim())]
+
+[comment  @main/]
+[if (CompositeStep.allInstances()->collect(contains)->excludes(self) )]
+[file (ms.name, false, 'Cp1252')] 
+digraph [ms.name/] {
+[Sequence{ms}.start()/] ['['/]color=navy[']'/]
+[Sequence{ms.consistsOf.oclAsType(ManufacturingSystemElement)}.manufacturingSystemElementStep()/] ['['/]color=green[']'/]
+[Sequence{ms}.end()/] ['['/]color=navy[']'/]
+[ms.name/] ['['/]shape=Mdiamond[']'/] ['['/]color=navy[']'/];
+[ms.end.name/] ['['/]shape=Msquare[']'/] ['['/]color=green[']'/];
+[Sequence{Responsible.allInstances().oclAsType(Responsible)}.responsibleDrawShape()/] 
+[Sequence{StoragePoint.allInstances().oclAsType(StoragePoint)}.storagePointStepShape()/]
+[comment][Sequence{TransportStep.allInstances().oclAsType(TransportStep)}.transportStepShape()/][/comment]
+}
+[/file]
+[/if]
+[/template]
+
+
+[template public insideManufacturing(msc : CompositeStep) post(trim()){ms : ManufacturingSystem = msc.contains;}]
+subgraph cluster[msc.name/] { 
+label = "[msc.name/], s=[msc.speed/]";
+[if(not (ms.start.transition->size() = 0))]
+[Sequence{ms.consistsOf.oclAsType(ManufacturingSystemElement)}.manufacturingSystemElementStep()/] 
+[/if]
+}
+[if (msc.responsible->size() <> 0)]
+	"[msc.responsible.name/]" -> "[ms.start->first().name/]"  ['['/] lhead=cluster[msc.name/],label="Responsible", color=lightgrey[']'/]
+[/if]
+[/template]
+
+
+[template public manufacturingSystemElementStep(mses : Sequence(ManufacturingSystemElement))post(trim())]
+[for (mse : ManufacturingSystemElement | mses)]
+[if(mse.oclIsKindOf(CompositeStep))]
+[Sequence{mse.oclAsType(CompositeStep)}.insideManufacturing()/]
+[for (it : ManufacturingSystemElement | mse.transition)]
+"[mse.oclAsType(CompositeStep).contains.end->first().name/]" -> "[it.name/]" ['['/] label="[it.booleanCondition().trim()/]"[']'/]
+[/for]	
+[else]
+[Sequence{mse}.responsible()/]
+[for (it : ManufacturingSystemElement | mse.transition)]
+[if(it.oclIsKindOf(CompositeStep))]
+"[mse.name/]" -> "[it.oclAsType(CompositeStep).contains.start->first().name/]" ['['/] label="[it.booleanCondition().trim()/]"[']'/]
+[else]
+"[mse.name/]" -> "[it.name/]" ['['/] label="[it.booleanCondition().trim()/]"[']'/]
+[/if]
+[/for]	
+[if(mse.oclIsKindOf(Step) and mse.oclAsType(Step).speed->size()<> 0)]
+[mse.name/] ['['/]label="[mse.name/], s=[mse.oclAsType(Step).speed/]"[']'/]
+[/if]
+[/if]
+[/for]
+
+[/template]
+
+[comment]Extra side functions[/comment]
+
+[template public booleanCondition(mse : ManufacturingSystemElement)post(substituteAll(lineSeparator(), '').trim())]
+[if (mse.oclIsKindOf(Step))]
+[for (ic: InputCondition | mse.oclAsType(Step).input)]
+[if (ic.oclIsKindOf(BinaryCondition))]
+[ic.oclAsType(BinaryCondition).printBinaryCondition()/]
+[/if]
+[/for]
+[/if]
+[/template]
+
+[template public printBinaryCondition(bc : BinaryCondition)post(trim())]
+[bc.left.evaluateCondition()/] [bc.type/] [bc.right.evaluateCondition()/]
+[/template]
+
+[template public evaluateCondition(cond : InputCondition)post(trim())]
+[if cond.oclIsKindOf(WorkPieceCondition)] 
+[cond.oclAsType(WorkPieceCondition).requiresType.name/]
+[elseif (cond.oclIsKindOf(Negation))]
+[cond.oclAsType(Negation).name/]
+[elseif (cond.oclIsKindOf(BinaryCondition))]
+[cond.oclAsType(BinaryCondition).printBinaryCondition()/]
+[/if]
+[/template]
+
+[template public start(ms : ManufacturingSystem)post(trim())]
+[for (it : ManufacturingSystemElement | ms.start)]
+"[ms.name/]" -> "[it.name/]" ['['/] label="Start"[']'/]	
+[/for]
+[/template]
+
+[template public end(ms : ManufacturingSystem)post(trim())]
+[for (it : ManufacturingSystemElement | ms.end)]
+"[ms.name/]" -> "[it.name/]" ['['/] label="End"[']'/]	
+[/for]
+[/template]
+
+
+[comment]Shapes and colors[/comment]
+
+[template public responsibleDrawShape(people : Bag(Responsible))post(trim())]
+[for (it : Responsible | people)]
+	"[it.name/]" ['['/]shape=box,style=filled,color=".7 .3 1.0"[']'/]
+[/for]
+[/template]
+
+[template public storagePointStepShape(people : Bag(StoragePoint))post(trim())]
+[for (it : StoragePoint | people)]
+ "[it.name/]" ['['/]shape=house,style=filled,color=orange[']'/]
+[/for]
+[/template]
+
+[comment][template public transportStepShape(people : Bag(TransportStep))post(trim())]
+[for (it : TransportStep | people)]
+ "[it.name/]" ['['/]shape=septagon,style=filled,color=lightskyblue[']'/]
+[/for]
+[/template][/comment]
+
+
+[template public responsible(it : ManufacturingSystemElement)post(trim())]
+[if (it.responsible->size() <> 0)]
+	"[it.responsible.name/]" -> "[it.name/]"  ['['/] label="Responsible", color=lightgrey[']'/]
+[/if]
+[/template]

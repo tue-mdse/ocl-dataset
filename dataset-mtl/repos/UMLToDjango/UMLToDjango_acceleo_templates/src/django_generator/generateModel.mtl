@@ -1,0 +1,123 @@
+[comment encoding = UTF-8 /]
+[module generateModel('http://www.eclipse.org/uml2/5.0.0/UML')/]
+[template public generateModel(c : Class)]
+from django.db import models
+
+class [c.name.toUpperFirst()/]([if(c.allParents()->size() = 0)]models.Model[else][for(parent:Classifier | c.parents()->asOrderedSet())][if(parent.qualifiedName.replaceAll('::', '.').replace('.'+parent.name,'') <> c.qualifiedName.replaceAll('::', '.').replace('.'+c.name,'') )]'[parent.qualifiedName.replaceAll('::', '.').replace(c.getModel().name+'.','')/]'[else][parent.name.toUpperFirst()/][/if],[/for][/if]):
+	"""
+	[c.name.toUpperFirst()/] model Class, check this on db
+	"""
+[if(c.allParents()->size() = 0)]
+
+	"""
+	the id attribute, primary key
+	"""
+	id=models.AutoField(primary_key=True)
+[/if]
+[for (p : Property | c.getAllAttributes())]
+[if(not(p.name.equalsIgnoreCase('id')))][if(not(p.type.name.oclIsUndefined()))][if(p.type.oclIsKindOf(Integer) or p.type.name.equalsIgnoreCase('int'))]
+	"""
+	the [p.name.toLower()/] attribute.
+	"""
+	[p.name.toLower()/] = models.IntegerField([p.generateNullConstraints()/], default=0)
+[elseif(p.type.name.equalsIgnoreCase('date'))]
+	"""
+	the [p.name.toLower()/] attribute.
+	"""
+	[p.name.toLower()/] = models.DateField([p.generateNullConstraints()/])
+[elseif(p.type.name.equalsIgnoreCase('datetime'))]
+	"""
+	the [p.name.toLower()/] attribute.
+	"""
+	[p.name.toLower()/] = models.DateTimeField([p.generateNullConstraints()/])
+[elseif(p.type.oclIsKindOf(String) or p.type.name.equalsIgnoreCase('string'))][if(p.isMultivalued())]
+	"""
+	the [p.name.toLower()/] attribute.
+	"""
+	[p.name.toLower()/] = models.TextField(max_length=255,[p.generateNullConstraints()/])
+	[else]
+	"""
+	the [p.name.toLower()/] attribute.
+	"""
+	[p.name.toLower()/] = models.CharField(max_length=255,[p.generateNullConstraints()/])
+	[/if]
+[elseif(p.type.oclIsKindOf(Boolean) or p.type.name.equalsIgnoreCase('boolean'))]
+	"""
+	the [p.name.toLower()/] attribute.
+	"""
+	[p.name.toLower()/] = models.BooleanField()
+[elseif( p.type.name.equalsIgnoreCase('float'))]
+	"""
+	the [p.name.toLower()/] attribute.
+	"""
+	[p.name.toLower()/] = models.FloatField([p.generateNullConstraints()/], default=0)
+[elseif( p.type.name.equalsIgnoreCase('image'))]
+	"""
+	the [p.name.toLower()/] attribute.
+	"""
+	[p.name.toLower()/] = models.ImageField(max_length=255,[p.generateNullConstraints()/])
+[elseif(p.type.oclIsKindOf(Boolean) or p.type.name.equalsIgnoreCase('boolean'))]
+	"""
+	the [p.name.toLower()/] attribute.
+	"""
+	[p.name.toLower()/] = models.BooleanField(default=False)
+[elseif(p.type.name.equalsIgnoreCase('geometry'))]
+	"""
+	the [p.name.toLower()/] attribute.
+	"""
+	[if(p.getAppliedStereotype('nextplatform_profile::GeometryProperty') <> null)][if(p.hasValue(p.getAppliedStereotype('nextplatform_profile::GeometryProperty'),'geometryType'))][p.name.toLower()/] = models.[p.getValue(p.getAppliedStereotype('nextplatform_profile::GeometryProperty'),'geometryType')/]Field(srid=[p.getValue(p.getAppliedStereotype('nextplatform_profile::GeometryProperty'),'srsId')/], blank=True, null=True)[/if][/if]
+[else]
+	[for (a : Association | c.getAssociations())][if(p.name.equalsIgnoreCase(a.memberEnd->first().name))][relationship(c,a.memberEnd->first(), a.memberEnd->last(),a)/][elseif(p.name.equalsIgnoreCase(a.memberEnd->last().name))][relationship(c,a.memberEnd->last(), a.memberEnd->first(),a)/][/if][/for]
+[/if][/if][/if][/for]
+
+	def __str__(self):
+		"""
+		Default admin string for [c.name.toUpperFirst()/]
+	    """
+		return '[c.name.toUpperFirst()/]'
+[/template]
+
+[comment
+	One to one association
+ /]
+
+[template public relationship(class:Class, source : Property, target: Property, a : Association)]
+[if( ( source.type.name <> class.name ) or ( source.type.name = target.type.name ) )]
+"""
+the [source.name.toLower()/] attribute.
+"""
+[if(source.isNavigable())][if(source.isMultivalued() and target.isMultivalued())][manyToMany(source, target)/][elseif(not(source.isMultivalued()) and not(target.isMultivalued()))][oneToOne(source,a)/][elseif(source.isMultivalued())][oneToMany(source, a)/][else][manyToOne(source,target,a)/][/if][/if]
+[/if]
+[/template]
+
+[template public oneToOne(p : Property, a : Association) post (trim())]
+[if(not(p.name.oclIsUndefined()))][p.name.toLower()/]=models.OneToOneField('[p.type.name/]'[if(not(a.name.oclIsUndefined()) and not(a.name.equalsIgnoreCase('')))],related_name='[a.name.toLower().replace('\'', '').replace(' ', '').trim()/]'[/if], null=True, blank=True, default=None)[/if]
+[/template] 
+
+[comment
+	One to one association
+ /]
+[template public oneToMany(p : Property, a : Association) post (trim())]
+"""
+One To Many, See related name manyToOne association
+"""
+[/template] 
+
+[comment
+	One to one association
+ /]
+[template public manyToOne(p : Property, inverse : Property, a: Association) post (trim())]
+[if(not(p.name.oclIsUndefined()))][p.name.toLower()/]=models.ForeignKey('[p.type.name/]'[if(not(inverse.name.oclIsUndefined()) and not(inverse.name.equalsIgnoreCase('')))],related_name='[inverse.name.toLower().replace('\'', '').replace(' ', '').trim()/]'[else],related_name='[a.name.toLower().replace('\'', '').replace(' ', '').trim()/]'[/if],[if(p.lowerBound()>0)]null=False, blank=False[else]null=True, blank=True[/if])[/if]
+[/template] 
+
+[comment
+	One to one association
+ /]
+[template public manyToMany(p : Property, inverse : Property) post (trim())]
+[if(not(p.name.oclIsUndefined()))][p.name.toLower()/]=models.ManyToManyField('[p.type.name/]'[if(not(inverse.name.oclIsUndefined()) and not(inverse.name.equalsIgnoreCase('')))],related_name='[inverse.name.toLower().replace('\'', '').replace(' ', '').trim()/]'[/if], null=True, blank=True, default=None)[/if]
+[/template] 
+
+
+[template public generateNullConstraints(p:Property)]
+[if(p.lowerBound()>0)]null=False,blank=False[else]null=True,blank=True[/if]
+[/template]

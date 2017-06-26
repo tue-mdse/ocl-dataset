@@ -1,0 +1,446 @@
+[
+  {
+    "name": "ReturnType",
+    "expressions": [],
+    "properties": ["Signature"]
+  },
+  {
+    "name": "Allocation",
+    "expressions": [{
+      "operations": {
+        "oclIsTypeOf": 1,
+        "excludesAll": 1,
+        "oclAsType": 1
+      },
+      "name": "NestedComponentAllocation",
+      "body": " \n\t\tlet composites : Collection(CompositeComponent) = \n\t\tself.allocationcontext->select(a | a.assemblycontext.component.oclIsTypeOf(CompositeComponent)).assemblycontext.component.oclAsType(CompositeComponent)\n\t\tin self.allocationcontext.assemblycontext->excludesAll(composites.assemblycontext)",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "IteratorExpImpl": 6,
+        "VariableExpImpl": 9,
+        "OperationCallExpImpl": 3,
+        "LetExpImpl": 1,
+        "TypeExpImpl": 2,
+        "PropertyCallExpImpl": 8
+      },
+      "properties": [
+        "componentBasedSystem::AllocationContext::assemblycontext",
+        "componentBasedSystem::CompositeComponent::assemblycontext",
+        "componentBasedSystem::Allocation::allocationcontext",
+        "componentBasedSystem::AssemblyContext::component"
+      ]
+    }],
+    "properties": [
+      "ComponentBasedSystem",
+      "allocationcontext"
+    ]
+  },
+  {
+    "name": "RequiredRole",
+    "expressions": [],
+    "properties": [
+      "ComponentBasedSystem",
+      "Component",
+      "AssemblyConnector"
+    ]
+  },
+  {
+    "name": "Environment",
+    "expressions": [{
+      "operations": {
+        "or": 1,
+        "last": 2,
+        "and": 2,
+        "=": 4,
+        "first": 2
+      },
+      "name": "IsLinked",
+      "body": "link->exists( l | (l.container->first() = c1 and l.container->last() =c2) or \n\t\t\t\t\t\t\t\t\t\t\t   ( l.container->first() = c2 and l.container->last() =c1))",
+      "type": "OperationImpl",
+      "constructs": {
+        "IteratorExpImpl": 1,
+        "VariableExpImpl": 9,
+        "OperationCallExpImpl": 11,
+        "PropertyCallExpImpl": 5
+      },
+      "properties": [
+        "componentBasedSystem::Environment::link",
+        "componentBasedSystem::Link::container"
+      ]
+    }],
+    "properties": [
+      "link",
+      "container",
+      "ComponentBasedSystem"
+    ]
+  },
+  {
+    "name": "ComponentBasedSystem",
+    "expressions": [
+      {
+        "operations": {
+          "oclIsInvalid": 1,
+          "oclIsTypeOf": 1,
+          "includes": 1,
+          "=": 4,
+          "oclAsType": 1
+        },
+        "name": "GetContainerOfContext",
+        "body": "\n\t\t \tif  self.allocation.allocationcontext->any(a | a.assemblycontext = context).container.oclIsInvalid() then\n\t\t \t /* if AssemblyContext is nested and therefore not directly allocated */ \n\t\t \t\t/* get CompositeComponents */\n\t\t \t\tlet composites : Collection(CompositeComponent) = \n\t\t\t\t\tself.allocation.allocationcontext->select(a | a.assemblycontext.component.oclIsTypeOf(CompositeComponent)).assemblycontext.component.oclAsType(CompositeComponent)in\n\t\t \t\tlet composite : CompositeComponent = composites->any(c | c.assemblycontext->includes(context)) in\n\t\t \t\tlet parentContext : AssemblyContext = self.assemblycontext->any(a | a.component = composite) in\t\t\n\t\t \t\tself.allocation.allocationcontext->any(a | a.assemblycontext = parentContext).container\n\t\t \telse self.allocation.allocationcontext->any(a | a.assemblycontext = context).container\n\t\t  \tendif",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 9,
+          "VariableExpImpl": 20,
+          "OperationCallExpImpl": 8,
+          "LetExpImpl": 3,
+          "TypeExpImpl": 2,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 21
+        },
+        "properties": [
+          "componentBasedSystem::ComponentBasedSystem::assemblycontext",
+          "componentBasedSystem::AllocationContext::assemblycontext",
+          "componentBasedSystem::CompositeComponent::assemblycontext",
+          "componentBasedSystem::ComponentBasedSystem::allocation",
+          "componentBasedSystem::AllocationContext::container",
+          "componentBasedSystem::Allocation::allocationcontext",
+          "componentBasedSystem::AssemblyContext::component"
+        ]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "GetContainerOfContext": 2,
+          "=": 1,
+          "IsLinked": 1
+        },
+        "name": "SameParentContainerOrLinkedContainerOfconnectedAssemblyContexts",
+        "body": "\n\t  \tself.assemblyconnector->forAll( a | \n\t  \tlet c1 : Container = GetContainerOfContext(a.providedAssemblyContext),\n\t  \t\tc2: Container = GetContainerOfContext(a.requiredAssemblyContext)\n\t  \tin c1 = c2  or environment.IsLinked(c1,c2))",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 10,
+          "OperationCallExpImpl": 5,
+          "LetExpImpl": 2,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "componentBasedSystem::ComponentBasedSystem::environment",
+          "componentBasedSystem::roles::AssemblyConnector::providedAssemblyContext",
+          "componentBasedSystem::ComponentBasedSystem::assemblyconnector",
+          "componentBasedSystem::roles::AssemblyConnector::requiredAssemblyContext"
+        ]
+      }
+    ],
+    "properties": [
+      "assemblycontext",
+      "type",
+      "environment",
+      "allocation",
+      "providedrole",
+      "assemblyconnector",
+      "requiredrole",
+      "repository"
+    ]
+  },
+  {
+    "name": "Branch",
+    "expressions": [],
+    "properties": ["descriptionelement"]
+  },
+  {
+    "name": "InternalAction",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Link",
+    "expressions": [],
+    "properties": [
+      "Environment",
+      "name",
+      "container"
+    ]
+  },
+  {
+    "name": "DelegationConnector",
+    "expressions": [
+      {
+        "operations": {
+          "last": 1,
+          "=": 1,
+          "first": 1
+        },
+        "name": "DelegationConnectorRolesInterface",
+        "body": "\t\t \n\t\tself.role->first().interface = self.role->last().interface",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 3,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "componentBasedSystem::DelegationConnector::role",
+          "componentBasedSystem::roles::Role::interface"
+        ]
+      },
+      {
+        "operations": {
+          "last": 1,
+          "=": 1,
+          "first": 1,
+          "oclType": 2
+        },
+        "name": "DelegationConnectorRolesType",
+        "body": "\t\t \n\t\tself.role->first().oclType() = self.role->last().oclType()",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 5,
+          "VariableExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": ["componentBasedSystem::DelegationConnector::role"]
+      }
+    ],
+    "properties": [
+      "role",
+      "CompositeComponent",
+      "name"
+    ]
+  },
+  {
+    "name": "Service",
+    "expressions": [],
+    "properties": [
+      "Component",
+      "correspondingSignatures"
+    ]
+  },
+  {
+    "name": "AssemblyContext",
+    "expressions": [],
+    "properties": [
+      "ComponentBasedSystem",
+      "AllocationContext",
+      "AssemblyConnector",
+      "AssemblyConnector",
+      "name",
+      "CompositeComponent",
+      "component"
+    ]
+  },
+  {
+    "name": "Complex",
+    "expressions": [],
+    "properties": ["simple"]
+  },
+  {
+    "name": "Component",
+    "expressions": [],
+    "properties": [
+      "requiredrole",
+      "name",
+      "Repository",
+      "service",
+      "AssemblyContext",
+      "providedrole",
+      "behaviourdescription"
+    ]
+  },
+  {
+    "name": "Interface",
+    "expressions": [],
+    "properties": [
+      "Repository",
+      "signature",
+      "name",
+      "Role"
+    ]
+  },
+  {
+    "name": "Type",
+    "expressions": [],
+    "properties": [
+      "ComponentBasedSystem",
+      "name"
+    ]
+  },
+  {
+    "name": "Role",
+    "expressions": [],
+    "properties": [
+      "DelegationConnector",
+      "interface",
+      "name"
+    ]
+  },
+  {
+    "name": "Loop",
+    "expressions": [],
+    "properties": ["descriptionelement"]
+  },
+  {
+    "name": "ParameterType",
+    "expressions": [],
+    "properties": ["Parameter"]
+  },
+  {
+    "name": "AllocationContext",
+    "expressions": [],
+    "properties": [
+      "Allocation",
+      "assemblycontext",
+      "container"
+    ]
+  },
+  {
+    "name": "ProvidedRole",
+    "expressions": [],
+    "properties": [
+      "AssemblyConnector",
+      "ComponentBasedSystem",
+      "Component"
+    ]
+  },
+  {
+    "name": "BehaviourDescription",
+    "expressions": [],
+    "properties": [
+      "Component",
+      "descriptionelement"
+    ]
+  },
+  {
+    "name": "Parameter",
+    "expressions": [],
+    "properties": [
+      "parametertype",
+      "name",
+      "Signature"
+    ]
+  },
+  {
+    "name": "DescriptionElement",
+    "expressions": [],
+    "properties": [
+      "Loop",
+      "BehaviourDescription",
+      "Branch"
+    ]
+  },
+  {
+    "name": "Signature",
+    "expressions": [],
+    "properties": [
+      "Interface",
+      "name",
+      "Service",
+      "parameter",
+      "returntype"
+    ]
+  },
+  {
+    "name": "AssemblyConnector",
+    "expressions": [],
+    "properties": [
+      "name",
+      "providedrole",
+      "requiredrole",
+      "ComponentBasedSystem",
+      "providedAssemblyContext",
+      "requiredAssemblyContext"
+    ]
+  },
+  {
+    "name": "Simple",
+    "expressions": [],
+    "properties": [
+      "kind",
+      "Complex"
+    ]
+  },
+  {
+    "name": "CompositeComponent",
+    "expressions": [
+      {
+        "operations": {
+          "includesAll": 2,
+          "or": 1
+        },
+        "name": "SameInterfaceDelegated",
+        "body": "\n\t\tself.delegationconnector->\n\t\tforAll( d | d.role->includesAll(providedrole) or d.role->includesAll(requiredrole))",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 5,
+          "OperationCallExpImpl": 3,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "componentBasedSystem::CompositeComponent::delegationconnector",
+          "componentBasedSystem::DelegationConnector::role",
+          "componentBasedSystem::Component::requiredrole",
+          "componentBasedSystem::Component::providedrole"
+        ]
+      },
+      {
+        "operations": {
+          "size": 3,
+          "+": 1,
+          "=": 1
+        },
+        "name": "RoleCount",
+        "body": "\n\t\tself.delegationconnector->size() = self.requiredrole->size() + self.providedrole->size()",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 5,
+          "VariableExpImpl": 3,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "componentBasedSystem::CompositeComponent::delegationconnector",
+          "componentBasedSystem::Component::requiredrole",
+          "componentBasedSystem::Component::providedrole"
+        ]
+      }
+    ],
+    "properties": [
+      "delegationconnector",
+      "assemblycontext"
+    ]
+  },
+  {
+    "name": "Container",
+    "expressions": [],
+    "properties": [
+      "name",
+      "Environment",
+      "Link",
+      "AllocationContext"
+    ]
+  },
+  {
+    "name": "ExternalCall",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "simpleTypes",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Void",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Repository",
+    "expressions": [],
+    "properties": [
+      "interface",
+      "ComponentBasedSystem",
+      "component"
+    ]
+  }
+]

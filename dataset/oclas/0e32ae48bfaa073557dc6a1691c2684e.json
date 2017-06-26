@@ -1,0 +1,212 @@
+[
+  {
+    "name": "Autheur",
+    "expressions": [],
+    "properties": [
+      "ecrit",
+      "journal",
+      "nameAuthor",
+      "examine"
+    ]
+  },
+  {
+    "name": "Journal",
+    "expressions": [
+      {
+        "operations": {"=": 1},
+        "name": "getResearchPaper",
+        "body": "issues->select(c:Issue|c.publie)->select(Paper)->select(typeArticle = TYPE_ARTICLE::Recherche)",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 3,
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 3,
+          "EnumLiteralExpImpl": 1,
+          "TypeExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "Journal::Issue::publie",
+          "Journal::Journal::issues"
+        ]
+      },
+      {
+        "operations": {">": 1},
+        "name": "getIssues",
+        "body": "issues->select(c:Issue| c.number > numero)\t",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "Journal::Journal::issues",
+          "Journal::Issue::number"
+        ]
+      },
+      {
+        "operations": {"asSet": 1},
+        "name": "getPapers",
+        "body": "issues.publie->asSet()",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "Journal::Issue::publie",
+          "Journal::Journal::issues"
+        ]
+      }
+    ],
+    "properties": [
+      "name",
+      "autheur",
+      "IssueNumber",
+      "issues"
+    ]
+  },
+  {
+    "name": "TYPE_ARTICLE",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Reviewer",
+    "expressions": [],
+    "properties": [
+      "Review",
+      "nameReviewer"
+    ]
+  },
+  {
+    "name": "Paper",
+    "expressions": [{
+      "operations": {
+        "size": 2,
+        "and": 1,
+        "<": 2,
+        "=": 1
+      },
+      "name": "authorIsnotReviewer",
+      "body": "reviewer->forAll(r:Reviewer | redaction->select(a:Autheur|a.nameAuthor = r.nameReviewer )->size()<1)\n\t\t                              and reviewer->size()<3",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "IteratorExpImpl": 2,
+        "VariableExpImpl": 5,
+        "OperationCallExpImpl": 6,
+        "IntegerLiteralExpImpl": 2,
+        "PropertyCallExpImpl": 5
+      },
+      "properties": [
+        "Journal::Paper::redaction",
+        "Journal::Autheur::nameAuthor",
+        "Journal::Paper::reviewer",
+        "Journal::Reviewer::nameReviewer"
+      ]
+    }],
+    "properties": [
+      "issueOfPublication",
+      "redaction",
+      "revisioner",
+      "LastPage",
+      "typeArticle",
+      "issueOfSubmission",
+      "reviewer",
+      "firstPage"
+    ]
+  },
+  {
+    "name": "Issue",
+    "expressions": [
+      {
+        "operations": {"=": 3},
+        "name": "limitedTitle",
+        "body": " if self.title = null then\n\t\t\t\t\t\t\t\t\t SpecialIssues = true \n\t\t\t\t\t\t\t     else SpecialIssues = false\n\t\t\t\t\t\t\t     endif",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 3,
+          "VariableExpImpl": 3,
+          "NullLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 3,
+          "BooleanLiteralExpImpl": 2
+        },
+        "properties": [
+          "Journal::Issue::title",
+          "Journal::Issue::SpecialIssues"
+        ]
+      },
+      {
+        "operations": {"excludesAll": 1},
+        "name": "notSubmittedPublished",
+        "body": " publie->excludesAll(submit)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "Journal::Issue::publie",
+          "Journal::Issue::submit"
+        ]
+      },
+      {
+        "operations": {
+          "size": 1,
+          "=": 1
+        },
+        "name": "afterPublication",
+        "body": "publie->forAll(p:Paper | p.reviewer->size()=3)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 2,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "Journal::Issue::publie",
+          "Journal::Paper::reviewer"
+        ]
+      },
+      {
+        "operations": {
+          "sum": 1,
+          "-": 2,
+          "=": 1
+        },
+        "name": "",
+        "body": "result= publie->collect((LastPage- firstPage)-3)->sum()",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 4,
+          "OperationCallExpImpl": 4,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "Journal::Issue::publie",
+          "Journal::Paper::LastPage",
+          "Journal::Paper::firstPage"
+        ]
+      }
+    ],
+    "properties": [
+      "publie",
+      "journal",
+      "title",
+      "pages",
+      "submit",
+      "number",
+      "SpecialIssues"
+    ]
+  }
+]

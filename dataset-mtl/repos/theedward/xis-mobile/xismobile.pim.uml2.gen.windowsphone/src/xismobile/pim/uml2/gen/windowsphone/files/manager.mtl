@@ -1,0 +1,74 @@
+[comment encoding = UTF-8 /]
+[module manager('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::windowsphone::common::utils /]
+
+[template public generateManager(entities : OrderedSet(Class))]
+
+[let modelName : String = entities->first().getModel().name.toUpperFirst()]
+[file (modelName + '/' + modelName + '/Domain/DomainEntityManager.cs', false, 'UTF-8')]
+using System;
+using System.Collections.Generic;
+
+namespace [modelName.replace('-', '_').replace(' ', '')/].Domain
+{
+	public class DomainEntityManager {
+		
+		private static DomainEntityManager instance = null;
+
+		[for (c : Class | entities)]
+		private List<[c.name.toUpperFirst()/]> [c.name.toLowerFirst()/]s;
+		[/for]
+		
+		protected DomainEntityManager() {
+			[for (c : Class | entities)]
+			[c.name.toLowerFirst()/]s = new List<[c.name.toUpperFirst()/]>();
+			[/for]
+		}
+	
+		public static DomainEntityManager GetManager() {
+			if (instance == null) {
+				instance = new DomainEntityManager();
+			}
+			return instance;
+		}
+	
+		[for (c : Class | entities)]
+		public bool CreateOrUpdate[c.name.toUpperFirst()/]([c.name.toUpperFirst()/] [c.name.toLowerFirst()/]) {
+			if (![c.name.toLowerFirst()/]s.Contains([c.name.toLowerFirst()/]))
+            {
+                [c.name.toLowerFirst()/]s.Add([c.name.toLowerFirst()/]);
+                return true;
+            }
+            else return false;
+		}
+	
+		public [c.name.toUpperFirst()/] Get[c.name.toUpperFirst()/]ById(String id) {
+			[c.name.toUpperFirst()/] [c.name.toLowerFirst()/] = null;
+	
+			foreach ([c.name.toUpperFirst()/] [c.name.at(1).toLower()/] in [c.name.toLowerFirst()/]s) {
+				if([c.name.at(1).toLower()/].Id.Equals(id)) {
+					[c.name.toLowerFirst()/] = [c.name.at(1).toLower()/];
+					break;				
+				}
+			}
+			return [c.name.toLowerFirst()/];
+		}
+	
+		public List<[c.name.toUpperFirst()/]> GetAll[c.name.toUpperFirst()/]s() {
+			return new List<[c.name.toUpperFirst()/]>([c.name.toLowerFirst()/]s);
+		}
+	
+		public bool Delete[c.name.toUpperFirst()/]([c.name.toUpperFirst()/] [c.name.toLowerFirst()/]) {
+			return [c.name.toLowerFirst()/]s.Remove([c.name.toLowerFirst()/]);
+		}
+	
+		public void DeleteAll[c.name.toUpperFirst()/]s() {
+			[c.name.toLowerFirst()/]s.Clear();
+		}
+		[/for]
+	}
+}
+[/file]
+[/let]
+[/template]

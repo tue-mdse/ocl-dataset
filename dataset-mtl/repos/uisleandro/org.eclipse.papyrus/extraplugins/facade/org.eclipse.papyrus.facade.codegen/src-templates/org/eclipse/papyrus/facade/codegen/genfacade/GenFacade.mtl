@@ -1,0 +1,158 @@
+[comment]Copyright (c) 2008, 2012 Obeo.
+
+All rights reserved. This program and the accompanying materials
+are made available under the terms of the Eclipse Public License v1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+Contributors:
+ Obeo - Initial API and implementation
+ CEA LIST - Modification to support Facade code generation[/comment]
+[comment encoding = UTF-8/]
+[module GenFacade('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel')/]
+
+[import org::eclipse::emf::eef::codegen::ecore::model::buildproperties /]
+[import org::eclipse::emf::eef::codegen::ecore::model::AdapterFactoryClass /]
+[import org::eclipse::emf::eef::codegen::ecore::model::FactoryClass /]
+[import org::eclipse::papyrus::facade::codegen::genfacade::PackageClass /]
+[import org::eclipse::papyrus::facade::codegen::genfacade::Class /]
+[import org::eclipse::emf::eef::codegen::ecore::model::EnumClass /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenModel /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenPackage /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenClass /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenEnum /]
+[import org::eclipse::emf::eef::codegen::ecore::model::manifest /]
+[import org::eclipse::emf::eef::codegen::ecore::model::module_gwt_xml /]
+[import org::eclipse::emf::eef::codegen::ecore::model::Plugin /]
+[import org::eclipse::emf::eef::codegen::ecore::model::plugin_properties /]
+[import org::eclipse::emf::eef::codegen::ecore::model::plugin_xml /]
+[import org::eclipse::papyrus::facade::codegen::genfacade::ResourceClass /]
+[import org::eclipse::emf::eef::codegen::ecore::model::ResourceFactoryClass /]
+[import org::eclipse::emf::eef::codegen::ecore::model::SwitchClass /]
+[import org::eclipse::emf::eef::codegen::ecore::model::ValidatorClass /]
+[import org::eclipse::emf::eef::codegen::ecore::model::XmlProcessorClass /]
+[import org::eclipse::emf::eef::codegen::ecore::services::fileUtil /]
+[import org::eclipse::papyrus::facade::codegen::genfacade::WrapperClass /]
+[import org::eclipse::papyrus::facade::codegen::genfacade::LoaderClass /]
+[import org::eclipse::papyrus::facade::codegen::genfacade::AbstractRepresentingClass /]
+[import org::eclipse::papyrus::facade::codegen::genfacade::RepresentingElementAdapter /]
+[import org::eclipse::papyrus::facade::codegen::utils::FacadeCodegenUtils /]
+
+
+[**
+ * Generates all the classes of the Model plug-in from a genModel.
+ * 
+ * WARNING: The genModel passed to this template MUST be loaded and reconciled as in 
+ * org.eclipse.emf.codegen.ecore.genmodel.presentation.GeneratorUIUtil.loadGenModels()
+ * Otherwise canGenerate() will always return false, and invalid reference in the GenModel will cause problems.
+ * In order to prevent a reference to an Ecore UI plug-in, this is done in the eef ui plug-in.
+ * 
+*/]
+[template public GenAllGenClass(genModel : GenModel) ? (genModel.canGenerate())]
+	[comment @main /]
+	[if (not genModel.fileExistsModel(genModel.buildPropertiesFilePath()))]
+		[genModel.buildProperties()/]
+	[/if]
+
+	[comment from EMF codegen : Do allow an existing MANIFEST.MF to be overwritten, since it may have been created as part of an empty EMF project.
+        Use the existence of a plugin.xml as a guard against overwriting in a project that has already been generated. /]
+	[if (not genModel.fileExistsModel(genModel.pluginXmlFilePath()))]
+		[genModel.manifest()/]
+	[/if]
+
+	[comment @TODO See when and where GWT files are generated/]
+	[comment][genModel.moduleGwt()/][/comment]
+
+	[if (genModel.hasModelPluginClass())]
+		[genModel.plugin()/]
+	[/if]
+
+	[if (genModel.hasPluginSupport())]
+		[if (not genModel.sameModelEditProject() and not genModel.sameModelEditorProject())]
+			[if (genModel.bundleManifest and not genModel.fileExistsModel(genModel.manifestFilePath()))]
+				[genModel.manifest()/]
+			[/if]
+	
+			[if (not genModel.fileExistsModel(genModel.pluginXmlFilePath()))]
+				[genModel.pluginXml()/]
+			[/if]
+		[/if]
+	
+		[if (not genModel.fileExistsModel(genModel.pluginPropertiesFilePath()))]
+			[genModel.pluginProperties()/]
+		[/if]
+	
+		[if (not genModel.fileExistsModel(genModel.buildPropertiesFilePath()))]
+			[genModel.buildProperties()/]
+		[/if]
+	[/if]
+
+	[for (p : GenPackage | genModel.eAllContents(GenPackage))]
+		[if (p.canGenerate())]
+			[p.prepareCache()/][comment Create helpers to cache and supply information for unique naming./]
+
+			[copyEcore(p)/]
+
+			[initUtilsCaches()/]
+	
+			[for (genClass : GenClass | p.genClasses)]
+				[if (genClass.canGenerate())]
+					[if (not genClass.isExternalInterface() and (not genModel.suppressInterfaces or genClass.isInterface()))]
+						[genClass.genGenClass(true, false)/]
+					[/if]
+					[if (not genClass.isInterface())]
+						[genClass.genGenClass(if genModel.suppressInterfaces then true else false endif, true)/]
+					[/if]
+				[/if]
+			[/for]
+			[for (genEnum : GenEnum | p.genEnums)]
+				[if (genEnum.canGenerate())]
+					[genEnum.enumClass()/]
+				[/if]
+			[/for]
+	
+			[if (p.hasClassifiers())]
+	
+
+	
+				[if (not genModel.suppressEMFMetaData and not genModel.suppressInterfaces)]
+					[p.packageClass(true, false)/]
+				[/if]
+		
+				[p.packageClass(if genModel.suppressEMFMetaData or genModel.suppressInterfaces then true else false endif, true)/]
+		
+				[if (not genModel.suppressInterfaces)]
+					[p.factoryClass(true, false)/]
+				[/if]
+		
+				[p.factoryClass(if genModel.suppressInterfaces then true else false endif, true)/]
+		
+				[if (p.resource = GenResourceKind::XML)]
+					[p.xmlProcessorClass()/]
+				[/if]
+		
+				[comment][if (p.hasConstraints())]
+					[p.validatorClass()/]
+				[/if][/comment]
+		
+				[if (p.adapterFactory and p.genClasses->notEmpty())]
+					[p.switchClass()/]
+					[p.adapterFactoryClass()/]
+				[/if]
+			[/if]
+
+			[p.wrapperClass()/]
+			[p.loaderClass()/]
+			[p.abstractRepresentingClass()/]
+			[p.representingElementAdapterClass()/]
+
+		
+			[if (p.resource <> GenResourceKind::None)]
+				[p.resourceFactoryClass()/]
+				[p.resourceClass()/]
+			[/if]
+	
+			[p.clearCache()/]
+		[/if]
+	[/for]
+[/template]

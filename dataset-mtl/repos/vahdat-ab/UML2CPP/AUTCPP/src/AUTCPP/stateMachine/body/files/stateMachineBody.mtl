@@ -1,0 +1,155 @@
+[comment encoding = UTF-8 /]
+[module stateMachineBody('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import AUTCPP::javaWrapper::files::StateMachineFunctions /]
+
+[template public generateConstructorsFiles(aStateMachine : StateMachine)]
+[for (aRegion : Region | region)]
+[for (aPsuedostate : Pseudostate | subvertex->filter(Pseudostate)->select(kind=PseudostateKind::initial))]
+[for (aTransition : Transition | aRegion.transition->select(source = aPsuedostate))]
+	set[aRegion.name.toUpperFirst()/]([target.name/]);[/for][/for][/for]
+[/template]
+
+[template public generateSetMethods(aClass : Class, aStateMachine : StateMachine)]
+[for (aRegion : Region | aStateMachine.region)]
+bool [aClass.name.toUpperFirst()/]::set[name.toUpperFirst()/]([name.toUpperFirst()/] in[name.toUpperFirst()/]){
+	bool wasSuccess = false;
+	_[name/] = in[name.toUpperFirst()/];
+	[generateSettingEntryDoFunctions(aRegion)/]
+	return wasSuccess;	
+}
+[/for]
+[/template]
+
+[template public generateGetMethods(aClass : Class, aStateMachine : StateMachine)]
+[for (aRegion : Region | aStateMachine.region)]
+[aClass.name.toUpperFirst()/]::[aRegion.name/] [aClass.name.toUpperFirst()/]::get[name.toUpperFirst()/](){
+	return _[name/];
+}
+[/for]
+[/template]
+
+[template public generateSettingEntryDoFunctions(aRegion : Region)]
+[if (not subvertex->filter(State)->select(entry->isEmpty() = false or doActivity->isEmpty() = false)->isEmpty()  )]
+	switch ((int)in[name.toUpperFirst()/]) { 
+	[for (aState : State | subvertex->filter(State)->select(entry->isEmpty() = false or doActivity->isEmpty() = false )->asOrderedSet()) ]
+		case [name/]:
+		[if (not aState.entry->isEmpty()) ]
+			[aState.entry.name/]();
+		[/if]
+		[if (not aState.doActivity->isEmpty())]
+			[aState.doActivity.name/]();
+		[/if]
+			wasSuccess = true;		
+			break;
+	[/for]
+		}
+[/if]
+[/template]
+
+[template public generateStateTransitionFunctionBody(aClass : Class, aStateMachine : StateMachine)]
+[for (transName : String | PureTransitions(aStateMachine)) separator ('\n')]
+bool [aClass.name.toUpperFirst()/]::[transName/](){
+	bool wasSuccess = false;
+	[for (aRegion : Region | aStateMachine.region)]
+	[if (transition->select(name=transName and source.oclIsTypeOf(State))->size()>0)]
+	[aRegion.name.toUpperFirst()/] selector = _[aRegion.name/];		
+	switch ((int)selector) {
+	[for (aTransition : Transition | aRegion.transition->select(name=transName))]
+		case [aTransition.source.name/]:
+			[if (aTransition.guard->notEmpty())]
+			if ([generateMixiedConstraint(aTransition.guard). trim()/]) {
+			[/if]
+			[if (aTransition.source.oclAsType(State).exit->notEmpty())]
+			[aTransition.source.oclAsType(State).exit.name/]();
+			[/if]
+			[if (aTransition.ownedElement->filter(Behavior)->notEmpty())]
+			[aTransition.ownedElement->filter(Behavior).name/]();
+			[/if]
+			set[aRegion.name.toUpperFirst()/]([aTransition.target.name/]);
+			[if (aTransition.guard->notEmpty())]
+			}
+			[/if]
+			wasSuccess = true;
+			break; 
+		[/for]
+	}
+	[/if]	
+	[/for]	
+	return wasSuccess;			
+}
+[/for]
+
+[/template]
+
+[template public generateMixiedConstraint(aConstraint : Constraint)]		
+[if (aConstraint.specification.oclIsTypeOf(LiteralBoolean))]
+	[aConstraint.specification.name /] == [aConstraint.specification.booleanValue()/]
+[elseif (aConstraint.specification.oclIsTypeOf(LiteralInteger))]
+	[aConstraint.specification.name /] == [aConstraint.specification.integerValue()/]
+[elseif (aConstraint.specification.oclIsTypeOf(LiteralReal))]
+	[aConstraint.specification.name /] == [aConstraint.specification.realValue()/]
+[elseif (aConstraint.specification.oclIsTypeOf(LiteralString))]
+	[aConstraint.specification.name /] == "[aConstraint.specification.stringValue()/]"
+[elseif (aConstraint.specification.oclIsTypeOf(LiteralNull))]
+	[aConstraint.specification.name /] == NULL
+[/if]
+[/template]
+
+[template public generateSMDoActivities(aClass : Class , aStateMachine : StateMachine) post (trim())]
+[for (aRegion : Region | aStateMachine.region) separator ('\n')]
+[if (subvertex->filter(State)->select(doActivity->isEmpty() = false )->size()>0)]
+[for (aState : State | aRegion.subvertex->filter(State)->select(doActivity->isEmpty() = false )) separator ('\n')]
+[generateSMDoActivity(aClass, aState.doActivity)/][/for]
+[/if][/for]
+[/template]
+
+[template private generateSMDoActivity(aClass : Class , aBehavior : Behavior)]
+bool [aClass.name/]::[aBehavior.name/]() {
+	bool wasSuccess = false;
+	//[protected ('manual code'+ name.toUpperFirst())]
+	
+	//[/protected]
+	wasSuccess = true;
+	return wasSuccess;
+}
+[/template]
+
+[template public generateSMEntries(aClass : Class , aStateMachine : StateMachine) post (trim())]
+[for (aRegion : Region | aStateMachine.region) separator ('\n')]
+[if (subvertex->filter(State)->select(entry->isEmpty() = false )->size()>0)]
+[for (aState : State | aRegion.subvertex->filter(State)->select(entry->isEmpty() = false )) separator ('\n')]
+[generateSMEntry(aClass, aState.entry)/][/for]
+[/if][/for]
+[/template]
+
+[template private generateSMEntry(aClass : Class , aBehavior : Behavior)]
+bool [aClass.name/]::[aBehavior.name/]() {
+	bool wasSuccess = false;
+	//[protected ('manual code'+ name.toUpperFirst())]
+	
+	//[/protected]
+	wasSuccess = true;
+	return wasSuccess;	
+}
+[/template]
+
+[template public generateSMExits(aClass : Class , aStateMachine : StateMachine) post (trim())]
+[for (aRegion : Region | aStateMachine.region) separator ('\n')]
+[if (aRegion.subvertex->filter(State)->select(exit->isEmpty() = false )->size()>0)]
+[for (aState : State | aRegion.subvertex->filter(State)->select(exit->isEmpty() = false )) separator ('\n')]
+[generateSMExit(aClass, aState.exit)/][/for]
+[/if][/for]
+[/template]
+
+[template private generateSMExit(aClass : Class , aBehavior : Behavior)]
+bool [aClass.name/]::[aBehavior.name/]() {
+	bool wasSuccess = false;
+	//[protected ('manual code '+ name.toUpperFirst())]
+	
+	//[/protected]
+	wasSuccess = true;
+	return wasSuccess;	
+}
+[/template]
+

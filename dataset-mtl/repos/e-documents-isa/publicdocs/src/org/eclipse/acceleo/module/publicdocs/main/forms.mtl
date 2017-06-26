@@ -1,0 +1,68 @@
+[comment encoding = UTF-8 /]
+[module forms('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::acceleo::module::publicdocs::common::util/]
+[import org::eclipse::acceleo::module::publicdocs::common::schema/]
+[import org::eclipse::acceleo::module::publicdocs::common::complextype /]
+
+[template public generateForms(model : Model){
+pack:PackageableElement = model.getPackageWithName('forms');
+version: String = getVersion('xsd');
+}]
+[generateXSDFile(model, 'path_core', pack.oclAsType(Package), '-', version)/]
+[/template]
+
+[template public generateXSDFile(model: Model, path : String, pack : Package, suffix : String, version: String )]
+[file (getFilenameXSD(path, pack.name, suffix, version), false, 'UTF-8')]
+[beginSchema('ext,forms,pdc,udt', pack, version)/]
+	[importXSD('pdc,ext,udt')/]
+	[generateContentAggregatedComponents(model, pack)/]
+[endSchema(pack, version)/]
+[/file]
+[/template]
+
+[template public generateContentAggregatedComponents(model: Model, pack : Package)]
+[let pElements : Sequence(Class) = pack.ownedType->asSequence()]
+[for (packageableElement: PackageableElement | pElements->sortedBy(name))]
+[generatePackageableElement(model, packageableElement)/]
+[/for]
+[/let]
+[/template]
+
+[template public generatePackageableElement(model: Model, packageableElement : PackageableElement)]
+[if packageableElement.oclIsTypeOf(Class)]
+[generateType(model, packageableElement.oclAsType(Class))/]
+[/if]
+[/template]
+
+[comment NDR Values: commentsOnly, useCoreVocsTypes, useCoreVocsElements, restrictCoreVocsTypes /]
+[template public generateType(model: Model, class : Class) { 
+NDR : String = getNDR('usecorevocstypes');
+}]
+[if isGlobalElement(class)]
+[generateElement(class.name, getSuffix('elementType'))/]
+[/if]
+[if not isLocal(class)]
+	[if(class.general->isEmpty())]
+[generateComplextype_ground(class, NDR)/]
+	[else]
+[generateComplextype_restriction_complexcontent(class, NDR)/]
+	[/if]
+[else]
+[generateEmptyTypeWithDependency(model, class)/]
+[/if]
+[/template]
+
+[template public generateElement(name : String, type: String)]
+<[getNS('xs')/]:element name="[name/]" type="[name/][type/]"/>
+[/template]
+
+[template public generateEmptyTypeWithDependency(model: Model, aClass: Class) 
+{
+	pack : Package = aClass.owner.oclAsType(Package);
+}]
+    [for (a: Generalization | model.getDerivationsOf(aClass))]
+[generateComplextype(aClass)/]
+    [/for]
+[/template]
+

@@ -1,0 +1,265 @@
+[module generateManageableServiceBaseJava('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::compositeUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::service::common::servicePathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoCommon /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainCommon /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::build::common::entityUtil /]
+[template public generateManageableServiceBaseJava(anEntity : Class)  ? (anEntity.isManageableEntity())]
+[file (anEntity.getModel().generateProjectFolder().concat(anEntity.getModel().pathToGeneratedMainJava()).concat('/').concat(anEntity.generateJavaPackagePath()).concat('/crud/').concat(anEntity.name.toUpperFirst()).concat('ManageableServiceBase.java'), false, 'UTF-8')]
+package [anEntity.generateJavaPackage()/].crud;
+
+[anEntity.generateImports()/]
+	[for (aDao : Class | anEntity.classAttributes().type->filter(Class)->select(aClass:Class|aClass.isEntity())->including(anEntity))]
+		[if (aDao.generateJavaPackage()<>anEntity.generateJavaPackage().concat('.crud'))]
+			[if (not aDao.hasEntityParent())]
+import [if (aDao.generateJavaPackage().size()>0)][aDao.generateJavaPackage()/].[/if][aDao.name.toUpperFirst()/];
+			[/if]
+		[/if]
+import [if (aDao.generateJavaPackage().size()>0)][aDao.generateJavaPackage()/].[/if][aDao.name.toUpperFirst()/]Impl;
+import [if (aDao.generateJavaPackage().size()>0)][aDao.generateJavaPackage()/].[/if][aDao.name.toUpperFirst()/]Dao;
+	[/for]
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import [if (anEntity.generateJavaPackage().size()>0)][anEntity.generateJavaPackage()/].[/if][anEntity.name.toUpperFirst()/];
+	[for (aDao : Class | anEntity.classAttributes().type->filter(Class)->select(aClass:Class|aClass.isEntity()))]
+import [if (aDao.generateJavaPackage().size()>0)][aDao.generateJavaPackage()/].[/if][aDao.name.toUpperFirst()/];
+	[/for]
+
+/**
+ *
+ */
+public abstract class [anEntity.name.toUpperFirst()/]ManageableServiceBase
+    implements [anEntity.name.toUpperFirst()/]ManageableService
+{
+    private [anEntity.name.toUpperFirst()/]ManageableDao dao;
+
+    /**
+     * @param daoIn
+     */
+    public void setDao([anEntity.name.toUpperFirst()/]ManageableDao daoIn)
+    {
+        this.dao = daoIn;
+    }
+
+    /**
+     * @return dao
+     */
+    protected [anEntity.name.toUpperFirst()/]ManageableDao getDao()
+    {
+        return this.dao;
+    }
+
+    /**
+     * @param id 
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties())]
+     * @param [aProperty.paramName()/] 
+	[/for]
+     * @return [anEntity.name.toUpperFirst()/]ValueObject
+     * @see org.andromda.timetracker.domain.[anEntity.name.toUpperFirst()/]Dao#create
+     */
+    public [anEntity.name.toUpperFirst()/]ValueObject create([anEntity.generateDaoManagerFunctionParam()/])
+        throws Exception
+    {
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties())]
+        if ([aProperty.paramName()/] == null)
+        {
+            throw new IllegalArgumentException(
+                "[if (anEntity.generateJavaPackage().size()>0)][anEntity.generateJavaPackage()/].[/if]crud.[anEntity.name.toUpperFirst()/]ManageableService.create(...) - '[aProperty.paramName()/]' can not be null");
+        }
+	[/for]
+        return toValueObject(this.dao.create([anEntity.generateServiceManagerFunctionParamNames()/]));
+    }
+
+    /**
+     * @param id
+     * @return [anEntity.name.toUpperFirst()/]ValueObject
+     * @throws Exception
+     * @see [anEntity.name.toUpperFirst()/]ManageableService#readById([anEntity.getPrimaryTypeName(true)/])
+     */
+    public [anEntity.name.toUpperFirst()/]ValueObject readById([anEntity.getPrimaryTypeName(true)/] id)
+        throws Exception
+    {
+        return toValueObject(this.dao.readById(id));
+    }
+
+    /**
+     * @param id 
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties())]
+     * @param [aProperty.paramName()/] 
+	[/for]
+     * @return toValueObjects(dao.read())
+     * @throws Exception
+     * @see [anEntity.name.toUpperFirst()/]ManageableService#read
+     */
+    public List<[anEntity.name.toUpperFirst()/]ValueObject> read([anEntity.generateDaoManagerFunctionParam()/])
+        throws Exception
+    {
+        return toValueObjects(this.dao.read([anEntity.generateServiceManagerFunctionParamNames()/]));
+    }
+
+    /**
+     * @return toValueObjects(dao.readAll())
+     * @throws Exception
+     */
+    public List<[anEntity.name.toUpperFirst()/]ValueObject> readAll()
+        throws Exception
+    {
+        return toValueObjects(this.dao.readAll());
+    }
+
+    /**
+     * @return Map<String,?> getDao().readBackingLists()
+     * @throws Exception
+     * @see [anEntity.name.toUpperFirst()/]ManageableDao#readBackingLists
+     */
+    public Map<String,?> readBackingLists()
+        throws Exception
+    {
+        return getDao().readBackingLists();
+    }
+
+    /**
+     * @param id 
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties())]
+     * @param [aProperty.paramName()/] 
+	[/for]
+     * @return toValueObject(this.dao.update([anEntity.generateServiceManagerFunctionParamNames()/]))
+     * @throws Exception
+     * @see [anEntity.name.toUpperFirst()/]ManageableDao#update
+     */
+    public [anEntity.name.toUpperFirst()/]ValueObject update([anEntity.generateDaoManagerFunctionParam()/])
+        throws Exception
+    {
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties())]
+        if ([aProperty.paramName()/] == null)
+        {
+            throw new IllegalArgumentException(
+                "[if (anEntity.generateJavaPackage().size()>0)][anEntity.generateJavaPackage()/].[/if]crud.[anEntity.name.toUpperFirst()/]ManageableService.update(...) - '[aProperty.paramName()/]' can not be null");
+        }
+	[/for]
+        return toValueObject(this.dao.update([anEntity.generateServiceManagerFunctionParamNames()/]));
+    }
+
+    /**
+     * @param ids
+     * @throws Exception
+     * @see [anEntity.name.toUpperFirst()/]ManageableService#delete([anEntity.getPrimaryTypeName(true)/]['['/][']'/])
+     */
+    public void delete([anEntity.getPrimaryTypeName(true)/]['[]'/] ids)
+        throws Exception
+    {
+        if (ids == null)
+        {
+            throw new IllegalArgumentException(
+                "[if (anEntity.generateJavaPackage().size()>0)][anEntity.generateJavaPackage()/].[/if]crud.[anEntity.name.toUpperFirst()/]ManageableService.delete([anEntity.getPrimaryTypeName(true)/]['['/][']'/] ids) - 'ids' can not be null");
+        }
+
+        this.dao.delete(ids);
+    }
+
+    private static List<[anEntity.name.toUpperFirst()/]ValueObject> toValueObjects(Collection<[anEntity.name.toUpperFirst()/]> entities)
+    {
+        final List<[anEntity.name.toUpperFirst()/]ValueObject> list = new ArrayList<[anEntity.name.toUpperFirst()/]ValueObject>();
+
+        for (Iterator<[anEntity.name.toUpperFirst()/]> iterator = entities.iterator(); iterator.hasNext();)
+        {
+            list.add(toValueObject(iterator.next()));
+        }
+
+        return list;
+    }
+
+    private static [anEntity.name.toUpperFirst()/]ValueObject toValueObject([anEntity.name.toUpperFirst()/] entity)
+    {
+        final [anEntity.name.toUpperFirst()/]ValueObject valueObject = new [anEntity.name.toUpperFirst()/]ValueObject();
+	[for (aProperty : Property | anEntity.getAllEntityParents()->including(anEntity).ownedAttribute)]
+        valueObject.set[aProperty.name.toUpperFirst()/](entity.get[aProperty.name.toUpperFirst()/]());
+	[/for]
+        valueObject.setId(entity.getId());
+
+	[for (aProperty : Property | (anEntity.getAllEntityParents()->including(anEntity)).getOppositeAttributes(false)->select(aField:Property |  (not aField.type.oclIsTypeOf(Enumeration)) and (aField.lower=1 or aField.lower=0) and ((aField.oppositeAttribute().upper<0 or aField.oppositeAttribute().upper>1) or aField.isNavigable())))]
+		[if (aProperty.isMultiProperty())]
+        final Collection<[aProperty.type.name.toUpperFirst()/]> [aProperty.name.toLowerFirst()/] = entity.get[aProperty.name.toUpperFirst()/]();
+        if ([aProperty.name.toLowerFirst()/] == null || [aProperty.name.toLowerFirst()/].isEmpty())
+        {
+            valueObject.set[aProperty.name.toUpperFirst()/](null);
+        }
+        else
+        {
+            final [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['['/][']'/] values = new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['['/][aProperty.name.toLowerFirst()/].size()[']'/];
+            int counter = 0;
+            for (final Iterator<[aProperty.type.name.toUpperFirst()/]> iterator = [aProperty.name.toLowerFirst()/].iterator(); iterator.hasNext();counter++)
+            {
+                final [aProperty.type.name.toUpperFirst()/] element = iterator.next();
+                values['['/]counter[']'/] = element.getId();
+            }
+            valueObject.set[aProperty.name.toUpperFirst()/](values);
+        }
+		[else]
+        final [aProperty.type.name.toUpperFirst()/] [aProperty.name.toLowerFirst()/] = entity.get[aProperty.name.toUpperFirst()/]();
+        if ([aProperty.name.toLowerFirst()/] == null)
+        {
+            valueObject.set[aProperty.name.toUpperFirst()/](null);
+        }
+        else
+        {
+            valueObject.set[aProperty.name.toUpperFirst()/]([aProperty.name.toLowerFirst()/].getId());
+        }
+		[/if]			
+	[/for]
+        return valueObject;
+    }
+}
+[/file]
+[/template]
+
+[template public generateServiceManagerFunctionParamNames (anEntity : Class) post (trim()) ]
+	id
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+, [aProperty.paramName()/]
+	[/for]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and not (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+		[if (aProperty.oppositeAttribute()=null)]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, [aProperty.paramName()/]
+			[else]
+, [aProperty.paramName()/]
+			[/if]
+		[else]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, [aProperty.paramName()/]
+			[else]
+, [aProperty.paramName()/]
+			[/if]
+		[/if]
+	[/for]
+
+[/template]
+
+[query public isMultiProperty(aProperty : Property) : Boolean = 
+if (aProperty.oppositeAttribute()=null) then
+	if (aProperty.upper=0 or aProperty.upper=1) then
+		false
+	else
+		true
+	endif 
+else
+	if (aProperty.upper=0 or aProperty.upper=1) then
+		false
+	else
+		true
+	endif 
+endif 
+/]
+
+

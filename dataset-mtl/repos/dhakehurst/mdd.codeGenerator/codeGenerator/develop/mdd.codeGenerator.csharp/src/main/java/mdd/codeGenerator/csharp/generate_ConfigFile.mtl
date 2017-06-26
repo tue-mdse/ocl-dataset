@@ -1,0 +1,84 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_ConfigFile('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import mdd::codeGenerator::common::utils /]
+
+[template public generateConfigXml(arg:Classifier, rootName:String, filePath : String)]
+[if 'true'=getProperty('config.generate') ]
+[file (filePath, false, 'UTF-8')]
+<?xml version="1.0"?>
+[if '' <> rootName]<[rootName/]>[/if]
+  [for (pr : Property | self.ownedElement->filter(Property))]
+	[pr.generateConfigXml()/]
+  [/for]
+[if '' <> rootName]</[rootName/]>[/if]
+[/file]
+[/if]
+[/template]
+
+[template public generateConfigXml(arg : Property)]
+[let props : Set(Property) = self.type.ownedElement->filter(Property)->reject(p|p.oclIsTypeOf(Port))->select(p:Property|p.isComposite) ]
+[let basicProps : Set(Property) = self.type.ownedElement->filter(Property)->select(p:Property | p.type.oclIsKindOf(PrimitiveType) or p.type.oclIsKindOf(Enumeration)) ]
+  [if basicProps->isEmpty()]
+<!-- [self.name/] : [self.type.qualifiedName('::')/] -->
+<[self.name/]>
+  [else]
+<!-- [self.name/] : [self.type.qualifiedName('::')/]
+    [for (pr : Property | basicProps )]
+	[if pr.hasStereotype('MddProfile::Persistent')]
+	[pr.name/] : [pr.type.qualifiedName('::')/]  // [pr.ownedComment._body/]
+	[else][/if][/for]
+ -->
+<[self.name/]
+    [for (pr : Property | basicProps )]
+	[if pr.hasStereotype('MddProfile::Persistent')]
+	[pr.name/] = "[pr.default/]"
+	[else][/if][/for]
+>
+  [/if]
+  [for (pr : Property | props )]
+	[if pr.hasStereotype('MddProfile::Persistent')]
+	[pr.generateAllXml()/]
+    [else]
+	[pr.generateConfigXml()/]
+    [/if]
+  [/for]
+</[self.name/]>
+[/let]
+[/let]
+[/template]
+
+[template public generateAllXml(arg : Property)]
+[let props : Set(Property) = self.type.ownedElement->filter(Property)->reject(p|p.oclIsTypeOf(Port))->select(p:Property|p.isComposite) ]
+[let basicProps : Set(Property) = self.type.ownedElement->filter(Property)->select(p:Property | p.type.oclIsKindOf(PrimitiveType) or p.type.oclIsKindOf(Enumeration)) ]
+  [if basicProps->isEmpty()]
+<!-- [self.name/] : [self.type.qualifiedName('::')/] -->
+<[self.name/]>
+  [else]
+<!-- [self.name/] : [self.type.qualifiedName('::')/]
+    [for (pr : Property | basicProps )]
+	[pr.name/] : [pr.type.qualifiedName('::')/] // [pr.ownedComment._body/]
+	[/for]
+ -->
+<[self.name/]
+    [for (pr : Property | basicProps )]
+	[pr.name/] = "[pr.default/]"
+	[/for]
+>
+  [/if]
+  [for (pr : Property | props )]
+	[pr.generateAllXml()/]
+  [/for]
+</[self.name/]>
+[/let]
+[/let]
+[/template]

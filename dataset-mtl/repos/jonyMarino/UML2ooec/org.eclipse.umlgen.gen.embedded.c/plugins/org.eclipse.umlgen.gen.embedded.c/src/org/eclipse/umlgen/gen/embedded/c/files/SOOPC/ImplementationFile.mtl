@@ -1,0 +1,148 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2017 FIUBA
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Jonathan Marino (FIUBA) - initial API and implementation
+[/comment]
+[module ImplementationFile('http://www.eclipse.org/uml2/5.0.0/UML')/]
+
+[import org::eclipse::umlgen::gen::embedded::c::commons::namedelement/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::class/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::method/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::operations/]
+[import org::eclipse::umlgen::gen::embedded::c::templates::function/]
+[import org::eclipse::umlgen::gen::embedded::c::templates::methods/]
+[import org::eclipse::umlgen::gen::embedded::c::templates::define/]
+[import org::eclipse::umlgen::gen::embedded::c::templates::include/]
+[import org::eclipse::umlgen::gen::embedded::c::templates::variable/]
+[import org::eclipse::umlgen::gen::embedded::c::templates::constant/]
+[import org::eclipse::umlgen::gen::embedded::c::templates::type/]
+[import org::eclipse::umlgen::gen::embedded::c::services::queries/]
+[import org::eclipse::umlgen::gen::embedded::c::services::configuration/]
+
+[comment archivo de informacion privada /]
+[template public generate_implementationFile(aClass : uml::Class)]
+
+
+/**********************************************************************************
+ * Copyright: [getCopyright()/]
+ * Project: [aClass.getModel().name/]
+ * File: [getFilePath()/][getName()/].c
+ * Code Management Tool File Version: [getVersion()/]
+[if (isSvnDateEnabled())]
+ * Date: $Date$
+[/if]
+ * SDD Component: [name/]
+ * Language: C
+ * Author: [getAuthor()/]
+[if (isSvnIdEnabled())]
+ * Last Change: $Id$
+[/if]
+ **********************************************************************************/
+
+/*!
+ * \file [getFilePath()/][getName()/].c
+ * \brief [name/]
+ */
+
+[comment ---------- generate includes ----------------------------------/]
+[genCIncludes()/]
+
+#include "[aClass.name/]_protected.h"
+
+/**********************************************************************************
+ * [getFilePath()/][getName()/].c
+ **********************************************************************************/
+/*## package [getFullFilePath().concat('/').substituteAll('//', '').substituteAll('/', '::')/] */
+
+/*## class TopLevel::[name/] */
+
+[comment ---------- generate macros & constants ------------------------/]
+[genCDefines()/]
+
+[comment ---------- generate type definitions --------------------------/]
+[genCTypes()/]
+
+[comment ---------- generate constants ---------------------------------/]
+[if (aClass.hasCConstants())]
+[genCConstants()/]
+[/if]
+
+
+[generateDynamicMethodsImplementation()/]
+
+[generateFinalMethodsImplementation()/]
+
+[generateSelectorsImplementation()/]
+
+/**********************************************************************************
+ * File Path: [getFullFilePath()/][getName()/].c
+ **********************************************************************************/
+[/template]
+
+[template public generateSelectorsImplementation (aClass : Class) ]
+// Selectors    
+[let seqOp : Sequence(uml::Operation) = getVirtual(getNotInline(getNotStatic(getNotPrivate(getNotRedefiner(getOwnedOperations(aClass))))))->select( op | not isAMethodRedefinition(op) ) ]
+[for (o : Operation | seqOp) ]      
+[generateSOOPCMethodPrototype(o)/]{
+	
+	[if hasReturnType(o)]return [/if] self[ for (c:Class | aClass.entireClassesHierarchechy()->excluding(aClass)->excluding( not hasVirtualMethods() ) )] -> super[/for]-> [o.name/](_self[for (p:Parameter | getOperationParameters(o)) before(',') separator(',')] [p.getName()/] [/for]);
+	
+}
+[/for]
+[/let]
+[/template]
+
+[template public generateFinalMethodsImplementation (aClass : Class) ]
+// Final Methods 
+[let seqOp : Sequence(uml::Operation) = getNotVirtual(getNotInline(getNotAbstract(getNotStatic(getNotPrivate(getOwnedOperations(aClass))))))]
+[for (o : Operation | seqOp) ]      
+[generateSOOPCMethodPrototype(o)/]{
+	[if o.name = 'ctor']
+	static [aClass.name/]Vtbl const vtbl={
+	[for (c : Class | entireClassesHierarchechy(aClass)->reverse()) ]      
+	[for (o : Operation | allNotFinalOperations(c)->select(op : uml::Operation | not(op.isPrivate()))->reject(o:Operation | c.getSuperClasses().entireClassesHierarchechy().ownedOperation->exists(redefine(o)))) separator (',')]      
+	[aClass.name/]_[o.name/]_	
+	[/for]	
+	[/for]
+};
+	[/if]
+
+	//[protected('user code for '+o.name)]
+	[if aClass.hasSuperclass() and aClass.superClass.ownedOperation->one(name = 'ctor')]
+	[o.class.superClass.name/]_ctor (self[for(p:Parameter | getOperationParameters(o)) before(', ') separator(', ')][p.name/][/for])/])
+	[/if]
+	[if aClass.hasVirtualMethods()]
+ 	self[ for (c:Class | aClass.entireClassesHierarchechy()->excluding(aClass)->excluding( not hasVirtualMethods() ) )] -> super[/for].vptr = &vtbl; /* override the vptr */	
+	[/if]
+	//TO DO
+	//[/protected]
+}
+[/for]
+[/let]
+[/template]
+
+[template public generateDynamicMethodsImplementation (aClass : Class) ]
+// Virtual Methods 
+[let seqOp : Sequence(uml::Operation) = getVirtual(getNotInline(getNotAbstract(getNotStatic(getNotPrivate(getOwnedOperations(aClass))))))]
+[for (o : Operation | seqOp) ]      
+[generateReturnType(o)/] [o.class.name/]_[o.name/]_ ([o.class.name/] * self[for(p:Parameter | getOperationParameters(o)) before(', ') separator(', ')][p.genParameter()/][/for])/]){
+	[if (o.isAbstract)]
+	ASSERT(0); /* purely-virtual function should never be called */
+	[if not getReturn(ownedParameter->asSequence())->isEmpty()]
+	return 0U; /* to avoid compiler warnings */
+	[/if]
+	[else]
+	//[protected('user code'+i)]
+	//TO DO
+	//[/protected]
+	[/if]
+}
+[/for]
+[/let]
+[/template]

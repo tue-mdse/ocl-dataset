@@ -1,0 +1,108 @@
+[comment encoding = UTF-8 /]
+[module methods('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::umlgen::gen::embedded::c::commons::method /]
+[import org::eclipse::umlgen::gen::embedded::c::commons::parameter/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::typedelements/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::operations/]
+[import org::eclipse::umlgen::gen::embedded::c::templates::function/]
+
+[template public generateSuperMethodsDeclaration (aClass : Class) ]
+// Selector for Super Methods declarations
+[for (o : Operation | aClass.ownedOperation) ]      
+[if o.visibility <> VisibilityKind::private and o.isVirtual() and not o.isAMethodRedefinition()]
+[o.generateReturnType()/] super_[o.name/] (const void * class, const void * self[generateParameters(o,'')/]);
+[/if]
+[/for]
+[/template]
+
+[template public generateNotRedifinedMethods (aClass : Class) ]
+// Not redifined methods
+[for (o : Operation | aClass.getSuperClasses().allNotFinalOperations()->reject(o:Operation | aClass.ownedOperation->exists(redefine(o)))) ]      
+[if (o.visibility <> VisibilityKind::private) and (o.isVirtual())]
+#define [aClass.name/]_[o.name/] [aClass.getSuperClasses().name/]_[o.name/] // [o.type.name/] [aClass.name/]_[o.name/] ( const void * self[generateParameters(o,'')/]);
+[/if]
+[/for]
+[/template]
+
+
+[template public generateSuperSelector(aMethod : Operation)]
+[generateStaticMethodWithClassPrefix(aMethod,'_')/]
+[/template]
+
+[template public generateDynamicMethodImplementationHeader(aMethod : Operation)]
+[generateStaticMethodWithClassPrefix(aMethod,'_')/]
+[/template]
+
+[template public generateDynamicMethodDeclaration (aClass : Class) ]
+[for (o : Operation | aClass.ownedOperation) ]
+[generateDynamicMethodImplementationHeader(o)/];
+[/for]
+[/template]
+
+[template public generateMethodDeclarationsNotFinal (aClass : Class, visibility: VisibilityKind) ]
+// Method declarations not final    
+[for (o : Operation | aClass.ownedOperation) ]      
+[if o.visibility = visibility and (o.isVirtual()) and not isAMethodRedefinition(o)]
+[generateMethod(o)/];
+[/if]
+[/for]
+[/template]
+
+[template public generateMethodDeclarationsFinal (aClass : Class, visibility: VisibilityKind) ]
+// Method declarations final
+[for (o : Operation | aClass.ownedOperation) ]      
+[if o.visibility = visibility and (not o.isVirtual())]
+[generateMethod(o)/];
+[/if]
+[/for]
+[/template]
+
+[template public generateMethodImplementationHeader(aMethod : Operation) ]
+[generateNotStaticMethodWithClassPrefix(aMethod,'_')/]
+[/template]
+
+[template public generateMethod(aMethod : Operation) ]
+[generateNotStaticMethodWithClassPrefix(aMethod,'')/]
+[/template]
+
+[template public generateStaticMethod(aMethod : Operation) ]
+[generateStaticMethodWithClassPrefix(aMethod,'')/]
+[/template]
+
+[template public generateNotStaticMethodWithClassPrefix(aMethod : Operation,prefix:String) ]
+[generateReturnType(aMethod)/] [aMethod.name/] [generateAllParameters(aMethod,prefix)/]
+[/template]
+
+[template public generateStaticMethodWithClassPrefix(aMethod : Operation,prefix:String) ]
+[generateReturnType(aMethod)/] [aMethod.class.name.toUpperFirst()/]_[aMethod.name/] [generateAllParameters(aMethod,prefix)/]
+[/template]
+
+[template public generateAllParameters(aMethod : Operation,prefix:String)]
+([if aMethod.visibility = VisibilityKind::public]void * [else]struct [aMethod.class.name.toUpperFirst()/] *[/if] [printParameterNameForAClass('self',prefix)/][generateParameters(aMethod,prefix)/])
+[/template]
+
+[template public generateParameters(o : Operation,prefix:String) ]
+[for(p:Parameter | getOperationParameters(o)) before(', ') separator(', ')][generateParameter(p,prefix)/][/for]
+[/template]
+
+[template public generateParameterType(aParameter : Parameter) ]
+[if (not aParameter.type.oclIsUndefined() ) and aParameter.type.oclIsKindOf(Class)] [if aParameter.operation.visibility = VisibilityKind::public]void * [else]struct [aParameter.type.name/] *[/if] [else][aParameter.type.name/] [/if] 
+[/template]
+
+[template public generateParameter(aParameter : Parameter,prefix:String) ]
+[generateParameterType(aParameter)/][if (not aParameter.type.oclIsUndefined() ) and aParameter.type.oclIsKindOf(Class)][printParameterNameForAClass(aParameter.name,prefix)/] [else][aParameter.name/][/if]
+[/template]
+
+[template public printParameterNameForAClass(aParameter : String,prefix:String) ]
+[prefix/][aParameter/]
+[/template]
+
+[template public generateReturnType(aMethod: Operation) post(trim())]
+[if getReturn(ownedParameter->asSequence())->isEmpty()]void[else][for (p : Parameter | getReturn(ownedParameter->asSequence()))][getType()/][genPointer()/][/for][/if]
+[/template]
+
+[template public generateSOOPCMethodPrototype (o : Operation) ]
+[generateReturnType(o)/] [o.class.name/]_[o.name/] ([o.class.name/] * self[for(p:Parameter | getOperationParameters(o)) before(', ') separator(', ')][p.genParameter()/][/for])/])
+[/template]
+

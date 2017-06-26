@@ -1,0 +1,82 @@
+[comment encoding = UTF-8 /]
+[**
+ * Copyright 2012 jccastrejon
+ * 
+ * This file is part of Model2Roo.
+ * Model2Roo is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ * 
+ * Model2Roo is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Model2Roo.  If not, see <http://www.gnu.org/licenses/>.
+ */]
+[module Commands('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import fr::imag::model2roo::common::Common /]
+[import fr::imag::model2roo::common::GraphDataModel /]
+[import fr::imag::model2roo::common::PolyglotDataModel /]
+
+[**
+ * Get the Spring Roo commands associated to the entities of the specified package.
+ * @param aPackage UML package.
+ */]
+[template public generateEntitiesCommands(aPackage : Package)]
+[for (anElement: Element | aPackage.ownedElement)]
+  [if anElement.oclIsTypeOf(Class)]
+    [if anElement.getAppliedStereotype('rooCommand::RooEntityCommand')->notEmpty()] [anElement.generateModelCommands(anElement.getAppliedStereotype('rooCommand::RooEntityCommand'), anElement.oclAsType(Class).name)/]
+    [/if]
+    [comment] TODO: Make this dependant on a stereotype, not on the data model [/comment]
+    [if aPackage.isGraphDataModel() = 'true']
+      polyglot rest methods --entity  ~.domain.[anElement.oclAsType(Class).name/]
+    [/if]
+  [/if]
+[/for]
+[/template]
+
+[**
+ * Get the Spring Roo system commands associated to the specified package.
+ * @param aPackage UML package.
+ */]
+[template public generateSystemCommands(aPackage : Package) post(trim())]
+web mvc setup 
+polyglot rest setup
+[if aPackage.getAppliedStereotype('rooCommand::RooModelCommand')->notEmpty()] [aPackage.generateModelCommands(aPackage.getAppliedStereotype('rooCommand::RooModelCommand'), '')/]
+[else] ['controllersAll'.getMapping()/] ['controllersAll'.getDefaultValue()/]
+[/if]
+
+[if aPackage.isGraphDataModel() = 'true']
+  [aPackage.generateGraphMvcSetup()/]
+[/if]
+[/template]
+
+[**
+ * 
+ * @param aPackage UML package.
+*/]
+[template public generateBlobCommands(aPackage : Package) post(trim())]
+[for (aClass: Element | aPackage.ownedElement)]
+  [if aClass.oclIsTypeOf(Class)]
+    [let fieldProperty : Element = aClass.ownedElement->any(aProperty | not aProperty.getAppliedStereotype('rooStructure::RooFieldFile').oclIsUndefined())]
+        [if not fieldProperty.oclIsUndefined()]
+          polyglot blob setup --entity ~.domain.[aClass.oclAsType(Class).name/]
+
+          [for (aProperty: Element | aClass.ownedElement)]
+            [if aProperty.oclIsTypeOf(Property)]
+              [if not aProperty.getAppliedStereotype('rooStructure::RooFieldFile').oclIsUndefined()]
+                [let stereotype : Stereotype = aProperty.getAppliedStereotype('rooStructure::RooFieldFile')]
+                  polyglot blob property --entity ~.domain.[aClass.oclAsType(Class).name/] --property [aProperty.oclAsType(Property).name/] [stereotype.ownedMember.getRooDetail(stereotype, aProperty)/]
+                [/let]
+              [/if]
+            [/if]
+          [/for]
+        [/if]
+    [/let]
+  [/if]
+[/for]
+[/template]

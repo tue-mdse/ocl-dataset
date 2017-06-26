@@ -1,0 +1,53 @@
+[comment encoding = UTF-8 /]
+[module boot('http://www.i-mogene.org/imogene/1.0')/]
+
+[template public boot(aProject : Project)]
+[file ('/src/org/imogene/boot/Boot.java', false, 'UTF-8')]
+package org.imogene.boot;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.imogene.config.*;
+import org.imogene.domain.*;
+import org.imogene.entities.*;
+
+public class Boot {
+	// le boot
+	public static void main(String['['/][']'/] args) {
+		// on prépare la configuration
+		SpringApplication app = new SpringApplication([aProject.name.toUpperFirst()/]PersistenceAndDomainConfig.class);
+		app.setLogStartupInfo(false);
+		// on la lance
+		ConfigurableApplicationContext context = app.run(args);
+		// domain
+		[for (anEntity : CardEntity | aProject.entities)]
+		I[anEntity.name.toUpperFirst()/]Domain [anEntity.name.toLowerFirst()/]domain = context.getBean(I[anEntity.name.toUpperFirst()/]Domain.class);
+		[/for]
+		try {
+			// Test the add method
+			[for (anEntity : CardEntity | aProject.entities)]
+			System.out.println("+++++++++++++++++++++++Add a new [anEntity.name/]+++++++++++++");
+			[anEntity.name.toUpperFirst()/] [anEntity.name.toLowerFirst()/] = ([anEntity.name.toUpperFirst()/]) new [anEntity.name.toUpperFirst()/]().build(1L, 1L);
+			[anEntity.name.toLowerFirst()/]domain.save[anEntity.name.toUpperFirst()/]([anEntity.name.toLowerFirst()/]);
+			[/for]
+		} catch (Exception ex) {
+			System.out.println("Exception : " + ex.getCause());
+		}
+		// Close the spring context
+		context.close();
+	}
+
+	// Method use to show elements of a collection
+	private static <T> void display(String message, Iterable<T> elements) {
+		System.out.println(message);
+		for (T element : elements) {
+			System.out.println(element);
+		}
+	}
+
+}
+[/file]
+[/template]

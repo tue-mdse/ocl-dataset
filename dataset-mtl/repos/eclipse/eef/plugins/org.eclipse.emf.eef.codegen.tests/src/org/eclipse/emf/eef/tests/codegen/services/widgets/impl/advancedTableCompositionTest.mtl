@@ -1,0 +1,116 @@
+[comment 
+ *******************************************************************************
+ * Copyright (c) 2008-2010 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module advancedTableCompositionTest('http://www.eclipse.org/emf/eef/components/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore') extends widgetTest/]
+
+[import common /]
+[import naming /]
+[import typeUtils /]
+
+[template public canGenerateTest(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement) overrides canGenerateTest ? (peElement.isAdvancedTableComposition() and pec.model<>peElement.model.eType)]true[/template]
+
+[template public updateExpectedModel(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement) overrides updateExpectedModel ? (peElement.isAdvancedTableComposition())]
+EClass [peElement.model.eType.name.toLowerFirst()/]MetaClass = [peElement.model.eType.ePackage.metamodelPackage()/].eINSTANCE.get[peElement.model.eType.name/]();
+EObject [peElement.model.eType.name.toLowerFirst()/] = EEFTestsModelsUtils.getFirstInstanceOf(expectedModel, [peElement.model.eType.name.toLowerFirst()/]MetaClass);
+if ([peElement.model.eType.name.toLowerFirst()/] == null)
+	throw new InputModelInvalidException([peElement.model.eType.name.toLowerFirst()/]MetaClass.getName());
+CompoundCommand cc = new CompoundCommand();
+[comment  TODO: Reuse the commandUpdater template but the last parameter of the command creation method must be ... parameterized /]
+cc.append(AddCommand.create(editingDomain, [pec.model.name.toLowerFirst()/], [peElement.metamodelGetter()/], EcoreUtil.copy([peElement.model.eType.name.toLowerFirst()/])));
+[/template]
+
+[template public editFeature(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement) overrides editFeature ? (peElement.isAdvancedTableComposition())]
+// Change value of the [peElement.name/] feature of the [pec.model.name/] element 
+editAdvancedTableComposition[peElement.name/]Feature(wizardShell);
+[/template]
+
+[template public editFeature(f : EStructuralFeature, peElement : PropertiesEditionElement) overrides editFeature ? (peElement.isAdvancedTableComposition())]
+[/template]
+
+[template public editPropertyFeature(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement) overrides editPropertyFeature ? (peElement.isAdvancedTableComposition())]
+// Change value of the [peElement.name/] feature of the [pec.model.name/] element
+		editAdvancedTableComposition[peElement.name/]Feature(propertiesView, bot.selectNode(modelEditor, firstInstanceOf));
+[/template]
+
+[template public additionnalMethodsForWidgets(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement) overrides additionnalMethodsForWidgets ? (peElement.isAdvancedTableComposition())]
+	/**
+	 * Edit the feature in the table composition
+	 */
+	protected void editAdvancedTableCompositionFor[peElement.name/]Feature() throws WidgetInvalidException {
+		EClass [peElement.model.eType.name.toLowerFirst()/]MetaClass = [peElement.model.eType.ePackage.metamodelPackage()/].eINSTANCE.get[peElement.model.eType.name/]();
+		SWTBotShell shellTable = bot.shell([peElement.model.eType.name.toLowerFirst()/]MetaClass.getName());
+		bot.activateShell(shellTable);
+		[peElement.model.eType.name/] [peElement.model.eType.name.toLowerFirst()/] = ([peElement.model.eType.name/]) EEFTestsModelsUtils.getFirstInstanceOf(bot.getActiveResource(), [peElement.model.eType.name.toLowerFirst()/]MetaClass);
+		[for (f : ecore::EStructuralFeature | peElement.model.eType.eContents()->select(oclIsKindOf(ecore::EStructuralFeature)).oclAsType(ecore::EStructuralFeature)->select(feature : ecore::EStructuralFeature |not feature.isContainment()))]
+		bot.sleep(500);
+		[editFeature(f, involvedPropertiesEditionElement(peElement, f))/]
+		[/for]
+		bot.closeShellWithFinishButton(shellTable);
+	}
+[/template]
+
+[comment overrides this template if additional methods are needed/]
+[template public additionalMethodsForTableComposition(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement) overrides additionalMethodsForTableComposition ? (peElement.isAdvancedTableComposition())]
+	/**
+	 * Edit the table composition
+	 * @param wizardShell
+	 */
+	protected void editAdvancedTableComposition[peElement.name/]Feature(SWTBotShell wizardShell) throws WidgetInvalidException {
+		bot.activateShell(wizardShell);
+		bot.sleep(500);
+		bot.addButtonAdvancedTableComposition([peElement.views->first().editorID()/]).click();
+		editAdvancedTableCompositionFor[peElement.name/]Feature();
+		bot.closeShellWithFinishButton(wizardShell);
+	}
+[/template]
+
+[comment overrides this template if additional methods are needed/]
+[template public additionalMethodsPropertiesForTableComposition(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement) overrides additionalMethodsPropertiesForTableComposition ? (peElement.isAdvancedTableComposition())]
+	/**
+	 * Edit the table composition
+	 * @param wizardShell
+	 */
+	protected void editAdvancedTableComposition[peElement.name/]Feature(SWTBotView propertyView, SWTBotTreeItem selectNode) throws WidgetInvalidException {
+		SWTEEFBotHelper helper = new SWTEEFBotHelper(propertyView.bot());
+		helper.addButtonAdvancedTableComposition([peElement.views->first().editorID()/]).click();
+		editAdvancedTableCompositionFor[peElement.name/]Feature();
+		selectNode.select();
+	}
+[/template]
+
+[comment defines the command to apply in order to obtain the expected model /]
+[template public removeExpectedModel(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement) overrides removeExpectedModel ? (peElement.isAdvancedTableComposition())]
+CompoundCommand cc = new CompoundCommand();
+[comment  TODO: Reuse the commandUpdater template but the last parameter of the command creation method must be ... parameterized /]
+List eGet = (List)[pec.model.name.toLowerFirst()/].eGet([peElement.metamodelGetter()/]);
+if (eGet.size() == 0)
+	throw new InputModelInvalidException("Model is invalid");
+EObject firstInstanceOf = (EObject) eGet.get(0);
+cc.append(RemoveCommand.create(editingDomain, [pec.model.name.toLowerFirst()/], [peElement.metamodelGetter()/], firstInstanceOf));
+[/template]
+
+[comment defines the bot command to process to edit the expected feature /]
+[template public removeFeature(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement) overrides removeFeature ? (peElement.isAdvancedTableComposition())]
+// Change value of the [peElement.name/] feature of the [pec.model.name/] element 
+		bot.removeAdvancedTableCompositionFeature(wizardShell, [peElement.views->first().editorID()/]);
+[/template]
+
+[template public removePropertyFeature(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement) overrides removePropertyFeature ? (peElement.isAdvancedTableComposition())]
+// Change value of the [peElement.name/] feature of the [pec.model.name/] element 
+bot.removePropertyAdvancedTableCompositionFeature(propertiesView, [peElement.views->first().editorID()/], [peElement.views->first().owningViewsRepository().messagesProvider()/].PropertiesEditionPart_RemoveListViewerLabel, bot.selectNode(modelEditor, firstInstanceOf));
+[/template]
+
+[query public isAdvancedTableComposition(peElement : PropertiesEditionElement) : Boolean = 
+	if (not peElement.model.oclIsTypeOf(ecore::EReference))
+	then false
+	else (peElement.representationName('AdvancedTableComposition')) and (peElement.model.oclAsType(ecore::EReference).isContainmentMany() or peElement.model.oclAsType(ecore::EReference).isContainmentSingle())
+	endif/]

@@ -1,0 +1,56 @@
+[comment encoding = UTF-8 /]
+[module classGenerator('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import at::fhv::pme::tyme::common::uml2service /]
+[import at::fhv::pme::tyme::common::dataType /]
+
+[template public generateImports(aClass : Class)]
+package [aClass.namespace.name/];
+
+[for (classifier:Classifier | aClass.operationsParametersTypes())]
+import [classifier.getCompleteName()/];	
+[/for]
+[/template]
+
+[template public generateConstructor(aClass : Class, isPrivate : Boolean)]
+[if (isPrivate)]private [else]public [/if][aClass.name.toUpperFirst()/]() {
+	// [protected (aClass.name)]
+	// TODO Implement
+	// [/protected]
+}
+[/template]
+
+[template public generateOperation(o : Operation)]
+/**
+ * [o.name/]
+[for (c : Comment | o.ownedComment)]
+ * [c._body/]
+[/for]
+*/
+[if (o.hasStereotype('RestMethod'))]
+@Path("[o.getValue(o.getAppliedStereotype('profile::RestMethod'), 'path')/]")
+@[o.getHTTPMethodName()/]
+@Produces("[o.getValue(o.getAppliedStereotype('profile::RestMethod'), 'produces')/]")
+[/if]
+[o.visibility/] [if o.isStatic]static [/if][o.generateReturn()/] [o.name/]([o.generateRawParameters()/]) throws Exception {
+	// [protected (o.name)]
+	// TODO Implement
+	// [/protected]
+}
+[/template]
+
+[template public generateProperties(aClass : Class)]
+[for (p : Property | aClass.attribute) separator('\n')]
+[p.visibility/] [if p.isStatic]static [/if][p.type.toJavaType()/] [p.name/][if (p.default <> null)] = "[p.default/]"[/if];
+[/for]
+
+[for (p : Property | aClass.attribute) separator('\n')]
+public [p.type.toJavaType()/] get[p.name.toUpperFirst()/]() {
+	return this.[p.name/];
+}
+
+public void set[p.name.toUpperFirst()/]([p.type.name/] [p.name/]) {
+	this.[p.name/] = [p.name/];
+}
+[/for]
+[/template]

@@ -1,0 +1,216 @@
+[comment encoding = UTF-8 /]
+[module generateDaoTestJava('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::compositeUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoUtil /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoCommon /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::stringUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainCommon /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::build::common::entityUtil /]
+[template public generateDaoTestJava(anEntity : Class)]
+	[file (anEntity.getModel().generateProjectFolder().concat(anEntity.getModel().pathToTestJava()).concat('/').concat(anEntity.generateJavaPackagePath()).concat('/').concat(anEntity.name.toUpperFirst()).concat('DaoTest.java'), false, 'UTF-8')]
+package [anEntity.generateJavaPackage()/];
+//[protected ('imports')]
+import java.util.Collection;
+import java.util.Calendar;
+import tests.integration.DaoTestUtil;
+import tests.integration.AbstractDaoTest;
+
+[if (anEntity.generateJavaPackage() <> anEntity.generateJavaPackage())]
+	[if (not anEntity.hasEntityParent())]
+import [if (anEntity.generateJavaPackage().size()>0)][anEntity.generateJavaPackage()/].[/if][anEntity.name.toUpperFirst()/];
+	[/if]
+import [if (anEntity.generateJavaPackage().size()>0)][anEntity.generateJavaPackage()/].[/if][anEntity.name.toUpperFirst()/]Dao;
+import [if (anEntity.generateJavaPackage().size()>0)][anEntity.generateJavaPackage()/].[/if][anEntity.name.toUpperFirst()/]Impl;
+[/if]
+[anEntity.generateImports()/]
+
+[for (aField : Property | anEntity.ownedAttribute)]
+	[if (aField.type.name<>'Date' and aField.type.name.toLower()<>'void' and not aField.type.isSimpleType())]
+		[if (anEntity.generateJavaPackage() <> aField.type.generateJavaPackage())]
+import [if (aField.type.generateJavaPackage().size()>0)][aField.type.generateJavaPackage()/].[/if][aField.type.name/];
+		[/if]
+	[/if]
+[/for]
+[comment][if (anEntity.getMultiplicity()->notEmpty())]
+	[for (aMultiplicityElement:MultiplicityElement | anEntity.getMultiplicity())]
+		[if (aMultiplicityElement.oclIsTypeOf(Type))]
+			[if (anEntity.generateJavaPackage() <> aMultiplicityElement.oclAsType(Type).generateJavaPackage())]
+import [aMultiplicityElement.oclAsType(Type).generateJavaPackage()/].[aMultiplicityElement.oclAsType(Type).name/];
+			[/if]
+		[/if]		
+	[/for]
+[/if][/comment]
+[if (not (anEntity.superClass->isEmpty()))]
+	[if (anEntity.generateJavaPackage() <> anEntity.superClass->asSequence()->first().generateJavaPackage())]
+import [anEntity.superClass.generateJavaPackage()/].[anEntity.superClass.name/];
+	[/if]
+[/if]
+import org.impalaframework.facade.Impala;
+import org.impalaframework.interactive.InteractiveTestRunner;
+//[/protected]
+
+public class [anEntity.name.toUpperFirst()/]DaoTest extends AbstractDaoTest {
+[if (anEntity.ownedAttribute->select(aProp:Property|aProp.type.name='Date')->notEmpty())]
+	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
+[/if]
+    private [anEntity.name.toUpperFirst()/]Dao [anEntity.name.toLowerFirst()/]Dao = null;
+	//[protected ('addition properties')]
+
+	//[/protected]
+    public static void main(String['['/][']'/] args) {
+        InteractiveTestRunner.run([anEntity.name.toUpperFirst()/]DaoTest.class);
+    }
+
+    public void testMappings() throws Exception {
+        System.out.println("[anEntity.name.toLowerFirst()/]dao bean: " + AbstractDaoTest.getBean("[anEntity.name.toLower()/]dao", [anEntity.name.toUpperFirst()/]Dao.class));
+    }
+	
+	public static [anEntity.name.toUpperFirst()/]Dao get[anEntity.name.toUpperFirst()/]Dao() {
+		return AbstractDaoTest.getBean("[anEntity.name.toLower()/]dao", [anEntity.name.toUpperFirst()/]Dao.class);
+	}
+
+	@Override
+    public void setUp() throws Exception {
+        super.setUp();
+        this.[anEntity.name.toLowerFirst()/]Dao = [anEntity.name.toUpperFirst()/]DaoTest.get[anEntity.name.toUpperFirst()/]Dao();
+		//[protected ('user code')]
+		//[/protected]
+
+    }
+
+	public void testGet[anEntity.name.convertSingularToPlural().toUpperFirst()/]() {
+        Collection<[anEntity.name.toUpperFirst()/][if (anEntity.hasEntityParent())]Impl[/if]> [anEntity.name.toLowerFirst()/]s = this.[anEntity.name.toLowerFirst()/]Dao.loadAll();
+
+        // Use the inherited JdbcTemplate (from
+        // AbstractTransactionalDataSourceSpringContextTests)
+        // to verify the results of the query
+        assertEquals("JDBC query must show the same number of [anEntity.name.convertSingularToPlural().toLower()/]",
+                jdbcTemplate.queryForInt("SELECT COUNT(0) FROM [anEntity.name.toLower()/]s"), [anEntity.name.toLowerFirst()/]s
+                        .size());
+		[for (it : Integer| Sequence{1,2,3})]
+    	[anEntity.name.toUpperFirst()/][if (anEntity.hasEntityParent())]Impl[/if] [anEntity.name.toLowerFirst()/][it/] = ([anEntity.name.toUpperFirst()/][if (anEntity.hasEntityParent())]Impl[/if]) this.[anEntity.name.toLowerFirst()/]Dao.get(Long.valueOf([it/]));
+			[let classStructures : Sequence(Class) = anEntity.getAllEntityParents()->including(anEntity)]
+				[for (aStructureClass : Class | classStructures)]
+					[if (aStructureClass.ownedAttribute->notEmpty())]
+						[for (aProperty : Property | aStructureClass.ownedAttribute)]
+							[if (aProperty.type.getProperty('java.typeconversion.' + aProperty.type.name) = 'Date')]
+        assertEquals([aProperty.type.generateSampleParameterValue(aProperty.name, it.toString())/].getTime(), [anEntity.name.toLowerFirst()/][it/].get[aProperty.name.toUpperFirst()/]().getTime());
+							[else]
+        assertEquals([aProperty.type.generateSampleParameterValue(aProperty.name, it.toString())/], [anEntity.name.toLowerFirst()/][it/].get[aProperty.name.toUpperFirst()/]());
+							[/if]
+						[/for]
+					[/if]
+				[/for]
+			[/let]
+		[/for]
+    }
+
+ 	public void testLoad[anEntity.name/]() {
+		[for (it : Integer| Sequence{1,2,3})]
+        [anEntity.name.toUpperFirst()/][if (anEntity.hasEntityParent())]Impl[/if] o[it/] = this.[anEntity.name.toLowerFirst()/]Dao.get(Long.valueOf([it/]));
+			[let classStructures : Sequence(Class) = anEntity.getAllEntityParents()->including(anEntity)]
+				[for (aStructureClass : Class | classStructures)]
+					[if (aStructureClass.ownedAttribute->notEmpty())]
+						[for (aProperty : Property | aStructureClass.ownedAttribute)]
+							[if (aProperty.type.getProperty('java.typeconversion.' + aProperty.type.name) = 'Date')]
+	    assertEquals(o[it/].get[aProperty.name.toUpperFirst()/]().getTime(), [aProperty.type.generateSampleParameterValue(aProperty.name, it.toString())/].getTime());
+							[else]
+								[if (aProperty.type.isJavaPrimitiveType())]
+        assertEquals(o[it/].get[aProperty.name.toUpperFirst()/](), [aProperty.type.generateSampleParameterValue(aProperty.name, it.toString())/]);
+								[else]
+        assertEquals(o[it/].get[aProperty.name.toUpperFirst()/](), [aProperty.type.generateSampleParameterValue(aProperty.name, it.toString())/]);
+								[/if]
+							[/if]
+						[/for]
+					[/if]
+				[/for]
+			[/let]
+		[/for]
+    }
+
+	[for (aFinder:Operation| anEntity.ownedOperation->select(anOperation:Operation|anOperation.isFinder()))]
+    public void test[aFinder.name.toUpperFirst()/]() {
+		//[protected ('finder')]
+		throw new UnsupportedOperationException("test[aFinder.name.toUpperFirst()/] hasn't been implemented yet.");
+		//[/protected]
+    }
+	[/for]
+
+    public void testInsert[anEntity.name.toUpperFirst()/]() {
+        Collection<[anEntity.name.toUpperFirst()/][if (anEntity.hasEntityParent())]Impl[/if]> [anEntity.name.convertSingularToPlural().toLowerFirst()/] = this.[anEntity.name.toLowerFirst()/]Dao.loadAll();
+        int found = [anEntity.name.convertSingularToPlural().toLowerFirst()/].size();
+        [anEntity.name.toUpperFirst()/][if (anEntity.hasEntityParent())]Impl[/if] [anEntity.name.toLowerFirst()/] =
+			DaoTestUtil.create[anEntity.name.toUpperFirst()/]Object(4); 
+        [anEntity.name.convertSingularToPlural().toLowerFirst()/] = this.[anEntity.name.toLowerFirst()/]Dao.loadAll();
+        assertEquals(found + 1, [anEntity.name.convertSingularToPlural().toLowerFirst()/].size());
+    }
+
+
+    public void testUpdate[anEntity.name/]() throws Exception {
+        [anEntity.name.toUpperFirst()/][if (anEntity.hasEntityParent())]Impl[/if] o1 = this.[anEntity.name.toLowerFirst()/]Dao.get(Long.valueOf(1));
+		[for (anAttribute : Property | anEntity.ownedAttribute)]
+        [anAttribute.convertToJavaType()/] old[anAttribute.name.toUpperFirst()/] = o1.get[anAttribute.name.toUpperFirst()/]();
+		[/for]
+		[for (anAttribute : Property | anEntity.ownedAttribute)]
+			o1.set[anAttribute.name.toUpperFirst()/]([anAttribute.type.generateSampleParameterValue(anAttribute.name, '4')/]);
+			[comment][if (getProperty('java.typeconversion.' + anAttribute.type.name) = 'Date')]
+        o1.set[anAttribute.name.toUpperFirst()/](this.increaseOneDay(old[anAttribute.name.toUpperFirst()/]));
+			[elseif (getProperty('java.typeconversion.' + anAttribute.type.name) = 'String')]
+        o1.set[anAttribute.name.toUpperFirst()/](old[anAttribute.name.toUpperFirst()/]+"X");
+			[else]
+        o1.set[anAttribute.name.toUpperFirst()/](old[anAttribute.name.toUpperFirst()/]+1);
+			[/if][/comment]
+		[/for]
+		this.[anEntity.name.toLowerFirst()/]Dao.update(o1);
+        o1 = this.[anEntity.name.toLowerFirst()/]Dao.get(Long.valueOf(1));
+		[for (anAttribute : Property | anEntity.ownedAttribute)]
+        assertEquals([anAttribute.type.generateSampleParameterValue(anAttribute.name, '4')/], o1.get[anAttribute.name.toUpperFirst()/]());
+			
+			[comment][if (getProperty('java.typeconversion.' + anAttribute.type.name) = 'Date')]
+        assertEquals(this.increaseOneDay(old[anAttribute.name.toUpperFirst()/]), o1.get[anAttribute.name.toUpperFirst()/]());
+			[elseif (getProperty('java.typeconversion.' + anAttribute.type.name) = 'String')]
+        assertEquals(old[anAttribute.name.toUpperFirst()/]+"X", o1.get[anAttribute.name.toUpperFirst()/]());
+			[else]
+        assertEquals(old[anAttribute.name.toUpperFirst()/]+1, o1.get[anAttribute.name.toUpperFirst()/]());
+			[/if][/comment]
+		[/for]
+    }
+	
+
+	//[protected ('other unit tests')]
+
+	//[/protected]
+	
+}
+	[/file]
+[/template]
+	
+[comment][template public generateSampleParameterValue(aType : Type, prefix : String, postfix : Integer) post (trim())]
+		[if (getProperty('java.typeconversion.' + aType.name) = 'Date')]
+DaoTestUtil.createDateFieldValue("prefix", postfix)
+		[elseif (getProperty('java.typeconversion.' + aType.name) = 'Boolean' or getProperty('java.typeconversion.' + aType.name) = 'boolean')]
+DaoTestUtil.createBooleanFieldValue("prefix", postfix)
+		[elseif (getProperty('java.typeconversion.' + aType.name) = 'String')]
+DaoTestUtil.createStringFieldValue("prefix", postfix)
+		[elseif (aType.oclIsTypeOf(Enumeration))]
+DaoTestUtil.create[aType.oclAsType(Enumeration).name.toUpperFirst()/]Value("prefix", postfix)
+		[else]
+DaoTestUtil.createNumberFieldValue("prefix", postfix)
+		[/if]
+[/template][/comment]
+[template public generateSampleParameterValues(anOperation : Operation) post (trim())]
+	[for (aParameter : Parameter | anOperation.ownedParameter) separator (', ')]
+[aParameter.type.name/]
+[aParameter.type.generateSampleParameterValue(aParameter.name, '1')/]
+	[/for]
+[/template]
+

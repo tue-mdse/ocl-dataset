@@ -1,0 +1,230 @@
+[comment encoding = UTF-8 /]
+[module generateManageableDaoTestJava('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::compositeUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainCommon /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoCommon /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::build::common::entityUtil /]
+[template public generateManageableDaoTestJava(anEntity : Class) ? (anEntity.isManageableEntity())]
+	[file (anEntity.getModel().generateProjectFolder().concat(anEntity.getModel().pathToTestJava()).concat('/').concat(anEntity.generateJavaPackagePath()).concat('/crud/').concat(anEntity.name.toUpperFirst()).concat('ManageableDaoTest.java'), false, 'UTF-8')]
+package [anEntity.generateJavaPackage()/].crud;
+
+//[protected ('imports')]
+[comment][anEntity.generateImports()/][/comment]
+
+import java.util.Collection;
+import tests.integration.DaoTestUtil;
+import tests.integration.AbstractDaoTest;
+
+import [if (anEntity.generateJavaPackage().size()>0)][anEntity.generateJavaPackage()/].[/if][anEntity.name.toUpperFirst()/];
+import org.impalaframework.facade.Impala;
+import org.impalaframework.interactive.InteractiveTestRunner;
+//[/protected]
+public class [anEntity.name.toUpperFirst()/]ManageableDaoTest extends AbstractDaoTest {
+
+    private [anEntity.name.toUpperFirst()/]ManageableDao [anEntity.name.toLowerFirst()/]ManageableDao  = null;
+	//Start of user code addition properties
+
+    //End of user code
+    public static void main(String['['/][']'/] args) {
+        InteractiveTestRunner.run([anEntity.name.toUpperFirst()/]ManageableDaoTest.class);
+    }
+
+    public void testMappings() throws Exception {
+        System.out.println("[anEntity.name.toLower()/]manageabledao bean: " + AbstractDaoTest.getBean("[anEntity.name.toLower()/]manageabledao", [anEntity.name.toUpperFirst()/]ManageableDao.class));
+    }
+	
+	public static [anEntity.name.toUpperFirst()/]ManageableDao get[anEntity.name.toUpperFirst()/]ManageableDao() {
+		return AbstractDaoTest.getBean("[anEntity.name.toLower()/]manageabledao", [anEntity.name.toUpperFirst()/]ManageableDao.class);
+	}
+
+	@Override
+    public void setUp() throws Exception {
+        super.setUp();
+        this.[anEntity.name.toLowerFirst()/]ManageableDao = [anEntity.name.toUpperFirst()/]ManageableDaoTest.get[anEntity.name.toUpperFirst()/]ManageableDao();
+    }
+
+	public void testReadById() {
+
+        // Use the inherited JdbcTemplate (from
+        // AbstractTransactionalDataSourceSpringContextTests)
+        // to verify the results of the query
+//        assertEquals("JDBC query must show the same number of [anEntity.name.toLowerFirst()/]s",
+//                jdbcTemplate.queryForInt("SELECT COUNT(0) FROM [anEntity.name.toLowerFirst()/]s"), [anEntity.name.toLowerFirst()/]s
+//                        .size());
+		[for (it : Integer | Sequence{1, 2, 3})]
+        [anEntity.name.toUpperFirst()/] [anEntity.name.toLowerFirst()/][it/] = this.[anEntity.name.toLowerFirst()/]ManageableDao.readById(Long.valueOf([it/]));
+			[let classStructures : Sequence(Class) = anEntity.getAllEntityParents()->including(anEntity)]
+				[for (aStructureClass : Class | classStructures)]
+					[if (aStructureClass.ownedAttribute->notEmpty())]
+						[for (aProperty : Property | aStructureClass.ownedAttribute)]
+							[if (aProperty.type.getProperty('java.typeconversion.' + aProperty.type.name) = 'Date')]
+        assertEquals([aProperty.type.generateSampleParameterValue(aProperty.name, it.toString())/].getTime(), [anEntity.name.toLowerFirst()/][it/].get[aProperty.name.toUpperFirst()/]().getTime());
+							[else]
+        assertEquals([aProperty.type.generateSampleParameterValue(aProperty.name, it.toString())/], [anEntity.name.toLowerFirst()/][it/].get[aProperty.name.toUpperFirst()/]());
+							[/if]
+						[/for]
+					[/if]
+				[/for]
+			[/let]
+		[/for]
+    }
+
+	public void testRead() {
+
+        // Use the inherited JdbcTemplate (from
+        // AbstractTransactionalDataSourceSpringContextTests)
+        // to verify the results of the query
+//        assertEquals("JDBC query must show the same number of [anEntity.name.toLowerFirst()/]s",
+//                jdbcTemplate.queryForInt("SELECT COUNT(0) FROM [anEntity.name.toLowerFirst()/]s"), [anEntity.name.toLowerFirst()/]s
+//                        .size());
+		[for (it : Integer | Sequence{1, 2, 3})]
+		Collection<[anEntity.name.toUpperFirst()/]> [anEntity.name.toLowerFirst()/]s[it/] = this.[anEntity.name.toLowerFirst()/]ManageableDao.read(
+			[anEntity.generateSamplePKValue(it.toString(), true)/]
+			[anEntity.generateDaoManagerFunctionNoPKAndRefOnlyParamValues(it.toString())/]
+			);
+        [comment]Collection<[anEntity.name.toUpperFirst()/]> [anEntity.name.toLowerFirst()/]s = this.[anEntity.name.toLowerFirst()/]ManageableDao.read(Long.valueOf([it/]), [aProperty.type.generateSampleParameterValue(aProperty.name, it.toString())/]);[/comment]
+        assertEquals(1, [anEntity.name.toLowerFirst()/]s[it/].size());
+		[/for]
+    }
+
+ 	public void testReadAll() {
+        Collection<[anEntity.name.toUpperFirst()/]> [anEntity.name.toLowerFirst()/]s = this.[anEntity.name.toLowerFirst()/]ManageableDao.readAll();
+        assertEquals(3, [anEntity.name.toLowerFirst()/]s.size());
+    }
+
+
+    public void testCreate() {
+        Collection<[anEntity.name.toUpperFirst()/]> [anEntity.name.toLowerFirst()/]s = this.[anEntity.name.toLowerFirst()/]ManageableDao.readAll();
+        int found = [anEntity.name.toLowerFirst()/]s.size();
+        [anEntity.name.toUpperFirst()/] [anEntity.name.toLowerFirst()/] = this.[anEntity.name.toLowerFirst()/]ManageableDao.create(
+			[anEntity.generateDaoManagerFunctionParamValuesForCreate('4', anEntity.name.toLowerFirst())/]
+			);
+        [anEntity.name.toLowerFirst()/]s = this.[anEntity.name.toLowerFirst()/]ManageableDao.readAll();
+        assertEquals(found + 1, [anEntity.name.toLowerFirst()/]s.size());
+    }
+
+
+    public void testUpdate() throws Exception {
+        [anEntity.name.toUpperFirst()/] [anEntity.name.toLowerFirst()/] = this.[anEntity.name.toLowerFirst()/]ManageableDao.readById([anEntity.generateSamplePKValue('1', true)/]);
+		this.[anEntity.name.toLowerFirst()/]ManageableDao.update(	
+				[anEntity.generateSamplePKValue('1', true)/]
+		[if (anEntity.getEntityDaoManagerProperties()->notEmpty())]
+				[anEntity.generateDaoManagerFunctionNoPKParamValuesForUpdate('4', anEntity.name.toLowerFirst())/] 
+		[/if]
+				);
+        [anEntity.name.toLowerFirst()/] = this.[anEntity.name.toLowerFirst()/]ManageableDao.readById([anEntity.generateSamplePKValue('1', true)/]);
+		[for (aProp : Property | anEntity.getAllEntityParents().ownedAttribute)]
+		assertEquals([aProp.generateSampleParameterValue('4')/], [anEntity.name.toLowerFirst()/].get[aProp.name.toUpperFirst()/]());
+		[/for]
+        
+			
+    }
+
+	//Start of user code other unit tests
+
+	//End of user code
+	
+}
+
+	[/file]
+[/template]
+
+[template public generateDaoManagerFunctionParamValuesForCreate (anEntity : Class, indexName : String, ownerName : String) post (trim()) ]
+	[anEntity.generateSamplePKValue(indexName, true)/]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+, [aProperty.type.generateSampleParameterValue(aProperty.name, indexName)/]
+	[/for]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and not (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+		[if (aProperty.oppositeAttribute()=null)]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([indexName/]).getId()
+			[else]
+, new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['[]'/]{
+				[for (it : Integer | Sequence{1,2,3}) separator(', ')]
+		DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([it/]).getId()
+				[/for]
+	[comment]DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([indexName/]).getId()[/comment]
+	}
+			[/if]
+		[else]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([indexName/]).getId()
+			[else]
+, new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['[]'/]{
+				[for (it : Integer | Sequence{4,5,6}) separator(', ')]
+		DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([it/]).getId()
+				[/for]
+	[comment]DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([indexName/]).getId()[/comment]
+	}
+			[/if]
+		[/if]
+	[/for]
+
+[/template]
+
+
+
+[template public generateDaoManagerFunctionNoPKParamValuesForUpdate (anEntity : Class, indexName : String, ownerName : String) post (trim()) ]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+, [aProperty.type.generateSampleParameterValue(aProperty.name, indexName)/]
+	[/for]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and not (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+		[if (aProperty.oppositeAttribute()=null)]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([1/]).getId() 
+[comment]DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]ObjectRefTo[anEntity.name.toUpperFirst()/]OfField[aProperty.oppositeAttribute().name.toUpperFirst()/]([indexName/], [ownerName/]).getId()[/comment]
+			[else]
+, new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['[]'/]{
+				[for (it : Integer | Sequence{1,2,3}) separator(', ')]
+		DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([it/]).getId()
+				[/for]
+	[comment]DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]ObjectRefTo[anEntity.name.toUpperFirst()/]OfField[aProperty.oppositeAttribute().name.toUpperFirst()/]([indexName/], [ownerName/]).getId()[/comment]
+	}
+			[/if]
+		[else]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([1/]).getId()
+[comment]DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]ObjectRefTo[anEntity.name.toUpperFirst()/]OfField[aProperty.oppositeAttribute().name.toUpperFirst()/]([indexName/], [ownerName/]).getId()[/comment]
+			[else]
+, new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['[]'/]{
+	
+	[comment]DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]ObjectRefTo[anEntity.name.toUpperFirst()/]OfField[aProperty.oppositeAttribute().name.toUpperFirst()/]([indexName/], [ownerName/]).getId()[/comment]
+				[for (it : Integer | Sequence{1,2,3}) separator(', ')]
+		DaoTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([it/]).getId()
+				[/for]
+	}
+			[/if]
+		[/if]
+	[/for]
+
+[/template]
+
+[template public generateDaoManagerFunctionNoPKAndRefOnlyParamValues (anEntity : Class, indexName : String) post (trim()) ]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+, [aProperty.type.generateSampleParameterValue(aProperty.name, indexName)/]
+	[/for]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and not (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+		[if (aProperty.oppositeAttribute()=null)]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, [aProperty.type.oclAsType(Class).generateSamplePKValue(indexName, true)/]
+			[else]
+, new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['[]'/]{[aProperty.type.oclAsType(Class).generateSamplePKValue(indexName, true)/]}
+			[/if]
+		[else]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, [aProperty.type.oclAsType(Class).generateSamplePKValue(indexName, true)/]
+			[else]
+, new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['[]'/]{[aProperty.type.oclAsType(Class).generateSamplePKValue(indexName, true)/]}
+			[/if]
+		[/if]
+	[/for]
+
+[/template]
+

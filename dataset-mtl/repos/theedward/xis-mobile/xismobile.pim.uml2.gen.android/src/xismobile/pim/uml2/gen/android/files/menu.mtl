@@ -1,0 +1,98 @@
+[comment encoding = UTF-8 /]
+[module menu('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::android::common::xisMobileUtils /]
+[import xismobile::pim::uml2::gen::android::files::strings /]
+
+[template public generateOptionsMenu(c : Class) post (trim())]
+
+[if (c.isXisMenu() and c.isOptionsMenu())]
+[file ('res/menu/' + c.name.toLowerCase() + '_menu.xml', false, 'UTF-8')]
+[c.writeMenuContent()/]
+[/file]
+[/if]
+[/template]
+
+[template public generateContextMenu(c : Class) post (trim())]
+
+[if (c.isXisMenu()	and c.isContextMenu())]
+[file ('res/menu/' + c.name.toLowerCase() + '_context.xml', false, 'UTF-8')]
+[c.writeMenuContent()/]
+[/file]
+[/if]
+[/template]
+
+[template private writeMenuContent(c : Class)]
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+[for (el : Class | c.getChildren())]
+	[if (el.isXisVisibilityBoundary())]
+	[el.processBoundary()/]
+	[elseif (el.isXisMenuGroup())]
+	[el.writeMenuGroup()/]
+	[elseif (el.isXisMenuItem())]
+	[el.writeMenuItem()/]
+	[/if]
+[/for]
+
+</menu>
+[/template]
+
+[template private processBoundary(c : Class) post (trim())]
+[if (c.getChildren()->size() > 0)]
+[for (it : Class | c.getChildren())]
+	[if (it.isXisVisibilityBoundary())]
+[it.processBoundary()/]
+	[elseif (it.isXisMenuGroup())]
+[it.writeMenuGroup()/]
+	[elseif (it.isXisMenuItem())]
+[it.writeMenuItem()/]
+	[/if]
+[/for]
+[/if]
+[/template]
+
+[template private writeMenuGroup(c : Class) post (trim())]
+<group android:id="@+id/[c.name.toLowerCase()/]_group">
+[for (it : Class | c.getChildren())]
+	[if (it.isXisMenuItem())]
+	[it.writeMenuItem()/]
+	[elseif (it.isXisVisibilityBoundary())]
+	[it.processBoundary()/]
+	[/if]
+[/for]
+</group>
+[/template]
+
+[template private writeMenuItem(c : Class) post (trim())]
+<item
+    android:id="@+id/[c.name.toLowerCase()/]_item"
+	[if (c.hasXisAction())]
+	[let o : Operation = c.getXisAction()]
+	[if (o.isCancelAction() or o.isCreateAction() or o.isUpdateAction()
+		 or o.isDeleteteAction() or o.isDeleteteAllAction() or o.isWebServiceAction())]
+	android:icon="@android:drawable/[writeActionIcon(o)/]"
+	[/if]
+	[/let]
+	[/if]
+	[if (not c.getXisWidgetValue(c.getXisMenuItem()).oclIsUndefined())]
+	android:title="[addString(c.name.toLowerCase() + '_item_title', c.getXisWidgetValue(c.getXisMenuItem()))/]"/>
+	[else]
+	android:title="[c.name/]"/>
+	[/if]
+[/template]
+
+[template private writeActionIcon(o : Operation) post (trim())]
+[if (o.isCancelAction())]
+ic_menu_revert
+[elseif (o.isCreateAction())]
+ic_menu_add
+[elseif (o.isUpdateAction())]
+ic_menu_edit
+[elseif (o.isDeleteteAction() or o.isDeleteteAllAction())]
+ic_menu_delete
+[elseif (o.isWebServiceAction())]
+ic_menu_send
+[/if]
+[/template]

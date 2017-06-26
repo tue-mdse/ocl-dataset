@@ -1,0 +1,45 @@
+[module utils('http://www.eclipse.org/uml2/4.0.0/UML')/]
+	
+
+[query public hasStereotype(e : Element, s :String ) : Boolean = 
+	e.getAppliedStereotypes()->select(name = s)->size() > 0
+/]
+
+[query public getFirstNavigableMemberEnd(a : Association) : Property = 
+	a.memberEnd->select(isNavigable())->at(1)
+/]
+
+[query public isAssociation(p : Property) : Boolean =
+	p.association->size() > 0
+/] 
+
+[query public isBidirectional(a : Association) : Boolean =
+	a.navigableOwnedEnd->size() > 1
+/]
+
+[query public getSource(a : Association) : Property =
+	a.memberEnd->at(1)
+/]
+
+[query public getTarget(a : Association) : Property =
+	a.memberEnd->at(2)
+/]
+
+[query public containingPackages(e : Element) : Sequence(Package) =
+	let packages : Sequence(Package) = e.ancestors(Package)->reject(oclIsKindOf(Model))->reverse() in
+	packages->excluding(packages->last())
+/]
+
+[query public getPackagePath(e : Element) : Sequence(OclAny) =
+	if e.containingPackages()->size() > 0
+	then e.containingPackages().name.toLowerCase().replace(' ', '_').replace('-', '_')->sep('.')
+	else null
+	endif
+/]
+
+[query public getPackageDirectoryPath(e : Element) : Sequence(OclAny) =
+	if e.containingPackages()->size() > 0 
+	then e.containingPackages().name.toLowerCase().replace(' ', '_').replace('-', '_')->sep('/')
+	else null
+	endif
+/]

@@ -1,0 +1,68 @@
+[comment encoding = UTF-8 /]
+[module classFile('http://www.eclipse.org/uml2/3.0.0/UML') extends com::github::lbroudoux::acceleo::uml::java::files::commonFile]
+
+[import com::github::lbroudoux::acceleo::uml::java::common::attributes /]
+[import com::github::lbroudoux::acceleo::uml::java::common::common /]
+[import com::github::lbroudoux::acceleo::uml::java::common::declaration /]
+[import com::github::lbroudoux::acceleo::uml::java::common::type /]
+
+
+[template protected genFileBody(aClass : Class) overrides genFileBody]
+[aClass.genPackageDeclaration()/]
+[aClass.genBody()/]
+[/template]
+
+[template protected genBody(aClass : Class) overrides genBody]
+[aClass.genVisibility()/][aClass.genAbstract()/][aClass.genFinal()/]class [aClass.genName()/][aClass.genInheritance()/][aClass.genInterfaceRealization()/] {
+    [aClass.genAttributes()/]
+    [aClass.genConstructor()/]
+}
+[/template]
+
+[template protected genConstructor(aClass : Class) post(trim())]
+[if (ownedOperation->select(anOperation : Operation | anOperation.name.equalsIgnoreCase(aClass.name))->size() = 0)]
+[if (getProperty('gen.constructor') = 'true')]
+/**
+ * The constructor.
+ */
+public [aClass.genName()/]() {
+   // [protected ('constructor')]
+   super();
+   // [/protected]
+}
+[/if]
+[else]
+[for (aConstructor : Operation | ownedOperation->select(anOperation : Operation | anOperation.name.equalsIgnoreCase(aClass.name)))]
+/**
+ * The constructor.
+[for (aParameter : Parameter | aConstructor.ownedParameter)]
+ * @param [aParameter.genName()/][aParameter.genComment()/]
+[/for]
+ */
+[aConstructor.genVisibility()/][aConstructor.genName()/]([aConstructor.genOperationParameters()/]) {
+   // [protected ('constructor with ' + aConstructor.ownedParameter.genName()->sep(', '))]
+   super();
+   // [/protected]
+}
+[/for]
+[/if]
+[/template]
+
+[template public genAccessors(aProperty : Property)]
+public [if (aProperty.isStatic)]static [/if][aProperty.genType()/] get[aProperty.genName().toUpperFirst()/](){
+   return [if (not aProperty.isStatic)]this.[/if][aProperty.genName()/];
+}
+[if (not aProperty.isLeaf)]
+
+public [if (aProperty.isStatic)]static [/if]void set[aProperty.genName().toUpperFirst()/]([aProperty.genType()/] [aProperty.genName()/]){
+[if (not aProperty.opposite.oclIsUndefined() and aProperty.upper = 1 and getProperty('gen.biDirections') = 'true' and aProperty.opposite.upper = 1)]
+   if ([if (not aProperty.isStatic)]this.[/if][aProperty.genName()/] != null) {
+      [if (not aProperty.isStatic)]this.[/if][aProperty.genName()/].set[aProperty.genPropertyParent()/](null);
+   }
+   [if (not aProperty.isStatic)]this.[/if][aProperty.genName()/].set[aProperty.genPropertyParent()/](this);
+[else]
+   [if (not aProperty.isStatic)]this.[/if][aProperty.genName()/] = [aProperty.genName()/];
+[/if]
+}
+[/if]
+[/template]

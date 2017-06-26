@@ -1,0 +1,71 @@
+[comment encoding = UTF-8 /]
+[module relations('http://iwz/appmodel')]
+
+[import iwz::appmodel::acceleo::templates::common/]
+[import iwz::appmodel::acceleo::templates::database::names/]
+[import iwz::appmodel::acceleo::templates::database::mysql::types/]
+
+[template private generateOneToOneRelation(r : Relation)]
+ALTER TABLE [r.getDatabaseName()/] ADD CONSTRAINT pk_[r.getDatabaseName()/] 
+	PRIMARY KEY ([r.getSource().getPrimaryProperties()
+					->addAll(r.getTarget().getPrimaryProperties()).getDatabaseName()
+					->sep(',')/]);
+ALTER TABLE [r.getDatabaseName()/] ADD CONSTRAINT uc_[r.getDatabaseName()/]_[r.getSource().getDatabaseName()/]
+	UNIQUE ([r.getSource().getPrimaryProperties().getDatabaseName()->sep(',')/]);
+ALTER TABLE [r.getDatabaseName()/] ADD CONSTRAINT uc_[r.getDatabaseName()/]_[r.getTarget().getDatabaseName()/]
+	UNIQUE ([r.getTarget().getPrimaryProperties().getDatabaseName()->sep(',')/]);
+[/template]
+
+[template private generateOneToManyRelation(r : Relation)]
+ALTER TABLE [r.getDatabaseName()/] ADD CONSTRAINT pk_[r.getDatabaseName()/] 
+	PRIMARY KEY ([r.getTarget().getPrimaryProperties().getDatabaseName()->sep(',')/]);
+[/template]
+
+[template private generateManyToOneRelation(r : Relation)]
+ALTER TABLE [r.getDatabaseName()/] ADD CONSTRAINT pk_[r.getDatabaseName()/] 
+	PRIMARY KEY ([r.getSource().getPrimaryProperties().getDatabaseName()->sep(',')/]);
+[/template]
+
+[template private generateManyToManyRelation(r : Relation)]
+ALTER TABLE [r.getDatabaseName()/] ADD CONSTRAINT pk_[r.getDatabaseName()/] 
+	PRIMARY KEY ([r.getSource().getPrimaryProperties()
+					->addAll(r.getTarget().getPrimaryProperties()).getDatabaseName()
+					->sep(',')/]);
+[/template]
+
+
+[template public generateSchema(r : Relation)]
+
+-- ======================================================================================
+-- [r.type/] Relation: [r.getSource().name/].[r.name/] -> [r.getTarget().name/]
+-- ======================================================================================
+
+CREATE TABLE [r.getDatabaseName()/] (
+[for (p : Property | r.getSource().getPrimaryProperties()
+					->addAll(r.getTarget().getPrimaryProperties())
+					->addAll(r.properties)) separator(',')]
+	[p.getDatabaseName()/] [p.getDatabaseDataType()/]
+[/for]
+);
+[if (r.type.toString()='OneToOne')]
+[r.generateOneToOneRelation()/]
+[/if]
+[if (r.type.toString()='OneToMany')]
+[r.generateOneToManyRelation()/]
+[/if]
+[if (r.type.toString()='ManyToOne')]
+[r.generateManyToOneRelation()/]
+[/if]
+[if (r.type.toString()='ManyToMany')]
+[r.generateManyToManyRelation()/]
+[/if]
+ALTER TABLE [r.getDatabaseName()/] ADD CONSTRAINT fk_[r.getDatabaseName()/]_[r.getSource().getDatabaseName()/]
+	FOREIGN KEY ([r.getSource().getPrimaryProperties().getDatabaseName()->sep(',')/])
+	REFERENCES [r.getSource().getDatabaseName()/]([r.getSource().getPrimaryProperties().getDatabaseName()->sep(',')/])
+	ON DELETE CASCADE;
+ALTER TABLE [r.getDatabaseName()/] ADD CONSTRAINT fk_[r.getDatabaseName()/]_[r.getTarget().getDatabaseName()/]
+	FOREIGN KEY ([r.getTarget().getPrimaryProperties().getDatabaseName()->sep(',')/])
+	REFERENCES [r.getTarget().getDatabaseName()/]([r.getTarget().getPrimaryProperties().getDatabaseName()->sep(',')/])
+	ON DELETE CASCADE;
+
+[/template]

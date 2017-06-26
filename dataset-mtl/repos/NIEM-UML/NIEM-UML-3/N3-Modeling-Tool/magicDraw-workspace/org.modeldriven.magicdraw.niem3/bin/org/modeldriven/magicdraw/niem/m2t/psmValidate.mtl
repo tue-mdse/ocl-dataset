@@ -1,0 +1,452 @@
+[comment encoding = UTF-8 /]
+[module psmValidate('http://www.nomagic.com/magicdraw/UML/2.4.1',
+	'http://reference.niem.gov/niem/resource/mpd/catalog/1.0/',
+	'http://www.eclipse.org/ocl/1.1.0/Ecore')/]
+[import odtNiemMasterDocument/]
+[import commonQuery/]
+[import odtBoilerPlate/]
+[import odtCommon/]
+[import odtNiemMasterContent/]
+[comment]
+NIEM UML 
+Copyright © 2011, ModelDriven.org and Tom Digre, all rights reserved worldwide.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see http://www.gnu.org/licenses/gpl-3.0-standalone.html.
+
+There are also commercial licenses available for this software.
+Contact ModelDriven.org for more information.
+[/comment]	
+[comment]
+	In addition to providing a validation report,
+	this serves as a test for ocl expression of the rules for a given context
+[/comment]		
+
+[template public psmValidate(mpduml : Model){
+	title:String=mpduml.name+' Information Exchange Package Validation';
+}]
+	[comment @main /]
+	[mpduml.psmValidateDocument()/]
+	[mpduml.psmValidateMeta(title)/]
+[/template]
+[template public psmValidateMeta(mpduml : Model,title:String)]
+	[file ('../temp~/docs/validation/meta.xml', false, 'UTF-8')][title.odtMasterMeta('NIEM Information Exchange Package Validation')/]
+	[/file]
+[/template]
+
+[template public psmValidateDocument(mpduml : Model)]
+	[file ('../temp~/docs/validation/content.xml', false, 'UTF-8')][startOfficeDocument()/]
+	[mpduml.psmValidateBody()/]
+</office:document-content>
+	[/file]
+[/template]
+
+[template public psmValidateBody(mpduml : Model)]
+[file('stdout',true)]psmValidateBody [/file]
+	<office:body>
+		[mpduml.psmValidateText()/]
+	</office:body>
+[/template]
+[template public psmValidateText(mpduml : Model){
+	schemas:Sequence(InstanceSpecification)=mpduml.getNdrSchemas()->sortedBy(s:InstanceSpecification|s.getTargetNamespace());
+	mpdVersionID:String='TODO';
+}]
+[file('stdout',true)]psmValidateText [/file]
+	[startOfficeText()/]
+[file('stdout',true)]psmValidateText 2[/file]
+		[mpdVersionID.odtCoverPage()/]
+[file('stdout',true)]psmValidateText 3[/file]
+
+		[mpduml.psmValidateTableOfContents(schemas)/]
+[file('stdout',true)]psmValidateText 4[/file]
+		[mpduml.psmValidateContents(schemas)/]
+	</office:text>
+[/template]
+[query public getNdrSchemas(psmPackage:Package):Sequence(InstanceSpecification)=
+	self.eAllContents(Package)
+	->select(p:Package|p.stereotypedBy(NdrSchemaStereotypeName())).getNdrSchemaApplication()
+	->select(n:InstanceSpecification|not(n.isPsmInfrastructureSchema()))
+/]
+[comment]
+	->select(n:ndr::ndrSchema|not(n.isPsmInfrastructureSchema()))
+	self.getStereotypeApplication(self.getStereotype(NdrSchemaStereotypeName())).oclAsType(ndr::ndrSchema)/]
+[query public getNdrSchemaApplication(psmPackage:Package):ndr::ndrSchema=
+	self.getApplication(self.getStereotype(NdrSchemaStereotypeName())).oclAsType(ndr::ndrSchema)/]
+[query public getNdrTypeDefinition(psmClassifier:Classifier):ndr::ndrTypeDefinition=
+	self.getStereotypeApplication(self.getStereotype(NdrTypeDefinitionStereotypeName())).oclAsType(ndr::ndrTypeDefinition)/]
+[/comment]
+[comment] if so stereotyped and not an infrastructure schema[/comment]
+
+[query public getNdrSchemaApplication(psmPackage:Package):InstanceSpecification=self.getApplication()/]
+[query public getNdrTypeDefinition(psmClassifier:Classifier):InstanceSpecification=self.getApplication()/]
+[query public isPsmInfrastructureSchema(ndrSchema:InstanceSpecification):Boolean=
+	(self.getTargetNamespace()=SchemaForSchemaNamespace())
+	or (self.getTargetNamespace()=SchemaForStructuresNamespace())
+	or (self.getTargetNamespace()=SchemaForAppinfoNamespace())
+	or (self.getTargetNamespace()=SchemaForProxyNamespace())
+	or (self.getTargetNamespace()=SchemaForNamespaceNamespace())
+/]
+[query public getTargetNamespace(ndrSchema:InstanceSpecification):String=ndrSchema.getStringValue('targetNamespace')/]
+	
+[comment]
+[query public targetNamespace(schema:ndr::ndrSchema):String=
+	if((schema.targetNamespace=null)or schema.targetNamespace.oclIsUndefined()) then '(unnamed)'
+	else schema.targetNamespace
+	endif
+/]
+
+[query public isPsmSchema(psmPackage:Package):Boolean=
+	self.stereotypedBy(NdrSchemaStereotypeName()) and not(self.getNdrSchemaApplication().isPsmInfrastructureSchema())
+/]
+[template public psmValidateText(mpd : Model){
+	schemas:Sequence(Package)=mpd.getPsmSchemas()->sortedBy(s:Package|s.getPsmTargetNamespace());
+	mpdVersionID:String='TODO';
+}]
+	[startOfficeText()/]
+		[mpdVersionID.odtCoverPage()/]
+		[mpd.psmValidateTableOfContents(schemas)/]
+		[mpd.psmValidateContents(schemas)/]
+	</office:text>
+[/template]
+[query public isPsmInfrastructureSchema(psmPackage:Package):Boolean=
+	(self.getPsmTargetNamespace()=SchemaForSchemaNamespace())
+	or (self.getPsmTargetNamespace()=SchemaForStructuresNamespace())
+	or (self.getPsmTargetNamespace()=SchemaForAppinfoNamespace())
+	or (self.getPsmTargetNamespace()=SchemaForProxyNamespace())
+	or (self.getPsmTargetNamespace()=SchemaForNamespaceNamespace())
+/]
+[query public getPsmTargetNamespace(psmPackage:Package):String=
+	self.getSchemaComponentElementImport().alias
+/]
+[query public getPsmTargetNamespace(psmPackage:Package):String=
+	self.getTagValue(XsdSchemaStereotypeName(),'targetNamespace').oclAsType(String)
+/]
+[/comment]
+
+[template public psmValidateTableOfContents(mpduml : Model,schemas:Sequence(InstanceSpecification))]
+	<text:table-of-content text:style-name="Sect1"
+		text:name="Table of Contents1">
+		[tableOfContentSource()/]
+		<text:index-body>
+			<text:index-title text:style-name="Sect3"
+				text:name="Table of Contents2_Head">
+				<text:p text:style-name="P7">Table of Contents</text:p>
+			</text:index-title>
+			['Catalog'.toch1(1)/]
+			['ChangeLog'.toch1(2)/]
+			['XML Schemas'.toch1(3)/]
+[file('stdout',true)]psmValidateTableOfContents 3[/file]
+			[for(schema:InstanceSpecification|schemas)]
+[file('stdout',true)]psmValidateTableOfContents 4[/file]
+				[schema.getTargetNamespace().toch2(3,schemas->indexOf(schema))/]
+			[/for]
+		</text:index-body>
+	</text:table-of-content>
+[/template]
+[template public psmValidateContents(mpduml : Model,schemas:Sequence(InstanceSpecification))]
+	<text:section text:style-name="Sect2" text:name="Section2">
+			['Catalog'.contenth1break(1,'')/][mpduml.psmValidateCatalog()/]
+			['ChangeLog'.contenth1(2,'')/][mpduml.psmValidateChangeLog()/]
+			['XML Schemas'.contenth1(3,'')/]
+			[for(schema:InstanceSpecification|schemas)]
+				[schema.psmValidateSchema(3,schemas->indexOf(schema),schemas)/]
+			[/for]
+	</text:section>
+[/template]
+[template public psmValidateCatalog(mpduml : Model)]['TODO'.redFontSpan()/][/template]
+[template public psmValidateChangeLog(mpduml : Model)]['TODO'.redFontSpan()/][/template]
+[template public psmValidateSchema(schema : InstanceSpecification,chapter:Integer,section:Integer,documentedPackages:Collection(InstanceSpecification)){
+	classifiers:Sequence(Classifier)=schema.typeDefinitions();
+}]
+	[schema.getTargetNamespace().contenth2(chapter,section,'')/]
+	[schema.odtPsmConformanceTarget()/]	
+	[for(classifier:Classifier|classifiers)]
+		[classifier.getApplication().psmValidateClassifier(chapter,section,classifiers->indexOf(classifier),documentedPackages)/]
+	[/for]
+[/template]
+[template public odtPsmConformanceTarget(schema : InstanceSpecification)]
+	[startP()/]
+		[bold()/]Conformance target:[spanEnd()/][schema.niemConformanceTarget()/]
+	[endP()/]
+[/template]
+
+[query public typeDefinitions(schema:InstanceSpecification):Sequence(Classifier)=
+	schema.stereotypedElement.oclAsType(Package).ownedType
+		->select(t|t.oclIsKindOf(Classifier))
+		.oclAsType(Classifier)->sortedBy(c|c.umlName())
+/]
+
+[template public psmValidateClassifier(typeDefinition : InstanceSpecification,chapter:Integer,section:Integer,subsection:Integer,
+	documentedPackages:Collection(InstanceSpecification)){
+		classifier:Classifier=typeDefinition.stereotypedElement.oclAsType(Classifier);
+	}]
+	[(classifier.umlName()).contenth3(chapter,section,subsection,'')/]
+	[classifier._package.Package()/]
+	[classifier.isAbstract.isAbstract()/]
+[/template]		
+[comment]
+[query public niemConformanceTarget(schema:Package):String=schema.schemaKind().name/]
+[query public getTagValue(element:Element,stereotypeName:String,tagName:String):OclAny=
+	self.getValue(self.getStereotype(stereotypeName),tagName)
+/]
+[/comment]
+[query public niemConformanceTarget(schema:InstanceSpecification):String=schema.schemaKind().toString()/]
+[comment]
+	OCL Operations and validations
+	context is instance of applied stereotype
+[/comment]
+[comment]
+	global Operations 
+[/comment]
+[comment]
+	derived properties 
+[/comment]
+[query public schemaKind(schema:InstanceSpecification):EnumerationLiteral=
+	if(schema.getPurposeURI()=purposeExchangeSchemaURI()) then self.getSchemaKind('exchange')
+	else 
+		if(schema.getPurposeURI()=purposeConstraintSchemaURI()) then self.getSchemaKind('constraint')
+		else 
+			if(schema.getPurposeURI()=purposeExtensionSchemaURI()) then self.getSchemaKind('extension')
+			else 
+				if(schema.getPurposeURI()=purposeReferenceSchemaURI()) then self.getSchemaKind('reference')
+				else 
+					if(schema.getPurposeURI()=purposeSubsetSchemaURI()) then self.getSchemaKind('subset')
+					else 
+						self.getSchemaKind('support')
+					endif
+				endif
+			endif
+		endif
+	endif
+/]
+	
+[query public getNestedPackage(context:Package,name:String):Set(Package)=if(self.name=name) then Set{self} else
+	self.nestedPackage.getNestedPackage(name)->asSet() endif/]
+[query public getRootPackage(context:Element):Package=if(self.owner.oclIsUndefined()) then self.oclAsType(Package) else self.owner.getRootPackage() endif/]
+[query public getNdrProfile(context:Element):Profile=self.getRootPackage().getNestedPackage('ndrProfile').oclAsType(Profile)->asSequence()->first()/]
+[query public getNdrProfileClassifier(context:Element,name:String):Classifier=self.getNdrProfile().ownedType->select(t|t.name=name).oclAsType(Classifier)->asSequence()->first()/]
+[query public getSchemaKindEnumeration(context:Element):Enumeration=self.getNdrProfileClassifier('SchemaKind').oclAsType(Enumeration)/]
+[query public getSchemaKind(context:Element,kind:String):EnumerationLiteral=self.getSchemaKindEnumeration()
+	.ownedLiteral->select(e|e.name=kind)->asSequence()->first()/]
+[query public getPurposeURI(schema:InstanceSpecification):String=self.getStringValue('purposeURI')/]
+[query public isMpdReferenceSchema(schema:InstanceSpecification):Boolean=self.schemaKind().name='reference'/]
+[query public isMpdSubsetSchema(schema:InstanceSpecification):Boolean=self.schemaKind().toString()='subset'/]
+[query public isMpdExchangeSchema(schema:InstanceSpecification):Boolean=self.schemaKind().toString()='exchange'/]
+[comment]
+	contextual Operations 
+[/comment]
+[comment]
+Targets Code Conformance target
+REF
+Reference schemas
+SUB
+Subset schemas
+EXT
+Extension and exchange schemas
+CON
+Constraint schemas
+INS
+XML instance data
+[Rule 5-1] (REF, SUB, EXT, CON) .................................................................................................... 28
+[Rule 5-2] (REF, SUB, EXT, CON) .................................................................................................... 28
+[Rule 5-3] (REF, SUB, EXT, CON) .................................................................................................... 29
+[Rule 5-4] (REF, EXT) ...................................................................................................................... 30
+[Rule 5-5] (REF, SUB, EXT) ............................................................................................................. 31
+[Rule 6-1] (REF, SUB, EXT) ............................................................................................................. 33
+[Rule 6-2] (REF, SUB, EXT) ............................................................................................................. 33
+[Rule 6-3] (REF, SUB, EXT) ............................................................................................................. 33
+[Rule 6-4] (REF, SUB, EXT) ............................................................................................................. 33
+[Rule 6-5] (REF, SUB, EXT) ............................................................................................................. 33
+[Rule 6-6] (REF, SUB, EXT) ............................................................................................................. 34
+[Rule 6-7] (REF, SUB, EXT) ............................................................................................................. 34
+[Rule 6-8] (REF, SUB, EXT) ............................................................................................................. 34
+[Rule 6-9] (REF, SUB, EXT) ............................................................................................................. 35
+[Rule 6-10] (REF, SUB, EXT) ........................................................................................................... 35
+[Rule 6-11] (REF, SUB) ................................................................................................................... 35
+[Rule 6-12] (REF, SUB, EXT) ........................................................................................................... 35
+[Rule 6-13] (REF, SUB, EXT) ........................................................................................................... 36
+[Rule 6-14] (REF, SUB, EXT) ........................................................................................................... 36
+[Rule 6-15] (REF, SUB, EXT) ........................................................................................................... 36
+[Rule 6-16] (REF, EXT) ................................................................................................................... 37
+[Rule 6-17] (REF, SUB, EXT) ........................................................................................................... 37
+[Rule 6-18] (REF) ........................................................................................................................... 37
+[Rule 6-19] (REF, SUB) ................................................................................................................... 38
+[Rule 6-20] (EXT) ........................................................................................................................... 38
+[Rule 6-21] (EXT) ........................................................................................................................... 38
+[Rule 6-22] (EXT) ........................................................................................................................... 38
+[Rule 6-23] (REF, SUB, EXT) ........................................................................................................... 38
+[Rule 6-24] (REF, SUB, EXT) ........................................................................................................... 39
+[Rule 6-25] (REF, SUB, EXT) ........................................................................................................... 39
+[Rule 6-26] (REF, EXT) ................................................................................................................... 39
+[Rule 6-27] (REF, EXT) ................................................................................................................... 40
+[Rule 6-28] (REF, SUB, EXT) ........................................................................................................... 40
+[Rule 6-29] (REF, SUB) ................................................................................................................... 40
+[Rule 6-30] (REF, SUB) ................................................................................................................... 40
+[Rule 6-31] (REF, SUB) ................................................................................................................... 40
+[Rule 6-32] (REF, SUB, EXT) ........................................................................................................... 40
+[Rule 6-33] (REF, SUB, EXT, CON) .................................................................................................. 41
+[Rule 6-34] (REF, SUB, EXT, CON) .................................................................................................. 41
+[Rule 6-35] (REF, SUB, EXT, CON) .................................................................................................. 41
+[Rule 6-36] (REF, SUB, EXT, CON) .................................................................................................. 41
+[Rule 6-37] (REF, SUB, EXT, CON) .................................................................................................. 42
+NIEM NIEM Naming and Design Rules
+G-2
+[Rule 6-38] (REF, SUB, EXT, CON) .................................................................................................. 42
+[Rule 6-39] (REF, SUB, EXT) ........................................................................................................... 43
+[Rule 6-40] (REF, SUB, EXT) ........................................................................................................... 43
+[Rule 6-41] (REF, SUB, EXT) ........................................................................................................... 43
+[Rule 6-42] (REF, SUB, EXT) ........................................................................................................... 43
+[Rule 6-43] (REF, SUB, EXT) ........................................................................................................... 43
+[Rule 6-44] (REF, SUB, EXT) ........................................................................................................... 44
+[Rule 6-45] (REF, SUB, EXT) ........................................................................................................... 45
+[Rule 6-46] (REF, EXT) ................................................................................................................... 45
+[Rule 6-47] (REF, EXT) ................................................................................................................... 45
+[Rule 6-48] (REF, SUB, EXT) ........................................................................................................... 46
+[Rule 6-49] (REF, EXT) ................................................................................................................... 46
+[Rule 6-50] (REF, EXT) ................................................................................................................... 46
+[Rule 6-51] (REF, EXT) ................................................................................................................... 47
+[Rule 6-52] (REF, SUB, EXT) ........................................................................................................... 47
+[Rule 6-53] (REF) ........................................................................................................................... 48
+[Rule 6-54] (REF, SUB, EXT) ........................................................................................................... 48
+[Rule 6-55] (REF) ........................................................................................................................... 49
+[Rule 6-56] (REF, SUB, EXT) ........................................................................................................... 49
+[Rule 6-57] (EXT) ........................................................................................................................... 50
+[Rule 6-58] (REF, SUB, EXT) ........................................................................................................... 51
+[Rule 6-59] (REF, SUB, EXT) ........................................................................................................... 51
+[Rule 7-1] (REF, EXT) ...................................................................................................................... 52
+[Rule 7-2] (REF, SUB, EXT, CON) .................................................................................................... 52
+[Rule 7-3] (REF, SUB, EXT, CON) .................................................................................................... 52
+[Rule 7-4] (REF, EXT) ...................................................................................................................... 53
+[Rule 7-5] (REF, EXT) ...................................................................................................................... 53
+[Rule 7-6] (REF, EXT) ...................................................................................................................... 53
+[Rule 7-7] (REF, EXT) ...................................................................................................................... 53
+[Rule 7-8] (REF, EXT) ...................................................................................................................... 53
+[Rule 7-9] (REF, EXT) ...................................................................................................................... 53
+[Rule 7-10] (REF, EXT) ................................................................................................................... 54
+[Rule 7-11] (REF, EXT) ................................................................................................................... 54
+[Rule 7-12] (REF, EXT) ................................................................................................................... 54
+[Rule 7-13] (REF, EXT) ................................................................................................................... 54
+[Rule 7-14] (REF, EXT) ................................................................................................................... 55
+[Rule 7-15] (REF, EXT) ................................................................................................................... 57
+[Rule 7-16] (REF, EXT) ................................................................................................................... 58
+[Rule 7-17] (REF, EXT) ................................................................................................................... 59
+[Rule 7-18] (REF, EXT) ................................................................................................................... 59
+[Rule 7-19] (REF, EXT) ................................................................................................................... 59
+[Rule 7-20] (REF, EXT) ................................................................................................................... 59
+[Rule 7-21] (REF, EXT) ................................................................................................................... 59
+[Rule 7-22] (REF, EXT) ................................................................................................................... 59
+NIEM NIEM Naming and Design Rules
+G-3
+[Rule 7-23] (REF, EXT) ................................................................................................................... 60
+[Rule 7-24] (REF, EXT) ................................................................................................................... 60
+[Rule 7-25] (REF, EXT) ................................................................................................................... 60
+[Rule 7-26] (REF, EXT) ................................................................................................................... 60
+[Rule 7-27] (REF, EXT) ................................................................................................................... 61
+[Rule 7-28] (REF, EXT) ................................................................................................................... 61
+[Rule 7-29] (REF, EXT) ................................................................................................................... 61
+[Rule 7-30] (REF, EXT) ................................................................................................................... 61
+[Rule 7-31] (REF, EXT) ................................................................................................................... 61
+[Rule 7-32] (REF, EXT) ................................................................................................................... 62
+[Rule 7-33] (REF, EXT) ................................................................................................................... 62
+[Rule 7-34] (REF, EXT) ................................................................................................................... 62
+[Rule 7-35] (REF, EXT) ................................................................................................................... 62
+[Rule 7-36] (REF, SUB, EXT) ........................................................................................................... 62
+[Rule 7-37] (REF, SUB, EXT) ........................................................................................................... 63
+[Rule 7-38] (REF, SUB, EXT) ........................................................................................................... 63
+[Rule 7-39] (REF, EXT) ................................................................................................................... 64
+[Rule 7-40] (REF, SUB, EXT) ........................................................................................................... 66
+[Rule 7-41] (REF, EXT) ................................................................................................................... 68
+[Rule 7-42] (REF, SUB, EXT) ........................................................................................................... 69
+[Rule 7-43] (REF, SUB, EXT) ........................................................................................................... 69
+[Rule 7-44] (REF, SUB, EXT) ........................................................................................................... 70
+[Rule 7-45] (REF, EXT) ................................................................................................................... 70
+[Rule 7-46] (REF, EXT) ................................................................................................................... 70
+[Rule 7-47] (REF, SUB, EXT) ........................................................................................................... 71
+[Rule 7-48] (REF, SUB, EXT) ........................................................................................................... 71
+[Rule 7-49] (REF, EXT) ................................................................................................................... 72
+[Rule 7-50] (REF, EXT) ................................................................................................................... 72
+[Rule 7-51] (REF, SUB, EXT) ........................................................................................................... 72
+[Rule 7-52] (REF, SUB, EXT) ........................................................................................................... 72
+[Rule 7-53] (REF, SUB, EXT) ........................................................................................................... 73
+[Rule 7-54] (REF, EXT) ................................................................................................................... 73
+[Rule 7-55] (REF, SUB, EXT, INS) .................................................................................................... 74
+[Rule 7-56] (REF, SUB, EXT) ........................................................................................................... 75
+[Rule 7-57] (REF, SUB, EXT) ........................................................................................................... 76
+[Rule 7-58] (REF, SUB, EXT) ........................................................................................................... 76
+[Rule 7-59] (REF, SUB, EXT) ........................................................................................................... 76
+[Rule 7-60] (REF, EXT) ................................................................................................................... 77
+[Rule 7-61] (REF, EXT) ................................................................................................................... 79
+[Rule 7-62] (REF, EXT) ................................................................................................................... 79
+[Rule 7-63] (REF, EXT) ................................................................................................................... 79
+[Rule 7-64] (REF, SUB, EXT) ........................................................................................................... 80
+[Rule 7-65] (REF, SUB, EXT) ........................................................................................................... 80
+[Rule 7-66] (REF, EXT) ................................................................................................................... 80
+NIEM NIEM Naming and Design Rules
+G-4
+[Rule 7-67] (REF, EXT) ................................................................................................................... 80
+[Rule 7-68] (REF, SUB, EXT) ........................................................................................................... 80
+[Rule 7-69] (SUB) ........................................................................................................................... 81
+[Rule 7-70] (SUB) ........................................................................................................................... 81
+[Rule 8-1] (INS) .............................................................................................................................. 83
+[Rule 8-2] (INS) .............................................................................................................................. 83
+[Rule 8-3] (INS) .............................................................................................................................. 84
+[Rule 8-4] (INS) .............................................................................................................................. 85
+[Rule 8-5] (INS) .............................................................................................................................. 85
+[Rule 8-6] (INS) .............................................................................................................................. 85
+[Rule 8-7] (REF, EXT, INS) .............................................................................................................. 86
+[Rule 8-8] (INS) .............................................................................................................................. 88
+[Rule 8-9] (INS) .............................................................................................................................. 88
+[Rule 8-10] (INS) ............................................................................................................................ 88
+[Rule 8-11] (INS) ............................................................................................................................ 88
+[Rule 8-12] (INS) ............................................................................................................................ 89
+[Rule 8-13] (INS) ............................................................................................................................ 89
+[Rule 8-14] (INS) ............................................................................................................................ 89
+[Rule 9-1] (REF, SUB, EXT) ............................................................................................................. 89
+[Rule 9-2] (REF, SUB, EXT) ............................................................................................................. 90
+[Rule 9-3] (REF, SUB, EXT) ............................................................................................................. 90
+[Rule 9-4] (REF, SUB, EXT) ............................................................................................................. 90
+[Rule 9-5] (REF, SUB, EXT) ............................................................................................................. 91
+[Rule 9-6] (REF, SUB, EXT) ............................................................................................................. 91
+[Rule 9-7] (REF, SUB, EXT) ............................................................................................................. 91
+[Rule 9-8] (REF, SUB, EXT) ............................................................................................................. 91
+[Rule 9-9] (REF, SUB, EXT) ............................................................................................................. 93
+[Rule 9-10] (REF, SUB, EXT) ........................................................................................................... 94
+[Rule 9-11] (REF, SUB, EXT) ........................................................................................................... 94
+[Rule 9-12] (REF, SUB, EXT) ........................................................................................................... 94
+[Rule 9-13] (REF, SUB, EXT) ........................................................................................................... 95
+[Rule 9-14] (REF, SUB, EXT) ........................................................................................................... 95
+[Rule 9-15] (REF, SUB, EXT) ........................................................................................................... 95
+[Rule 9-16] (REF, SUB, EXT) ........................................................................................................... 95
+[Rule 9-17] (REF, SUB, EXT) ........................................................................................................... 96
+[Rule 9-18] (REF, EXT) ................................................................................................................... 96
+[Rule 9-19] (REF, SUB, EXT) ........................................................................................................... 99
+[Rule 9-20] (REF, SUB, EXT) ........................................................................................................... 99
+[Rule 9-21] (REF, SUB, EXT) ......................................................................................................... 100
+[Rule 9-22] (REF, SUB, EXT) ......................................................................................................... 100
+[Rule 9-23] (REF, SUB, EXT) ......................................................................................................... 100
+[Rule 9-24] (REF, SUB, EXT) ......................................................................................................... 100
+[Rule 9-25] (REF, SUB, EXT) ......................................................................................................... 101
+[Rule 9-26] (REF, SUB, EXT) ......................................................................................................... 101
+NIEM NIEM Naming and Design Rules
+G-5
+[Rule 9-27] (REF, SUB, EXT) ......................................................................................................... 101
+[Rule 9-28] (REF, SUB, EXT) ......................................................................................................... 102
+[Rule 9-29] (REF, SUB, EXT) ......................................................................................................... 102
+[Rule 9-30] (REF, SUB, EXT) ......................................................................................................... 102
+[Rule 9-31] (REF, SUB, EXT) ......................................................................................................... 102
+[Rule 9-32] (REF, SUB, EXT) ......................................................................................................... 103
+[Rule 9-33] (REF, SUB, EXT) ......................................................................................................... 103
+[Rule 9-34] (REF, SUB, EXT) ......................................................................................................... 103
+[Rule 9-35] (REF, SUB, EXT) ......................................................................................................... 103
+		
+[/comment]		

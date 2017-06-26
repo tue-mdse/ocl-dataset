@@ -1,0 +1,277 @@
+[comment encoding = UTF-8 /]
+[module global_queriesModularProject('http://mondo.org/runtimePatterns',
+									 'http://mondo.org/dslPatterns',
+									 'http://mondo.dsl.org/mmPatterns/modularity',
+									  'http://www.eclipse.org/emf/2002/Ecore')]
+
+
+[query public generateElement (anPatternInstance : PatternInstance) : OclAny = self/]
+
+[query public PatternInstanceModularity(anPatternInstances : PatternInstances) : 
+			PatternInstance = anPatternInstances.appliedPatterns->asSequence()->select
+							  (anPatternInstance : PatternInstance | anPatternInstance.pattern.name='Modularity')->first() /]
+
+[query public Get_ProjectClassRoleInstance(anPatternInstance : PatternInstance) : 
+			ClassRoleInstance = anPatternInstance.GetClassRoleIntancebyName('Project')->first() /]
+
+	[query public Get_ProjectClass(anPatternInstance : PatternInstance) : 
+			EClass = anPatternInstance.GetClassRoleIntancebyName('Project')->first().element /]
+
+	[query public Get_Pro_Path_Icon(anPatternInstance : PatternInstance) :
+			String = if(existIcon(anPatternInstance.GetClassRoleIntancebyName('Project')->first().Get_ClassRoleInstance_EAttribute('icon'))	= false) then
+							getProperty('def_pro_icon')
+						else
+							anPatternInstance.GetClassRoleIntancebyName('Project')->first().Get_ClassRoleInstance_EAttribute('icon')
+						endif/]
+
+[query public Get_FolderFileRoleInstance(anPatternInstance : PatternInstance) : 	
+				Sequence(ClassRoleInstance) = anPatternInstance.Get_FolderClassRoleInstance()->union(anPatternInstance.Get_FileClassRoleInstance()) /]
+
+[query public Get_FolderClassRoleInstance(anPatternInstance : PatternInstance) : 
+			Sequence(ClassRoleInstance) = anPatternInstance.GetClassRoleIntancebyName('Package')->asSequence() /]
+
+[query public Get_FileClassRoleInstance(anPatternInstance : PatternInstance) : 
+			Sequence(ClassRoleInstance) = anPatternInstance.GetClassRoleIntancebyName('Unit') /]
+
+
+[query public Get_ClassRoleInstance_Folder_Icon(anClassRoleInstance : ClassRoleInstance) : 
+			String = if(anClassRoleInstance.Get_ClassRoleInstance_EAttribute('icon') = false) then 
+							getProperty('def_folder_icon') 
+					 else if(anClassRoleInstance.Get_ClassRoleInstance_EAttribute('icon').equalsIgnoreCase('') = true) then
+							getProperty('def_folder_icon')
+						   else
+							anClassRoleInstance.Get_ClassRoleInstance_EAttribute('icon')
+							endif
+					 endif/]
+
+[query public Get_ClassRoleInstance_File_Icon(anClassRoleInstance : ClassRoleInstance) : 
+			String = if(existIcon(anClassRoleInstance.Get_ClassRoleInstance_EAttribute('icon')) = false) then 
+							getProperty('def_file_icon') 
+					 else
+							anClassRoleInstance.Get_ClassRoleInstance_EAttribute('icon')
+					 endif/]
+
+[query public Get_Extension_Icon(anPatternInstance : PatternInstance,anExtension : EString) :
+			 Sequence(ClassRoleInstance) = if(ExistGet_Extension_Icon(anPatternInstance, anExtension)->size() > 0) then
+									ExistGet_Extension_Icon(anPatternInstance, anExtension)
+								 else
+									Sequence(ClassRoleInstance){}
+								endif
+						 /]		
+
+[query public ExistGet_Extension_Icon (anPatternInstance : PatternInstance,anExtension : EString) : 
+			Sequence(ClassRoleInstance) = anPatternInstance.Get_FileClassRoleInstance()->select(anClassRoleInstance : ClassRoleInstance | 
+						existIcon(anClassRoleInstance.Get_ClassRoleInstance_EAttribute('icon')) = true and 
+						anClassRoleInstance.Get_ClassRoleInstance_EAttribute('extension').toString()=anExtension) 
+			/]
+
+[query public GetClassRoleIntancebyName(anPatternInstance : PatternInstance, anClassName : EString) : 
+			  Sequence(ClassRoleInstance) = anPatternInstance.eContents(ClassRoleInstance)
+											 ->select(anClassRoleInstance : ClassRoleInstance | 
+												anClassRoleInstance.role.ref->asSequence()
+											 ->select(anEClass : EClass | anEClass.name = anClassName)
+											 ->asSequence()->size()>0)/]
+
+[query public Get_ClassRoleInstance_EAttribute(anClassRoleInstance : ClassRoleInstance,anAttributeName : EString) : 
+			String = if(ExistGet_ClassRoleInstance_EAttribute(anClassRoleInstance, anAttributeName)->size() > 0) then
+						if (ExistGet_ClassRoleInstance_EAttribute(anClassRoleInstance, anAttributeName)->first().oclAsType(InstanceFeatureRoleInstance)->isEmpty() = true) then 
+								'null' else
+							ExistGet_ClassRoleInstance_EAttribute(anClassRoleInstance, anAttributeName)->first().oclAsType(InstanceFeatureRoleInstance).value.toString()
+						endif
+					 else
+						'null'
+					endif
+					/]
+
+[query public ExistGet_ClassRoleInstance_EAttribute (anClassRoleInstance : ClassRoleInstance,anAttributeName : EString) : 
+
+		Sequence(FeatureRoleInstance) = if(anClassRoleInstance.featureInstances->asSequence()
+					 ->select(anFeatureRoleInstance : FeatureRoleInstance | anFeatureRoleInstance.oclIsKindOf(InstanceFeatureRoleInstance))
+					 ->select(anInstanceFeatureRoleInstance : FeatureRoleInstance |
+					 anInstanceFeatureRoleInstance.oclAsType(InstanceFeatureRoleInstance).role.ref->select(anEAttribute : EAttribute |
+					 anEAttribute.name=anAttributeName)->size()>0)->size() <= 0) then
+							Sequence(FeatureRoleInstance){}
+					 else
+						 anClassRoleInstance.featureInstances->asSequence()
+						 ->select(anFeatureRoleInstance : FeatureRoleInstance | anFeatureRoleInstance.oclIsKindOf(InstanceFeatureRoleInstance))
+						 ->select(anInstanceFeatureRoleInstance : FeatureRoleInstance |
+						 anInstanceFeatureRoleInstance.oclAsType(InstanceFeatureRoleInstance).role.ref->select(anEAttribute : EAttribute |
+						 anEAttribute.name=anAttributeName)->size()>0)
+					 endif					 
+					/]
+
+[query public HasTypeFeature_EAttribute(anClassRoleInstance : ClassRoleInstance,anAttributeName : EString) : 
+			Boolean = if(anClassRoleInstance.featureInstances->asSequence()
+					 ->select(anFeatureRoleInstance : FeatureRoleInstance | anFeatureRoleInstance.oclIsKindOf(TypeFeatureRoleInstance))
+					 ->select(anInstanceFeatureRoleInstance : FeatureRoleInstance |
+					 anInstanceFeatureRoleInstance.oclAsType(TypeFeatureRoleInstance).role.ref->select(anEAttribute : EAttribute |
+					 anEAttribute.name=anAttributeName)->size()>0)
+					 ->asSequence()->size()>0) then
+						true
+					 else
+						false
+					 endif/]
+
+[query public Get_ClassRoleInstance_TypeFeature_EAttribute(anClassRoleInstance : ClassRoleInstance,anAttributeName : EString) : 
+			EAttribute = anClassRoleInstance.featureInstances->asSequence()
+					 ->select(anFeatureRoleInstance : FeatureRoleInstance | anFeatureRoleInstance.oclIsKindOf(TypeFeatureRoleInstance))
+					 ->select(anInstanceFeatureRoleInstance : FeatureRoleInstance |
+					 anInstanceFeatureRoleInstance.oclAsType(TypeFeatureRoleInstance).role.ref->select(anEAttribute : EAttribute |
+					 anEAttribute.name=anAttributeName)->size()>0)
+					 ->asSequence()->first().oclAsType(TypeFeatureRoleInstance).element/]
+
+[query public Data_Type_Parse_With_Value(attr : EAttribute,value : String) : 
+			String = invoke('org.mondo.generate.modular.project.create.project.LibraryModular', 
+				'DataTypeParse(java.lang.String,java.lang.String)',Sequence{attr.eType.name,value}).oclAsType(String)
+		/]
+
+[comment Load GenModel /]
+[query public LoadGenModel(genModelPath : String): EObject = invoke('org.mondo.generate.modular.project.create.project.LibraryModular', 
+				'Load(java.lang.String)',Sequence{genModelPath}).oclAsType(EObject) /]
+
+[query public Data_Type_Parse(attr : EAttribute) : 
+			EString = if(attr.eType.name='EShort') then
+						'Short.parseShort'
+					  else if(attr.eType.name='ELong') then
+						'Long.parseLong'
+					  		else if(attr.eType.name='EBoolean') then
+								'Boolean.parseBoolean'	
+								else			  
+									attr.eType.name.concat('.parse').concat(attr.eType.name)
+									endif
+							endif
+					 endif
+		/]
+
+[query public GetContainmentFolderReferences(anPatternInstance : PatternInstance,c : ClassRoleInstance) : 
+	EReference = if(GetDirectContainmentFolderReferences(anPatternInstance, c)->size()>0) then 
+					 GetDirectContainmentFolderReferences(anPatternInstance, c)->first().element
+					else
+					 GetContainmentfromSuperTypes(anPatternInstance, c.element.eAllSuperTypes->asSequence())
+					endif	 
+				/]
+
+[comment subPackages packageTypes change for containees /]
+[query public GetDirectContainmentFolderReferences(anPatternInstance : PatternInstance,c : ClassRoleInstance) :
+	Sequence(ReferenceRoleInstance) = anPatternInstance.eContents(ClassRoleInstance).referenceInstances->asSequence()
+										 ->select(anReferenceRoleInstance : ReferenceRoleInstance |
+									 	(anReferenceRoleInstance.role.ref.name='containees') and
+										anReferenceRoleInstance.element.eType.name = c.element.name
+						 			)
+	/]
+
+[comment  Get All Contaiment References for Pattern Instance /]
+[comment subPackages packageTypes change for containee /]
+[query public GetAllContainmentPackages(anPatternInstance : PatternInstance) : 
+		Sequence(ReferenceRoleInstance) = anPatternInstance.eContents(ClassRoleInstance).referenceInstances->asSequence()
+										 ->select(anReferenceRoleInstance : ReferenceRoleInstance |
+									 	anReferenceRoleInstance.role.ref.name='containees'
+						 			)		
+		/]
+
+[comment Get the Containment Reference from SuperTypes /]
+[query public GetContainmentfromSuperTypes(anPatternInstance : PatternInstance, anEClassSequence : Sequence(EClass)) : 
+		EReference = GetAllContainmentPackages(anPatternInstance)->select(anReferenceRoleInstance : ReferenceRoleInstance |
+									 			 anEClassSequence->select(anEClass : EClass | 
+												 anReferenceRoleInstance.element.eType.name.toString() = anEClass.name.toString() 
+											  )->size() > 0)
+											->first().element /]
+
+
+[comment unitTypes change for containees/]
+[query public GetContainmentFileReferences(anPatternInstance : PatternInstance,c : ClassRoleInstance) : 
+	EReference = if(GetDirectContainmentFolderReferences(anPatternInstance, c)->size()>0) then 
+					 GetDirectContainmentFolderReferences(anPatternInstance, c)->first().element
+					else
+					 GetContainmentfromSuperTypes(anPatternInstance, c.element.eAllSuperTypes->asSequence())
+					endif
+					/]
+
+
+[comment Search Class if is a ContainerElement which a class that is a Package or File Instance/]
+
+[query public IsEClassContainerElement(anPatternInstance : PatternInstance, anEClassifier : EClassifier) : 
+	Boolean = if(anPatternInstance.IsEClassPackageInstance(anEClassifier)=false) 
+				then
+			  		if (anPatternInstance.IsEClassFileInstance(anEClassifier) = false) 
+						then
+							anPatternInstance.IsEClassProjectInstance(anEClassifier)	
+			  			else
+							true
+					endif
+				else
+				 true
+			  endif			
+			 /]
+
+[comment Search Class is a Project Instance/]
+
+[query public IsEClassProjectInstance(anPatternInstance : PatternInstance, anEClassifier : EClassifier) : 
+	Boolean = if(anPatternInstance.Get_ProjectClassRoleInstance()->select(anClassRoleInstance : ClassRoleInstance | 
+									anClassRoleInstance.element.name = anEClassifier.name)->size()>0) then
+			  	 true
+			  else
+				false
+			  endif			
+			 /]
+
+[comment Search Class is a Package Instance/]
+
+[query public IsEClassPackageInstance(anPatternInstance : PatternInstance, anEClassifier : EClassifier) : 
+	Boolean = if(anPatternInstance.Get_FolderClassRoleInstance()->select(anClassRoleInstance : ClassRoleInstance | 
+									anClassRoleInstance.element.name = anEClassifier.name)->size()>0) then
+			  	 true
+			  else
+				false
+			  endif			
+			 /]
+
+[comment Search Class is a File Instance/]
+
+[query public IsEClassFileInstance(anPatternInstance : PatternInstance, anEClassifier : EClassifier) : 
+	Boolean = if(anPatternInstance.Get_FileClassRoleInstance()->select(anClassRoleInstance : ClassRoleInstance | 
+									anClassRoleInstance.element.name=anEClassifier.name)->size()>0) then
+			  	 true
+			  else
+				false
+			  endif			
+			 /]
+
+[comment Search SuperTypes from Folder & File Instances /]
+
+[query public IsEClassSuperTypeClassRoleInstance(anPatternInstance : PatternInstance, anEClassifier : EClassifier) : 
+				Sequence(ClassRoleInstance) = Get_FolderFileRoleInstance(anPatternInstance)->select(
+											  anClassRoleInstance : ClassRoleInstance |
+											  anClassRoleInstance.element.eAllSuperTypes->select(anEClass : EClass| 
+											  anEClass.name=anEClassifier.name)->size()>0)
+				 /]
+
+[query public PackageDeclaration(anEClass : EClass) :
+				 String = invoke('org.mondo.generate.modular.project.create.project.LibraryModular', 
+				'PackageDeclaration(org.eclipse.emf.ecore.EClass)',Sequence{anEClass}).oclAsType(String)/]
+
+[query public existIcon(string : String) : 
+				EBoolean = if(string.equalsIgnoreCase(getProperty('def_pro_icon')) or string.equalsIgnoreCase('')) then
+								false
+							else
+								true
+							endif
+				/]
+
+
+[comment Create Import String/]
+
+[query public generateEClassImport(anEClass : EClass) :
+				String = invoke('org.mondo.generate.modular.project.create.project.LibraryModular', 
+				'generateEClassImport(org.eclipse.emf.ecore.EClass)',Sequence{anEClass}).oclAsType(String)/]
+
+
+[query public generateEClassImportImpl(anEClass : EClass) :
+				String = invoke('org.mondo.generate.modular.project.create.project.LibraryModular', 
+				'generateEClassImportImpl(org.eclipse.emf.ecore.EClass)',Sequence{anEClass}).oclAsType(String)/]
+
+[query public generateEClassImportFactoryImpl(anEClass : EClass) :
+				String = invoke('org.mondo.generate.modular.project.create.project.LibraryModular', 
+				'generateEClassImportFactoryImpl(org.eclipse.emf.ecore.EClass)',Sequence{anEClass}).oclAsType(String)/]
+
+

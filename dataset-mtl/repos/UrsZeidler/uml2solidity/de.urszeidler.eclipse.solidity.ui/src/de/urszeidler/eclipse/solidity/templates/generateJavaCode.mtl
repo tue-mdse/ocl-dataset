@@ -1,0 +1,860 @@
+[comment encoding = UTF-8 /]
+[module generateJavaCode('http://www.eclipse.org/uml2/5.0.0/UML')/]
+
+
+[import de::urszeidler::eclipse::solidity::util::uml2service /]
+
+[**
+ * The documentation of the template generateElement.
+ * @param aClass
+ */]
+[template public generateElement(aModel : Model)]
+[comment @main/]
+[printEthereumFactory(aModel)/]
+[generatePackage(aModel)/]
+[iteratePackages(aModel)/]
+[/template]
+
+[**
+ * Iterates over the packages.
+*/]
+[template private iteratePackages(p : Package)]
+[for (p1 : Package | p.nestedPackage)]
+[if (isGeneratePackage(p1))]
+[generatePackage(p1)/]
+[/if]
+[iteratePackages(p1)/]
+[/for]
+[/template]
+
+[template private printEthereumFactory(m : Model)]
+[file (m.getInterfacePackagePrefix().replaceAll('\\.', '/')+'/EthereumInstance.java', false, 'UTF-8')]
+package [m.getInterfacePackagePrefix()/];
+
+//[protected ('customizedImports')]
+
+import java.math.BigInteger;
+import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.adridadou.ethereum.EthereumFacade;
+import org.adridadou.ethereum.ethj.BlockchainConfig;
+import org.adridadou.ethereum.ethj.TestConfig;
+import org.adridadou.ethereum.ethj.provider.EthereumFacadeProvider;
+import org.adridadou.ethereum.ethj.provider.EthereumJConfigs;
+import org.adridadou.ethereum.ethj.provider.PrivateEthereumFacadeProvider;
+import org.adridadou.ethereum.ethj.provider.PrivateNetworkConfig;
+import org.adridadou.ethereum.rpc.provider.EthereumFacadeRpcProvider;
+import org.adridadou.ethereum.rpc.provider.InfuraMainEthereumFacadeProvider;
+import org.adridadou.ethereum.rpc.provider.InfuraRopstenEthereumFacadeProvider;
+import org.adridadou.ethereum.values.EthAccount;
+import org.adridadou.ethereum.values.EthAddress;
+import org.adridadou.ethereum.values.EthValue;
+import org.adridadou.ethereum.values.config.ChainId;
+import org.adridadou.ethereum.values.config.InfuraKey;
+import org.ethereum.crypto.ECKey;
+
+import com.google.common.collect.Sets;
+//[/protected]
+
+
+/**
+ * A simple singleton to control the access for the ethereum instance.<br/>
+ * The created instance is controllable by system a system property 'EthereumFacadeProvider'.
+ */
+public class EthereumInstance{
+	public static final String PROP_CHAIN_ID = "chain-id";
+	public static final String PROP_RPC_URL = "rpc-url";
+	public static final String PROP_API_KEY = "apiKey";
+	public static final String PROP_ETHEREUM_FACADE_PROVIDER = "EthereumFacadeProvider";
+	//the different access technologies
+	public static String EI_MAIN = "main";
+	public static String EI_TEST = "test";
+	public static String EI_ROPSTEN = "ropsten";
+	public static String EI_PRIVATE = "private";
+	public static String EI_RPC = "rpc";
+	public static String EI_INFURA_ROPSTEN = "InfuraRopsten";
+	public static String EI_INFURA_MAIN = "InfuraMain";
+	public static String EI_CUSTOM = "custom";
+	
+	public static Set<String> ALL_RPC = Sets.newHashSet(EI_RPC,EI_INFURA_MAIN,EI_INFURA_ROPSTEN);
+	public static Set<String> ALL_TESTNET = Sets.newHashSet(EI_ROPSTEN,EI_INFURA_ROPSTEN);
+
+	private static EthereumInstance instance;
+	private static Lock instanceLock = new ReentrantLock();
+	
+	private EthereumFacade ethereum;
+
+	public static class DeployDuo<C>{
+		public EthAddress contractAddress;
+		public C contractInstance;
+		
+		public DeployDuo(EthAddress contractAddress, C contractInstance) {
+			super();
+			this.contractAddress = contractAddress;
+			this.contractInstance = contractInstance;
+		}
+	}
+
+	private EthereumInstance() {
+		try {
+			setup();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Get the ethereum instance, will wait until the instance is available.
+	 * @return the instance
+	 */
+	public static EthereumInstance getInstance() {
+		instanceLock.lock();
+		try {
+			if (instance == null) {
+				instance = new EthereumInstance();
+			}
+		} finally {
+			instanceLock.unlock();
+		}
+		return instance;
+	}
+
+	/**
+	 * Setup up the blockchain. Add the 'EthereumFacadeProvider' property to use 
+	 * another block chain implementation or network.<br/>
+	 * main - for the main net<br/>
+	 * test - for the main net<br/>
+	 * ropsten - for the new testnet<br/>
+	 * InfuraRopsten - for the new testnet over infura rcp<br/>
+	 * rpc - to use a rpc instance<br/>
+	 * -- rpc-url - the url<br/>
+	 * -- chain-id - the chain id<br/>
+	 * private - for a private chain<br/>
+	 * @throws Exception 
+	 */
+	private void setup() throws Exception {
+		String property = System.getProperty(PROP_ETHEREUM_FACADE_PROVIDER);
+		if (EI_MAIN.equalsIgnoreCase(property)) {
+			BlockchainConfig.Builder mainNet = EthereumJConfigs.mainNet();
+			// [protected ('for setup the main chain')]
+			[/protected]
+			ethereum = EthereumFacadeProvider.forNetwork(mainNet).create();
+		} else if (EI_TEST.equalsIgnoreCase(property)) {
+			BlockchainConfig.Builder testnet = EthereumJConfigs.etherCampTestnet();
+			//[protected ('for setup the test chain')]
+			[/protected]
+			ethereum = EthereumFacadeProvider.forNetwork(testnet).create();
+		} else if (EI_ROPSTEN.equalsIgnoreCase(property)) {
+			BlockchainConfig.Builder ropsten = EthereumJConfigs.ropsten();
+			// [protected ('for setup the ropsten chain')]
+			[/protected]
+			ethereum = EthereumFacadeProvider.forNetwork(ropsten).create();
+		} else if (EI_INFURA_ROPSTEN.equalsIgnoreCase(property)) {
+			String apiKey = System.getProperty(PROP_API_KEY);
+			ethereum = InfuraRopstenEthereumFacadeProvider.create(new InfuraKey(apiKey));
+		} else if (EI_INFURA_ROPSTEN.equalsIgnoreCase(property)) {
+			String apiKey = System.getProperty(PROP_API_KEY);
+			ethereum = new InfuraMainEthereumFacadeProvider().create(new InfuraKey(apiKey));
+		} else if (EI_RPC.equalsIgnoreCase(property)) {
+			EthereumFacadeRpcProvider rcp = new EthereumFacadeRpcProvider();
+			String url = System.getProperty(PROP_RPC_URL);
+			String chainId = System.getProperty(PROP_CHAIN_ID);
+			ethereum = rcp.create(url, new ChainId((byte) Integer.parseInt(chainId)));
+		} else if (EI_PRIVATE.equalsIgnoreCase(property)) {
+			PrivateNetworkConfig config = PrivateNetworkConfig.config();
+			// [protected ('for setup the private chain')]
+			config.reset(true)
+			.initialBalance(new EthAccount(ECKey.fromPrivate(BigInteger.valueOf(100000L))),
+					EthValue.ether(10L));
+			[/protected]
+			ethereum = new PrivateEthereumFacadeProvider().create(config);
+		} else if (EI_CUSTOM.equalsIgnoreCase(property)) {
+			BlockchainConfig.Builder config = BlockchainConfig.builder();
+			// [protected ('for setup the custom chain')]
+			[/protected]
+			ethereum = EthereumFacadeProvider.forNetwork(config).create();
+		}
+		if (ethereum == null) {
+			TestConfig.Builder builder = TestConfig.builder();
+			// [protected ('for setup the standalone chain')]
+			[/protected]
+			ethereum = EthereumFacadeProvider.forTest(builder.build());
+		}
+	}
+
+	public EthereumFacade getEthereum() {
+		return ethereum;
+	}
+
+}
+[/file]
+[/template]
+[**
+ * Generates a packages as a file.
+ * @param aModel a package
+ */]
+[template private generatePackage(p : Package)?(isGeneratePackage(p))]
+[p.generateDeployer()/]
+[comment model class /]
+[for (	aClass : Class | p.allContracts())]
+[aClass.generateInterface(p)/]
+[for (op : Operation | aClass.allAbstractFunctions()->union(aClass.allFunctions()->asSequence())->select(isPublic()))]
+[if (op.allReturnParameters()->size()>1)]
+[file (p.getInterfacePackagePrefix().replaceAll('\\.', '/')+'/'+p.name+'/'+ op.returnObjectName()+'.java', false, 'UTF-8')]
+[printReturnParameterValueObject(p, aClass, op)/]
+[/file]
+[/if]
+[/for]
+[for (op : Operation |  aClass.ownedOperation->select(isEvent()) )]
+[file (p.getInterfacePackagePrefix().replaceAll('\\.', '/')+'/'+p.name+'/'+op.eventName()+'.java', false, 'UTF-8')]
+[printEventParameterValueObject(p, aClass, op)/]
+[/file]
+[/for]
+[for (c : Classifier |  aClass.nestedClassifier->select(isStruct()) )]
+[file (p.getInterfacePackagePrefix().replaceAll('\\.', '/')+'/'+p.name+'/'+c.toStructTypeName()+'.java', false, 'UTF-8')]
+[printStructValueObject(p,aClass,c)/]
+[/file]
+[/for]
+
+[/for]
+[/template]
+
+[template public generateInterface(aClass : Class,p : Package)]
+[file (p.getInterfacePackagePrefix().replaceAll('\\.', '/')+'/'+p.name+'/'+ aClass.name+'.java', false, 'UTF-8')]
+package [p.getInterfacePackagePrefix()/].[p.name/];
+
+import java.util.concurrent.CompletableFuture;
+import org.adridadou.ethereum.values.EthAddress;
+[for (pi : PackageImport | p.allImports() )]
+import [pi.target.oclAsType(Package).toPackage()/].*;
+[/for]
+
+//[protected ('customized_imports')]
+
+//[/protected]
+
+
+[printCommentDoc(aClass.ownedComment)/]
+public interface [aClass.name/][aClass.contractExtends()/]{[comment]TODO: for now no struct types[/comment]
+[for (ne : NamedElement | aClass.ownedMember->filter(Enumeration)->sortedBy(indexInContainer()) )]
+[if (oclIsTypeOf(Enumeration))]
+    [printEnum(ne.oclAsType(Enumeration))/]
+[/if][/for]
+[for (prop : Property | aClass.allCProperties()->select(isPublic()))]
+	[printCommentDoc(prop.ownedComment)/]
+	[prop.toJavaType()/] [prop.name/]();
+[/for]
+[for (p : Property | aClass.allMappingSubAttributes())]
+[let value : Classifier = p.getStereotypeValue('Mapping', 'value').oclAsType(Classifier)]
+[comment][if (not value.isStruct())][/comment]
+	[printCommentDoc(p.ownedComment)/]
+	[value.toJavaType()/] [p.name/]([p.toJavaType()/] key);
+[comment][/if][/comment]
+[/let][/for]
+[for (p : Property | aClass.allKeyMappingSubAttributes())]
+[let value : Classifier = p.getStereotypeValue('KeyMapping', 'key').oclAsType(Classifier)]
+[comment][if (not p.type.isStruct())][/comment]
+	[printCommentDoc(p.ownedComment)/]
+	[p.type.toJavaType()/] [p.name/]([value.toJavaType()/] key);	
+[comment][/if][/comment]
+[/let][/for]
+[for (op : Operation | aClass.allAbstractFunctions()->select(isPublic()))]
+
+	[op.functionSignature()/]
+[/for][for (op : Operation | aClass.allFunctions()->select(isPublic()))]
+
+	[op.functionSignature()/][/for]
+
+[for (prop : Property | aClass.attribute->select(hasStereotype('Delegate')))]
+
+[printDelegateOperations(prop)/]
+[/for]
+[for (prop : Property | aClass.allGetterProperties())]
+[printGetterSetter(prop)/][/for]
+
+	//[protected ('additional_methods')]
+
+	//[/protected]
+}
+[/file]
+[/template]
+
+[template public generateDeployer(p : Package)]
+[file (p.getInterfacePackagePrefix().replaceAll('\\.', '/')+'/deployer/'+p.name.toUpperFirst()+'Deployer.java', false, 'UTF-8')]
+package [p.getInterfacePackagePrefix()/].deployer;
+
+import rx.Observable;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
+import org.adridadou.ethereum.EthereumFacade;
+import org.adridadou.ethereum.values.CompiledContract;
+import org.adridadou.ethereum.values.EthAccount;
+import org.adridadou.ethereum.values.EthAddress;
+import org.adridadou.ethereum.values.SoliditySource;
+import org.apache.commons.io.IOUtils;
+import org.ethereum.solidity.compiler.CompilationResult;
+import org.ethereum.solidity.compiler.CompilationResult.ContractMetadata;
+
+
+import [p.getInterfacePackagePrefix()/].EthereumInstance;
+import [p.getInterfacePackagePrefix()/].EthereumInstance.DeployDuo;
+
+import [p.getInterfacePackagePrefix()/].[p.name/].*;
+
+
+
+
+/**
+ * The deployer for the [p.name/] package.
+ *
+ */
+public class [p.name.toUpperFirst()/]Deployer {
+
+	private EthereumFacade ethereum;
+	private SoliditySource contractSource;
+	private CompilationResult compiledContracts;
+	private Map<String,CompiledContract> contracts = new HashMap<String, CompiledContract>();
+	private static String filename = "[if (p.getContractPathForJava()<>'')]/[p.getContractPathForJava()/][/if]/[p.name/].sol";
+
+	/**
+	 * Create an instance of the deployer with the default contract code file.
+	 * 
+	 * @param ethereum
+	 */
+	public [p.name.toUpperFirst()/]Deployer(EthereumFacade ethereum) {
+		this(ethereum,filename,false);
+	}
+
+	/**
+	 * Create an instance of the deployer.
+	 * 
+	 * @param ethereum
+	 * @param contractSourceFile
+	 * @param compiled is the source code already compiled
+	 */
+	public [p.name.toUpperFirst()/]Deployer(EthereumFacade ethereum, String contractSourceFile, boolean compiled) {
+		this.ethereum = ethereum;
+		setContractSource(contractSourceFile, compiled);
+	}
+
+	/**
+	 * Create an instance of the deployer.
+	 * 
+	 * @param ethereum
+	 * @param contractSourceFile
+	 */
+	public [p.name.toUpperFirst()/]Deployer(EthereumFacade ethereum, File contractSourceFile, boolean compiled) {
+		this.ethereum = ethereum;
+		if (!compiled)
+			contractSource = SoliditySource.from(contractSourceFile);
+		else {
+			try {
+				String rawJson = IOUtils.toString(new FileInputStream(contractSourceFile), EthereumFacade.CHARSET);
+				compiledContracts = CompilationResult.parse(rawJson);
+			} catch (FileNotFoundException e) {
+				throw new IllegalArgumentException(e);
+			} catch (IOException e) {
+				throw new IllegalArgumentException(e);
+			}
+		}
+	}
+
+	/**
+	 * Change the contract source.
+	 * 
+	 * @param contractSourceFile
+	 * @param compiled
+	 */
+	public void setContractSource(String contractSourceFile, boolean compiled) {
+		try {
+			if (!compiled) {
+				contractSource = SoliditySource.from(this.getClass().getResourceAsStream(contractSourceFile));
+			} else {
+				String rawJson = IOUtils.toString(this.getClass().getResourceAsStream(contractSourceFile),
+						EthereumFacade.CHARSET);
+				compiledContracts = CompilationResult.parse(rawJson);
+			}
+		} catch (IOException e) {
+			throw new IllegalArgumentException(e);
+		}
+	}
+
+[for (	aClass : Class | p.allContracts())]
+[if (aClass.allConstructors()->isEmpty())]
+
+	/**
+	 * Deploys a '[aClass.name/]' on the blockchain.
+	 * 
+	 * @param sender
+	 *            the sender address
+	 * @return the address of the deployed contract
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	public CompletableFuture<EthAddress> deploy[aClass.name/](EthAccount sender) throws InterruptedException, ExecutionException{
+		CompiledContract compiledContract = compiledContract[aClass.name/]();
+		CompletableFuture<EthAddress> address = ethereum.publishContract(compiledContract, sender);
+		return address;
+	}
+
+
+	/**
+	 * Deploys a '[aClass.name/]' on the blockchain and wrapps the contract proxy.
+	 *  
+	 * @param sender the sender address
+	 * @return the contract interface and the deployed address
+	 */
+	public DeployDuo<[aClass.name/]> create[aClass.name/](EthAccount sender) throws IOException, InterruptedException, ExecutionException {
+		CompletableFuture<EthAddress> address = deploy[aClass.name/](sender);
+		return new EthereumInstance.DeployDuo<[aClass.name/]>(address.get(), create[aClass.name/]Proxy(sender, address.get()));
+	}
+[else]
+[for (op : Operation | aClass.allConstructors())]
+
+	/**
+	 * Deploys a '[aClass.name/]' on the blockchain.
+	 * 
+	 * @param sender
+	 *            the sender address
+[for (p : Parameter | op.allInParameters())]
+	 * @param [p.name/] [if (not p.ownedComment->asSequence()->first()._body.oclIsUndefined())][p.ownedComment->asSequence()->first()._body.printInLines()/][elseif][/if]
+[/for]
+	 * @return the address of the deployed contract
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	public CompletableFuture<EthAddress> deploy[aClass.name/](EthAccount sender[for (p : Parameter | op.allInParameters())], [p.type.toJavaType()/] [p.name/][/for]) throws InterruptedException, ExecutionException {
+		CompiledContract compiledContract = compiledContract[aClass.name/]();
+		CompletableFuture<EthAddress> address = ethereum.publishContract(compiledContract, sender[for (p : Parameter | op.allInParameters())], [p.name/][/for]);
+		return address;
+	}
+
+	/**
+	 * Deploys a '[aClass.name/]' on the blockchain and wrapps the contract proxy.
+	 *  
+	 * @param sender the sender address
+[for (p : Parameter | op.allInParameters())]
+	 * @param [p.name/] [if (not p.ownedComment->asSequence()->first()._body.oclIsUndefined())][p.ownedComment->asSequence()->first()._body.printInLines()/][elseif][/if]
+[/for]
+	 * @return the contract interface
+	 */
+	public DeployDuo<[aClass.name/]> create[aClass.name/](EthAccount sender[for (p : Parameter | op.allInParameters())], [p.type.toJavaType()/] [p.name/][/for]) throws IOException, InterruptedException, ExecutionException {
+		CompletableFuture<EthAddress> address = deploy[aClass.name/](sender[for (p : Parameter | op.allInParameters())], [p.name/][/for]);
+		return new EthereumInstance.DeployDuo<[aClass.name/]>(address.get(), create[aClass.name/]Proxy(sender, address.get()));
+	}
+[/for]
+[/if]
+
+	/**
+	 * Create a proxy for a deployed '[aClass.name/]' contract.
+	 *  
+	 * @param sender the sender address
+	 * @param address the address of the contract
+	 * @return the contract interface
+	 */
+	public [aClass.name/] create[aClass.name/]Proxy(EthAccount sender, EthAddress address) throws IOException, InterruptedException, ExecutionException {
+		CompiledContract compiledContract = compiledContract[aClass.name/]();
+		[aClass.name/] [aClass.name.toLowerCase()/] = ethereum.createContractProxy(compiledContract, address, sender, [aClass.name/].class);
+		return [aClass.name.toLowerCase()/];
+	}
+
+	/**
+	 * Return the compiled contract for the contract '[aClass.name/]', when in source the contract code gets compiled.
+	 * @return the compiled contract for '[aClass.name/]'.
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	public CompiledContract compiledContract[aClass.name/]() throws InterruptedException, ExecutionException {
+		String contractName = "[aClass.name/]";
+		String quallifiedName = "[p.name/].sol:[aClass.name/]";
+		return getCompiledContract(contractName, quallifiedName);
+
+[comment]		CompiledContract compiledContract = null;
+		if (compiledContracts == null){
+			Map<String, CompiledContract> contracts = ethereum.compile(contractSource).get();
+			compiledContract = contracts.get("[aClass.name/]");
+			if (compiledContract == null) {
+				Optional<String> optional = contracts.keySet().stream().filter(s -> s.endsWith("[p.name/].sol:[aClass.name/]"))
+						.findFirst();
+				if (optional.isPresent())
+					compiledContract = contracts.get(optional.get());
+			}
+		} else {
+			ContractMetadata contractMetadata = compiledContracts.contracts.get("[aClass.name/]");
+			if (contractMetadata == null) {
+				Optional<String> optional = compiledContracts.contracts.keySet().stream()
+						.filter(s -> s.endsWith("[p.name/].sol:[aClass.name/]")).findFirst();
+				if (optional.isPresent())
+					contractMetadata = compiledContracts.contracts.get(optional.get());
+			}
+			compiledContract = CompiledContract.from(null, "[aClass.name/]", contractMetadata);
+		}
+		if(compiledContract == null)
+			throw new IllegalArgumentException("Contract code for '[aClass.name/]' not found");
+
+		return compiledContract;[/comment]
+	}
+[for (	ev : Operation | aClass.ownedOperation->select(isEvent()))]
+	/**
+	 * 
+	 * @param address
+	 * @return
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	public Observable<[ev.eventName()/]> observe[ev.eventName()/](EthAddress address) throws InterruptedException, ExecutionException {
+		CompiledContract compiledContract = compiledContract[aClass.name/]();
+		Observable<[ev.eventName()/]> observeEvents = ethereum.observeEvents(compiledContract.getAbi(), address, "[ev.name/]", [ev.eventName()/].class);
+		return observeEvents;
+	}
+[/for]
+
+[/for]
+
+	/**
+	 * Get the compiled contract by name or qualified name.
+	 * @param contractName
+	 * @param qualifiedName
+	 * @return
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	public CompiledContract getCompiledContract(String contractName, String qualifiedName)
+			throws InterruptedException, ExecutionException {
+		CompiledContract compiledContract = contracts.get(qualifiedName==null ? contractName : qualifiedName);
+		if(compiledContract!=null)
+			return compiledContract;
+		
+		if (compiledContracts == null) {
+			Map<String, CompiledContract> contracts = ethereum.compile(contractSource).get();
+			compiledContract = contracts.get(contractName);
+			if (compiledContract == null) {
+				if (qualifiedName == null || qualifiedName.isEmpty())
+					throw new IllegalArgumentException("Qualified name must not be null or empty.");
+
+				Optional<String> optional = contracts.keySet().stream().filter(s -> {
+					return s.endsWith(qualifiedName);
+				}).findFirst();
+				if (optional.isPresent())
+					compiledContract = contracts.get(optional.get());
+			}
+		} else {
+			ContractMetadata contractMetadata = compiledContracts.contracts.get(contractName);
+			if (contractMetadata == null) {
+				if (qualifiedName == null || qualifiedName.isEmpty())
+					throw new IllegalArgumentException("Qualified name must not be null or empty.");
+
+				Optional<String> optional = compiledContracts.contracts.keySet().stream()
+						.filter(s -> s.endsWith(qualifiedName)).findFirst();
+				if (optional.isPresent()) {
+					contractMetadata = compiledContracts.contracts.get(optional.get());
+					compiledContract = CompiledContract.from(null, contractName, contractMetadata);
+				}
+			} else
+				compiledContract = CompiledContract.from(null, contractName, contractMetadata);
+		}
+		if (compiledContract == null)
+			throw new IllegalArgumentException(
+					"Contract code for '" + contractName + "/" + qualifiedName + "' not found");
+
+		contracts.put(qualifiedName==null ? contractName : qualifiedName, compiledContract);
+		return compiledContract;
+	}
+}
+[/file]
+[/template]
+
+[template public printGetterSetter (aProperty : Property)?(aProperty.hasStereotype('GetterSetter')) ]
+[if (aProperty.getStereotypeValue('GetterSetter', 'getter').oclAsType(Boolean))]
+
+	[aProperty.toJavaType()/] get[aProperty.name.toUpperFirst()/]();
+[/if]
+[if (aProperty.getStereotypeValue('GetterSetter', 'setter').oclAsType(Boolean))]
+
+	[if (aProperty.generateJavaNoneBlocking())]java.util.concurrent.CompletableFuture<Void>[else]void[/if] set[aProperty.name.toUpperFirst()/] ([aProperty.toJavaType()/] a[aProperty.name.toUpperFirst()/]);
+[/if]
+[/template]
+
+[template public printDelegateOperations (aProperty : Property) ]
+// delegate methods for [aProperty.type.name/]
+[for (aOperation : Operation | aProperty.type.oclAsType(Class).allFunctions()->select(visibility=VisibilityKind::public))]
+	[aOperation.functionSignature()/]
+[/for]
+[/template]
+
+[template public printEnum (en : Enumeration) ]
+enum [en.name/] { [for (l : EnumerationLiteral | en.ownedLiteral)separator (',')][l.name/][/for] }
+[/template]
+
+[template public printStructValueObject(p : Package, aClass : Class,  c : Classifier)]
+package [p.getInterfacePackagePrefix()/].[p.name/];
+
+import [p.getInterfacePackagePrefix()/].[p.name/].[aClass.name/].*;
+
+/**
+ * The dataholder for the struct [c.toStructTypeName()/].
+ *
+ */
+public class [c.toStructTypeName()/]{
+[for (p : Property | c.attribute)]
+	private [p.toJavaType()/] [p.toFieldName()/];
+[/for]
+
+	public [c.toStructTypeName()/]([for (p : Property | c.attribute)separator (',')][p.toJavaType()/] [p.toFieldName()/][/for]) {
+		super();
+[for (p : Property | c.attribute)]
+		this.[p.toFieldName()/] = [p.toFieldName()/];
+[/for]
+	}
+[for (p : Property | c.attribute)]
+
+	/**
+	 * Getter for [p.toFieldName()/].
+	 * @return
+	 */
+	public [p.toJavaType()/] get[p.toFieldName().toUpperFirst()/](){
+		return [p.toFieldName()/];
+	}
+[/for]
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+[for (p : Property | c.attribute)]
+		result = prime * result + (([p.toFieldName()/] == null) ? 0 : [p.toFieldName()/].hashCode());
+[/for]
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		[c.toStructTypeName()/] other = ([c.toStructTypeName()/]) obj;
+[for (p : Property | c.attribute)]
+		if ([p.toFieldName()/] == null) {
+			if (other.[p.toFieldName()/] != null)
+				return false;
+		} else if (![p.toFieldName()/].equals(other.[p.toFieldName()/]))
+			return false;
+[/for]
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "[c.toStructTypeName()/] [ '[' /][for (p : Property | c.attribute) separator (',')][p.toFieldName()/]=" + [p.toFieldName()/] + "[/for][ ']' /]";
+	}
+}
+[/template]
+
+[query public eventName(op : Operation) : String = 'Event'+op.name.toUpperFirst()+op.operationParameters() /]
+
+[template public printEventParameterValueObject(p : Package, aClass : Class,  op : Operation)]
+package [p.getInterfacePackagePrefix()/].[p.name/];
+
+import [p.getInterfacePackagePrefix()/].[p.name/].[aClass.name/].*;
+
+/**
+ * The Event Objects for the event [op.name/]([printParameters(op,ParameterDirectionKind::_in)/]).
+ *
+ */
+[printParameterValueObject(op.eventName(), op.allInParameters())/]
+[/template]
+
+[template public printReturnParameterValueObject(p : Package, aClass : Class,  op : Operation)]
+package [p.getInterfacePackagePrefix()/].[p.name/];
+
+import [p.getInterfacePackagePrefix()/].[p.name/].[aClass.name/].*;
+
+/**
+ * The return value for the function [op.name/]([printParameters(op,ParameterDirectionKind::_in)/]).
+ *
+ * see {@link [aClass.name/]#[op.name/]([printParametersForJavaDoc(op,ParameterDirectionKind::_in)/])}
+ */
+[printParameterValueObject(op.returnObjectName(), op.allReturnParameters())/]
+[/template]
+
+[template public printParameterValueObject(name : String,plist : OrderedSet(Parameter) )]
+public class [name/]{
+[for (p : Parameter | plist)]
+	private [p.toJavaType()/] [p.toFieldName()/];
+[/for]
+
+	public [name/]([for (p : Parameter | plist)separator (',')][p.toJavaType()/] [p.toFieldName()/][/for]) {
+		super();
+[for (p : Parameter | plist)]
+		this.[p.toFieldName()/] = [p.toFieldName()/];
+[/for]
+	}
+[for (p : Parameter | plist)]
+
+	/**
+	 * Getter for [p.toFieldName()/].
+	 * @return
+	 */
+	public [p.toJavaType()/] get[p.toFieldName().toUpperFirst()/](){
+		return [p.toFieldName()/];
+	}
+[/for]
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+[for (p : Parameter | plist)]
+		result = prime * result + (([p.toFieldName()/] == null) ? 0 : [p.toFieldName()/].hashCode());
+[/for]
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		[name/] other = ([name/]) obj;
+[for (p : Parameter | plist)]
+		if ([p.toFieldName()/] == null) {
+			if (other.[p.toFieldName()/] != null)
+				return false;
+		} else if (![p.toFieldName()/].equals(other.[p.toFieldName()/]))
+			return false;
+[/for]
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "[name/] [ '[' /][for (p : Parameter | plist) separator (',')][p.toFieldName()/]=" + [p.toFieldName()/] + "[/for][ ']' /]";
+	}
+}
+[/template]
+
+[template public returnObjectName(op : Operation)]
+Return[op.name.toUpperFirst()/][op.operationReturnParameters()/][/template]
+
+[template public toFieldName(p : Parameter)]
+[if (p.name.oclIsUndefined())]
+arg[p.indexInContainer()/][else]
+[p.name/][/if]
+[/template]
+
+[template public toFieldName(p : Property)]
+[if (p.name.oclIsUndefined())]
+arg[p.indexInContainer()/][else]
+[p.name/][/if]
+[/template]
+
+[query public toPackage(p : Package) : String = p.getInterfacePackagePrefix()+'.'+p.name /]
+[query public package2Path(p : Package) : String = p.toPackage().replaceAll('\\.', '/')/]
+
+
+[comment print the comments on the element /]
+[template private printCommentDoc (comments : Set(Comment)) ? (not comments->isEmpty()) ]
+/**
+[for (c : Comment | comments)]
+[c._body.printLines('*')/][/for]
+**/[/template]
+
+[**
+ * Prints a complete comment with parameter doc.
+*/]
+[template public printFunctionComments(aOperation : Operation) ? (not aOperation.ownedComment->isEmpty())
+{comments : Set(Comment) = aOperation.ownedComment;} ]
+/**
+[for (c : Comment | comments)]
+[c._body.printLines('*')/][/for]
+[if (not aOperation.allInParameters()->isEmpty())]
+* 
+[for (p : Parameter | aOperation.allInParameters() )]
+* @param [p.name/] -[if (not p.ownedComment->asSequence()->first()._body.oclIsUndefined())][p.ownedComment->asSequence()->first()._body.printInLines()/][elseif][/if]
+[/for][/if]
+[if (not aOperation.allReturnParameters()->isEmpty())]
+* @return
+[for (p : Parameter | aOperation.allReturnParameters() )]
+* [p.name/] -[if (not p.ownedComment->asSequence()->first()._body.oclIsUndefined())][p.ownedComment->asSequence()->first()._body.printInLines()/][elseif][/if]
+[/for][/if]
+**/[/template]
+
+[template public contractExtends (aClass : Class)  ]
+[if (hasSuperTypes(aClass))]
+ extends [for (c : Classifier | aClass.allSuperTypesWithoutContractApi()->select(not oclIsTypeOf(Interface)))separator (',')][c.name/][/for][/if][/template]
+
+[template public functionSignature(op : Operation)]
+[printFunctionComments(op)/]
+[comment][if (op.hasReturnValue())][op.javaReturn()/] [op.name/]([printParameters(op,ParameterDirectionKind::_in)/]);[else][/comment]
+[if (not op.hasReturnValue() and (op.isReturnConstant() or not op.generateJavaNoneBlocking()))]void [else][op.javaReturn()/] [/if][op.name/]([printParameters(op,ParameterDirectionKind::_in)/]);[/template]
+
+[template public javaReturn(op : Operation)]
+[if (op.isReturnConstant())]
+[op.returnType()/][elseif(op.isPayable())]
+org.adridadou.ethereum.values.Payable<[op.returnType()/]>[else]
+java.util.concurrent.CompletableFuture<[op.returnType()/]>[/if]
+[/template]
+
+[template public returnType(op : Operation)]
+[if (op.allReturnParameters()->size()=0)]
+Void[elseif (op.allReturnParameters()->size()=1)]
+[op.allReturnParameters()->first().toJavaType()/][else]
+[op.returnObjectName()/][/if][/template]
+
+[template public printParameters (aOperation : Operation,pdk : ParameterDirectionKind) ]
+[for (p : Parameter | aOperation.ownedParameter->select(oclAsType(Parameter).direction=pdk) )separator (',')]
+[p.toJavaType()/] [p.name/][/for][/template]
+
+[template public printParametersForJavaDoc (aOperation : Operation,pdk : ParameterDirectionKind) ]
+[for (p : Parameter | aOperation.ownedParameter->select(oclAsType(Parameter).direction=pdk) )separator (',')]
+ [p.toJavaType()/][/for][/template]
+
+[template public toJavaType (t : TypedElement) ]
+[if (t.type.oclIsTypeOf(Enumeration))]
+[t.type.name/][elseif(t.type.isStruct())]
+[t.type.toStructTypeName()/][else]
+[t.type.solidity2javaType()/][/if][if (t.oclIsKindOf(MultiplicityElement))][printTypeM(t.oclAsType(MultiplicityElement))/][/if]
+[/template]
+
+[query public toStructTypeName(t : Type) : String = t.owner.oclAsType(Class).name.toUpperFirst()+t.name.toUpperFirst() /]
+
+
+[**
+ * Print the multiplicity as array.
+*/]
+[template private printTypeM(t : MultiplicityElement) ? (t.oclIsKindOf(MultiplicityElement))]
+[if (t.getUpper()<>1)][ '[' /][ ']' /][/if][/template]
+
+
+[template public toJavaType (t : Type) ]
+[if (t.oclIsTypeOf(Enumeration))]
+[t.name/][elseif(t.isStruct())]
+[t.toStructTypeName()/][else]
+[t.solidity2javaType()/][/if][if (t.oclIsKindOf(MultiplicityElement))][printTypeM(t.oclAsType(MultiplicityElement))/][/if]
+[/template]
+
+
+[comment][template public toJavaType (c : Classifier) ]
+[c.solidity2javaType()/][if (c.oclIsKindOf(MultiplicityElement))][printTypeM(c.oclAsType(MultiplicityElement))/][/if]
+[/template][/comment]
+
+[comment][template public toJavaType (aType : Type) ]
+[aType.solidity2javaType()/][if (aType.oclIsKindOf(MultiplicityElement))][printTypeM(aType.oclAsType(MultiplicityElement))/][/if]
+[/template][/comment]
+

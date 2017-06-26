@@ -1,0 +1,300 @@
+[comment encoding = UTF-8 /]
+[module entities('http://www.intrawarez.de/dbca')]
+
+[import de::intrawarez::dbca::m2t::common::database/]
+[import de::intrawarez::dbca::m2t::common::entities/]
+[import de::intrawarez::dbca::m2t::common::attributes/]
+[import de::intrawarez::dbca::m2t::common::relationships/]
+[import de::intrawarez::dbca::m2t::common::accessors/]
+
+[import de::intrawarez::dbca::m2t::dbca2php::names/]
+
+[template public generateEntities(db : Database)]
+[file ('/server/php/src/Entity.php', false, 'UTF-8')]
+<?php
+
+abstract class Entity {
+
+	abstract static public function toArray (Entity $entity);
+	abstract static public function fromArray (array $array);
+
+	final static public function toArrays (\Iterator $entities) {
+
+		$arrays = array();
+
+		foreach ($entities as $entity) {
+
+			if ($entity instanceof Entity) {
+
+				array_push($arrays, static::toArray($entity));
+
+			}
+
+		}
+
+		return $arrays;
+
+	}
+
+	final static public function fromArrays (array $arrays) {
+
+		$entities = new \ArrayIterator();
+
+		foreach ($arrays as $array) {
+
+			if (is_array($array)) {
+				
+				$entities->append(static::fromArray($array));
+
+			}
+
+		}
+
+		return $entities;
+
+	}
+	
+	final static public function toJson ($mixed) {
+
+		if ($mixed instanceof \Iterator) {
+
+			return json_encode(self::toArrays($mixed), JSON_PRETTY_PRINT);
+
+		}
+		elseif ($mixed instanceof Entity) {
+
+			return json_encode(static::toArray($mixed), JSON_PRETTY_PRINT);
+
+		}
+
+	}
+	
+	final static public function fromJson ($json,$many=false) {
+
+		if ($many) {
+
+			return self::fromArrays(json_decode($json,true));
+
+		}
+
+		return static::fromArray(json_decode($json,true));
+		
+	}
+	
+}
+
+?>
+[/file]
+[/template]
+
+[template private phpDeclaration(p : Attribute)]
+
+/**
+ * @var
+ */
+private [p.phpVarName()/];[p.lineSeparator()/]
+[/template]
+
+[template private phpDeclaration(r : Relationship)]
+
+/**
+ * @var [if(r.isOneToOne())][r.target.phpName()/][else]\Iterator[/if] 
+ */
+private [r.phpVarName()/];[r.lineSeparator()/]
+[/template]
+
+[template private phpAccessors(p : Attribute)]
+
+/**
+ * Gets [p.name/]
+ * @return
+ */
+public function [p.phpGetterName()/] () {
+	return [p.phpThisVarName()/];
+}
+
+/**
+ * Sets [p.name/]
+ * @return
+ */
+public function [p.phpSetterName()/] ([p.phpVarName()/]) {
+	[if (p.isBoolean())]
+	[p.phpThisVarName()/] = boolval([p.phpVarName()/]);
+	[elseif (p.isInteger())]
+	[p.phpThisVarName()/] = intval([p.phpVarName()/]);
+	[elseif (p.isReal())]
+	[p.phpThisVarName()/] = floatval([p.phpVarName()/]);
+	[elseif (p.isTextual() or p.isGUID())]
+	[p.phpThisVarName()/] = strval([p.phpVarName()/]);
+	[else]
+	[p.phpThisVarName()/] = [p.phpVarName()/];
+	[/if]
+}
+[/template]
+
+[template private phpAccessors(r : Relationship)]
+
+/**
+ * Gets [r.name/]
+ * @return
+ */
+public function [r.phpGetterName()/] () {
+	return [r.phpThisVarName()/];
+}
+
+/**
+ * Sets [r.name/]
+ * @return
+ */
+public function [r.phpSetterName()/] ([if(r.isOneToOne() or r.isManyToOne())][r.target.phpNamespaceName()/] [else]\Iterator [/if][r.phpVarName()/]) {
+	[r.phpThisVarName()/] = [r.phpVarName()/];
+}
+[/template]
+
+
+[template private phpConstructor(e : Entity)]
+
+/**
+ * Creates new [e.name/]
+ * @return
+ */
+public function __construct () {
+
+	[for (p : Attribute | e.selectOwnAttributes())]
+	$this->[p.phpSetterName()/](null);
+	[/for]
+	[for (r : Relationship | e.selectOwnRelationships())]
+	[if (r.isOneToOne() or r.isManyToOne())]
+	//$this->[r.phpSetterName()/]();
+	[else]
+	$this->[r.phpSetterName()/](new \ArrayIterator());
+	[/if]
+	[/for]
+
+}
+[/template]
+
+[template private phpToArray(e : Entity)]
+
+
+static public function toArray (\Entity [e.phpVarName()/]) {
+
+	$array = array();
+
+	if ([e.phpVarName()/] instanceof [e.phpName()/]) {
+
+	[for (p : Attribute | e.selectAttributes())]
+		// Attribute [p.name/]
+		$array['["'+p.phpName()+'"]'/] = [e.phpVarName()/]->[p.phpGetterName()/]();
+	[/for]
+		
+	[for (r : Relationship | e.selectRelationships())]
+		
+		// Relationship [r.name/]
+		[if (r.isOneToOne() or r.isManyToOne())]
+		if (!is_null([e.phpVarName()/]->[r.phpGetterName()/]())) {
+			$array['["'+r.phpName()+'"]'/] = [r.selectTarget().phpNamespaceName()/]::toArray([e.phpVarName()/]->[r.phpGetterName()/]());
+		}
+		else {
+			$array['["'+r.phpName()+'"]'/] = array();
+		}
+		[else]
+		$array['["'+r.phpName()+'"]'/] = [r.selectTarget().phpNamespaceName()/]::toArrays([e.phpVarName()/]->[r.phpGetterName()/]());
+		[/if]
+		
+	[/for]
+
+	}
+
+	return $array;
+
+}
+[/template]
+
+[template private phpFromArray(e : Entity)]
+
+
+static public function fromArray (array $array) {
+
+	[e.phpVarName()/] = new [e.phpNamespaceName()/]();
+
+	
+	[for (p : Attribute | e.selectAttributes())]
+
+	// Attribute [p.name/]
+	if (isset($array['["'+p.phpName()+'"]'/])) {
+		[e.phpVarName()/]->[p.phpSetterName()/]($array['["'+p.phpName()+'"]'/]);
+	}
+
+	[/for]
+	
+	[for (r : Relationship | e.selectRelationships())]
+	
+	// Relationship [r.name/]
+	if (isset($array['["'+r.phpName()+'"]'/]) && is_array($array['["'+r.phpName()+'"]'/])) {
+	[if (r.isOneToOne() or r.isManyToOne())]
+		[e.phpVarName()/]->[r.phpSetterName()/]([r.selectTarget().phpNamespaceName()/]::fromArray($array['["'+r.phpName()+'"]'/]));
+	[else]
+		[e.phpVarName()/]->[r.phpSetterName()/]([r.selectTarget().phpNamespaceName()/]::fromArrays($array['["'+r.phpName()+'"]'/]));
+	[/if]
+	}
+	
+	[/for]
+
+	return [e.phpVarName()/];
+
+}
+[/template]
+
+[template private phpExtends(e : Entity)]
+[/template]
+
+[template public phpClass(r : Relationship)]
+[file ('/server/php/src/entities/'+r.selectSource().phpName()+r.phpName().toUpperFirst()+'.php', false, 'UTF-8')]
+<?php
+
+namespace entities {
+
+	/**
+	 * RelationTarget: [r.name/]
+	 */
+	class [r.selectSource().phpName()/][r.phpName().toUpperFirst()/] extends [r.selectTarget().phpName()/] {
+	
+		
+	
+	}
+
+}
+
+?>
+[/file]
+[/template]
+
+[template public generatePHPClass(e : Entity)]
+[file ('/server/php/src/entities/'+e.phpName()+'.php', false, 'UTF-8')]
+<?php
+
+namespace entities {
+
+	/**
+	 * Entity: [e.name/]
+	 */
+	[if (e.oclIsKindOf(Entity) and e.oclAsType(Entity).isAbstractEntity())]abstract [/if]class [e.phpName()/] extends [if (e.hasSuper())][e.super.phpNamespaceName()/][else]\Entity[/if] {
+	
+	
+		[e.phpToArray()/]
+		[e.phpFromArray()/]
+		[e.selectOwnAttributes().phpDeclaration()/]
+		[e.selectOwnRelationships().phpDeclaration()/]
+		[e.phpConstructor()/]
+		[e.selectOwnAttributes().phpAccessors()/]
+		[e.selectOwnRelationships().phpAccessors()/]
+
+	}
+
+}
+
+?>
+[/file]
+[/template]
+

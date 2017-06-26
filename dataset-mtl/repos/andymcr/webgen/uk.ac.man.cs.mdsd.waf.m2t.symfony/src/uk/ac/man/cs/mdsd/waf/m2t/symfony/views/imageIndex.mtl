@@ -1,0 +1,76 @@
+[comment encoding = UTF-8 /]
+[module imageIndex(
+	'http://cs.manchester.ac.uk/mdsd/ObjectRelationalMapping',
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::orm::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::translation/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::files/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::names/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::views::accessor/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::views::action/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::views::image/]
+
+
+[template public unitView(unit : ContentUnit)
+	? (unit.oclIsTypeOf(ImageIndexUnit)) post(trim())]
+[file(unit.viewFilename(), false)]
+<section class="[unit.styleClass/]" id="[unit.instanceName()/]">
+[if (not unit.omitCaption)]
+ <h2 class="[unit.captionClass/]">[unit.displayLabel/]</h2>
+[/if]
+ <div class="[unit.contentClass/]">
+ [unit.unitContent(null, unit.instanceName())/]
+ </div>
+</section>
+[/file]
+[/template]
+
+[template public unitContent(unit : ContentUnit, nullDisplayValue : String, accessor : String)
+	? (unit.oclIsTypeOf(ImageIndexUnit)) post(trim())]
+[let imageUnit : ImageIndexUnit = unit.oclAsType(ImageIndexUnit)]
+[let variable : String = imageUnit.contentType().instanceName()]
+{% for [variable/] in [accessor/] %}
+[imageUnit.indexImage(variable)/]
+{% endfor %}
+[/let]
+[/let]
+[/template]
+
+[template private indexImage(unit : ImageIndexUnit, accessor : String)
+	? (unit.actions->isEmpty()) post(trim())]
+[if (unit.imagePathFeature.oclIsUndefined())]
+[unit.imageMissing(null, accessor)/]
+[else]
+[unit.imagePathFeature.imagePath(unit, accessor, accessor)/]
+[/if]
+[/template]
+
+[template private indexImage(unit : ImageIndexUnit, accessor : String)
+	? (unit.actions->size() = 1) post(trim())]
+[let action : InlineAction = unit.actions->first()]
+[let label : String = if unit.imagePathFeature.oclIsUndefined() then
+	unit.imageMissing(null, accessor)
+	else
+		unit.imagePathFeature.imagePath(unit, accessor, accessor)
+	endif]
+[action.actionLink(unit.contentType(), accessor,  label, accessor.concat('.defaultLabel()'), accessor)/]
+[/let]
+[/let]
+[/template]
+
+[template private indexImage(unit : ImageIndexUnit, accessor : String)
+	? (unit.actions->size() > 1) post(trim())]
+<div>
+[if (unit.imagePathFeature.oclIsUndefined())]
+[unit.imageMissing(null, accessor)/]
+[else]
+[unit.imagePathFeature.imagePath(unit, accessor, accessor)/]
+[/if]
+<ul>
+[for (action : InlineAction | unit.actions())]
+ <li>[action.actionLink(unit.contentType(), accessor, action.displayLabel, accessor.concat('.defaultLabel()'), accessor)/]</li>
+[/for]
+</ul>
+</div>
+[/template]

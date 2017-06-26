@@ -1,0 +1,112 @@
+[comment encoding = UTF-8 /]
+[module propertiesPane(	'http://www.eclipse.org/emf/2002/Ecore',
+						'http://www.eclipse.org/sirius/1.1.0',
+						'http://www.eclipse.org/sirius/diagram/1.1.0',
+						'http://www.eclipse.org/sirius/table/1.1.0',
+						'http://www.eclipse.org/sirius/tree/1.0.0')]
+
+[import fr::obeo::dsl::designer::gen::html::services::pathServices /]
+[import fr::obeo::dsl::designer::gen::html::services::stringUtils /]
+[import fr::obeo::dsl::designer::gen::html::services::labelProviderServices /]
+[import fr::obeo::dsl::designer::gen::html::services::propertiesServices /]
+[import fr::obeo::dsl::designer::gen::html::services::representationsServices /]
+
+[comment Generate properties pages for an object and its children /]
+[template public generateAllPropertiesPane(object : EObject)]
+[object.generatePropertiesPane()/]
+[object.eAllContents(EObject).generatePropertiesPane()/]
+[/template]
+
+[comment Generate the page displaying the properties of an object (could be a semantic object or a DRepresentationElement) /]
+[template public generatePropertiesPane(object : EObject)]
+[file (object.getPropertiesPageFilename(), false, 'UTF-8')]
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<title>Properties - [object.getLabel()/]</title>
+	<link href="[object.getPropertiesRelativeToRootPath()/][object.getResourcesFullPath()/]/bootstrap/bootstrap.css" rel="stylesheet">
+	<link href="[object.getPropertiesRelativeToRootPath()/][object.getResourcesFullPath()/]/specific/global.css" rel="stylesheet">
+	<link href="[object.getPropertiesRelativeToRootPath()/][object.getResourcesFullPath()/]/specific/properties.css" rel="stylesheet">
+</head>
+<body style="padding:10px;">
+[object.propertiesBody()/]
+</body>
+</html>
+[/file]
+[/template]
+
+[comment Generate the HTML body of an object's properties page /]
+[template private propertiesBody(object : EObject)]
+[if (object.oclIsKindOf(DRepresentationElement))][comment Forced to do a specific "if" because polymorphism does not work in this case (probably a bug)/]
+[object.oclAsType(DRepresentationElement).propertiesBodyForRepresentationElt()/]
+[else]
+[object.propertiesBodyForSemanticElt()/]
+[/if]
+[/template]
+
+[comment Generate the HTML body of a DRepresentationElement's properties page.
+		It generates properties where every semantic elements associated with the DRepresentationElement /]
+[template private propertiesBodyForRepresentationElt(representationElt : DRepresentationElement)]
+[for (object : EObject | representationElt.semanticElements)]
+[object.propertiesBody()/]
+[/for]
+[/template]
+
+[comment Generate the HTML body of a semantic element's properties page.
+		It generates links on associated representations and a table with properties /]
+[template private propertiesBodyForSemanticElt(object : EObject) {
+	representations : Sequence(DRepresentation) = object.getAssociatedRepresentations();
+}]
+<h1>Properties : [object.getLabel()/]</h1>
+[if (not representations->isEmpty())]
+<ul class="breadcrumb" id="diagrams">
+[for (representation : DRepresentation | representations)]
+[if (representation.oclIsKindOf(DSemanticDiagram) or representation.oclIsKindOf(DTable) or representation.oclIsKindOf(DTree))]
+	<li><a href="[representation.getPropertiesRelativeToRootPath()/][representation.oclAsType(DRepresentation).getRepresentationPageFilename()/]" target="representation" title="[representation.escapeHtml(representation.descriptionName())/]"><img src="[representation.getPropertiesRelativeToRootPath()/][getIconsFullPath()/]/[representation.getImage()/]"></a></li>
+	<li><a href="[representation.getPropertiesRelativeToRootPath()/][representation.oclAsType(DRepresentation).getRepresentationPageFilename()/]" target="representation" title="[representation.escapeHtml(representation.descriptionName())/]">[representation.getLabel()/]</a></li>
+[/if]
+[/for]
+</ul>
+[/if]
+<table id="properties" class="table bordered-table condensed-table zebra-striped"><tbody>[object.getPropertiesTable()/]</tbody></table>
+[/template]
+
+[comment Generate a page to fill the "properties" frame when no element has been selected /]
+[template public generateNoSelectionPropertiesPane(analysis : DAnalysis)]
+[file (analysis.getPagesFullPath() + '/properties.html', false, 'UTF-8')]
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<title>Properties : No selected element</title>
+	<link href="[analysis.getPagesRelativeToRootPath()/][analysis.getResourcesFullPath()/]/bootstrap/bootstrap.css" rel="stylesheet">
+	<link href="[analysis.getPagesRelativeToRootPath()/][analysis.getResourcesFullPath()/]/specific/global.css" rel="stylesheet">
+</head>
+<body style="padding:10px;">
+	<h1>Properties</h1>
+	<p>Select an element in the Model Explorer or on the Diagram to display its properties.</p>
+</body>
+</html>
+[/file]
+[/template]
+
+[comment Get a representation description's name. The description is not accessible from
+		a DRepresentation so it is not possible to factorize the code /]
+[template private descriptionName(representation : DRepresentation)]
+[/template]
+
+[comment Get the description name for a Diagram /]
+[template private descriptionName(representation : DDiagram)]
+[representation.description.name/]
+[/template]
+
+[comment Get the description name for a Table /]
+[template private descriptionName(representation : DTable)]
+[representation.description.name/]
+[/template]
+
+[comment Get the description name for a Tree /]
+[template private descriptionName(representation : DTree)]
+[representation.description.name/]
+[/template]

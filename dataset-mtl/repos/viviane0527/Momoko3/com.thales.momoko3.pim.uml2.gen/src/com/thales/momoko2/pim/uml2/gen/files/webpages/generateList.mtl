@@ -1,0 +1,70 @@
+[comment encoding = UTF-8 /]
+[module generateList('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::components::compositeComponent /]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::name::fileNameQueries /]
+
+[**
+ * This template generates the view web pages.
+ * @param aClass
+ */]
+[template public generateList(aClass : Class) ? (isFeatureClass(aClass))]
+[file (getWebPagesFileName(aClass, 'List'), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:p="http://primefaces.org/ui">
+
+    <ui:composition template="/template.xhtml">
+    	<ui:define name="title">
+            <h:outputText value="#{bundle.List[aClass.name/]Title}"></h:outputText>
+    	</ui:define>
+
+        <ui:define name="body">
+			<h:form id="[aClass.name/]ListForm">
+                <p:panel header="#{bundle.List[aClass.name/]Title}">
+                    <p:dataTable id="datalist" value="#{[aClass.name.toLowerFirst()/]Controller.model}" var="item"
+                                 selectionMode="single" selection="#{[aClass.name.toLowerFirst()/]Controller.selected}"
+                                 paginator="true"
+                                 lazy="true"
+                                 rowKey="#{item.id}"
+                                 rows="10"
+                                 rowsPerPageTemplate="10,20,30,40,50"
+                                 >
+
+                        <p:ajax event="rowSelect"   update="createButton viewButton editButton deleteButton"/>
+                        <p:ajax event="rowUnselect" update="createButton viewButton editButton deleteButton"/>
+
+					[for (aProperty : Property | aClass.getAllProperties()) ? (isAssociationAttribute(aProperty)._not())]
+                        <p:column>
+                            <f:facet name="header">
+                                 <h:outputText value="#{bundle.[aClass.name/]_[aProperty.name.toLowerFirst()/]}"/>
+                            </f:facet>
+							<h:outputText value="#{item.[aProperty.name/]}"/>
+						</p:column>
+        			[/for] 
+ 
+                        <f:facet name="footer">
+                            <p:commandButton id="createButton" icon="ui-icon-plus"   value="#{bundle.[aClass.name/]CreateLink}" actionListener="#{[aClass.name.toLowerFirst()/]Controller.prepareCreate}" update=":[aClass.name/]CreateForm" oncomplete="PF('[aClass.name/]CreateDialog').show()"/>
+                            <p:commandButton id="viewButton"   icon="ui-icon-search" value="#{bundle.ViewLink}" update=":[aClass.name/]ViewForm" oncomplete="PF('[aClass.name/]ViewDialog').show()" disabled="#{empty [aClass.name.toLowerFirst()/]Controller.selected}"/>
+                            <p:commandButton id="editButton"   icon="ui-icon-pencil" value="#{bundle.EditLink}" update=":[aClass.name/]EditForm" oncomplete="PF('[aClass.name/]EditDialog').show()" disabled="#{empty [aClass.name.toLowerFirst()/]Controller.selected}"/>
+                            <p:commandButton id="deleteButton" icon="ui-icon-trash"  value="#{bundle.DestroyLink}" actionListener="#{[aClass.name.toLowerFirst()/]Controller.destroy}" update=":growl,datalist" disabled="#{empty [aClass.name.toLowerFirst()/]Controller.selected}"/>
+                        </f:facet>
+
+                    </p:dataTable>
+                </p:panel>
+            </h:form>
+                            
+            <ui:include src="Create.xhtml"/>
+            <ui:include src="Edit.xhtml"/>
+            <ui:include src="View.xhtml"/>
+        </ui:define>
+    </ui:composition>
+
+</html>
+[/file]
+[/template]

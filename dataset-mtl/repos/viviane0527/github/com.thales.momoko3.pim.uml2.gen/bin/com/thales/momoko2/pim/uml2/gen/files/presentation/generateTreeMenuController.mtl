@@ -1,0 +1,82 @@
+[comment encoding = UTF-8 /]
+[module generateTreeMenuController('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::menuQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::imports::classImports/]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries/]
+
+[template public generateTreeMenuController(aModel : Model)]
+[file ('src/main/java/'.concat(aModel.name.toLowerFirst()).concat('/presentation/util/TreeMenuController.java'), false, 'UTF-8')]
+package [aModel.name.toLowerCase()/].presentation.util;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+
+import javax.annotation.PostConstruct;
+import javax.enterprise.context.SessionScoped;
+import javax.faces.event.ActionEvent;
+import javax.inject.Inject;
+import javax.inject.Named;
+
+[for(aClass : Class | getFeaturesChildren(getRootPackage(aModel)))?(aClass.isAbstract._not())]
+import [aModel.name.toLowerCase()/].presentation.[aClass.name/]Controller;
+[/for]
+
+import org.primefaces.event.NodeCollapseEvent;
+import org.primefaces.event.NodeExpandEvent;
+import org.primefaces.model.TreeNode;
+import org.primefaces.model.DefaultTreeNode;
+
+@SessionScoped
+@Named("treeMenuBean")
+public class TreeMenuController implements Serializable{
+	
+	private TreeNode root;
+	
+	private ArrayList<String> features = new ArrayList<>(); 
+
+	[for(aClass : Class | getFeaturesChildren(getRootPackage(aModel)))?(aClass.isAbstract._not())]
+	@Inject
+	private [aClass.name/]Controller [aClass.name.toLowerFirst()/]Controller;	
+	[/for]
+
+		
+	public TreeMenuController() {
+		root = new DefaultTreeNode("root", null);
+		[test(getRootPackage(aModel))/]
+	}
+	
+	public TreeNode getRoot() {
+		return root;
+	}
+	
+	public boolean isFeatureNode(String arg1){
+		//System.out.println(arg1 + " " + features.contains(arg1));
+		return  features.contains(arg1);
+	}
+	
+	public String linkToFeatureList(String arg1){
+		switch(arg1)
+		{
+[for(item : Class | getFeaturesChildren(getRootPackage(aModel)))?(item.isAbstract._not())]
+			case "[item.name/]":
+				return [item.name.toLowerFirst()/]Controller.prepareList();
+[/for]
+			default: return "";
+		}
+	}
+}
+[/file]
+[/template]		
+
+[template public test(aPackage:Package)]
+
+	[for(item : Class | getFeaturesChildren(aPackage))?(item.isAbstract._not())]
+		[if item.isFeatureClass()]
+TreeNode [item.name.toLowerFirst()/] = new DefaultTreeNode("[item.name.toLowerFirst()/]",root);
+		[else]
+TreeNode [item.name.toLowerFirst()/] = new DefaultTreeNode("[item.name.toLowerFirst()/]",[item.eContainer(Package).name.toLower()/]);
+		[/if]
+features.add("[item.name.toLowerFirst()/]");
+	[/for]
+[/template]
+	

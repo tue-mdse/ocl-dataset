@@ -1,0 +1,325 @@
+[comment encoding = UTF-8 /]
+
+[module generate('http://www.lowcoupling.com/mdpm/lng/plan/Plan','http://www.lowcoupling.com/mdpm/lng/resources/Resources', '/com.lowcoupling.mdpm.lng.wbs/bin/com/lowcoupling/mdpm/lng/wbs/WBS.ecore')]
+
+[query public generateOccupationDiagram(plan:Project,zoom:Integer, name:String) : String = invoke('com.lowcoupling.mdpm.m2t.plan2html.main.OccupationImageExporter',
+                      'generateDiagram(com.lowcoupling.mdpm.lng.plan.plan.impl.PlanImpl,int,java.lang.String)',Sequence{plan,zoom,name})/]
+
+
+[query public generateOccupationDiagrams(plans:Program) : String = invoke('com.lowcoupling.mdpm.m2t.plan2html.main.OccupationImageExporter',
+                      'generateDiagram(com.lowcoupling.mdpm.lng.plan.plan.impl.ProgramImpl)',Sequence{plans})/]
+
+[query public generateGanttDiagram(plan:Project,name:String): String = invoke('com.lowcoupling.mdpm.m2t.plan2html.main.GanttImageExporter',
+                      'generateGanttDiagram(com.lowcoupling.mdpm.lng.plan.plan.impl.ProjectImpl,java.lang.String)',Sequence{plan,name}) /]
+
+[query public generateWBSDiagrams(plan:Project) : String = invoke('com.lowcoupling.mdpm.m2t.plan2html.main.WBSImageExporter',
+                      'generateDiagram(com.lowcoupling.mdpm.lng.plan.plan.impl.ProjectImpl)',Sequence{plan})/]
+
+[query public getActivityStart(act:ActivityElement) : String = invoke('com.lowcoupling.mdpm.m2t.plan2html.main.DecoratorHelper',
+					  'getActivityStart(com.lowcoupling.mdpm.lng.plan.plan.impl.ActivityElementImpl)',Sequence{act})/]
+
+[query public getActivityEnd(act:ActivityElement) : String = invoke('com.lowcoupling.mdpm.m2t.plan2html.main.DecoratorHelper',
+					  'getActivityEnd(com.lowcoupling.mdpm.lng.plan.plan.impl.ActivityElementImpl)',Sequence{act})/]
+
+[query public getActivityName(act:ActivityElement) : String = invoke('com.lowcoupling.mdpm.m2t.plan2html.main.DecoratorHelper',
+					  'getActivityName(com.lowcoupling.mdpm.lng.plan.plan.impl.ActivityElementImpl)',Sequence{act})/]
+[query public isIntroductionToBeGenerated(plan:Program) : Boolean = invoke('com.lowcoupling.mdpm.m2t.plan2html.main.OptionsHelper',
+					   'isIntroductionToBeGenerated(com.lowcoupling.mdpm.lng.plan.plan.impl.ProgramImpl)',Sequence{plan})/]
+
+[query public isPurposeToBeGenerated(plan:Program) : Boolean = invoke('com.lowcoupling.mdpm.m2t.plan2html.main.OptionsHelper',
+					   'isPurposeToBeGenerated(com.lowcoupling.mdpm.lng.plan.plan.impl.ProgramImpl)',Sequence{plan})/]
+
+[query public isGanttChartToBeGenerated(plan:Program) : Boolean = invoke('com.lowcoupling.mdpm.m2t.plan2html.main.OptionsHelper',
+					   'isGanttChartToBeGenerated(com.lowcoupling.mdpm.lng.plan.plan.impl.ProgramImpl)',Sequence{plan})/]
+
+[query public isScheduleTableToBeGenerated(plan:Program) : Boolean = invoke('com.lowcoupling.mdpm.m2t.plan2html.main.OptionsHelper',
+					   'isScheduleTableToBeGenerated(com.lowcoupling.mdpm.lng.plan.plan.impl.ProgramImpl)',Sequence{plan})/]
+
+[query public isScheduleToBeGenerated(plan:Program) : Boolean = invoke('com.lowcoupling.mdpm.m2t.plan2html.main.OptionsHelper',
+					   'isScheduleToBeGenerated(com.lowcoupling.mdpm.lng.plan.plan.impl.ProgramImpl)',Sequence{plan})/]
+
+
+[template public generateDoc(model : Program )]
+[comment @main/]
+
+[comment model.generateGanttDiagram()/]
+[comment model.generateOccupationDiagrams()/]
+
+[for (pl:Project|model.projects)]
+
+[file (pl.name+'PMP.html', false, 'UTF-8')]
+[comment pl.generateWBSDiagrams()/]
+<html lang="en">
+   <head>
+    <meta charset="utf-8">
+    <title>Bootstrap, from Twitter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <!-- Le styles -->
+    <style>
+      body {
+        padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+      }
+	  h1 {font-size:30px;}
+	  h2 {font-size:20px;}
+    </style>
+   </head>
+  <body>
+  <div class="container">
+		<div class="row">
+		[if model.isIntroductionToBeGenerated()]
+		<h1>Introduction </h1>
+		<h2>Purpose of Project Management Project </h2>
+		The intended audience of the [pl.name/] PMP is all project stakeholders 
+		including the project sponsor, senior leadership and the project team.
+		[/if]
+		<h2>Assumptions and Contraints</h2>
+		[if pl.assumptions->notEmpty()]
+		The following assumptions have been made:
+			<ul>
+			[for (a:Assumption|pl.assumptions)]
+			<li>[a.value/] </li>
+			[/for]
+			</ul>
+		[else]
+		No assumptions have been made.
+		[/if]
+
+		[if pl.constraints->notEmpty()]
+		The following constraints hold:
+			<ul>
+			[for (c:Constraint|pl.constraints)]
+			<li>[c.value/] </li>
+			[/for]
+			</ul>
+		[else]
+		No constraints hold.
+		[/if]
+		<h2></h2>
+
+		<h1>Scope Management</h1>
+		<h2>Work Breakdown Structure</h2>
+		[if pl.wbs->notEmpty()]
+		[let wbsProject:WBSProject = pl.wbsProject]
+[for (node:WBSNode| wbsProject.wbsNodes)]
+[node.generateWBSNode()/]
+[/for]
+		[/let]
+		[/if]
+		<h2>Deployment Project</h2>
+		<h2>Change Control Management</h2>
+		
+		[if model.isScheduleToBeGenerated()]
+		<h1>Schedule/Time Management</h1>
+		[if model.isGanttChartToBeGenerated()]
+		<img src="./[pl.name/]Data/img/ganttCharts/[pl.name.concat('ganttChart.png')/]"/>
+			[pl.generateGanttDiagram(pl.name.concat('ganttChart'))/]
+		[/if]
+		[if model.isScheduleTableToBeGenerated()]	
+		<p>
+		The following table depicts the scheduled activities and milestones along with the related start and end dates
+		[pl.generateProjectTable()/]
+		</p>
+		[/if]	
+		[for (a:ActivityElement|pl.activities)]
+		<h3>[a.getActivityName()/]</h3>
+			[if a.description->notEmpty()]<p>
+			[a.description.oclAsType(String).comment2String()/]</p>
+			[else]
+			<p>//insert here a description of the activity</p>
+			[/if]
+			[if a.oclIsTypeOf(CheckPoint)]
+			[let checkPoint:CheckPoint=a.oclAsType(CheckPoint)]
+			[if checkPoint.wbsDeliverable->notEmpty()]<p>
+			This checkpoint relates to the following deliverable in the WBS
+			[for (dev:WBSDeliverable|checkPoint.wbsDeliverable)]
+			[dev.name/]
+			[/for]</p>[/if]
+			[/let]
+			[/if]
+			[if a.oclIsTypeOf(Activity)]
+			[let act:Activity=a.oclAsType(Activity)]
+			[if act.wbsActivity->notEmpty()]<p>
+			This activity relates to the following counterparts in the WBS:
+			[for (wbsAct:WBSActivity|act.wbsActivity) separator(', ')]
+			[wbsAct.name/]
+			[/for]</p>[/if]
+			[/let]
+			[/if]
+			[if a.oclIsTypeOf(ActivityGroup)]
+			[let act:ActivityGroup=a.oclAsType(ActivityGroup)]
+			[if act.wbsActivity->notEmpty()]<p>
+			This Group of activities relates to the following counterparts in the WBS:
+			[for (wbsAct:WBSActivity|act.wbsActivity) separator(', ')]
+			[wbsAct.name/]
+			[/for]</p>[/if]
+			[/let]
+			[/if]
+		[/for]
+		<h2>Milestones</h2>
+		[/if]
+		<h1>Cost and Budget Management</h1>
+		<h1>Quality Management</h1>
+		<h1>Human Resources Management</h1>
+		[if pl.activities->selectByKind(Activity).involvedResources->notEmpty()]
+		<h2>Responsibility Assignment Matrix </h2>
+		<ul>
+		<li>
+		<strong> Responsible </strong>
+    	Those who do the work to achieve the task. 
+		There is at least one role with a participation type of responsible, although others can be delegated to assist in the work required (see also RASCI below for separately identifying those who participate in a supporting role).
+		</li>
+		<li>
+		<strong> Accountable </strong>
+    	The one ultimately answerable for the correct and thorough completion of the deliverable or task, and the one who delegates the work to those responsible.
+		In other words, an accountable must sign off (approve) on work that responsible provides. There must be only one accountable specified for each task or deliverable.
+		</li>
+		<li>
+		<strong> Consulted </strong>
+    	Those whose opinions are sought, typically subject matter experts; and with whom there is two-way communication.
+		</li>
+		<li>
+		<strong> Informed </strong>
+    	Those who are kept up-to-date on progress, often only on completion of the task or deliverable; and with whom there is just one-way communication.  
+		</li>
+		</ul>
+		
+		<table  border=1>
+		<tr><td></td>
+	 
+		[for (res:Resource|(pl.activities->selectByKind(Activity).involvedResources.resource)->asSet())]
+			<td>[res.name/] </td>
+		[/for]
+		 
+		</tr>
+		</table>
+		<h2>Resources Occupation</h2>	
+			<img src="./[pl.name/]Data/img/occupationCharts/[pl.name.concat('OccupationChartZoom0.png')/]"/>
+			[comment pl.generateOccupationDiagram(0, pl.name.concat('OccupationchartZoom0.png'))/]
+			<img src="./[pl.name/]Data/img/occupationCharts/[pl.name.concat('OccupationChartZoom1.png')/]"/>
+			[comment pl.generateOccupationDiagram(1, pl.name.concat('OccupationchartZoom1.png'))/]
+			<img src="./[pl.name/]Data/img/occupationCharts/[pl.name.concat('OccupationChartZoom2.png')/]"/>
+			[comment pl.generateOccupationDiagram(2, pl.name.concat('OccupationchartZoom2.png'))/]
+		[/if]
+		<h1>Communication Management</h1>
+		<h1>Risk Management</h1>
+			
+<hr/>
+	</div>
+      </div>
+    
+  </body>
+</html>
+ 
+[/file]
+[/for]
+ 
+[/template]
+
+[template public generateProjectTable(plan:Project)]
+<table border = 1>
+				<tr> 
+					<b> <td><b>Name</b></td> 
+						<td><b>start date</b></td> 
+						<td><b>end date</b></td> 
+						<td><b>check point</b></td> 
+						<td><b>completeness</b></td> 
+					</b>
+				</tr>
+[for (a:ActivityElement|plan.activities)]
+				 
+				[if a.oclIsKindOf(Activity)]
+				[let activity:Activity = a.oclAsType(Activity)]
+					<td> [a.getActivityName()/] </td>
+					<td> [activity.getActivityStart()/] </td>
+					<td> [activity.getActivityEnd()/]</td>
+					<td> [if a.oclIsTypeOf(CheckPoint)] x [/if] </td>
+					<td> [activity.completeness/] %</td>
+				[/let]
+				</tr>
+				[/if]
+				[if a.oclIsKindOf(CheckPoint)]
+				<tr>
+					[let checkpoint:CheckPoint = a.oclAsType(CheckPoint)]
+					<td> [a.getActivityName()/] </td>
+					<td> [a.getActivityStart()/] </td>
+					<td> [a.getActivityEnd()/]</td>
+					<td> X </td>
+					<td> [checkpoint.completeness/] %</td>
+				[/let]
+				</tr>
+				[/if]
+				[if a.oclIsKindOf(ActivityGroup)]
+					[let group:ActivityGroup = a.oclAsType(ActivityGroup)]
+						[group.generateGrouptTable()/]
+					[/let]
+				[/if]
+			[/for]
+</table>
+[/template]
+
+[template public generateGrouptTable(group:ActivityGroup)]
+<tr><td colspan="5"><b> [group.name/] </b> </td></tr>
+[for (a:ActivityElement|group.activities)]
+				[if a.oclIsKindOf(Activity)]
+				<tr>
+				[let activity:Activity = a.oclAsType(Activity)]
+					<td> [a.getActivityName()/] </td>
+					<td> [activity.getActivityStart()/] </td>
+					<td> [activity.getActivityEnd()/]</td>
+					<td> [if a.oclIsTypeOf(CheckPoint)] x [/if] </td>
+					<td> [activity.completeness/] %</td>
+				[/let]
+				</tr>
+				[/if]
+				[if a.oclIsKindOf(CheckPoint)]
+					<tr>
+					[let checkpoint:CheckPoint = a.oclAsType(CheckPoint)]
+					<td> [a.getActivityName()/] </td>
+					<td> [a.getActivityStart()/] </td>
+					<td> [a.getActivityEnd()/]</td>
+					<td> X </td>
+					<td> [checkpoint.completeness/] %</td>
+				[/let]
+				</tr>
+				[/if]
+				[if a.oclIsKindOf(ActivityGroup)]
+					[let group:ActivityGroup = a.oclAsType(ActivityGroup)]
+						[group.generateGrouptTable()/]
+					[/let]
+				[/if]
+			[/for]
+[/template]
+
+[template public comment2String(cm:String) post (replaceAll('\\/',''))]
+[cm.replaceAll('\\*','')/]
+[/template]
+
+[template public generateWBSNode(node : WBSNode) post(trim())]
+<h3>[node.name/]</h3>
+<ul>
+[if node.oclIsTypeOf(WBSActivity)]
+<li><b>type:</b>Activity; </li>
+[/if]
+[if node.oclIsTypeOf(WBSDeliverable)]
+<li><b>type:</b>Deliverable; </li>
+[/if]
+[if node.oclIsTypeOf(WBSWorkPackage)]
+<li><b>type:</b>Work Package; </li>
+[/if]
+<li><b>description:</b>[description.oclAsType(String).comment2String()/] </li>
+<li><b>parent: </b>[node.eContainer().oclAsType(WBSNode).name/];</li>
+<li><b>children:</b>[for (child:WBSNode|node.wbsNodes) separator (',')][child.name/][/for]</li>
+</ul>
+[for (child:WBSNode|node.wbsNodes)]
+[child.generateWBSNode()/]
+[/for]
+
+[/template]
+
+[template public genreateWBS(model:WBSProgram) post(trim())]
+[for (project:WBSProject|model.projects)]
+	
+[/for]
+[/template]

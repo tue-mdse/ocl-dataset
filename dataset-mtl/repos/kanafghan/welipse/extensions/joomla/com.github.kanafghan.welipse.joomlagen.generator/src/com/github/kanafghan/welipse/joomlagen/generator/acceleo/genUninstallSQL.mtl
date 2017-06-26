@@ -1,0 +1,30 @@
+[comment encoding = UTF-8 /]
+[module genUninstallSQL('http://github.com/kanafghan/welipse/webdsl/1.0', 'http://github.com/kanafghan/welipse/joomlagen/1.0', 'http://www.eclipse.org/emf/2002/Ecore')]
+
+[import com::github::kanafghan::welipse::joomlagen::generator::acceleo::common::common /]
+
+[template public generateUninstallSQL(genModel : JoomlaGenModel)]
+[comment @main /]
+[file ('uninstall.mysql.utf8.sql', false, 'UTF-8')]
+[for (table : DatabaseTable | genModel.databaseTables)]
+[generateForeignKeysDropSQL(table, genModel)/]
+[/for]
+[for (table : DatabaseTable | genModel.databaseTables)]
+[generateTableDropSQL(table, genModel)/]
+[/for]
+[/file]
+[/template]
+
+[template public generateTableDropSQL (table : DatabaseTable, genModel : JoomlaGenModel) post (trim())]
+DROP TABLE IF EXISTS [genModel.databaseTablePrefix.concat(table.name)/];
+[/template]
+
+[template public generateForeignKeysDropSQL (table : DatabaseTable, genModel : JoomlaGenModel) post (trim())]
+[for (reference : GenReference | table.foreignKeys)]
+[generateForeignKeyDropSQL(reference, table, genModel)/]
+[/for]
+[/template]
+
+[template public generateForeignKeyDropSQL(reference : GenReference, table : DatabaseTable, genModel : JoomlaGenModel) post (trim())]
+ALTER TABLE [genModel.databaseTablePrefix.concat(table.name)/] DROP FOREIGN KEY [generateConstraintName(reference, table)/];
+[/template]

@@ -1,0 +1,379 @@
+[comment encoding = UTF-8 /]
+[module update('http://iwz/appmodel')]
+
+[import iwz::appmodel::acceleo::queries::common::client/]
+[import iwz::appmodel::acceleo::templates::common/]
+[import iwz::appmodel::acceleo::templates::client::devextreme::dxgrid/]
+
+[template public generateUpdateView(ev : EntityForm)]
+[file ('/client/devextreme/'+ev.getClientName().toLower()+'/html/view.'+ev.entity.name.toLower()+'.'+ev.type.toString().toLower()+'.html', false, 'UTF-8')]
+<div data-options="dxView : { name: '[ev.name/]'} ">
+	<div data-options="dxContent: { targetPlaceholder: 'content' }">
+		<div class="content-body">
+
+			<div class="form">
+				<div class="dx-fieldset">
+					<div class="dx-fieldset-header">[ev.entity.name/]</div>
+					[for (p : Property | ev.entity.properties->select(type.toString()<>'GUID'))]
+					<div class="dx-field">
+						<div class="dx-field-label" data-bind="text: [ev.getClientName()/].labels.[ev.name/].[p.name/]"></div>
+						<div class="dx-field-value">
+							[if (p.isDate())]
+							<div data-bind="dxDateBox: [p.name/]DxDateBoxOptions"></div>
+							[elseif (p.isBoolean())]
+							<div data-bind="dxCheckBox: [p.name/]DxCheckBoxOptions"></div>
+							[elseif (p.isNumber())]
+							<div data-bind="dxNumberBox: [p.name/]DxNumberBoxOptions"></div>
+							[else]
+							<div data-bind="dxTextBox: [p.name/]DxTextBoxOptions"></div>
+							[/if]
+						</div>
+					</div>
+					[/for]
+					[for (r : Relation | ev.entity.relations)]
+					<div class="dx-fieldset-header">[r.name/]</div>
+					[if (r.isOneToOne())]
+					<div class="dx-field">
+						<div class="dx-field-label" data-bind="text: '[r.name/]'"></div>
+						<div class="dx-field-value">
+							<div data-bind="dxSelectBox: [r.name/]DxSelectBoxOptions"></div>
+						</div>
+					</div>
+					[elseif (r.isOneToMany() or r.isManyToMany())]
+					[if (r.isContainment)]
+					<div class="dx-field">
+						<div data-bind="dxDataGrid: [r.getTarget().dxGridOptionsName()/]"></div>
+					</div>
+					[else]
+					<div class="dx-field">
+						<div data-bind="dxList: [r.name/]DxListOptions">
+							<div data-options="dxTemplate: { name: 'item' }">
+				        		<p>
+									[for (p : Property | r.getTarget().properties->select(isString())) separator(',')]
+									<b data-bind="text: [p.name/]"></b>
+									[/for]
+								</p>
+			    			</div>
+						</div>
+					</div>
+					[/if]
+					[/if]
+					[/for]
+				</div>
+        	</div>
+			
+		</div>
+	</div>
+</div>
+[/file]
+[file ('/client/devextreme/'+ev.getClientName().toLower()+'/js/view.'+ev.entity.name.toLower()+'.'+ev.type.toString().toLower()+'.js', false, 'UTF-8')]
+(function thornms_routes ($, DX, ko, [ev.ancestors(Client)->first().name/], undefined){
+
+	[ev.ancestors(Client)->first().name/].views = [ev.ancestors(Client)->first().name/].views || {};
+
+	[ev.ancestors(Client)->first().name/].views['["'+ev.name+'"]'/] = function (params) {
+		
+		var refreshCallbacks = ['[]'/];
+		
+		function refresh () {
+
+			$.each(refreshCallbacks, function (k,callback) {
+
+				if (typeof callback === "function") {
+					
+					callback();
+
+				}
+				
+			});
+
+		};
+
+		var [ev.entity.name/] = {};
+		[for (p : Property | ev.entity.properties)]
+		[ev.entity.name/].[p.name/] = ko.observable();
+		[/for]
+		[for (r : Relation | ev.entity.relations)]
+		[if (r.isManyToOne() or r.isManyToMany())]
+		[ev.entity.name/].[r.name/] = ko.observable(['[]'/]);
+		[else]
+		[ev.entity.name/].[r.name/] = ko.observable();
+		[/if]
+		[/for]
+		
+		function load () {
+			
+			[ev.getClientName()/].stores.[ev.entity.name/].byKey(params).done(function(data){
+			
+				//console.log(data);
+
+				[for (p : Property | ev.entity.properties)]
+				[ev.entity.name/].[p.name/](data.[p.name/]);
+				[/for]
+				[for (r : Relation | ev.entity.relations)]
+				[ev.entity.name/].[r.name/](data.[r.name/]);
+				[/for]
+				
+				refresh();
+				
+			}).fail(function(){
+			
+			});
+		
+		};
+
+		function update () {
+			
+			var entry = ko.toJS([ev.entity.name/]);
+
+			//console.log(entry);
+
+			[ev.getClientName()/].stores.[ev.entity.name/].update(entry).done(function(){
+				
+				DX.ui.notify("Änderungen wurden gespeichert!", "success", 1500);
+
+			}).fail(function(error){
+				
+				DX.ui.notify("Server Error", "error", 1500);
+				console.log(error);
+
+			});
+
+		};
+
+		var viewModel = {};
+		[for (p : Property | ev.entity.properties->select(type.toString()<>'GUID'))]
+		//====================================================================================================
+		[if (p.isDate())]
+		viewModel.[p.name/]DxDateBoxOptions = {};
+		viewModel.[p.name/]DxDateBoxOptions.value = [ev.entity.name/].[p.name/];
+		viewModel.[p.name/]DxDateBoxOptions.onChange = function(e) {
+
+			update();
+
+		};
+		[elseif (p.isBoolean())]
+		viewModel.[p.name/]DxCheckBoxOptions = {};
+		viewModel.[p.name/]DxCheckBoxOptions.value = [ev.entity.name/].[p.name/];
+		viewModel.[p.name/]DxCheckBoxOptions.onChange = function(e) {
+
+			update();
+
+		};
+		[elseif (p.isNumber())]
+		viewModel.[p.name/]DxNumberBoxOptions = {};
+		viewModel.[p.name/]DxNumberBoxOptions.value = [ev.entity.name/].[p.name/];
+		viewModel.[p.name/]DxNumberBoxOptions.onChange = function(e) {
+
+			update();
+
+		};
+		[else]
+		viewModel.[p.name/]DxTextBoxOptions = {};
+		viewModel.[p.name/]DxTextBoxOptions.value = [ev.entity.name/].[p.name/];
+		viewModel.[p.name/]DxTextBoxOptions.onChange = function(e) {
+
+			update();
+
+		};
+		[/if]
+		[/for]
+
+		[for (r : Relation | ev.entity.relations)]
+		//====================================================================================================
+		[if (r.isOneToOne() or r.isManyToOne())]
+		var [r.name/]DxSelectBoxInstance;
+		var [r.name/]DxSelectBoxSelectionValue;
+		viewModel.[r.name/]DxSelectBoxOptions = {};
+		viewModel.[r.name/]DxSelectBoxOptions.dataSource = [ev.getClientName()/].stores.[r.getTarget().name/];
+		viewModel.[r.name/]DxSelectBoxOptions.deferRendering = false;
+		viewModel.[r.name/]DxSelectBoxOptions.displayExpr = function (data) {
+
+			if (data) {			
+
+				var display = ['[]'/];
+				[for (p : Property | r.getTarget().getNonPrimaryProperties()->select(not isGUID() and not isDate() and not isNumber()))]
+				display.push(data.[p.name/]);
+				[/for]
+				return display.join(", ");
+
+			}
+		
+		};
+		viewModel.[r.name/]DxSelectBoxOptions.onInitialized = function (e) {
+			
+			[r.name/]DxSelectBoxInstance = e.component;
+
+		};
+		
+		refreshCallbacks.push(function refresh[r.name/]DxGrid () {
+
+			//console.log([ev.entity.name/].[r.name/]());
+			
+			[r.name/]DxSelectBoxInstance.option("value",[ev.entity.name/].[r.name/]());
+			[r.name/]DxSelectBoxInstance.on("valueChanged",function (e) {
+
+				[ev.entity.name/].[r.name/](e.value);
+				//console.log("changed");
+				update();
+	
+			});
+			//[r.name/]DxSelectBoxInstance.repaint();	
+
+		});
+		[elseif (r.isOneToMany() or r.isManyToMany())]
+
+		[if (r.isContainment)]		
+
+		var [r.name/]DxGridInstance;
+		[r.getTarget().dxGridOptions(ev.getClient())/]
+		[r.getTarget().dxGridOptionsName()/].height = 500;
+		[r.getTarget().dxGridOptionsName()/].onInitialized = function (e) {
+			
+			[r.name/]DxGridInstance = e.component;
+
+		};
+		[r.getTarget().dxGridOptionsName()/].onRowInserting = function (e) {
+		
+			[ev.getClientName()/].stores.[r.getTarget().name/].insert(e.data).done(function(a,b){
+				
+				var [r.name/] = [ev.entity.name/].[r.name/]()
+
+				[r.name/].push(a);
+				[r.name/].push(b);				
+
+				[r.name/] = $.grep([r.name/], function(element){
+
+					var valid = true;
+
+					[for (p : Property | r.getTarget().getPrimaryProperties())]
+					valid &= typeof element.[p.name/] !== "undefined";
+					[/for]
+
+					return valid;
+
+				});
+				
+				console.log([r.name/]);
+				[ev.entity.name/].[r.name/]([r.name/])
+
+				update();
+
+			}).fail(function(error){
+				
+				console.log(error)
+				DX.ui.notify("asfd", "error", 1500);
+
+			});
+						
+		};
+		[r.getTarget().dxGridOptionsName()/].onRowRemoving = function (e) {
+
+			[ev.getClientName()/].stores.[r.getTarget().name/].remove(e.data)
+
+		};
+		[r.getTarget().dxGridOptionsName()/].onDblClick = function (e) {
+
+			[for (form : EntityForm | ev.getClient().selectEntityViewsWhereEntity(r.getTarget()))]
+			[if (form.isUpdateView())]
+
+			var rule = { view: "[form.name/]" };
+			[for (p : Property | form.entity.getPrimaryProperties())]
+			rule['["'+p.name+'"]'/] = e.data['["'+p.name+'"]'/];
+			[/for]
+		
+			[form.getClientName()/].app.navigate(rule);
+		
+			e.handled = true;
+
+			[/if]
+			[/for]
+
+		};
+		viewModel.[r.getTarget().dxGridOptionsName()/] = [r.getTarget().dxGridOptionsName()/];
+		refreshCallbacks.push(function refresh[r.name/]DxGrid () {
+
+			[r.name/]DxGridInstance.option("dataSource",[ev.entity.name/].[r.name/]());
+			[r.name/]DxGridInstance.refresh();	
+
+		});
+		
+		[else]
+
+		var [r.name/]DxListInstance;
+		viewModel.[r.name/]DxListOptions = {};
+		viewModel.[r.name/]DxListOptions.selectionMode = "multi";
+       	viewModel.[r.name/]DxListOptions.showSelectionControls = true;
+		viewModel.[r.name/]DxListOptions.dataSource = ko.observableArray(['[]'/]);
+		viewModel.[r.name/]DxListOptions.selectedItems = ko.observableArray(['[]'/]);
+		viewModel.[r.name/]DxListOptions.onInitialized = function (e) {
+			
+			[r.name/]DxListInstance = e.component;
+			
+		};
+		viewModel.[r.name/]DxListOptions.onSelectionChanged = function (e) {
+			
+			//console.log(e);
+			
+		};
+		refreshCallbacks.push(function refresh[r.name/]DxList () {
+		
+			[ev.getClientName()/].stores.[r.getTarget().name/].load().done(function(items){
+				
+				var mapper = function (item) {
+
+					var pk = "";
+					[for (p : Property | r.getTarget().getPrimaryProperties())]
+					pk += item.[p.name/];
+					[/for]
+					return pk;	
+
+				};
+
+				if ($.isArray([ev.entity.name/].[r.name/]())) {
+				
+					var selectedPKs = $.map([ev.entity.name/].[r.name/](), mapper);
+					var itemPKs = $.map(items, mapper);
+					
+					var selectedItems = items.filter(function(item,i){
+					
+						return $.inArray(itemPKs['[i]'/],selectedPKs);
+		
+					});
+					console.log(selectedItems);
+					viewModel.[r.name/]DxListOptions.selectedItems(selectedItems);
+
+				}
+
+				
+				viewModel.[r.name/]DxListOptions.dataSource(items);
+	
+			});
+
+		});
+		
+
+		[/if]
+
+
+		[/if]
+		[/for]
+		
+		//====================================================================================================
+		
+		viewModel.viewShown = function () {
+			
+			load();
+
+		};
+		
+		return viewModel;
+
+		// [protected('viewmodel:'+ev.name)]
+		// [/protected]
+		
+	};
+
+}(jQuery, DevExpress, ko, (window.[ev.ancestors(Client)->first().name/] = window.[ev.ancestors(Client)->first().name/] || {}) ));
+[/file]
+[/template]

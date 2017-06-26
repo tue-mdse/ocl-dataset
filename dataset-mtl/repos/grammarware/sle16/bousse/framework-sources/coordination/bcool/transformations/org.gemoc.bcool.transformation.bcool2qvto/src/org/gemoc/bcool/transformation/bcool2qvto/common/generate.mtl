@@ -1,0 +1,1159 @@
+[comment encoding = UTF-8 /]
+[module generate('http://org.gemoc.bcool.model/', 
+'http://fr.inria.aoste.timemodel.ccslmodel.clockexpressionandrelation',
+'http://www.eclipse.org/ocl/3.1.0/CompleteOCLCST',
+'http://www.eclipse.org/emf/2002/Ecore',
+'http://www.eclipse.org/ocl/3.1.0/Pivot',
+'http://www.eclipse.org/ocl/3.1.0/BaseCST',
+'http://www.eclipse.org/ocl/3.1.0/EssentialOCLCST',
+'http://fr.inria.aoste.timesquare.ecl',
+'http://www.eclipse.org/xtext/xbase/Xbase',
+'http://www.gemoc.org/gexpressions',
+'http://fr.inria.aoste.timemodel.basicTypes'
+)]
+
+[template public generateElement(aBCoolSpecification : BCoolSpecification)]
+[comment @main/]
+[file (aBCoolSpecification.name.concat('.qvto'), false, 'UTF-8')]
+[comment][aBCoolSpecification.resolveAll()/][/comment]
+import fr.inria.aoste.timesquare.ecl.EclQVToHelper;
+
+	
+modeltype Ecore uses 'http://www.eclipse.org/emf/2002/Ecore';
+//modeltype pivot uses 'http://www.eclipse.org/ocl/3.1.0/Pivot';
+
+[for (im : ImportInterfaceStatement | aBCoolSpecification.importsBehavioralInterface)]
+	[let ModelNumber : EInt = i]
+		
+				[if im.importURI.endsWith('.ecl')]
+					[let anEclDoc : ECLDocument = im.getEclDocument()]
+
+					[comment] We use the number of packet in the .ecl to get the .ecore [/comment]
+					[for ( anEclDoc.packages)]
+						modeltype inMM[ModelNumber/][i/] uses '[im.getNSURIIndex(i-1)/]';
+					[/for]
+					[/let]
+				[/if]
+
+				[if im.importURI.endsWith('.ecore')]
+						modeltype inMM[ModelNumber/]1 uses '[im.getNSURI(im)/]';
+				[/if]
+		[/let]
+[/for]
+modeltype ocl uses 'http://www.eclipse.org/ocl/3.1.0/CompleteOCLCST';
+
+modeltype QVT uses 'http://www.eclipse.org/QVT/1.0.0/Operational';//http://www.eclipse.org/m2m/qvt/oml/1.0.0/Stdlib';//http://www.eclipse.org/qvt/1.0/ImperativeOCL'; 
+modeltype TimeModel uses 'http://fr.inria.aoste.timemodel';
+
+	
+
+transformation do[aBCoolSpecification.name/]_To_CCSL(
+[for (im : ImportInterfaceStatement | aBCoolSpecification.importsBehavioralInterface)]
+	[if (im.importURI.endsWith('ecl'))]
+inM[i/] : inMM[i/]1,
+	[/if]
+
+	[if (im.importURI.endsWith('ecore'))]
+inM[i/] : inMM[i/]1,
+	[/if]
+[/for] inout outCCSLModel : TimeModel);
+
+// properties to parametrize the application of operators
+[for (operator : BCoolCompositionRule | aBCoolSpecification.bcoolOperators->first().bcoolCompositionRules)]
+		configuration property Is[operator.name/]Executed : Boolean;
+[/for]
+
+// property to apply all the operators
+configuration property ApplyAll : Boolean;
+// property to add libraries when it is invoked from qvt
+configuration property IsInvokedfromAnt : Boolean;
+
+
+[for (im : ImportInterfaceStatement | aBCoolSpecification.importsBehavioralInterface)]
+[if (im.importURI.endsWith('ecl'))]
+configuration property inM[i/]MoCCPath : String;
+//property inM[i/]MoCCPath : String = getModelPath(inM[i/].rootObjects()->asSequence()->first().oclAsType(EObject)).substring(1, getModelPath(inM[i/].rootObjects()->asSequence()->first().oclAsType(EObject)).lastIndexOf('.')-1)+'_MoCC.extendedCCSL';
+property inM[i/]Clocks	:	Sequence(TimeModel::Clock) = Sequence{};
+query retrieveinM[i/]MoCCClocks() {
+	inM[i/]Clocks += getLibObjects(inM[i/]MoCCPath)['['/]TimeModel::Clock[']'/];
+	
+	return;
+}
+[/if]
+[/for]
+
+
+property theCCSLSpec			:TimeModel::CCSLModel::ClockConstraintSystem = null;
+property theMainBlock			:TimeModel::CCSLModel::Block				 = null;
+property theSubBlock 			:TimeModel::CCSLModel::Block				 = null;
+
+property Kernel_Integer 	: TimeModel::BasicType::Type		= null;
+property Kernel_Clock_Type 	: TimeModel::BasicType::Type		= null;
+
+property seqOfRelationDeclaration :	Sequence(TimeModel::CCSLModel::ClockExpressionAndRelation::RelationDeclaration)    = Sequence{};
+property seqOfAbstractEntity :		Sequence(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity)    = Sequence{};
+property seqOfExpressionDeclaration :	Sequence(TimeModel::CCSLModel::ClockExpressionAndRelation::ExpressionDeclaration)    = Sequence{};
+
+[for (im : ImportInterfaceStatement |aBCoolSpecification.importsBehavioralInterface)]
+[let modelNumber : EInt = i]
+
+		[if im.importURI.endsWith('.ecl')]
+
+		[let anEclDoc : ECLDocument = im.getEclDocument()]
+
+		[let allEvents : Sequence(DefCS) = anEclDoc.eAllContents()->select(eo | eo.oclIsTypeOf(ECLDefCS) and eo.oclAsType(ECLDefCS).ownedType.oclIsKindOf(EventType))]
+		
+		[for (evt : DefCS | allEvents)]
+
+		[let tmp : ClassifierContextDeclCS = evt.classifierContextDecl ]	
+		
+	
+
+		property MM[modelNumber/]1_seqOf[evt.name/][evt.classifierContextDecl.pathName/]Context :	Sequence(inMM[modelNumber/][anEclDoc.getpackageIndex(tmp)/]::[evt.classifierContextDecl.pathName/]) = Sequence{};
+		property MM[modelNumber/]1_seqOf[evt.name/][evt.classifierContextDecl.pathName/]ReferedElement :	Sequence(EObject) = Sequence{};
+
+			query inMM[modelNumber/][anEclDoc.getpackageIndex(tmp)/]::[evt.classifierContextDecl.pathName/]::get[evt.name/]MSEofMM[modelNumber/]() {
+			MM[modelNumber/]1_seqOf[evt.name/][evt.classifierContextDecl.pathName/]Context += self.oclAsType(inMM[modelNumber/][anEclDoc.getpackageIndex(tmp)/]::[evt.classifierContextDecl.pathName/]);
+			//warning here, at the end it will be an eoperation..., i.e. a DSA
+			MM[modelNumber/]1_seqOf[evt.name/][evt.classifierContextDecl.pathName/]ReferedElement += self.oclAsType(EObject); //before: evt.ownedType.oclAsType(EventType).referedElement
+			return;
+			}
+	
+		[/let]
+		[/for]
+		[/let]
+		[/let]
+
+		[/if]
+
+
+			[if im.importURI.endsWith('.ecore')]
+
+				[let anEcoreDoc : EPackage = im.getEcoreDocument()]
+				[let allClass: Sequence(EClass) = anEcoreDoc.eAllContents()->select(eo | eo.oclIsKindOf(EClass))]
+
+			[for (class : EClass | allClass)]
+				property MM[modelNumber/]1_seqOf[class.name/]Context :	Sequence(inMM[modelNumber/]1::[class.name/]) = Sequence{};
+				query inMM[modelNumber/]1::[class.name/]::get[class.name/]ofMM[modelNumber/]() {
+				MM[modelNumber/]1_seqOf[class.name/]Context += self.oclAsType(inMM[modelNumber/]1::[class.name/]);
+				return;
+			}
+			[/for]
+
+			[/let]
+			[/let]
+			[/if]
+[/let]
+[/for]
+
+
+
+query identifyUserRelations() {
+	var kernelTypes :  	Sequence(TimeModel::BasicType::Type) := Sequence{};
+
+	[for (im : ImportInterfaceStatement | aBCoolSpecification.importsBehavioralInterface)]
+		
+	[if im.importURI.endsWith('.ecl')]
+
+
+
+		[let anEclDoc : ECLDocument = im.getEclDocument()]
+		[for (imecl : ECL::ImportStatement | anEclDoc.imports)]
+		
+		[comment] If the interface is imported as plugin, the libraries used in the interface must be also imported as plugin [/comment]
+		[if im.importURI.startsWith('platform:/plugin') and imecl.importURI.startsWith('platform:/resource')]
+			[let uriecl : String = imecl.importURI.replace('platform:/resource', 'platform:/plugin')]
+				seqOfRelationDeclaration		+= getLibObjects("[uriecl/]")['['/]TimeModel::CCSLModel::ClockExpressionAndRelation::RelationDeclaration[']'/];
+				seqOfAbstractEntity				+= getLibObjects("[uriecl/]")['['/]TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity[']'/];
+				seqOfExpressionDeclaration		+= getLibObjects("[uriecl/]")['['/]TimeModel::CCSLModel::ClockExpressionAndRelation::ExpressionDeclaration[']'/];
+				kernelTypes 					+= getLibObjects("[uriecl/]")['['/]TimeModel::BasicType::Type[']'/];
+			[/let]
+		[else]
+				seqOfRelationDeclaration		+= getLibObjects("[imecl.importURI/]")['['/]TimeModel::CCSLModel::ClockExpressionAndRelation::RelationDeclaration[']'/];
+				seqOfAbstractEntity				+= getLibObjects("[imecl.importURI/]")['['/]TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity[']'/];
+				seqOfExpressionDeclaration		+= getLibObjects("[imecl.importURI/]")['['/]TimeModel::CCSLModel::ClockExpressionAndRelation::ExpressionDeclaration[']'/];
+				kernelTypes 					+= getLibObjects("[imecl.importURI/]")['['/]TimeModel::BasicType::Type[']'/];
+		[/if] 
+
+		
+		[/for]
+	[/let]
+
+		[/if]
+	[/for]
+
+
+	[for (im : ImportLibStatement | aBCoolSpecification.importsLib)]
+	[if (im.importURI.endsWith('ccslLib') or im.importURI.endsWith('moccml'))]
+		seqOfRelationDeclaration		+= getLibObjects("[im.importURI/]")['['/]TimeModel::CCSLModel::ClockExpressionAndRelation::RelationDeclaration[']'/];
+		seqOfAbstractEntity				+= getLibObjects("[im.importURI/]")['['/]TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity[']'/];
+		seqOfExpressionDeclaration		+= getLibObjects("[im.importURI/]")['['/]TimeModel::CCSLModel::ClockExpressionAndRelation::ExpressionDeclaration[']'/];
+		kernelTypes 					+= getLibObjects("[im.importURI/]")['['/]TimeModel::BasicType::Type[']'/];
+	[/if]
+	[/for]
+
+	Kernel_Integer 					:= kernelTypes['['/]name='int'[']'/]->asSequence()->first();
+	Kernel_Clock_Type				:= kernelTypes['['/]name='clock'[']'/]->asSequence()->first();	
+
+	return;
+}
+
+
+//usefull function :)
+	mapping Real::Real2Integer(n: String) :TimeModel::BasicType::IntegerElement {
+		name:= n;
+		type:= Kernel_Integer;
+		value := self.round();
+
+		end{
+			theSubBlock.elements += result;
+		}
+	}
+
+//really usefull function
+	mapping NewClock (n: String) :TimeModel::Clock{
+		name:= n;
+		type:= Kernel_Clock_Type;
+		end {
+			theSubBlock.elements += result;
+		}
+	}
+
+
+main() {
+	var tmp : Integer;
+
+	identifyUserRelations();
+	[for (im : ImportInterfaceStatement | aBCoolSpecification.importsBehavioralInterface)]
+		[if (im.importURI.endsWith('ecl'))]
+			retrieveinM[i/]MoCCClocks();
+		[/if]
+	[/for]
+
+
+	[for (im : ImportInterfaceStatement | aBCoolSpecification.importsBehavioralInterface)]
+	[let modelNumber : EInt = i]
+
+				[if im.importURI.endsWith('.ecl')]
+		
+
+		[let anEclDoc : ECLDocument = im.getEclDocument()]
+		[let allEvents : Sequence(DefCS) = anEclDoc.eAllContents()->select(eo | eo.oclIsKindOf(ECLDefCS) and eo.oclAsType(ECLDefCS).ownedType.oclIsKindOf(EventType))]
+		[for (evt : DefCS | allEvents)]
+				[let tmp : ClassifierContextDeclCS = evt.classifierContextDecl ]
+				inM[modelNumber/].objectsOfType(inMM[modelNumber/][anEclDoc.getpackageIndex(tmp)/]::[evt.classifierContextDecl.pathName/]).get[evt.name/]MSEofMM[modelNumber/]();
+				[/let]
+		[/for]
+		[/let]
+		[/let]
+				[/if]
+
+				[if im.importURI.endsWith('.ecore')]
+				[let anEcoreDoc : EPackage = im.getEcoreDocument()]
+				[let allClass: Sequence(EClass) = anEcoreDoc.eAllContents()->select(eo | eo.oclIsKindOf(EClass))]
+					[for (class : EClass | allClass)]
+						inM[modelNumber/].objectsOfType(inMM[modelNumber/]1::[class.name/]).get[class.name/]ofMM[modelNumber/]();
+					[/for]
+
+				[/let]
+				[/let]
+				[/if]
+				
+
+	[/let]
+[/for]
+		
+	
+		[comment] We create a CCSL spec and we add a new block [/comment]
+		
+		if outCCSLModel.objectsOfType(TimeModel::CCSLModel::ClockConstraintSystem)->isEmpty() then
+	 		map [aBCoolSpecification.name/]2CCSLMainBlock()
+		else { 
+	    		theCCSLSpec := outCCSLModel.objectsOfType(TimeModel::CCSLModel::ClockConstraintSystem)->asSequence()->first();
+	    		theMainBlock := theCCSLSpec.superBlock;
+
+					// This adds the libraries
+					if IsInvokedfromAnt  then {
+
+					[comment]	I have to firstly imports the ccsllibs [/comment]
+					[for (im : ImportLibStatement| aBCoolSpecification.importsLib)]
+					[if (im.importURI.endsWith('ccslLib') or im.importURI.endsWith('moccml'))]
+					theCCSLSpec.imports+= object TimeModel::ImportStatement{
+						importURI := '[im.importURI/]';
+						alias := 'lib_[i/]';	
+					}; 
+					[/if]
+					[/for]
+
+
+
+						[for (im : ImportInterfaceStatement | aBCoolSpecification.importsBehavioralInterface)]
+						[let importNumber : EInt = i]
+						[if im.importURI.endsWith('.ecl')]
+						[let anEclDoc : ECLDocument = im.getEclDocument()]
+						[for (imecl : ECL::ImportStatement | anEclDoc.imports)]
+
+						[if im.importURI.startsWith('platform:/plugin') and imecl.importURI.startsWith('platform:/resource')]
+						[let uriecl : String = imecl.importURI.replace('platform:/resource', 'platform:/plugin')]
+							theCCSLSpec.imports+= object TimeModel::ImportStatement{
+							importURI := '[uriecl/]';
+							alias := 'model_[importNumber/]_[i/]';	
+						}; 
+						[/let]
+						[else]
+							theCCSLSpec.imports+= object TimeModel::ImportStatement{
+							importURI := '[imecl.importURI/]';
+							alias := 'model_[importNumber/]_[i/]';	
+						}; 
+
+						[/if]
+						[/for]
+						[/let]
+						[/if]
+						[/let]
+						[/for]
+					}endif;
+			}endif;
+	
+		map [aBCoolSpecification.name/]2CCSLSubBlock();
+				
+		[comment] we create new sub block [/comment]
+		theMainBlock.subBlock += theSubBlock;
+		theSubBlock.container := theMainBlock;
+
+
+
+[for (operator : BCoolOperator | aBCoolSpecification.bcoolOperators)]
+	[for (globaldse: DefPropertyCS| operator.globalDSEs)]
+		var [globaldse.name/] : String = "[globaldse.name/]"+"_"+"[operator.name/]" ;
+		map NewClock([globaldse.name/]);
+	[/for]
+[/for]
+
+[comment]	Each operator is split in a foreach for every argument [/comment]
+[for (rule : BCoolCompositionRule | aBCoolSpecification.bcoolOperators->first().bcoolCompositionRules)]	
+	
+	if (Is[rule.name/]Executed) or (ApplyAll) then { 
+	[for (operArgs : BCoolOperatorArg | rule.BCoolOperatorArgs)]
+			
+			[for (interface : ImportInterfaceStatement | aBCoolSpecification.importsBehavioralInterface)]	 
+				[let interfaceNumber : EInt = i]
+				
+				[if interface.importURI.endsWith('.ecl')]				
+					[if interface.name = operArgs.Interface.name]
+					[let dse : DefPropertyCS = operArgs.DSE]
+					 MM[i/]1_seqOf[dse.oclAsType(DefPropertyCS).name/][dse.oclAsType(DefPropertyCS).classifierContextDecl.pathName/]Context-> forEach ([operArgs.name/]){ 
+			    	[/let]
+					[/if]
+				[/if]
+
+				[if interface.importURI.endsWith('.ecore')]
+					[if interface.name = operArgs.Interface.name]
+					 		[let classi : EClass = operArgs.InterfaceClass]
+							 MM[i/]1_seqOf[classi.name/]Context-> forEach ([operArgs.name/]){ 
+							[/let]
+			    	[/if]
+				[/if]
+				
+				[/let]
+			[/for]
+
+
+	[/for]
+
+		if ([rule.matchingRule.condition.GexpressiontoString()/]) then {
+		
+			[comment]	We create the filter [/comment]
+			[for (filter : EventExpression  | rule.matchingRule.filterEventExpressions)]
+				var [filter.name/] : String;
+				[filter.name/] := 
+				
+				[for (filterarg : EObject  | filter.actualParameters)]
+					[let dsename : String = filterarg.DSEtoString() ]
+						[comment] TODO: globalEvents are detected by checking the container [/comment]
+						[if filterarg.eContainer().oclIsTypeOf(BCoolOperator)]
+							[dsename/] 
+						[elseif filterarg.oclIsTypeOf(EventExpression)]
+							'[dsename/]'+[dsename/]
+						[elseif filterarg.oclIsTypeOf(IntegerElement)]
+							'[dsename/]'
+						[elseif filterarg.oclIsTypeOf(BCoolOperatorArg)]
+						 	[let dsename0 : BCoolOperatorArg = filterarg]
+								 [dsename/].name+'_[dsename0.DSE.DSEtoString()/]'
+						 	[/let]
+						[else]
+								'[dsename/]'
+						 [/if]
+
+					[if not(dsename.contains(filter.actualParameters->last().DSEtoString()))]
+						+
+					[/if]
+					[/let]
+				[/for]
+				;
+
+			map [filter.name/] (
+
+				[for (filterarg : EObject  | filter.actualParameters)]
+					[let dsename : String = filterarg.DSEtoString() ]
+						 [if filterarg.eContainer().oclIsTypeOf(BCoolOperator)]
+							 theSubBlock.elements['['/]name = [dsename/] [']'/]->first().oclAsType(TimeModel::Clock)
+						 [elseif filterarg.oclIsTypeOf(EventExpression)]
+							theSubBlock.expressions['['/]name = '[dsename/]'+[dsename/] [']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::Expression)
+						 [elseif filterarg.oclIsTypeOf(IntegerElement)]
+							 tmp->map Real2Integer("[dsename/]")->asSequence()->first()
+						[elseif filterarg.oclIsTypeOf(BCoolOperatorArg)]
+						[let dsename0 : BCoolOperatorArg = filterarg]
+						
+							[for (interface : ImportInterfaceStatement | aBCoolSpecification.importsBehavioralInterface)]	 
+							[let interfaceNumber : EInt = i]
+								[if interface.name = dsename0.Interface.name]
+									inM[i/]Clocks['['/]name =  [dsename/].name + '_[dsename0.DSE.DSEtoString()/]'[']'/]->first().oclAsType(TimeModel::Clock)
+								[/if]
+							[/let]
+							[/for]
+
+						 [/let]
+						[else]
+							 [comment] Integer Element always fell here !!! [/comment]
+							 tmp->map Real2Integer("[dsename/]")->asSequence()->first()
+						[/if]
+				
+
+						 
+					[if not(dsename.contains(filter.actualParameters->last().DSEtoString()))]
+						,
+					[/if]
+					[/let]
+				[/for]
+
+
+
+			);
+			[/for]
+			
+			[comment]	We create the coordination rules [/comment]
+			map [rule.name/] (
+				[let coordrule : CoordinationRule = rule.coordinationRule]
+				[for (coordruleparam : EObject | coordrule.eventRelations.actualParameters)]	
+				[let dsename : String = coordruleparam.DSEtoString() ]
+					[comment]	It is an global Event [/comment]
+					[if coordruleparam.eContainer().oclIsTypeOf(BCoolOperator)]
+						 theSubBlock.elements['['/]name = [dsename/] [']'/]->first().oclAsType(TimeModel::Clock)
+					[comment]	It is a Event Expression [/comment]
+					[elseif coordruleparam.oclIsTypeOf(EventExpression)]
+						theSubBlock.expressions['['/]name = '[dsename/]'+[dsename/] [']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::Expression)
+					[comment]	It is DSE[/comment]
+					[elseif coordruleparam.oclIsTypeOf(BCoolOperatorArg)]
+						 [let dsename0 : BCoolOperatorArg = coordruleparam]
+						
+							[for (interface : ImportInterfaceStatement | aBCoolSpecification.importsBehavioralInterface)]	 
+							[let interfaceNumber : EInt = i]
+								[if interface.name = dsename0.Interface.name]
+									inM[i/]Clocks['['/]name =  [dsename/].name + '_[dsename0.DSE.DSEtoString()/]'[']'/]->first().oclAsType(TimeModel::Clock)
+								[/if]
+							[/let]
+							[/for]
+
+						 [/let]
+					[/if]
+			
+					[if not(dsename.contains(coordrule.eventRelations.actualParameters->last().DSEtoString()))]
+					,
+					[/if]
+				[/let]
+				[/for]
+				[/let]
+			
+			);
+		} endif;
+
+	[for (dse : BCoolOperatorArg | rule.BCoolOperatorArgs)]
+		};
+	[/for]
+}endif;
+[/for]
+}
+
+
+[comment]	here I will map the coordination rules [/comment]
+[for (rule : BCoolCompositionRule | aBCoolSpecification.bcoolOperators->first().bcoolCompositionRules)]	
+	[for ( filter : EventExpression | rule.matchingRule.filterEventExpressions)]
+			[comment] Here It must be the filters [/comment]
+	mapping [filter.name/] (
+				[for (filterparam : EObject | filter.actualParameters)]	
+				[let dsename : String = filterparam.DSEtoString() ]
+							[dsename/]:TimeModel::CCSLModel::ClockExpressionAndRelation::BindableEntity
+				[if not(dsename.contains(filter.actualParameters->last().DSEtoString()))]
+					,
+				[/if]
+				[/let]
+				[/for]
+		) : TimeModel::CCSLModel::ClockExpressionAndRelation::Expression {
+
+		name := '[filter.name/]';
+			
+				[for (filterparam : EObject | filter.actualParameters)]	
+				[let dsename : String = filterparam.DSEtoString() ]
+					name := name + [dsename/].name;
+				[/let]
+				[/for]
+		
+		var seqAbstract : OrderedSet(Stdlib::Element) := seqOfExpressionDeclaration->select(rd | rd.name = "[filter.declaration.name/]")->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::ExpressionDeclaration).parameters;
+
+		type := seqOfExpressionDeclaration->select(rd | rd.name = "[filter.declaration.name/]")->first();
+				[for (filterparam : EObject | filter.actualParameters)]	
+				[let dsename : String = filterparam.DSEtoString() ]
+					bindings += object TimeModel::CCSLModel::ClockExpressionAndRelation::Binding{
+					bindable := [dsename/];
+					[let paramNumber : EInt = i]	
+						_abstract := seqAbstract->at([paramNumber/]).oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity)
+					[/let]
+					};
+				[/let]
+				[/for]
+			end{
+			theSubBlock.expressions += result;
+		}	
+	}
+	[/for]
+
+
+
+
+mapping [rule.name/] (
+[comment]	I make the head of the mapping [/comment]
+[comment]	The String must contains the name of the instance, I'm using the name of DSE only to ease the coding [/comment]
+	[let coordrule : CoordinationRule = rule.coordinationRule]
+		[for (coordruleparam : EObject | coordrule.eventRelations.actualParameters)]	
+			[let dsename : String = coordruleparam.DSEtoString() ]
+				[dsename/]:TimeModel::CCSLModel::ClockExpressionAndRelation::BindableEntity
+				[if not(dsename.contains(coordrule.eventRelations.actualParameters->last().DSEtoString()))]
+					,
+				[/if]
+			[/let]
+		[/for]
+	[/let]
+	) :TimeModel::CCSLModel::ClockExpressionAndRelation::Relation {
+			
+			[comment]	I make the name of the CCSL relationship, here I must use the instance name of DSE [/comment]
+			name := '[rule.name/]';
+			[let coordrule : CoordinationRule = rule.coordinationRule]
+				[for (coordruleparam : EObject | coordrule.eventRelations.actualParameters)]	
+				[let dsename : String = coordruleparam.DSEtoString() ]
+					name := name + [dsename/].name;
+				[/let]
+				[/for]
+			[/let]
+	
+			var seqAbstract : OrderedSet(Stdlib::Element) := seqOfRelationDeclaration->select(rd | rd.name = "[rule.coordinationRule.eventRelations.declaration.name/]")->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::RelationDeclaration).parameters;
+			
+			type := seqOfRelationDeclaration->select(rd | rd.name = "[rule.coordinationRule.eventRelations.declaration.name/]")->first();
+			
+			[let coordrule : CoordinationRule = rule.coordinationRule]
+				[comment]	Problem with the number of paramters [/comment]
+				[for (coordruleparam : EObject | coordrule.eventRelations.actualParameters)]	
+				[let dsename : String = coordruleparam.DSEtoString() ]
+					bindings += object TimeModel::CCSLModel::ClockExpressionAndRelation::Binding{
+						bindable := [dsename/];
+					[let paramNumber : EInt = i]	
+						_abstract := seqAbstract->at([paramNumber/]).oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity);
+					[/let]
+					};
+				[/let]
+				[/for]
+			[/let]
+
+end{
+			theSubBlock.relations += result;
+		}	
+			
+}
+[/for]
+
+
+[comment ] This mapping creates a new sublock is based on the name of the inputs models, it constains all the contrains generated by the application of operators [/comment]
+mapping [aBCoolSpecification.name/]2CCSLSubBlock() : TimeModel::CCSLModel::Block {
+	theSubBlock := result;
+	name:="";
+	
+	[for (im : ImportInterfaceStatement | aBCoolSpecification.importsBehavioralInterface)]
+	[let modelNumber : EInt = i]
+	[if im.importURI.endsWith('.ecl')]
+			name:= name + getModelPath(inM[i/].rootObjects()->asSequence()->first().oclAsType(EObject)).substring(getModelPath(inM[i/].rootObjects()->asSequence()->first().oclAsType(EObject)).lastIndexOf('/')+1, getModelPath(inM[i/].rootObjects()->asSequence()->first().oclAsType(EObject)).lastIndexOf('.')-1);
+	
+		if outCCSLModel.objectsOfType(TimeModel::ImportStatement)->asSequence()->select(i | i.importURI = inM[i/]MoCCPath )->isEmpty() then {
+		theCCSLSpec.imports+= object TimeModel::ImportStatement{
+			importURI := inM[i/]MoCCPath;
+			alias := getModelPath(inM[i/].rootObjects()->asSequence()->first().oclAsType(EObject)).substring(getModelPath(inM[i/].rootObjects()->asSequence()->first().oclAsType(EObject)).lastIndexOf('/')+1, getModelPath(inM[i/].rootObjects()->asSequence()->first().oclAsType(EObject)).lastIndexOf('.')-1);
+			}; 
+		} endif;
+	[/if]
+	[/let]
+	[/for]
+	name := name + "sublock"; 
+}
+
+
+
+
+	mapping [aBCoolSpecification.name/]2CCSLMainBlock() : TimeModel::CCSLModel::ClockConstraintSystem {
+	    theCCSLSpec := result;
+	    name := '[aBCoolSpecification.name/]Coordination';
+	    theMainBlock :=object TimeModel::CCSLModel::Block{
+	    	name := "mainBlock";
+	    };
+	    subBlock += theMainBlock;
+	    result.superBlock := theMainBlock;
+
+
+	[comment]	I have to firstly imports the ccsllibs [/comment]
+	[for (im : ImportLibStatement| aBCoolSpecification.importsLib)]
+		[if (im.importURI.endsWith('ccslLib') or im.importURI.endsWith('moccml'))]
+		imports+= object TimeModel::ImportStatement{
+				importURI := '[im.importURI/]';
+				alias := 'lib_[i/]';	
+				}; 
+		[/if]
+	[/for]
+
+	[for (im : ImportInterfaceStatement | aBCoolSpecification.importsBehavioralInterface)]
+	[let importNumber : EInt = i]
+	[if im.importURI.endsWith('.ecl')]
+	[let anEclDoc : ECLDocument = im.getEclDocument()]
+		[for (imecl : ECL::ImportStatement | anEclDoc.imports)]
+
+		[if im.importURI.startsWith('platform:/plugin') and imecl.importURI.startsWith('platform:/resource')]
+			[let uriecl : String = imecl.importURI.replace('platform:/resource', 'platform:/plugin')]
+				imports+= object TimeModel::ImportStatement{
+				importURI := '[uriecl/]';
+				alias := 'model_[importNumber/]_[i/]';	
+		}; 
+			[/let]
+		[else]
+			imports+= object TimeModel::ImportStatement{
+			importURI := '[imecl.importURI/]';
+			alias := 'model_[importNumber/]_[i/]';	
+		}; 
+
+		[/if]
+
+		[/for]
+	[/let]
+	[/if]
+	[/let]
+	[/for]
+
+}
+
+
+	[comment][for (im: ImportCS | anECLDoc.ownedImport)]
+		imports+= object TimeModel::ImportStatement{
+			importURI := getModelPath(inM.rootObjects()->asSequence()->first().oclAsType(EObject));
+			alias := getModelAlias(inM.rootObjects()->asSequence()->first().oclAsType(EObject));
+			
+		};
+	[/for]
+
+	[comment]	create call for clock and constraint creations[/comment]
+	[for (itsContext : ContextDeclCS | anECLDoc.packages.contexts)]
+		
+
+		[for (constraint : DefCS | itsContext.getAllContainedExpression()->filter(DefCS))]
+			[if (constraint.ownedType.oclIsTypeOf(EventType))]
+		inM.rootObjects().allSubobjects()->including(self)[ '[' /] [itsContext.pivot.oclAsType(NamedElement).name/] [ ']' /]->map [constraint.pivot.oclAsType(NamedElement).name/]2Clock();
+			[/if]
+			[if (constraint.ownedType.oclIsKindOf(PrimitiveTypeRefCS))]
+		inM.rootObjects().allSubobjects()->including(self)[ '[' /] [itsContext.pivot.oclAsType(NamedElement).name/] [ ']' /]->map [constraint.pivot.oclAsType(NamedElement).name/]2Integer();
+			[/if]
+		[/for]
+		
+
+
+		[for (constraint : ConstraintCS | itsContext.getAllContainedExpression()->filter(ConstraintCS))]
+			[for (expr : ExpCS | getAllContainedExpression(constraint.specification.oclAsType(EObject)))]	
+				[if (expr.oclIsKindOf(ECLRelation))]
+		[comment]check if the relation is included in a navigatingExpression to change the call to the map		[/comment]
+		
+		[if not expr.eContainer(NavigatingArgCS).oclIsUndefined() ]
+
+		[let navStringWithoutRelation : String = expr.eContainer(InfixExpCS).prettyPrintButRelation()]
+		[let navStringWithoutRelationNorSelf : String = if(navStringWithoutRelation.contains('self.')) then navStringWithoutRelation.substring(6) else navStringWithoutRelation endif]
+		[let correctString : String = navStringWithoutRelationNorSelf.substitute('StringToReplaceWithTheMapping', 'not ( a.map '+itsContext.pivot.oclAsType(NamedElement).name+expr.pivot.oclAsType(NamedElement).name+i+'2'+constraint.name)]
+		inM.rootObjects().allSubobjects()->including(self)[ '[' /] [itsContext.pivot.oclAsType(NamedElement).name/] [ ']' /]
+				->forAll(a | a.[correctString/]);
+		[/let]
+		[/let]
+		[/let]
+		[else]
+		inM.rootObjects().allSubobjects()->including(self)[ '[' /] [itsContext.pivot.oclAsType(NamedElement).name/] [ ']' /]->map [expr.ancestors(ConstraintCS)->first().name+i/]2[constraint.name/]();
+		[/if]
+		
+				[/if]
+			[/for]
+		[/for]
+	[/for]
+	}
+
+
+
+
+
+//create the expressions...
+	[for (expr : ECLExpression | getAllContainedExpression(anECLDoc.oclAsType(EObject))->filter(ECLExpression))]
+[comment]	the second part of the condition check if the unique parameter is a set 
+			(ouch !! this is ugly) [/comment]
+	[if expr.oclAsType(ECLExpression).parameters->size() = 1 and not expr.oclAsType(ECLExpression).parameters->at(1).oclIsKindOf(NameExpCS)]
+	
+	
+//Create an intermediate expression
+//create the expressions... 
+	mapping inMM::[expr.getClassifierContext()/]::intermediate_[expr.logicalParent.oclAsType(LetVariableCS).name/]2Expression(an1 : [expr.oclAsType(ECLExpression).parameters->at(1).getTypeOfSet()/], an2 : [expr.oclAsType(ECLExpression).parameters->at(1).getTypeOfSet()/], nb : Integer):TimeModel::CCSLModel::ClockExpressionAndRelation::Expression
+	{ 
+		name := self.name+'intermediate_[expr.logicalParent.oclAsType(LetVariableCS).name/]'+nb.toString();
+		type := seqOfExpressionDeclaration->select(rd | rd.name = "[expr.type.name/]")->first();
+				 
+				bindings += object TimeModel::CCSLModel::ClockExpressionAndRelation::Binding{
+					bindable := theMainBlock.elements['['/]name = an1.name+'_[expr.oclAsType(ECLExpression).parameters->at(1).prettyPrintOnlyLast()/]'[']'/]->first();
+					[if (expr.oclAsType(ECLExpression).type.oclIsKindOf(KernelExpressionDeclaration))]
+					_abstract := seqOfExpressionDeclaration['['/]name = '[expr.type.name/]'[']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::KernelExpression::[expr.type.name/]).allSubobjectsOfKind(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity)->asSequence()->at(1).oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity);
+					[else]
+	[comment]ugly fix that works only if the expression has a single parameter (like tickOnceAndDie)[/comment]
+					_abstract := seqOfAbstractEntity['['/]name = '[expr.oclAsType(ECLExpression).type.oclAsType(ExpressionDeclaration).parameters->at(1).name/]' and container().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::ExpressionDeclaration).name = '[expr.oclAsType(ECLExpression).type.name/]'[']'/]->first();
+					[/if]
+				};
+				[if (expr.oclAsType(ECLExpression).type.oclIsKindOf(KernelExpressionDeclaration) or expr.oclAsType(ECLExpression).type.oclAsType(ExpressionDeclaration).parameters->size() > 1) ]
+				bindings += object TimeModel::CCSLModel::ClockExpressionAndRelation::Binding{
+					bindable := theMainBlock.elements['['/]name = an2.name+'_[expr.oclAsType(ECLExpression).parameters->at(1).prettyPrintOnlyLast()/]'[']'/]->first();
+					[if (expr.oclAsType(ECLExpression).type.oclIsKindOf(KernelExpressionDeclaration))]
+					_abstract := seqOfExpressionDeclaration['['/]name = '[expr.type.name/]'[']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::KernelExpression::[expr.type.name/]).allSubobjectsOfKind(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity)->asSequence()->at(2).oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity);
+					[else]
+	[comment]ugly fix that works only if the expression has a single parameter (like tickOnceAndDie)[/comment]
+					_abstract := seqOfAbstractEntity['['/]name = '[expr.oclAsType(ECLExpression).type.oclAsType(ExpressionDeclaration).parameters->at(1).name/]' and container().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::ExpressionDeclaration).name = '[expr.oclAsType(ECLExpression).type.name/]'[']'/]->first();
+					[/if]	
+				};
+				[/if]
+		end{
+			theMainBlock.expressions += result;
+		}
+	}
+
+	mapping inMM::[expr.getClassifierContext()/]::intermediate_[expr.logicalParent.oclAsType(LetVariableCS).name/]2Expression(expr :TimeModel::CCSLModel::ClockExpressionAndRelation::Expression , an : [expr.oclAsType(ECLExpression).parameters->at(1).getTypeOfSet()/], nb : Integer):TimeModel::CCSLModel::ClockExpressionAndRelation::Expression
+	{
+		name := self.name+'intermediate_[expr.logicalParent.oclAsType(LetVariableCS).name/]'+nb.toString();
+		type := seqOfExpressionDeclaration->select(rd | rd.name = "[expr.type.name/]")->first();
+				bindings += object TimeModel::CCSLModel::ClockExpressionAndRelation::Binding{
+					bindable := theMainBlock.expressions['['/]name = expr.name[']'/]->first();
+					[if (expr.oclAsType(ECLExpression).type.oclIsKindOf(KernelExpressionDeclaration))]
+					 _abstract := seqOfExpressionDeclaration['['/]name = '[expr.type.name/]'[']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::KernelExpression::[expr.type.name/]).allSubobjectsOfKind(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity)->asSequence()->at(1).oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity);
+					[else]
+			[comment]FIXME ugly fix that works only if the expression has a single parameter (like tickOnceAndDie)[/comment]
+					_abstract := seqOfExpressionDeclaration['['/]name = '[expr.type.name/]'[']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::ExpressionDeclaration).allSubobjectsOfKind(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity)->asSequence()->at(1).oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity);					[/if]
+				};
+				[if (expr.oclAsType(ECLExpression).type.oclIsKindOf(KernelExpressionDeclaration) or expr.oclAsType(ECLExpression).type.oclAsType(ExpressionDeclaration).parameters->size() > 1) ]
+				bindings += object TimeModel::CCSLModel::ClockExpressionAndRelation::Binding{
+					bindable := theMainBlock.elements['['/]name = an.name+'_[expr.oclAsType(ECLExpression).parameters->at(1).prettyPrintOnlyLast()/]'[']'/]->first();
+					
+					[if (expr.oclAsType(ECLExpression).type.oclIsKindOf(KernelExpressionDeclaration))]
+					_abstract := seqOfExpressionDeclaration['['/]name = '[expr.type.name/]'[']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::KernelExpression::[expr.type.name/]).allSubobjectsOfKind(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity)->asSequence()->at(2).oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity);
+					[else]
+			[comment]FIXME ugly fix that works only if the expression has a single parameter (like tickOnceAndDie)[/comment]
+					_abstract := seqOfAbstractEntity['['/]name = '[expr.oclAsType(ECLExpression).type.oclAsType(ExpressionDeclaration).parameters->at(1).name/]' and container().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::ExpressionDeclaration).name = '[expr.oclAsType(ECLExpression).type.name/]'[']'/]->first();
+					[/if]
+				};
+				[/if]
+		end{
+			theMainBlock.expressions += result;
+		}
+	}
+	
+	mapping inMM::[expr.getClassifierContext()/]::[expr.logicalParent.oclAsType(LetVariableCS).name/]2Expression():TimeModel::CCSLModel::ClockExpressionAndRelation::Expression
+	{
+		init{
+		[let navSet : String = expr.oclAsType(ECLExpression).parameters->at(1).prettyPrintButLast()]
+		var sources : Sequence([expr.oclAsType(ECLExpression).parameters->at(1).getTypeOfSet()/]) := [navSet.first(navSet.size()-1)/]->asSequence();
+		[/let]
+		var lastExpr : TimeModel::CCSLModel::ClockExpressionAndRelation::Expression :=null;
+		var i : Integer := 3;
+		var newExpr : TimeModel::CCSLModel::ClockExpressionAndRelation::Expression := lastExpr;
+		var size : Integer = sources->size(); 
+		if(size = 1)then{
+			result := self.map intermediate_[expr.logicalParent.oclAsType(LetVariableCS).name/]2Expression(sources->at(1),sources->at(1), 1);
+		}else{
+			lastExpr := self.map intermediate_[expr.logicalParent.oclAsType(LetVariableCS).name/]2Expression(sources->at(1),sources->at(2), 1);
+			while (i <= size){
+				newExpr := self.map intermediate_[expr.logicalParent.oclAsType(LetVariableCS).name/]2Expression(lastExpr,sources->at(i), i);
+				lastExpr := newExpr;
+				i := i + 1;
+			};
+			result := lastExpr;
+		}
+		endif;
+		}
+		
+		end{
+			theMainBlock.expressions += result;
+		}
+	}
+
+	[else]
+	mapping inMM::[expr.getClassifierContext()/]::[expr.logicalParent.oclAsType(LetVariableCS).name/]2Expression():TimeModel::CCSLModel::ClockExpressionAndRelation::Expression
+	{
+		name := self.name+'_[expr.oclAsType(ECLExpression).type.name/]_[expr.logicalParent.oclAsType(LetVariableCS).name/]';
+		type := seqOfExpressionDeclaration->select(rd | rd.name = "[expr.type.name/]")->first();
+		[for (p : ExpCS | expr.oclAsType(ECLExpression).parameters)]
+				[let paramNumber : EInt = i]
+				[comment]p only last : [p.prettyPrintOnlyLast()/]
+				p but last : [p.prettyPrintButLast()/][/comment]
+				bindings += object TimeModel::CCSLModel::ClockExpressionAndRelation::Binding{
+				[if (isAlreadyTranslated(anECLDoc.packages.contexts.getAllContainedExpression()->filter(DefCS)->asOrderedSet(), p.prettyPrintOnlyLast()))]
+				[comment][p/]  exists[/comment]
+					bindable := theMainBlock.elements['['/]name = [p.prettyPrintButLast()/]name+'_[p.prettyPrintOnlyLast()/]'[']'/]->first();
+				[else]
+				[comment][p/]  to map[/comment]
+				[comment]WARNING, sometimes the let is just a query to a def that exists. so lets check if the result of the init expression exists[/comment]
+					[let allLetExpr : Sequence(LetExpCS) = getAllContainedExpression(anECLDoc.oclAsType(EObject))->filter(LetExpCS)]
+					[let itsVar : LetVariableCS = allLetExpr->select(e | e.oclAsType(LetExpCS).variable->asSequence()->first().name = p.prettyPrintOnlyLast())->first().variable->first()]
+					[if (isAlreadyTranslated(anECLDoc.packages.contexts.getAllContainedExpression()->filter(DefCS)->asOrderedSet(), itsVar.initExpression.prettyPrintOnlyLast()))]
+					bindable := theMainBlock.elements['['/]name = [itsVar.initExpression.prettyPrintButLast()/]name+'_[itsVar.initExpression.prettyPrintOnlyLast()/]'[']'/]->first();
+					[else]
+						[if (itsVar.initExpression.oclIsKindOf(ECLExpression))]
+					bindable := self -> map [itsVar.name/]2Expression()->asSequence()->first();
+						[else]
+					bindable := [itsVar.initExpression/] -> map Real2Integer(self.name+[itsVar.initExpression.prettyPrintButLast()/]name+"_[itsVar.initExpression.prettyPrintOnlyLast()/]")->asSequence()->first();
+						[/if]
+					[/if]
+					[/let][/let]
+				[/if]
+				[if (expr.oclAsType(ECLExpression).type.oclIsKindOf(KernelExpressionDeclaration))]
+[comment]					boring stuff complete[/comment]
+[comment]					seqOfExpressionDeclaration['['/]name = '[expr.oclAsType(ECLExpression).type.name/]'[']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::KernelExpression::[expr.oclAsType(ECLExpression).type.eClass().name/]).allSubobjectsOfKind(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity)->asSequence()->at([paramNumber/]).oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity).name;[/comment]
+					var size : Integer = seqOfExpressionDeclaration['['/]name = '[expr.oclAsType(ECLExpression).type.name/]'[']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::KernelExpression::[expr.oclAsType(ECLExpression).type.eClass().name/]).allSubobjectsOfKind(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity)->asSequence()->size()+1;
+					var seqAbstract : Sequence(Stdlib::Element) := seqOfExpressionDeclaration['['/]name = '[expr.oclAsType(ECLExpression).type.name/]'[']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::KernelExpression::[expr.oclAsType(ECLExpression).type.eClass().name/]).allSubobjectsOfKind(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity)->asSequence();
+					_abstract := seqAbstract->at(size-[paramNumber/]).oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity);
+				[else]
+					_abstract := seqOfAbstractEntity['['/]name = '[expr.oclAsType(ECLExpression).type.oclAsType(ExpressionDeclaration).parameters->at(paramNumber).name/]' and container().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::ExpressionDeclaration).name = '[expr.oclAsType(ECLExpression).type.name/]'[']'/]->first();
+				[/if]
+				};
+				[/let]
+			[/for]
+		end{
+			theMainBlock.expressions += result;
+		}
+	}
+	[/if]
+	[/for]
+
+
+
+
+[comment]	create clock mapping [/comment] 
+[for (itsContext : ContextDeclCS | anECLDoc.packages.contexts)]
+	[for (constraint : DefCS | itsContext.getAllContainedExpression()->filter(DefCS))]
+		[if (constraint.ownedType.oclIsTypeOf(EventType))]
+	 	mapping inMM::[itsContext.pivot.oclAsType(NamedElement).name/]::[constraint.pivot.oclAsType(NamedElement).name/]2Clock() :TimeModel::Clock 
+		[if constraint.oclIsKindOf(ECLConditionalDefCS) ]
+			when { [constraint.oclAsType(ECLConditionalDefCS).condition/] }
+		[/if]
+		{
+			name:= self.name+'_[constraint.pivot.oclAsType(NamedElement).name/]';
+			tickingEvent := object TimeModel::Event{
+			[comment]is there a better way to know if it is linked to an eoperation ?[/comment]
+			[if (constraint.ownedType.oclAsType(EventType).referedElement.toString().endsWith('()')) ]
+ 				referencedObjectRefs += self.oclAsType(EObject);
+				[comment][let start : Integer = constraint.ownedType.oclAsType(EventType).referedElement.toString().lastIndexOf('.')]
+				[let stop : Integer = constraint.ownedType.oclAsType(EventType).referedElement.toString().lastIndexOf('(')]
+				referencedObjectRefs += inMM::[itsContext.pivot.oclAsType(NamedElement).name/].oclAsType(EClass).eAllOperations->select(op |op.name = "[constraint.ownedType.oclAsType(EventType).referedElement.toString().substring(start+1, stop-1)/]")->first().oclAsType(EObject);
+				[/let]
+				[/let][/comment]
+				TODO
+			[else]
+			  [if ( constraint.ownedType.oclAsType(EventType).referedElement <> null) ]
+ 				referencedObjectRefs += [constraint.ownedType.oclAsType(EventType).referedElement/].oclAsType(EObject);
+			  [/if]
+			[/if]
+			
+				name := 'evt_'+self.name+'_[constraint.pivot.oclAsType(NamedElement).name/]';
+				kind := [if (constraint.specification.oclAsType(ExpSpecificationCS).ownedExpression.oclAsType(EventLiteralExp).value = ECL::EventKind::consume)]
+TimeModel::EventKind::consume;
+							[/if]
+						[if (constraint.specification.oclAsType(ExpSpecificationCS).ownedExpression.oclAsType(EventLiteralExp).value = ECL::EventKind::create)]
+TimeModel::EventKind::create;
+							[/if]
+						[if (constraint.specification.oclAsType(ExpSpecificationCS).ownedExpression.oclAsType(EventLiteralExp).value = ECL::EventKind::destroy)]
+TimeModel::EventKind::destroy;
+							[/if]
+						[if (constraint.specification.oclAsType(ExpSpecificationCS).ownedExpression.oclAsType(EventLiteralExp).value = ECL::EventKind::finish)]
+TimeModel::EventKind::finish;
+							[/if]
+						[if (constraint.specification.oclAsType(ExpSpecificationCS).ownedExpression.oclAsType(EventLiteralExp).value = ECL::EventKind::produce)]
+TimeModel::EventKind::produce;
+							[/if]
+						[if (constraint.specification.oclAsType(ExpSpecificationCS).ownedExpression.oclAsType(EventLiteralExp).value = ECL::EventKind::receive)]
+TimeModel::EventKind::receive;
+							[/if]
+						[if (constraint.specification.oclAsType(ExpSpecificationCS).ownedExpression.oclAsType(EventLiteralExp).value = ECL::EventKind::resume)]
+TimeModel::EventKind::resume;
+							[/if]
+						[if (constraint.specification.oclAsType(ExpSpecificationCS).ownedExpression.oclAsType(EventLiteralExp).value = ECL::EventKind::send)]
+TimeModel::EventKind::send;
+							[/if]
+						[if (constraint.specification.oclAsType(ExpSpecificationCS).ownedExpression.oclAsType(EventLiteralExp).value = ECL::EventKind::start)]
+TimeModel::EventKind::start;
+							[/if]
+						[if (constraint.specification.oclAsType(ExpSpecificationCS).ownedExpression.oclAsType(EventLiteralExp).value = ECL::EventKind::suspend)]
+TimeModel::EventKind::suspend;
+							[/if]
+						[if (constraint.specification.oclAsType(ExpSpecificationCS).ownedExpression.oclAsType(EventLiteralExp).value = ECL::EventKind::undefined)]
+TimeModel::EventKind::undefined;
+							[/if]
+						[comment]FIXME[/comment]
+						[if (constraint.specification.oclAsType(ExpSpecificationCS).ownedExpression.oclAsType(EventLiteralExp).value = ECL::EventKind::call)]
+TimeModel::EventKind::start;
+							[/if]
+						
+			};
+			type:= Kernel_Clock_Type;
+
+			end{
+				theMainBlock.elements += result;
+			}
+		}
+		[comment]end if it is a def of event[/comment]
+		[/if]
+		[if (constraint.ownedType.oclIsKindOf(PrimitiveTypeRefCS))]
+		mapping inMM::[itsContext.pivot.oclAsType(NamedElement).name/]::[constraint.pivot.oclAsType(NamedElement).name/]2Integer() :TimeModel::BasicType::IntegerElement {
+			name:= self.name + '_[constraint.pivot.oclAsType(NamedElement).name/]';
+			type:= Kernel_Integer;
+			value := [constraint.specification/];
+
+			end{
+				theMainBlock.elements += result;
+			}
+		}
+		[comment]end if it is a def of Integer[/comment]
+		[/if]
+	[comment]end for all DefCS[/comment]
+ 	[/for]
+
+//relation stuff		
+	[for (constraint : ConstraintCS | itsContext.getAllContainedExpression()->filter(ConstraintCS))]
+	[for (expr : ExpCS | getAllContainedExpression(constraint.specification.oclAsType(EObject)))]	
+	[if (expr.oclIsKindOf(ECLRelation))] [comment]TOFIX: here expr becomes a relation and is named expr !! ouch ![/comment]
+	
+[if ((expr.oclAsType(ECLRelation).parameters->size() = 1))] [comment]called on a collection[/comment]
+
+//Create an intermediate relation
+	mapping inMM::[expr.getClassifierContext()/]::intermediate_[expr.ancestors(ConstraintCS)->first().name+i/]2[constraint.name/](an1 : [expr.oclAsType(ECLRelation).parameters->at(1).getTypeOfSet()/], an2 : [expr.oclAsType(ECLRelation).parameters->at(1).getTypeOfSet()/], nbi : Integer, nbj : Integer):TimeModel::CCSLModel::ClockExpressionAndRelation::Relation
+	{
+		name := self.name+'intermediate_[expr.ancestors(ConstraintCS)->first().name/]'+nbi.toString()+"_"+nbj.toString();
+		var seqAbstract : Sequence(Stdlib::Element) := seqOfRelationDeclaration['['/]name = '[expr.oclAsType(ECLRelation).type.name/]'[']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::KernelRelation::[expr.oclAsType(ECLRelation).type.eClass().name/]).allSubobjectsOfKind(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity)->asSequence();
+		type := seqOfRelationDeclaration->select(rd | rd.name = "[expr.oclAsType(ECLRelation).type.name/]")->first();
+				bindings += object TimeModel::CCSLModel::ClockExpressionAndRelation::Binding{
+					bindable := theMainBlock.elements['['/]name = an1.name+'_[expr.oclAsType(ECLRelation).parameters->at(1).prettyPrintOnlyLast()/]'[']'/]->first();
+					_abstract := seqAbstract->at(1).oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity);
+				};
+				bindings += object TimeModel::CCSLModel::ClockExpressionAndRelation::Binding{
+					bindable := theMainBlock.elements['['/]name = an2.name+'_[expr.oclAsType(ECLRelation).parameters->at(1).prettyPrintOnlyLast()/]'[']'/]->first();
+					_abstract := seqAbstract->at(2).oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::AbstractEntity);
+				};
+		end{
+			theMainBlock.relations += result;
+		}
+	}
+	
+	mapping inMM::[expr.getClassifierContext()/]::[expr.ancestors(ConstraintCS)->first().name+i/]2[constraint.name/]()
+	[if (expr.getAllContainingExpression()->filter(InfixExpCS)->size() > 0)]
+		[let theImpliesOp :InfixExpCS = expr.getAllContainingExpression()->filter(InfixExpCS)->select( ie | ie.ownedOperator->exists( o | (o.pivot.oclIsKindOf(OperationCallExp)) and ie.ownedOperator->first().name='implies') 
+															  )->first()] 
+			[if not theImpliesOp.oclIsUndefined() ]
+			when { [theImpliesOp.ownedExpression->first()/] }
+			[/if]
+		[/let]
+		[/if]	
+	{
+		init{
+			[let navSet : String = expr.oclAsType(ECLRelation).parameters->at(1).prettyPrintButLast()]
+			var sources : Sequence([expr.oclAsType(ECLRelation).parameters->at(1).getTypeOfSet()/]) := [navSet.first(navSet.size()-1)/]->asSequence();
+			[/let]
+			var i : Integer := 1;
+			var j : Integer := 1;
+			var size : Integer = sources->size(); 
+			while (i <= size){
+				j := i+1;
+				while (j <= size){
+					theMainBlock.relations +=  self.map intermediate_[expr.ancestors(ConstraintCS)->first().name+i/]2[constraint.name/](sources->at(i),sources->at(j), i, j);
+					j := j + 1;
+				};
+				i := i + 1;
+			};
+		}
+	}
+
+	[else]
+		mapping inMM::[itsContext.pivot.oclAsType(NamedElement).name/]::[expr.ancestors(ConstraintCS)->first().name+i/]2[constraint.name/]([expr.eContainer(InfixExpCS).prettyPrintParametersForDefinition()/]): TimeModel::CCSLModel::ClockExpressionAndRelation::Relation
+		[if (expr.getAllContainingExpression()->filter(InfixExpCS)->size() > 0)]
+		[let theImpliesOp :InfixExpCS = expr.getAllContainingExpression()->filter(InfixExpCS)->select( ie | ie.ownedOperator->exists( o | (o.pivot.oclIsKindOf(OperationCallExp)) and ie.ownedOperator->first().name='implies') 
+															  )->first()] 
+			[if not theImpliesOp.oclIsUndefined() ]
+			when { 
+				[for (letExp : LetExpCS | theImpliesOp.getAllLetExpParents()) ]
+			  let [letExp.variable.toString()/] in
+				[/for]
+				[theImpliesOp.ownedExpression->first()/] 
+				
+}
+			[/if]
+		[/let]
+		[/if]	
+		{
+		 	name := self.name+"[expr.oclAsType(ECLRelation).type.name/]_[constraint.name/]";
+			[comment]The Expr : [expr/][/comment]
+			type := seqOfRelationDeclaration->select(rd | rd.name = "[expr.oclAsType(ECLRelation).type.name/]")->first();
+			[let allLetExpr : Sequence(LetExpCS) = getAllContainedExpression(expr.ancestors(ConstraintCS)->first().oclAsType(EObject))->filter(LetExpCS)->select(l  | true)]
+[comment]			look if let is just a query to make the code cleaner --WARNING for now if an Int we both translate it into a CCSL int and a QVTo var[/comment]
+			[for (aVar : LetVariableCS | allLetExpr.variable)]
+				[if (not aVar.ownedType.oclIsKindOf(EventType))]	
+					var [aVar.name/] : [aVar.ownedType/] := [aVar.initExpression/];
+				[/if]
+			[/for]
+			[for (p : ExpCS | expr.oclAsType(ECLRelation).parameters)]
+				[let paramNumber : EInt = i]
+				bindings += object TimeModel::CCSLModel::ClockExpressionAndRelation::Binding{
+				[if (isAlreadyTranslated(anECLDoc.packages.contexts.getAllContainedExpression()->filter(DefCS)->asOrderedSet(), p.prettyPrintOnlyLast()))]
+					bindable := theMainBlock.elements['['/]name = [p.prettyPrintButLast()/]name+'_[p.prettyPrintOnlyLast()/]'[']'/]->first();
+				[else]
+				
+				[let itsVar : LetVariableCS = allLetExpr->select(e | e.oclAsType(LetExpCS).variable->asSequence()->first().name = p.prettyPrintOnlyLast())->first().variable->first()]
+				[comment]sometimes the let is just a query to a def that exists. so lets check if the result of the init expression exists[/comment]
+[comment]				If it is an event, we do ECL stuff
+				--WARNING for now if an Int we both translate it into a CCSL int and a QVTo Var[/comment]
+				[if (itsVar.ownedType.oclIsKindOf(EventType) or itsVar.ownedType.pivot.oclAsType(NamedElement).name = 'Integer')]
+					[if (isAlreadyTranslated(anECLDoc.packages.contexts.getAllContainedExpression()->filter(DefCS)->asOrderedSet(), itsVar.initExpression.prettyPrintOnlyLast()))]
+						bindable := theMainBlock.elements['['/]name = [itsVar.initExpression.prettyPrintButLast()/]name+'_[itsVar.initExpression.prettyPrintOnlyLast()/]'[']'/]->first();
+						[else]
+							[if (itsVar.initExpression.oclIsKindOf(ECLExpression))]
+						bindable := self -> map [itsVar.name/]2Expression()->asSequence()->first();
+							[else]
+						bindable := [itsVar.initExpression/] -> map Real2Integer(self.name+[itsVar.initExpression.prettyPrintButLast()/]name+"[itsVar.name/]"+"_[itsVar.initExpression.prettyPrintOnlyLast()/]")->asSequence()->first();
+							[/if]
+					[/if]
+				[comment]if not an event, we created a var before[/comment]
+				[/if]
+				[/let]
+				[/if]
+				[if (expr.oclAsType(ECLRelation).type.oclIsKindOf(KernelRelationDeclaration))]
+					[if (paramNumber=1)]
+					_abstract := seqOfRelationDeclaration['['/]name = '[expr.oclAsType(ECLRelation).type.name/]'[']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::KernelRelation::KernelRelationDeclaration).leftEntity;
+					[else]
+					_abstract := seqOfRelationDeclaration['['/]name = '[expr.oclAsType(ECLRelation).type.name/]'[']'/]->first().oclAsType(TimeModel::CCSLModel::ClockExpressionAndRelation::KernelRelation::KernelRelationDeclaration).rightEntity;
+					[/if]
+				[else]
+					_abstract := seqOfAbstractEntity['['/]name = '[expr.oclAsType(ECLRelation).type.oclAsType(RelationDeclaration).parameters->at(paramNumber).name/]'[']'/]->first();
+				[/if]
+				};
+				[/let]
+			[/for]
+			[/let]
+		
+		theMainBlock.relations += result;
+		}
+		[/if]
+	[else]
+[comment]		ELSE not (expr.oclIsKindOf(ECLRelation))[/comment]
+	[/if] 
+	[/for]
+		
+	[/for]
+[/for][/comment]
+
+[/file]
+[/template]
+
+[comment][query public getpackageIndex(arg0 : ECLDocument, objectName : String) : String
+	= invoke('org.gemoc.bcool.transformation.bcool2qvto.helper.helperNsURI', 'getpackageIndex(fr.inria.aoste.timesquare.ECL.ECLDocument,java.lang.String)', Sequence{arg0, objectName}) /][/comment]
+
+[query public getpackageIndex(arg0 : ECLDocument, contextDecl : ClassifierContextDeclCS) : Integer
+	= invoke('org.gemoc.bcool.transformation.bcool2qvto.helper.helperNsURI', 'getpackageIndex(fr.inria.aoste.timesquare.ECL.ECLDocument, org.eclipse.ocl.examples.xtext.completeocl.completeoclcs.ClassifierContextDeclCS)', Sequence{arg0, contextDecl}) /]
+
+[query public getNSURI(arg0 : ImportInterfaceStatement) : String
+	= invoke('org.gemoc.bcool.transformation.bcool2qvto.helper.helperNsURI', 'getNSURI(org.gemoc.bcool.model.bcool.ImportInterfaceStatement)', Sequence{arg0}) /]
+
+[query public getNSURIIndex(arg0 : ImportInterfaceStatement, Index : EInt) : String
+	= invoke('org.gemoc.bcool.transformation.bcool2qvto.helper.helperNsURI', 'getNSURIIndex(org.gemoc.bcool.model.bcool.ImportInterfaceStatement,java.lang.Integer)', Sequence{arg0, Index}) /]
+
+[query public getEclDocument(arg0 : ImportInterfaceStatement) : ECLDocument
+	= invoke('org.gemoc.bcool.transformation.bcool2qvto.helper.helperNsURI', 'getEclDocument(org.gemoc.bcool.model.bcool.ImportInterfaceStatement)', Sequence{arg0}) /]
+
+[query public getEcoreDocument(arg0 : ImportInterfaceStatement) : EPackage
+	= invoke('org.gemoc.bcool.transformation.bcool2qvto.helper.helperNsURI', 'getEcoreDocument(org.gemoc.bcool.model.bcool.ImportInterfaceStatement)', Sequence{arg0}) /]
+
+
+
+[query public getEclDocumentfromURI(arg0 : String) : ECLDocument
+	= invoke('org.gemoc.bcool.transformation.bcool2qvto.helper.helperNsURI', 'getEclDocumentfromURI(java.lang.String)', Sequence{arg0}) /]
+
+
+[query public resolveAll(arg0 : BCoolSpecification) : String
+	= invoke('org.gemoc.bcool.transformation.bcool2qvto.helper.helperNsURI', 'resolveAll(org.gemoc.bcool.model.bcool.BCoolSpecification)', Sequence{arg0}) /]
+
+[query public GexpressiontoString (arg0 : GExpression) : String
+	= invoke('org.gemoc.bcool.transformation.bcool2qvto.helper.helperNsURI', 'GexpressiontoString(org.gemoc.gexpressions.GExpression)', Sequence{arg0}) /]
+
+[query public DSEtoString (arg0 : EObject) : String
+	= invoke('org.gemoc.bcool.transformation.bcool2qvto.helper.helperNsURI', 'DSEtoString(org.eclipse.emf.ecore.EObject)', Sequence{arg0}) /]
+
+[query public getrootfromInterface (arg0 : ImportInterfaceStatement) : String
+	= invoke('org.gemoc.bcool.transformation.bcool2qvto.helper.helperNsURI', 'getrootfromInterface(org.gemoc.bcool.model.bcool.ImportInterfaceStatement)', Sequence{arg0}) /]
+
+[comment]
+
+[query public getCCSLTypeOf(aType: TypeRefCS): String =
+if (aType.oclIsKindOf(PrimitiveTypeRefCS)) then
+	TimeModel::BasicType::IntegerElement
+else
+	TimeModel::Clock
+endif
+/]
+
+[query public getClassifierContext(elem : ElementCS) : String =
+invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'getClassifierContext(org.eclipse.ocl.examples.xtext.base.baseCST.ElementCS)', Sequence{elem})/]
+
+[query public getElementsFromLib(libPath : String) : Set(EObject) = 
+invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'getElementsFromLib(java.util.String)', Sequence{libPath}) /]
+ 
+[query public getAllContainedExpression(arg0 : EObject) : Sequence(ExpCS)
+	= invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'getAllContainedExpression(org.eclipse.emf.ecore.EObject)', Sequence{arg0}) /]
+
+[query public getAllContainingExpression(arg0 : EObject) : Sequence(ExpCS)
+	= invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'getAllContainingExpression(org.eclipse.emf.ecore.EObject)', Sequence{arg0}) /]
+
+[query public getAllLetExpParents(arg0 : EObject) : Sequence(LetExpCS)
+	= invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'getAllLetExpParents(org.eclipse.emf.ecore.EObject)', Sequence{arg0}) /]
+
+[query public prettyPrintButLast(constraint : ExpCS) : String =
+invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'prettyPrintButLast(org.eclipse.ocl.examples.xtext.essentialocl.essentialOCLCST.ExpCS)', Sequence{constraint})/]
+
+[query public prettyPrintOnlyLast(constraint : ExpCS) : String =
+invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'prettyPrintOnlyLast(org.eclipse.ocl.examples.xtext.essentialocl.essentialOCLCST.ExpCS)', Sequence{constraint})/]
+
+[query public prettyPrintButRelation(constraint : ExpCS) : String =
+invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'prettyPrintButRelation(org.eclipse.ocl.examples.xtext.essentialocl.essentialOCLCST.ExpCS)', Sequence{constraint})/]
+
+[query public prettyPrintParametersForDefinition(constraint : ExpCS) : String =
+invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'prettyPrintParametersForDefinition(org.eclipse.ocl.examples.xtext.essentialocl.essentialOCLCST.ExpCS)', Sequence{constraint})/]
+
+
+[query public prettyPrintAlias(arg0 : String) : String
+	= invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'prettyPrintAlias(java.lang.String)', Sequence{arg0}) /]
+
+[query public getModelPath(arg0 : Cool) : String
+	= invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'getModelPath(fr.inria.aoste.timesquare.ocl.ECL.ECLDocument)', Sequence{arg0}) /]
+
+[query public getTypeOfSet(param : EObject) : String
+	= invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'getTypeOfSet(org.eclipse.emf.ecore.EObject)', Sequence{param}) /]
+
+
+[query public isAlreadyTranslated(defs : Set(DefCS), paramName : String) : Boolean
+	= invoke('fr.inria.aoste.timesquare.ecl.ecltoqvto.helper.helperNsURI', 'isAlreadyTranslated(java.util.Set, java.lang.String)', Sequence{defs, paramName}) /]
+[/comment]

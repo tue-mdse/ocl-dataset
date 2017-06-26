@@ -1,0 +1,43 @@
+[comment encoding = UTF-8 /]
+[module generateEnumBean('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::datatypeQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::imports::classImports /]
+
+[**
+ * The EnumBean file generation
+ * @param aClass
+ */]
+[template public generateEnumBean(aModel : Model)]
+[file ('src/main/java/'.concat(aModel.name.toLowerFirst()).concat('/presentation/util/EnumUtil.java'), false, 'UTF-8')]
+package [aModel.name.toLowerCase()/].presentation.util;
+
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Named;
+import javax.faces.model.SelectItem;
+[for (aClass : Class | aModel.eAllContents(Class)->sortedBy(name)) 
+? ( isEnumerateClass(aClass))]
+[generateModelEnumImport(aClass)/]
+[/for]
+
+/**
+ * This class is used to diplayed the combobox elements.
+ */
+@Named("enumUtil")
+@ApplicationScoped
+public class EnumUtil {
+	[for (aClass : Class | aModel.eAllContents(Class)->sortedBy(name)) 
+	? ( isEnumerateClass(aClass))]
+    public SelectItem['[]'/] get[aClass.name/]Values() {
+	    SelectItem['[]'/] items = new SelectItem['['/][aClass.name/].values().length[']'/];
+	    int i = 0;
+	    for([aClass.name/] val: [aClass.name/].values()) {
+	    	items['[i++]'/] = new SelectItem(val, val.name());
+	    }
+	    return items;
+  	}
+
+	[/for]
+}
+[/file]
+[/template]

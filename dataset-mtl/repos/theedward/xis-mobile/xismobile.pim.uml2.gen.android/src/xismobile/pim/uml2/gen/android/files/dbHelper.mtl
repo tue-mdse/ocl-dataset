@@ -1,0 +1,64 @@
+[comment encoding = UTF-8 /]
+[module dbHelper('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::android::common::xisMobileUtils /]
+[import xismobile::pim::uml2::gen::android::common::utils /]
+
+[template public generateDbHelper(c : Class)]
+
+[file ('src/' + c.getPackageDirectoryPath() + '/domain/'.concat(c.name.toUpperFirst()).concat('DbHelper.java'), false, 'UTF-8')]
+package [c.getPackagePath()/].domain;
+
+import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
+
+
+public class [c.name.toUpperFirst()/]DbHelper extends SQLiteOpenHelper {
+
+	private static final String TAG = "[c.name.toUpperFirst()/]DbHelper";
+	private static final String DB_NAME = "[c.name.toLower()/]s.db";
+	private static final int DB_VERSION = 1;
+	
+	// Database Table [c.name.toLowerCase()/]s
+	public static final String TABLE_NAME = "[c.name.toLowerCase()/]s";
+	public static final String COLUMN_ID = "_id";
+	[for (p : Property | c.attribute)]
+	public static final String COLUMN_[p.name.toUpper()/] = "[p.name/]";
+	[/for]
+	
+	// Database creation SQL statement
+	private static final String DB_CREATE = "CREATE TABLE "
+		+ TABLE_NAME + "(" + COLUMN_ID
+		+ " integer primary key autoincrement"
+		[for (p : Property | c.attribute)]
+		+ ", " + COLUMN_[p.name.toUpper()/] + " text not null"
+		[/for]
+		+ ");";
+
+	// Database deletion SQL statement
+	private static final String DB_DELETE = "DROP TABLE IF EXISTS " + TABLE_NAME;
+	
+	public [c.name.toUpperFirst()/]DbHelper(Context context) {
+		super(context, DB_NAME, null, DB_VERSION);
+	}
+
+	@Override
+	public void onCreate(SQLiteDatabase db) {
+		db.execSQL(DB_CREATE);
+	}
+
+	@Override
+	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+		Log.w(TAG,
+			"Upgrading database from version " + oldVersion + " to "
+	        + newVersion + ", which will destroy all old data");
+			
+		db.execSQL(DB_DELETE);
+		onCreate(db);
+	}
+	
+}
+[/file]
+[/template]

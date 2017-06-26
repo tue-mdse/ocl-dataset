@@ -1,0 +1,250 @@
+[comment encoding = UTF-8 /]
+[module javaResourceModel('file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/AnnotationLayerStack/AnnotationLayerStack.ecore', 'file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/AuthenticationLayer/AuthenticationPSMMetamodel.ecore', 'file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/EMF_ATL_MDE_Engine/CIM_Ecore_metamodel/PSMMetamodel.ecore','file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/SearchLayer/SearchLayerPSMMetamodel.ecore')]
+
+
+[template public javaResourceModel(anAnnotationStack : AnnotationStack)]
+
+[for (jRModel : JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel)]
+[file (anAnnotationStack.hasCorePSM.name + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/' + jRModel.parentName + '/' + jRModel.name + '.java', false, 'UTF-8')]
+/*
+ * ARISTOSTLE UNIVERSITY OF THESSALONIKI
+ * Copyright (C) 2015
+ * Aristotle University of Thessaloniki
+ * Department of Electrical & Computer Engineering
+ * Division of Electronics & Computer Engineering
+ * Intelligent Systems & Software Engineering Lab
+ *
+ * Project             : [anAnnotationStack.hasCorePSM.name/]
+ * WorkFile            : 
+ * Compiler            : 
+ * File Description    : 
+ * Document Description: 
+* Related Documents	   : 
+* Note				   : 
+* Programmer		   : RESTful MDE Engine created by Christoforos Zolotas
+* Contact			   : christopherzolotas@issel.ee.auth.gr
+*/
+
+
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[jRModel.parentName/];
+
+
+import java.util.ArrayList;
+import java.util.HashSet;
+[if (jRModel.hasRelatedJavaRMManager->size() > 0)]
+import java.util.Iterator;
+[/if]
+import java.util.List;
+import java.util.Set;
+
+[if (jRModel.JavaRModelHasProperty->select(property : PSMComponentProperty | (property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@Transient') = -1) and (property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@OneToMany') = -1) and (property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@ManyToOne') = -1) and (property.name <> 'linklist'))->exists(property : PSMComponentProperty | property.bIsUnique = false))]
+import javax.persistence.CollectionTable;
+import javax.persistence.ElementCollection;
+[/if]
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+[if (jRModel.JavaRModelHasProperty->select(property : PSMComponentProperty | property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@ManyToOne') <> -1)->size() > 0)]
+import javax.persistence.ManyToOne;
+[/if]
+[if (jRModel.JavaRModelHasProperty->select(property : PSMComponentProperty | property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@ManyToOne') <> -1 or property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@ElementCollection') <> -1)->size() > 0 )]
+import javax.persistence.JoinColumn;
+[/if]
+[if (jRModel.JavaRModelHasProperty->select(property : PSMComponentProperty | property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@OneToMany') <> -1)->size() > 0)]
+import javax.persistence.OneToMany;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+[/if]
+import javax.persistence.Table;
+import javax.persistence.Transient;
+
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlTransient;
+
+[if (jRModel.JavaRModelHasProperty->select( property : PSMComponentProperty | property.bIsUnique = false)->select(property : PSMComponentProperty | property.PropertyHasHibernateAnnotation.HibernateAnnotationText->excludes('@Transient') and property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@OneToMany') = -1 and property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@ManyToOne') = -1)->size() > 0)]
+import org.hibernate.Query;
+[/if]
+[if (jRModel.hasRelatedJavaRMManager->size() > 0 or jRModel.JavaRModelHasProperty->select( property : PSMComponentProperty | property.bIsUnique = false)->
+														select(property : PSMComponentProperty | property.PropertyHasHibernateAnnotation.HibernateAnnotationText->excludes('@Transient')
+																and
+															   property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@OneToMany') = -1
+																and
+															   property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@ManyToOne') = -1)->size() > 0)
+]
+import org.hibernate.Session;
+[/if]
+[if (jRModel.JavaRModelHasProperty->select(property : PSMComponentProperty | property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@ElementCollection') <> -1 or property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@ManyToOne') <> -1)->size() > 0 )]
+import org.hibernate.annotations.ForeignKey;
+[/if]
+
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.HypermediaLink;
+[for (jRRModel : JavaResourceModel | jRModel.hasRelatedJavaRMManager.hasRelatedJavaRModel)]
+[if (jRRModel <> jRModel)]
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLower()/].[jRRModel.parentName/].[jRRModel.name/];
+[/if]
+[/for]
+[for (jPRModel : JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel)]
+[if (jPRModel.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRModel) and jPRModel <> jRModel)]
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLower()/].[jPRModel.parentName/].[jPRModel.name/];
+[/if]
+[/for]
+
+[if (anAnnotationStack.bHasSearchLayer)]
+[if (jRModel.isSearchableResourceModel(anAnnotationStack))]
+import org.hibernate.search.annotations.Analyze;
+import org.hibernate.search.annotations.Field;
+import org.hibernate.search.annotations.FieldBridge;
+import org.hibernate.search.annotations.Index;
+import org.hibernate.search.annotations.Indexed;
+import org.hibernate.search.annotations.IndexedEmbedded;
+import org.hibernate.search.annotations.Store;
+
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLower()/].utilities.SetStringFieldBridge;
+[/if]
+[/if]
+
+/* This class models the data of a [jRModel.parentName/] resource. It is enhanced with JAXB annotations for automated representation
+parsing/marshalling as well as with Hibernate annotations for ORM transformations.*/
+@XmlRootElement
+@Entity
+@Table(name="[jRModel.parentName/]")
+[if (anAnnotationStack.bHasSearchLayer)]
+[if (jRModel.isSearchableResourceModel(anAnnotationStack))]
+@Indexed
+[/if]
+[/if]
+public class [jRModel.name/]{
+
+
+    /* There follows a list with the properties that model the [jRModel.parentName/] resource, as prescribed in the service CIM*/
+[for (jRMProperty : PSMComponentProperty | jRModel.JavaRModelHasProperty) separator('\n')]
+	[if (jRMProperty.PropertyHasHibernateAnnotation.HibernateAnnotationText->includes('@Transient'))]
+		// The Linklist property holds all the hypermedia links to be sent back to the client
+		[for (propertyHibernateAnnotation : HibernateAnnotation | jRMProperty.PropertyHasHibernateAnnotation)]
+		[propertyHibernateAnnotation.HibernateAnnotationText/]
+		[/for]
+		private List<[jRMProperty.type/]> [jRMProperty.name/] = new ArrayList<[jRMProperty.type/]>();
+	[elseif (jRMProperty.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@OneToMany') <> -1)]
+		// This property models the One to Many relationship between two resources as it is defined by the Hibernate syntax below.
+		[for (propertyHibernateAnnotation : HibernateAnnotation | jRMProperty.PropertyHasHibernateAnnotation)]
+		[propertyHibernateAnnotation.HibernateAnnotationText/]
+		[/for]
+		private Set<[jRMProperty.type/]> [jRMProperty.name/] = new HashSet<[jRMProperty.type/]>();
+	[elseif (jRMProperty.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@ManyToOne') <> -1)]
+		// This property models the Many to One relationship between two resources as it is defined by the Hibernate syntax below.
+		[for (propertyHibernateAnnotation : HibernateAnnotation | jRMProperty.PropertyHasHibernateAnnotation)]
+		[propertyHibernateAnnotation.HibernateAnnotationText/]
+		[/for]
+		private [jRMProperty.type/] [jRMProperty.name/];
+	[else]
+		[for (propertyHibernateAnnotation : HibernateAnnotation | jRMProperty.PropertyHasHibernateAnnotation)]
+		[propertyHibernateAnnotation.HibernateAnnotationText/]
+		[/for]
+		[if (anAnnotationStack.bHasSearchLayer)]
+		[if (jRMProperty.isSearchableProperty(anAnnotationStack))]
+		@Field(index=Index.YES, analyze=Analyze.YES, store=Store.NO)
+		[/if]
+		[/if]
+		[if (jRMProperty.bIsUnique = true)]
+		private [jRMProperty.type/] [jRMProperty.name/];
+		[else]
+		[if (anAnnotationStack.bHasSearchLayer)]
+		[if (jRMProperty.isSearchableProperty(anAnnotationStack))]
+		@FieldBridge(impl=SetStringFieldBridge.class)
+		[/if]
+		[/if]
+		private Set<[jRMProperty.type/]> [jRMProperty.name/] = new HashSet<[jRMProperty.type/]>();
+		[/if]
+	[/if]
+[/for]
+
+    /* There follows a list of setter and getter functions.*/
+[for (javaSetterFunction : JavaSetterFunction | jRModel.JavaRModelHasSetter)]
+	[if (javaSetterFunction.SetterFunctionHasJAXBAnnotation.oclIsUndefined() = false)]
+		[javaSetterFunction.SetterFunctionHasJAXBAnnotation.JAXBAnnotationText/]
+	[/if]
+	[if (javaSetterFunction.hasFunctionParameter->at(1).name = 'linklist')]
+	    public void [javaSetterFunction.name/](List<[javaSetterFunction.hasFunctionParameter->at(1).type/]> [javaSetterFunction.hasFunctionParameter->at(1).name/]){
+        	this.[javaSetterFunction.hasFunctionParameter->at(1).name/] = [javaSetterFunction.hasFunctionParameter->at(1).name/];
+    	}
+	[elseif (javaSetterFunction.hasFunctionParameter->at(1).bIsUnique = false)]
+	    public void [javaSetterFunction.name/](Set<[javaSetterFunction.hasFunctionParameter->at(1).type/]> [javaSetterFunction.hasFunctionParameter->at(1).name/]){
+        	this.[javaSetterFunction.hasFunctionParameter->at(1).name/] = [javaSetterFunction.hasFunctionParameter->at(1).name/];
+    	}
+	[else]
+	    public void [javaSetterFunction.name/]([javaSetterFunction.hasFunctionParameter->at(1).type/] [javaSetterFunction.hasFunctionParameter->at(1).name/]){
+        	this.[javaSetterFunction.hasFunctionParameter->at(1).name/] = [javaSetterFunction.hasFunctionParameter->at(1).name/];
+    	}
+	[/if]
+
+[/for]
+[for (javaGetterFunction : JavaGetterFunction | jRModel.JavaRModelHasGetter)]
+	[if (javaGetterFunction.hasFunctionParameter->at(1).name = 'linklist')]
+	    public List<[javaGetterFunction.hasFunctionParameter->at(1).type/]> [javaGetterFunction.name/](){
+        	return this.[javaGetterFunction.hasFunctionParameter->at(1).name/];
+    	}
+	[elseif (javaGetterFunction.hasFunctionParameter->at(1).bIsUnique = false)]
+	    public Set<[javaGetterFunction.hasFunctionParameter->at(1).type/]> [javaGetterFunction.name/](){
+        	return this.[javaGetterFunction.hasFunctionParameter->at(1).name/];
+    	}
+	[else]
+	    public [javaGetterFunction.hasFunctionParameter->at(1).type/] [javaGetterFunction.name/](){
+        	return this.[javaGetterFunction.hasFunctionParameter->at(1).name/];
+    	}
+	[/if]
+
+[/for]
+
+	[if (jRModel.hasRelatedJavaRMManager->size() > 0 or jRModel.JavaRModelHasProperty->select( property : PSMComponentProperty | property.bIsUnique = false)->
+														select(property : PSMComponentProperty | property.PropertyHasHibernateAnnotation.HibernateAnnotationText->excludes('@Transient')
+																and
+															   property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@OneToMany') = -1
+																and
+															   property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@ManyToOne') = -1)->size() > 0)
+	]
+    /* This function deletes explicitly any collections of this resource that are stored in the database 
+    and iteratively does so for any subsequent related resources.
+    NOTE: this function is needed to handle erroneous handling of cascade delete of some hibernate versions.*/
+    public void deleteAllCollections(Session hibernateSession){
+
+        [for (jRMProperty : PSMComponentProperty | jRModel.JavaRModelHasProperty->select( property : PSMComponentProperty | property.bIsUnique = false)->select(property : PSMComponentProperty | property.PropertyHasHibernateAnnotation.HibernateAnnotationText->excludes('@Transient') and property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@OneToMany') = -1 and property.PropertyHasHibernateAnnotation.HibernateAnnotationText->at(1).index('@ManyToOne') = -1)) separator('\n')]
+        Query query = hibernateSession.createSQLQuery(String.format("DELETE FROM %s where %sId = %d","[jRModel.parentName/][jRMProperty.name/]".toLowerCase(),"[jRModel.parentName/]",this.get[jRModel.parentName/]Id()));
+        query.executeUpdate();
+		[/for]
+
+     	[if (jRModel.hasRelatedJavaRMManager->size() > 0)]
+     		[for (jRRModel : JavaResourceModel | jRModel.hasRelatedJavaRMManager.hasRelatedJavaRModel) separator('\n')]
+        Iterator<[jRRModel.name/]> [jRRModel.name/]Iterator = SetOf[jRRModel.name/].iterator();
+        while([jRRModel.name/]Iterator.hasNext()){
+            [jRRModel.name/]Iterator.next().deleteAllCollections(hibernateSession);
+        }
+			[/for]
+		[/if]
+    }
+	[/if]
+}
+[/file]
+[/for]
+[/template]
+
+[query private isSearchableResourceModel(jRModel : JavaResourceModel, anAnnotationStack : AnnotationStack) : Boolean =
+	getSearchableJavaResourceModelAnnotations(anAnnotationStack)->exists(searchableModelAnnotation | searchableModelAnnotation.isSearchableJavaResourceModel.annotatesJavaResourceModel->includes(jRModel))
+/]
+
+[query private getSearchableJavaResourceModelAnnotations(anAnnotationStack : AnnotationStack) : Sequence(SearchableJavaResourceModel) =
+	getSearchHTTPHandlerAnnotations(anAnnotationStack).searchesJavaResourceModel
+/]
+
+[query private getSearchHTTPHandlerAnnotations(anAnnotationStack : AnnotationStack) : Sequence(SearchHTTPHandler) =
+	anAnnotationStack.hasSearchLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(SearchHTTPHandler))->asSequence()
+/]
+
+[query private isSearchableProperty(jRMProperty : PSMComponentProperty, anAnnotationStack : AnnotationStack) : Boolean =
+	getSearchablePropertyAnnotations(anAnnotationStack)->exists(searchablePropertyAnnotation | searchablePropertyAnnotation.isSearchableProperty.annotatesPSMComponentProperty->includes(jRMProperty))
+/]
+
+[query private getSearchablePropertyAnnotations(anAnnotationStack : AnnotationStack) : Sequence(SearchableProperty) =
+	getSearchableJavaResourceModelAnnotations(anAnnotationStack).hasSearchableProperty
+/]

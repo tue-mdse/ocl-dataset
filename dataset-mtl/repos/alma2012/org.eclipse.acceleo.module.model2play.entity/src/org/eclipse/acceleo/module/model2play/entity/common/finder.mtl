@@ -1,0 +1,36 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module attributes.
+ */]
+[module finder('http://www.obeonetwork.org/dsl/entity/2.0.0','http://www.obeonetwork.org/dsl/environment/2.0.0')]
+[import org::eclipse::acceleo::module::model2play::entity::requests::requests/]
+
+[template public criterionsCommaList(aFinder : Finder)] 
+[for( cr :Criterion | aFinder.criterions)][getCriterionTypename()/] [getCriterionName()/][if(self <> aFinder.criterions->last())],[/if] [/for]
+[/template]
+
+[**
+ * The documentation of the template generateElement.
+ * @param anAttribute
+ */]
+[template public generateFinder(aFinder : Finder)]
+public static [eContainer(Entity).name/] [name/]([criterionsCommaList()/]) {
+
+	ExpressionList<[eContainer(Entity).name/]> exp = Ebean.find([eContainer(Entity).name/].class).where();
+
+	[for( cr :Criterion | aFinder.criterions)]
+	if ( [getCriterionName()/] != null ) {
+		exp = exp.eq("[getCriterionName()/]",[getCriterionName()/]);
+	}
+	[if(hasAnnotationWithValue('required','true') = true)]
+	else {
+		return null;
+	}
+
+	[/if]
+	[/for]
+
+	return exp.findUnique();
+}
+
+[/template]

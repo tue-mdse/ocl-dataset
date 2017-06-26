@@ -1,0 +1,881 @@
+[comment encoding = UTF-8 /]
+[module generate('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+  
+[template public generateElement(m : Model)]
+[comment @main/]
+[file (m.name.toLower()+'/service/'+'schema.xml', false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<database name="[m.name/]" defaultIdMethod="native">
+  [for (c:Class| m.eContents(Class))][c.generateElement()/][/for]
+</database>
+[/file]
+[file (m.name.toLower()+'/service/'+'script.php', false, 'UTF-8')]
+<?php
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST');  
+header('Access-Control-Allow-Headers: Content-Type');
+$autoloader = require_once dirname(__DIR__).'/service/vendor/autoload.php';
+$autoloader->add('', __DIR__ . '/generated-classes/');
+require './generated-conf/config.php';
+use Propel\Runtime\Propel;
+if (empty($_POST[ '[' /]"type"[ ']' /])) {
+     $type=$_GET[ '[' /]"type"[ ']' /];
+}
+else{
+	 $type=$_POST[ '[' /]"type"[ ']' /];
+}
+switch ($type) {
+  [for (c:Class| m.eContents(Class))][c.generateOperaciones()/][/for]
+}
+
+function ArrayEcho($query){
+ foreach($query as $element) {
+	$json[ '[' /][ ']' /]  = $element->toArray();
+}
+		
+echo json_encode($json); 
+}
+
+function check($boolean){
+	if(!$boolean){
+       echo json_encode([ '[' /]"success"=> false[ ']' /] );
+	}
+	else{
+        echo json_encode([ '[' /]"success"=> true[ ']' /] );
+	}
+}
+
+?>
+[/file]
+[/template]
+
+[template public generateOperaciones(e : Class)]
+[let clavePrimaria: String = if(e.getAllAttributes()->select(l:Property | l.isID)->size()=0) then 'id'.concat(e.name) else e.getAllAttributes()->select(l:Property | l.isID)->asOrderedSet()->first().name endif]
+[let tipoPrimaria : OclAny = if(e.getAllAttributes()->select(l:Property | l.isID)->size()=0) then null else e.getAllAttributes()->select(l:Property | l.isID)->asOrderedSet()->first().generateDatosTest() endif]
+    case "add[e.name.toUpperFirst()/]":
+        $[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+		  if(!$[e.name.toLowerFirst()/]->add($_POST[ '[' /]"[clavePrimaria/]"[ ']' /][for (c:Property | e.eAllContents(Property)->select(l:Property | not l.isID))][c.generateElementPHP()/][/for])){
+            echo json_encode([ '[' /]"success"=> false[ ']' /] );
+		  }
+		 else{
+           echo json_encode([ '[' /]"success"=> true[ ']' /] );
+		 }
+
+        break;
+	case "get[e.name/]":
+        $[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+		 echo $[e.name.toLowerFirst()/]->get($_GET[ '[' /]"[clavePrimaria/]"[ ']' /])->toJSON();
+        break;
+    case "getAll[e.name.toUpperFirst()/]":
+        $[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+		  $[e.name.toLowerFirst()/]->getAll();
+        break;
+	case "delete[e.name/]":
+        $[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+		 check($[e.name.toLowerFirst()/]->normalDelete($_POST[ '[' /]"[clavePrimaria/]"[ ']' /]));
+        break;
+	case "update[e.name/]":
+        $[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+        $[e.name.toLowerFirst()/] = $[e.name.toLowerFirst()/]->get($_POST[ '[' /]"[clavePrimaria/]"[ ']' /]);
+		check($[e.name.toLowerFirst()/]->add($_POST[ '[' /]"[clavePrimaria/]"[ ']' /][for (c:Property | e.eAllContents(Property)->select(l:Property | not l.isID))][c.generateElementPHP()/][/for]));
+        break;
+    [e.generateOperationsManyCase(e)/]
+    [for (c:Operation | e.getOperations())][c.generateElementCase()/][/for]
+    
+[file (e.getModel().name.toLower()+'/service/generated-classes/'+e.name+'.php', false, 'UTF-8')]
+[let clavePrimariaGene: String = if(e.getAllAttributes()->select(l:Property | l.isID)->size()=0) then 'id'.concat(e.name) else e.getAllAttributes()->select(l:Property | l.isID)->asOrderedSet()->first().name endif]
+<?php
+use Base\[e.name.toUpperFirst()/] as Base[e.name.toUpperFirst()/];
+use Map\[e.name.toUpperFirst()/]TableMap;
+use Propel\Runtime\Propel;
+use Propel\Runtime\Collection\Collection;
+date_default_timezone_set('America/Los_Angeles');
+/**
+ * Skeleton subclass for representing a row from the '[e.name/]' table.
+ *
+ *
+ *
+ * You should add additional methods to this class to meet the
+ * application requirements.  This class will only be generated as
+ * long as it does not already exist in the output directory.
+ *
+ */
+
+class [e.name.toUpperFirst()/] extends Base[e.name.toUpperFirst()/]
+{
+   	public function add[for (c:Generalization | e.generalization)]Gen[/for]($[clavePrimaria/][for (c:Generalization | e.generalization)][for (gen:Property | c.general.eAllContents(Property))][gen.generateElementPHPArguments()/][/for][/for][for (c:Property | e.eAllContents(Property)->select(l:Property | not l.isID))][c.generateElementPHPArguments()/][/for]){
+       $con = Propel::getWriteConnection([e.name/]TableMap::DATABASE_NAME);
+
+	   $con->beginTransaction();
+		try {
+
+	       $this->set[clavePrimaria.toUpperFirst()/]($[clavePrimaria/]);
+	       [for (c:Property | e.getAllAttributes()->select(l:Property | not l.isID))][c.generateElementPHPUpdate()/][/for]
+           $this->save($con);
+	       
+	      $con->commit();
+          return $this;
+	      } catch (Exception $e) {
+	        
+			$con->rollback(); //en caso de que se produzca alguna excepcion la transacci�n ser� cancelada
+			//throw $e;
+            return false;
+		  }
+     }
+
+     public function get($[clavePrimaria/]){
+       $[e.name.toLowerFirst()/] = [e.name.toUpperFirst()/]Query::create()->filterBy[clavePrimaria/]($[clavePrimaria/])->findOne();
+       //echo $[e.name.toLowerFirst()/]->toJSON();
+       return $[e.name.toLowerFirst()/];
+     }
+    public function exists($[clavePrimaria/]){
+       return [e.name.toUpperFirst()/]Query::create()->filterBy[clavePrimaria/]($[clavePrimaria/])->find()->isEmpty();
+     }
+    public function deleteCascade(){
+       try {
+       $[e.name.toLowerFirst()/] = [e.name.toUpperFirst()/]Query::create()->filterBy[clavePrimaria/]($this->getPrimaryKey())->findOne();
+       if(!is_null($[e.name.toLowerFirst()/])){
+	       [e.generateElementPHPDeleteMany()/]
+	       [for (c:Property | e.getAllAttributes()->select(l:Property | not l.isID))][c.generateElementPHPDeleteAttribute()/][/for]
+	
+	       $[e.name.toLowerFirst()/]->delete();
+	       [for (c:Property | e.getAllAttributes()->select(l:Property | not l.isID))][c.generateElementPHPDelete()/][/for]
+       }
+	   } catch (Exception $e) {
+	
+			throw $e;
+		}
+     }
+    public function normalDelete($primarykey){
+       try {
+       $[e.name.toLowerFirst()/] = [e.name.toUpperFirst()/]Query::create()->filterBy[clavePrimaria/]($primarykey)->findOne();
+       [e.generateElementPHPNormalDelete()/]
+       $[e.name.toLowerFirst()/]->delete();
+        return true;
+	   } catch (Exception $e) {
+	    return false;
+			throw $e;
+		}
+     }
+
+     public function getAll(){
+       $[e.name.toLowerFirst()/]s = [e.name.toUpperFirst()/]Query::create()->find();
+ 
+        $json=[ '[' /][ ']' /];							   
+		foreach($[e.name.toLowerFirst()/]s as $[e.name.toLowerFirst()/]) {
+		  $json[ '[' /][ ']' /] = $[e.name.toLowerFirst()/]->toArray();
+		}
+
+        echo json_encode($json); 
+     }
+   [e.generateOperationsMany()/]
+   [for (c:Operation | e.getOperations()->select(e | not e.oclIsInvalid()))][c.generateElement()/][/for]
+   [/let]
+}
+
+?>
+[/file]
+[file (e.getModel().name.toLower()+'/service/tests/'+e.name+'Test.php', false, 'UTF-8')]
+<?php
+use PHPUnit\Framework\TestCase;
+include "generated-conf/config.php";
+
+
+class [e.name.toUpperFirst()/]Test extends TestCase
+{
+    public function testCanBeAdd()
+    {
+        // Arrange
+        $a = new [e.name.toUpperFirst()/]();
+
+        // Act
+        $b = $a->add[for (c:Generalization | e.generalization)]Gen[/for]([if (tipoPrimaria=null)]null[else][tipoPrimaria/][/if]
+[for (gen:Generalization | e.generalization)][for (c:Property | gen.general.eAllContents(Property)->select(l:Property | not gen.general.getModel().eContents(Class)->exists(t:Class | l.type=t and not (((l.upperBound()=1 and not l.type.name.oclIsUndefined()) or (l.upperBound()<0 and l.opposite.upperBound()=1 and l.class.name=l.type.name)) )) ))],[c.generateDatosTest()/][/for][/for]
+[for (c:Property | e.eAllContents(Property)->select(l:Property | not l.isID and not e.getModel().eContents(Class)->exists(t:Class | l.type=t and not (((l.upperBound()=1 and not l.type.name.oclIsUndefined()) or (l.upperBound()<0 and l.opposite.upperBound()=1 and l.class.name=l.type.name)) )) ))],[c.generateDatosTest()/][/for]);
+
+        // Assert
+        [e.generateElementPHPTestMany()/]
+        $query=$b->get($b->getPrimaryKey());
+        [e.generateElementPHPAssertsMany()/]
+        [for (c:Property | e.eAllContents(Property)->select(l:Property | not l.isID and not e.getModel().eContents(Class)->exists(t:Class | l.type=t and not (((l.upperBound()=1 and not l.type.name.oclIsUndefined()) or (l.upperBound()<0 and l.opposite.upperBound()=1 and l.class.name=l.type.name)) )) ))][c.generateElementPHPAsserts()/][/for]
+        
+       return $b;
+    }
+     /**
+     * @depends testCanBeAdd
+     */
+    public function testCanBeDelete([e.name.toUpperFirst()/] $b)
+    {
+        // Arrange
+       
+        
+        // Assert
+        $primaryKey=$b->getPrimaryKey();
+        $b->deleteCascade();
+        $prueba = new [e.name.toUpperFirst()/]();
+        $this->assertTrue(true,$prueba->exists($primaryKey));
+        
+    }
+
+}
+
+?>
+[/file]
+[/let]
+[/let]
+[/template]
+
+[template public generateElement(e : Operation)]
+  public function [e.name/]([for (c:Parameter | e.ownedParameter->select(l:Parameter | e.ownedParameter->last()<>l and not l.name.oclIsInvalid()))]$[c.name/],[/for][if (not e.ownedParameter->last().name.oclIsInvalid())]$[e.ownedParameter->last().name/][/if]){
+       // Start of user code [e.name/] function
+	   // file contents 
+	   // End of user code
+  }
+
+[/template]
+
+[template public generateElementCase(e : Operation)]
+case "[e.name/]":
+    $[e.class.name.toLowerFirst()/] = new [e.class.name.toUpperFirst()/]();
+    $[e.class.name.toLowerFirst()/]->[e.name/]([for (c:Parameter | e.ownedParameter->select(l:Parameter | e.ownedParameter->last()<>l))]$_POST[ '[' /]"[c.name/]"[ ']' /],[/for]$_POST[ '[' /]"[e.ownedParameter->last().name/]"[ ']' /]);
+  break;
+
+[/template]
+
+
+
+
+[template public generateOperationsManyCase(e : Class)]
+[for (ass:Association | e.getAssociations()) ]
+   [for (p:Property | ass.memberEnd) ]   
+      [if (not p.class.name.oclIsInvalid() and ((p.upperBound()<0 and p.opposite.upperBound()<0) or (p.upperBound()=1 and p.opposite.upperBound()<0)) and (not ((p.type.name=e.name) and (p.class.name=p.type.name)) or ((p.type.name=e.name and p.class.name<>p.type.name))))]
+      [let claseAsociacion: Class = if (p.class.name<>e.name) then p.class else p.type endif]     
+      [let clavePrimaria: String = if(claseAsociacion.eAllContents(Property)->select(l:Property | l.isID)->size()=0) then 'id'.concat(claseAsociacion.name) else claseAsociacion.getAllAttributes()->select(l:Property | l.isID)->asOrderedSet()->first().name endif]
+	  [let nombreTabla: String = if (p.upperBound()=1 and p.opposite.upperBound()<0 and (p.type.name=e.name) and (p.class.name<>p.type.name)) then 'Child' else '' endif]
+case "get[e.name/][claseAsociacion.name/][nombreTabla/]s":
+	$[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+    $[e.name.toLowerFirst()/] = $[e.name.toLowerFirst()/]->get($_GET[ '[' /]"idelement"[ ']' /]);
+    $query = $[e.name.toLowerFirst()/]->get[claseAsociacion.name.toUpperFirst()/]s();
+    ArrayEcho($query);
+  break;
+case "add[e.name/][claseAsociacion.name/][nombreTabla/]s":
+	$[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+    $[e.name.toLowerFirst()/] = $[e.name.toLowerFirst()/]->get($_POST[ '[' /]"idelement"[ ']' /]);
+    check($[e.name.toLowerFirst()/]->add[claseAsociacion.name.toUpperFirst()/]Many[nombreTabla/]($_POST[ '[' /]"[clavePrimaria/]"[ ']' /][for (c:Property | claseAsociacion.eAllContents(Property)->select(l:Property | not l.isID))][c.generateElementPHP()/][/for]));
+  break;
+    [if (p.upperBound()<0 and p.opposite.upperBound()<0)]
+case "delete[e.name/][claseAsociacion.name/][nombreTabla/]s":
+	$[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+    $[e.name.toLowerFirst()/] = $[e.name.toLowerFirst()/]->get($_POST[ '[' /]"idelement"[ ']' /]);
+    check($[e.name.toLowerFirst()/]->delete[claseAsociacion.name.toUpperFirst()/]Many[nombreTabla/]($_POST[ '[' /]"[clavePrimaria/]"[ ']' /]));
+  break;
+    [/if]
+    [/let]
+    [/let]
+    [/let]
+    [/if]
+    [if (not p.class.name.oclIsInvalid() and (p.upperBound()<0 and p.opposite.upperBound()<0) and (p.type.name=e.name) and (p.class.name=p.type.name))]
+    [let nombreTabla: String = if (ass.name.oclIsUndefined()) then p.class.name.toUpperFirst().concat(p.name.toUpperFirst()) else ass.name.toUpperFirst() endif]
+    [let clavePrimaria: String = if(p.class.eAllContents(Property)->select(l:Property | l.isID and p.class=l.class)->size()=0) then 'id'.concat(p.class.name) else p.class.getAllAttributes()->select(l:Property | l.isID and p.class=l.class)->asOrderedSet()->first().name endif]   
+case "get[e.name/]List[p.class.name/]s":
+	$[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+    $[e.name.toLowerFirst()/] = $[e.name.toLowerFirst()/]->get($_GET[ '[' /]"idelement"[ ']' /]);
+    $query = $[e.name.toLowerFirst()/]->get[e.name.toUpperFirst()/]sRelatedByRelacion[p.class.name.toLowerFirst()/]();
+    ArrayEcho($query);
+  break;
+case "add[e.name/]List[p.class.name/]s":
+	$[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+    $[e.name.toLowerFirst()/] = $[e.name.toLowerFirst()/]->get($_POST[ '[' /]"idelement"[ ']' /]);
+    check($[e.name.toLowerFirst()/]->add[nombreTabla/]($_POST[ '[' /]"[clavePrimaria/]"[ ']' /]));
+  break;
+ case "delete[e.name/]List[p.class.name/]s":
+	$[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+    $[e.name.toLowerFirst()/] = $[e.name.toLowerFirst()/]->get($_POST[ '[' /]"idelement"[ ']' /]);
+    check(!$[e.name.toLowerFirst()/]->delete[nombreTabla/]($_POST[ '[' /]"[clavePrimaria/]"[ ']' /]));
+  break;
+    [/let]
+    [/let]
+    [/if]
+    [if (not p.class.name.oclIsInvalid() and (p.upperBound()<0 and p.opposite.upperBound()=1) and (p.type.name=e.name) and (p.class.name=e.name))]
+[let clavePrimaria: String = if(p.class.eAllContents(Property)->select(l:Property | l.isID and p.class=l.class)->size()=0) then 'id'.concat(p.class.name) else p.class.getAllAttributes()->select(l:Property | l.isID and p.class=l.class)->asOrderedSet()->first().name endif] 
+[let clavePrimaria2: String = if(p.class.eAllContents(Property)->select(l:Property | l.isID and p.class=l.class)->size()=0) then 'Id'.concat(p.class.name.toLowerFirst()) else p.class.getAllAttributes()->select(l:Property | l.isID and p.class=l.class)->asOrderedSet()->first().name.toUpperFirst() endif]     
+case "get[e.name/][p.class.name/]s":
+	$[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+    $[e.name.toLowerFirst()/] = $[e.name.toLowerFirst()/]->get($_GET[ '[' /]"idelement"[ ']' /]);
+    $query = $[e.name.toLowerFirst()/]->get[e.name.toUpperFirst()/]sRelatedBy[clavePrimaria2/]();
+    ArrayEcho($query);
+  break;
+ case "add[e.name/][p.class.name/]s":
+	$[e.name.toLowerFirst()/] = new [e.name.toUpperFirst()/]();
+    $[e.name.toLowerFirst()/] = $[e.name.toLowerFirst()/]->get($_POST[ '[' /]"idelement"[ ']' /]);
+    check($[e.name.toLowerFirst()/]->add($_POST[ '[' /]"[clavePrimaria/]"[ ']' /][for (c:Property | p.class.eAllContents(Property)->select(l:Property | not l.isID))][c.generateElementPHP()/][/for]));
+      [/let]
+      [/let]
+      [/if]
+	[/for]
+[/for]
+[/template]
+
+
+
+
+[template public generateElement(e : Class)]
+
+<table name="[e.name/]" phpName="[e.name.toUpperFirst()/]" [if (e.isAbstract)]abstract = "true"[/if]>
+ [if (e.getAllAttributes()->select(l:Property | l.isID and e=l.class)->size()=0)]
+      <column name="id[e.name/]" type="integer" primaryKey="true" autoIncrement="true"/>
+ [/if]
+   [for (c:Property | e.getAllAttributes()->select(l: Property | e=l.class))][c.generateElement()/][/for]
+
+    [let unicos: Set(Property) = e.getAllAttributes()->select(l:Property | l.isUnique and (not l.isID) and l.class=e and l.upper>0 and not e.getModel().eContents(Class)->exists(t:Class | l.type=t))]
+	[if (unicos->size()=1)]
+	    <unique name="ix_[for (c:Property | unicos)][c.name/]_[/for]">
+         [for (c:Property | unicos)][c.generateUnique()/][/for]
+      </unique>
+	[/if]
+    [/let]
+    [if (e.generalization->size()>0)]
+    [let unicos: Set(Property) = e.getAllAttributes()->select(l:Property | l.isUnique and l.class=e and l.upper>0 and not e.getModel().eContents(Class)->exists(t:Class | l.type=t))]
+	[if (unicos->size()>0)]
+	    <unique name="ix_[for (c:Property | unicos)][c.name/]_[/for]">
+         [for (c:Property | unicos)][c.generateUnique()/][/for]
+      </unique>
+    [else]
+	    <unique name="ix_id[e.name/]">
+         <unique-column name="id[e.name/]"/>
+      </unique>
+	[/if]
+    [/let]
+    [/if]
+    
+    [for (c:Generalization | e.generalization)][c.generateElement()/][/for]
+[for (ass:Association | e.getAssociations()) ]
+   [for (p:Property | ass.memberEnd) ]
+      [if (not p.class.name.oclIsInvalid() and (p.upperBound()<0 and p.opposite.upperBound()=1) and (p.type.name=e.name) and (p.class.name=e.name))]
+     <column name="fk[ass.memberEnd->at(2).name/]" [if (p.opposite.lowerBound()>0)]required="true"[/if] [if (p.class.eAllContents(Property)->select(l:Property | l.isID)->size()=0)]type="INTEGER"[else][p.class.eAllContents(Property)->select(l:Property | l.isID)->asSequence()->first().generateTipo()/][/if] />
+     <foreign-key foreignTable="[p.class.name/]">
+		  <reference local="fk[ass.memberEnd->at(2).name/]" foreign=[if (p.class.eAllContents(Property)->select(l:Property | l.isID)->size()=0)]"id[p.class.name/]"[else]"[p.class.eAllContents(Property)->select(l:Property | l.isID)->asSequence()->first().name/]"[/if]/>
+   	</foreign-key>
+      [/if]
+      [if (not p.class.name.oclIsInvalid() and (p.upperBound()=1) and (p.class.name=e.name))]
+     <column name="fk[p.name/]" [if (p.lowerBound()>0)]required="true"[/if] [if (p.type.eAllContents(Property)->select(l:Property | l.isID)->size()=0)]type="INTEGER"[else][p.type.eAllContents(Property)->select(l:Property | l.isID)->asSequence()->first().generateTipo()/][/if] />
+     <foreign-key foreignTable="[p.type.name/]">
+		  <reference local="fk[p.name/]" foreign=[if (p.type.eAllContents(Property)->select(l:Property | l.isID)->size()=0)]"id[p.type.name/]"[else]"[p.type.eAllContents(Property)->select(l:Property | l.isID)->asSequence()->first().name/]"[/if]/>
+   	</foreign-key>
+
+      [/if]
+	[/for]
+[/for]
+</table>
+
+[for (ass:Association | e.getAssociations()) ]
+   [for (p:Property | ass.memberEnd) ]
+      [if (not p.class.name.oclIsInvalid() and (p.upperBound()<0 and p.opposite.upperBound()<0) and (p.class.name=e.name))]
+      [let nombreTabla2 : String = if (p.type.name.toString()<>p.class.name.toString()) then 'id'.concat(p.type.name) else 'relacion'.concat(p.name) endif]
+<table name=[if (ass.name.oclIsUndefined())]"[p.class.name/]_[p.name/]"[else]"[ass.name/]"[/if] isCrossRef="true">
+    <column name="id[p.class.name/]" primaryKey="true" [if (p.class.eAllContents(Property)->select(l:Property | l.isID)->size()=0)]type="INTEGER"[else][p.class.eAllContents(Property)->select(l:Property | l.isID)->asSequence()->first().generateTipo()/][/if]/>
+    
+    <column name="[nombreTabla2/]" primaryKey="true" [if (p.type.eAllContents(Property)->select(l:Property | l.isID)->size()=0)]type="INTEGER"[else][p.type.eAllContents(Property)->select(l:Property | l.isID)->asSequence()->first().generateTipo()/][/if]/>
+
+   <foreign-key foreignTable="[p.class.name/]" name="[p.class.name/]_[p.name/]">
+	  <reference local="id[p.class.name/]" foreign=[if (p.class.getAllAttributes()->select(l:Property | l.isID)->size()=0)]"id[p.class.name/]"[else]"[p.class.getAllAttributes()->select(l:Property | l.isID)->asSequence()->first().name/]"[/if]/>
+   </foreign-key>
+
+  <foreign-key foreignTable="[p.type.name/]" name="[nombreTabla2/]_[p.class.name/]">
+	  <reference local="[nombreTabla2/]" foreign=[if (p.type.eAllContents(Property)->select(l:Property | l.isID)->size()=0)]"id[p.type.name/]"[else]"[p.type.eAllContents(Property)->select(l:Property | l.isID)->asSequence()->first().name/]"[/if]/>
+   </foreign-key>
+</table>
+      [/let]
+      [/if]
+	[/for]
+[/for]
+
+[/template]
+
+[template public generateOperationsMany(e : Class)]
+[for (ass:Association | e.getAssociations()) ]
+   [for (p:Property | ass.memberEnd) ]
+     
+      [if (not p.class.name.oclIsInvalid() and ((p.upperBound()<0 and p.opposite.upperBound()<0) or (p.upperBound()=1 and p.opposite.upperBound()<0)) and (not ((p.type.name=e.name) and (p.class.name=p.type.name)) or ((p.type.name=e.name and p.class.name<>p.type.name))))]
+       [let claseAsociacion: Class = if (p.class.name<>e.name) then p.class else p.type endif]
+       [let clavePrimaria: String = if(claseAsociacion.eAllContents(Property)->select(l:Property | l.isID and e=l.class)->size()=0) then 'id'.concat(claseAsociacion.name) else claseAsociacion.getAllAttributes()->select(l:Property | l.isID and e=l.class)->asOrderedSet()->first().name endif]
+       [let nombreTabla: String = if (p.upperBound()=1 and p.opposite.upperBound()<0 and (p.type.name=e.name) and (p.class.name<>p.type.name)) then 'Child' else '' endif]
+  public function add[claseAsociacion.name.toUpperFirst()/]Many[nombreTabla/]($[clavePrimaria/][for (c:Property | claseAsociacion.eAllContents(Property)->select(l:Property | not l.isID))][c.generateElementPHPArguments()/][/for]){
+       // Start of user code [e.name/] function
+	   // file contents 
+       $con = Propel::getWriteConnection([e.name/]TableMap::DATABASE_NAME);
+
+	   $con->beginTransaction();
+
+       try{
+       $[claseAsociacion.name.toLowerFirst()/] = new [claseAsociacion.name.toUpperFirst()/](); 
+       if(!$[claseAsociacion.name.toLowerFirst()/]->exists($[clavePrimaria/]) && !is_null ($[clavePrimaria/])){
+         $[claseAsociacion.name.toLowerFirst()/] = $[claseAsociacion.name.toLowerFirst()/] ->get($[clavePrimaria/]);
+	   }
+       else{
+         
+         $[claseAsociacion.name.toLowerFirst()/]= $[claseAsociacion.name.toLowerFirst()/]->add($[clavePrimaria/][for (c:Property | claseAsociacion.eAllContents(Property)->select(l:Property | not l.isID))][c.generateElementPHPArguments()/][/for]);
+        }
+
+       $this->[if (not ((p.upperBound()=1 and e.name<>p.type.name) or ((p.opposite.upperBound()=1) and e.name<>p.type.name)))]add[else]set[/if][claseAsociacion.name.toUpperFirst()/]($[claseAsociacion.name.toLowerFirst()/]);
+       $this->save($con);
+       $con->commit();
+       return $this;
+	   }catch (Exception $e) {
+	
+		 $con->rollback(); //en caso de que se produzca alguna excepcion la transacci�n ser� cancelada
+		 //throw $e;
+         return false;
+		}
+	   // End of user code
+  }
+     [if (p.upperBound()<0 and p.opposite.upperBound()<0)]
+     [let nombreTabla2: String = if (ass.name.oclIsUndefined()) then p.class.name.toUpperFirst().concat(p.name.toUpperFirst()) else ass.name.toUpperFirst() endif]
+	  public function delete[claseAsociacion.name.toUpperFirst()/]Many[nombreTabla/]($relacion[claseAsociacion.name.toLowerFirst()/]){
+		try{	
+            $query1 = [nombreTabla2/]Query::create()->filterById[e.name.toLowerFirst()/]($this->getPrimaryKey())->filterById[claseAsociacion.name.toLowerFirst()/]($relacion[claseAsociacion.name.toLowerFirst()/])->findOne();
+			$query1->delete();
+            return true;
+
+         }catch (Exception $e) {
+	
+		 $con->rollback(); //en caso de que se produzca alguna excepcion la transacci�n ser� cancelada
+		 //throw $e;
+         return false;
+		}
+	  }
+     [/let]
+	 [/if]   
+     [/let]
+     [/let]
+     [/let]
+    [/if]
+    [if (not p.class.name.oclIsInvalid() and (p.upperBound()<0 and p.opposite.upperBound()<0) and (p.type.name=e.name) and (p.class.name=p.type.name))]
+    [let nombreTabla: String = if (ass.name.oclIsUndefined()) then p.class.name.toUpperFirst().concat(p.name.toUpperFirst()) else ass.name.toUpperFirst() endif]
+  public function add[nombreTabla/]($relacion[p.name.toLowerFirst()/]){
+   	/*$[nombreTabla.toLowerFirst()/] = new [nombreTabla/]();
+   	$con = Propel::getWriteConnection([nombreTabla/]TableMap::DATABASE_NAME);
+   	
+   	$con->beginTransaction();
+   	try {
+   		$[e.name.toLowerFirst()/] = new [e.name/]();
+   		if(!$[e.name.toLowerFirst()/]->exists($id[p.class.name.toLowerFirst()/]) && !$[e.name.toLowerFirst()/]->exists($relacion[p.name.toLowerFirst()/])){
+	   		$[nombreTabla.toLowerFirst()/]->setId[p.class.name.toLowerFirst()/]($id[p.class.name.toLowerFirst()/]);
+	   		$[nombreTabla.toLowerFirst()/]->setRelacion[p.name.toLowerFirst()/]($relacion[p.name.toLowerFirst()/]);
+   		}
+   	
+   		$[nombreTabla.toLowerFirst()/]->save($con);
+   	
+   		$con->commit();
+   		return $this;
+   	} catch (Exception $e) {
+   	
+   		$con->rollback(); //en caso de que se produzca alguna excepcion la transacci�n ser� cancelada
+   		//throw $e;
+        return false;
+   	}*/
+   	$con = Propel::getWriteConnection([e.name.toUpperFirst()/]TableMap::DATABASE_NAME);
+   	
+   	$con->beginTransaction();
+   	try {
+	   	$this->add[e.name.toUpperFirst()/]RelatedById[p.class.name.toLowerFirst()/]($this->get($relacion[p.name.toLowerFirst()/]));
+   	
+   		$this->save($con);
+   	
+   		$con->commit();
+   		return $this;
+   	} catch (Exception $e) {
+   	
+   		$con->rollback(); //en caso de que se produzca alguna excepcion la transacci�n ser� cancelada
+   		//throw $e;
+        return false;
+   	}
+  } 
+
+  public function delete[nombreTabla/]($relacion[p.name.toLowerFirst()/]){
+       try{
+		$query1 = [nombreTabla/]Query::create()->filterById[e.name.toLowerFirst()/]($this->getPrimaryKey())->filterByRelacion[p.type.name.toLowerFirst()/]($relacion[p.name.toLowerFirst()/])->findOne();
+		$query1->delete();
+        return true;
+
+        }catch (Exception $e) {
+	
+		 $con->rollback(); //en caso de que se produzca alguna excepcion la transacci�n ser� cancelada
+		 //throw $e;
+         return false;
+		}
+  } 
+    [/let]
+    [/if]
+    [if (not p.class.name.oclIsInvalid() and (p.upperBound()<0 and p.opposite.upperBound()=1) and (p.type.name=e.name) and (p.class.name=e.name))]
+     [let clavePrimaria: String = if(p.class.eAllContents(Property)->select(l:Property | l.isID and e=l.class)->size()=0) then 'id'.concat(p.class.name) else e.getAllAttributes()->select(l:Property | l.isID and e=l.class)->asOrderedSet()->first().name endif]
+  public function add[if (ass.name.oclIsUndefined())][p.class.name.toUpperFirst()/]Child[else][ass.name.toUpperFirst()/][/if]($[clavePrimaria/][for (c:Property | p.class.eAllContents(Property)->select(l:Property | not l.isID))][c.generateElementPHPArguments()/][/for]){
+       // Start of user code [e.name/] function
+	   // file contents 
+       $con = Propel::getWriteConnection([e.name.toUpperFirst()/]TableMap::DATABASE_NAME);
+	   $con->beginTransaction();
+
+       try{
+       
+       $[p.class.name.toLowerFirst()/]= new [p.class.name.toUpperFirst()/]();
+       $child = $[p.class.name.toLowerFirst()/]->add($[clavePrimaria/][for (c:Property | p.class.eAllContents(Property)->select(l:Property | not l.isID))][c.generateElementPHPArguments()/][/for]);
+       $father = $[p.class.name.toLowerFirst()/]->get($[clavePrimaria/]);
+       $child->addFk[ass.memberEnd->at(2).name/]($father->getPrimaryKey());
+       $child->save($con);
+       $con->commit();
+       return $this;
+	   }catch (Exception $e) {
+	
+		 $con->rollback(); //en caso de que se produzca alguna excepcion la transacci�n ser� cancelada
+		// throw $e; 
+        return false;
+		}
+	   // End of user code
+  } 
+      [/let]
+      [/if]
+	[/for]
+[/for]
+[/template]
+
+[template public generateElement(e : Property)]
+[if (e.upper>0)]
+  [if (not e.getModel().eContents(Class)->exists(l:Class | e.type=l))]
+   <column name="[e.name/]" [e.generateTipo()/] [if (e.isID)]primaryKey="true"[/if] [if (e.lower>0)]required="true"[/if] />
+   [/if]
+[/if]
+[/template]
+
+[template public generateElementPHP(e : Property)]
+[if (e.upper>0)]
+  [if (not e.getModel().eContents(Class)->exists(l:Class | e.type=l))]
+ ,$_POST[ '[' /]"[e.name/]"[ ']' /]
+   [/if]
+[/if]
+[if (e.upperBound()=1 and not e.type.name.oclIsUndefined())]
+	[if (e.lowerBound()=1)]
+[let clavePrimaria: String = if(e.type.eAllContents(Property)->select(l:Property | l.isID)->size()=0) then 'id'.concat(e.type.name) else e.type.eAllContents(Property)->select(l:Property | l.isID)->asOrderedSet()->first().name endif]
+,$_POST[ '[' /]"[clavePrimaria/]"[ ']' /][for (c:Property | e.type.eAllContents(Property)->select(l:Property | not l.isID))][c.generateElementPHP()/][/for]
+[/let]
+    [else]
+[for (c:Property | e.type.eAllContents(Property)->select(l:Property | not l.isID and e.upper>0 and not e.getModel().eContents(Class)->exists(l:Class | e.type=l)))][c.generateElementPHP()/][/for]
+	[/if]
+[/if]
+[if (e.upperBound()<0 and e.opposite.upperBound()=1 and not e.type.name.oclIsUndefined() and e.type.name=e.class.name)]
+,$_POST[ '[' /]"idelement"[ ']' /]
+[/if]
+[/template]
+
+[template public generateElementPHPArguments(e : Property)]
+[if (e.upper>0)]
+  [if (not e.getModel().eContents(Class)->exists(l:Class | e.type=l))]
+ , $[e.name/][e.class.name.toUpperFirst()/]
+   [/if]
+[/if]
+[if (e.upperBound()=1 and not e.type.name.oclIsUndefined())]
+	[if (e.lowerBound()=1)]
+,$id[e.type.name/][for (c:Property | e.type.eAllContents(Property)->select(l:Property | not l.isID))][c.generateElementPHPArguments()/][/for]
+    [else]
+,$id[e.type.name/][for (c:Property | e.type.eAllContents(Property)->select(l:Property | not l.isID and e.upper>0 and not e.getModel().eContents(Class)->exists(l:Class | e.type=l)))][c.generateElementPHPArguments()/][/for]
+	[/if]
+[/if]
+[if (e.upperBound()<0 and e.opposite.upperBound()=1 and not e.type.name.oclIsUndefined() and e.type.name=e.class.name)]
+,$id[e.opposite.name/]
+[/if]
+[/template]
+
+[template public generateElementPHPUpdate(e : Property)]
+[if (e.upper>0)]
+  [if (not e.getModel().eContents(Class)->exists(l:Class | e.type=l))]
+$this->set[e.name.toUpperFirst()/]([if (e.type.toString().contains('Date'))]new DateTime($[e.name/][e.class.name.toUpperFirst()/])[else]$[e.name/][e.class.name.toUpperFirst()/][/if]);
+   [/if]
+[/if]
+[if (e.upperBound()=1 and not e.type.name.oclIsUndefined())]
+[if (e.opposite.upperBound()<0)]
+$[e.type.name.toLowerFirst()/] = new [e.type.name.toUpperFirst()/]();
+if(!$[e.type.name.toLowerFirst()/]->exists($id[e.type.name/])){
+$row = $[e.type.name.toLowerFirst()/]->get($id[e.type.name/]);
+$this->setFk[e.type.name.toUpperFirst()/]($row->getPrimaryKey());
+}
+[else]
+$[e.type.name.toLowerFirst()/] = new [e.type.name.toUpperFirst()/]();
+if(!$[e.type.name.toLowerFirst()/]->exists($id[e.type.name/])){
+$row = $[e.type.name.toLowerFirst()/]->get($id[e.type.name/]);
+$this->setFk[e.type.name.toUpperFirst()/]($row->getPrimaryKey());
+}
+else{
+$[e.type.name.toLowerFirst()/]->add($id[e.type.name/][for (c:Property | e.type.eAllContents(Property)->select(l:Property | not l.isID))][c.generateElementPHPArguments()/][/for]);
+$this->setFk[e.type.name.toUpperFirst()/]($[e.type.name.toLowerFirst()/]->getPrimaryKey());
+}
+[/if]
+[/if]
+[if (e.upperBound()<0 and e.opposite.upperBound()=1 and not e.type.name.oclIsUndefined() and e.type.name=e.class.name)]
+if(!is_null($id[e.opposite.name/])){
+$this->setFK[e.opposite.name/]($id[e.opposite.name/]);
+}
+[/if]
+[/template]
+
+[template public generateElementPHPAsserts(e : Property)]
+[if (e.upper>0)]
+  [if (not e.getModel().eContents(Class)->exists(l:Class | e.type=l))]
+$this->assertEquals([if (e.type.toString().contains('Date'))]new DateTime([e.generateDatosTest()/])[else][e.generateDatosTest()/][/if],$query->get[e.name.toUpperFirst()/]());
+   [/if]
+[/if]
+[if (e.upperBound()=1 and not e.type.name.oclIsUndefined() and e.lowerBound()=1)]
+$this->assertEquals($query->getFk[e.type.name/](),$b->getFk[e.type.name/]());
+[/if]
+[/template]
+
+[template public generateElementPHPAssertsMany(e : Class)]
+[for (ass:Association | e.getAssociations()) ]
+   [for (p:Property | ass.memberEnd) ] 
+         [if (not p.class.name.oclIsInvalid() and ((p.upperBound()<0 and p.opposite.upperBound()<0) or (p.upperBound()=1 and p.opposite.upperBound()<0)) and (not ((p.type.name=e.name) and (p.class.name=p.type.name)) or ((p.type.name=e.name and p.class.name<>p.type.name))))]
+      [let claseAsociacion: Class = if (p.class.name<>e.name) then p.class else p.type endif]     
+      [let tipoPrimaria : OclAny = if(claseAsociacion.eAllContents(Property)->select(l:Property | l.isID)->size()=0) then null else claseAsociacion.eAllContents(Property)->select(l:Property | l.isID)->asOrderedSet()->first().generateDatosTest() endif]
+$this->assertEquals(false,[if (not ((p.upperBound()=1 and e.name<>p.type.name) or ((p.opposite.upperBound()=1) and e.name<>p.type.name)))]$query->get[claseAsociacion.name.toUpperFirst()/]s()->isEmpty()[else]is_null($query->get[claseAsociacion.name.toUpperFirst()/]())[/if]);   
+	  [/let]
+      [/let]
+    [/if]
+    [if (not p.class.name.oclIsInvalid() and (p.upperBound()<0 and p.opposite.upperBound()<0) and (p.type.name=e.name) and (p.class.name=p.type.name))]
+    	[let nombreTabla: String = if (ass.name.oclIsUndefined()) then p.class.name.toUpperFirst().concat(p.name.toUpperFirst()) else ass.name.toUpperFirst() endif]
+$this->assertEquals(false,$query->get[e.name.toUpperFirst()/]sRelatedById[p.class.name.toLowerFirst()/]()->isEmpty());    
+    	[/let]
+    [/if]
+	[/for]
+[/for]
+[/template]
+
+[template public generateElementPHPTestMany(e : Class)]
+[for (ass:Association | e.getAssociations()) ]
+   [for (p:Property | ass.memberEnd) ] 
+      [if (not p.class.name.oclIsInvalid() and ((p.upperBound()<0 and p.opposite.upperBound()<0) or (p.upperBound()=1 and p.opposite.upperBound()<0)) and (not ((p.type.name=e.name) and (p.class.name=p.type.name)) or ((p.type.name=e.name and p.class.name<>p.type.name))))]
+       [let claseAsociacion: Class = if (p.class.name<>e.name) then p.class else p.type endif]
+       [let clavePrimaria: String = if(claseAsociacion.eAllContents(Property)->select(l:Property | l.isID and e=l.class)->size()=0) then 'id'.concat(claseAsociacion.name) else claseAsociacion.getAllAttributes()->select(l:Property | l.isID and e=l.class)->asOrderedSet()->first().name endif]
+       [let nombreTabla: String = if (p.upperBound()=1 and p.opposite.upperBound()<0 and (p.type.name=e.name) and (p.class.name<>p.type.name)) then 'Child' else '' endif]
+      [let tipoPrimaria : OclAny = if(claseAsociacion.eAllContents(Property)->select(l:Property | l.isID)->size()=0) then null else claseAsociacion.eAllContents(Property)->select(l:Property | l.isID)->asOrderedSet()->first().generateDatosTest() endif]
+$b->add[claseAsociacion.name.toUpperFirst()/]Many[nombreTabla/]([if (tipoPrimaria=null)]null[else][tipoPrimaria/][/if]
+[for (c:Property | claseAsociacion.eAllContents(Property)->select(l:Property | not l.isID and not e.getModel().eContents(Class)->exists(t:Class | l.type=t and not (( (l.upperBound()=1 and not l.type.name.oclIsUndefined()) or (l.upperBound()<0 and l.opposite.upperBound()=1 and l.class.name=l.type.name)   ) )) ))],[c.generateDatosTest()/][/for]);   
+	  [/let]
+      [/let]
+      [/let]
+      [/let]
+    [/if]
+  	[if (not p.class.name.oclIsInvalid() and (p.upperBound()<0 and p.opposite.upperBound()<0) and (p.type.name=e.name) and (p.class.name=p.type.name))]
+      [let nombreTabla: String = if (ass.name.oclIsUndefined()) then p.class.name.toUpperFirst().concat(p.name.toUpperFirst()) else ass.name.toUpperFirst() endif]
+      [let tipoPrimaria : OclAny = if(e.eAllContents(Property)->select(l:Property | l.isID)->size()=0) then null else e.eAllContents(Property)->select(l:Property | l.isID)->asOrderedSet()->first().generateDatosTest() endif]
+$b->add[nombreTabla/]($b->getPrimaryKey());   
+	  [/let]
+      [/let]
+    [/if]
+	[/for]
+[/for]
+[/template]
+
+[template public generateElementPHPDeleteMany(e : Class)]
+[for (ass:Association | e.getAssociations()) ]
+   [for (p:Property | ass.memberEnd) ]
+      [if (not p.class.name.oclIsInvalid() and ((p.upperBound()<0 and p.opposite.upperBound()<0 and p.class.name<>p.type.name) or (p.upperBound()=1 and p.opposite.upperBound()<0 and e.name=p.type.name) or (p.upperBound()<0 and p.opposite.upperBound()=1)) and  ((e.name=p.type.name) or (e.name<>p.type.name) or (p.class.name<>e.name)) )]
+      [let claseAsociacion: Class = if (p.class.name<>e.name) then p.class else p.type endif]     
+      [let clavePrimaria: String = if(claseAsociacion.eAllContents(Property)->select(l:Property | l.isID and e=l.class)->size()=0) then 'Id'.concat(claseAsociacion.name.toLowerFirst()) else claseAsociacion.getAllAttributes()->select(l:Property | l.isID and e=l.class)->asOrderedSet()->first().name.toUpperFirst() endif]
+$query = $[e.name.toLowerFirst()/]->get[claseAsociacion.name.toUpperFirst()/]s[if ((p.upperBound()=1 or p.opposite.upperBound()=1) and e.name=p.class.name )]RelatedBy[clavePrimaria/][/if]();
+$[e.name.toLowerFirst()/]->set[claseAsociacion.name.toUpperFirst()/]s[if ((p.upperBound()=1 or p.opposite.upperBound()=1) and e.name=p.class.name)]RelatedBy[clavePrimaria/][/if](new Collection());
+$[e.name.toLowerFirst()/]->save();
+foreach($query as $element) {
+$element->deleteCascade();
+}     
+[/let]
+[/let]
+    [/if]
+      [if (not p.class.name.oclIsInvalid() and (p.upperBound()<0 and p.opposite.upperBound()<0) and (p.type.name=e.name) and (p.class.name=p.type.name))]
+     [let clavePrimaria: String = if(e.getAllAttributes()->select(l:Property | l.isID and e=l.class)->size()=0) then 'Id'.concat(e.name) else e.getAllAttributes()->select(l:Property | l.isID and e=l.class)->asOrderedSet()->first().name.toUpperFirst() endif]
+      [let nombreTabla: String = if (ass.name.oclIsUndefined()) then p.class.name.toUpperFirst().concat(p.name.toUpperFirst()) else ass.name.toUpperFirst() endif]
+$query1 = [nombreTabla/]Query::create()->filterById[e.name.toUpperFirst()/]($this->getPrimaryKey())->find();
+foreach($query1 as $element) {
+$element->delete();
+}    
+$query2 = [nombreTabla/]Query::create()->filterByRelacion[p.type.name.toLowerFirst()/]($this->getPrimaryKey())->find();
+foreach($query2 as $element) {
+$element->delete();
+} 
+     [/let]
+	 [/let]
+     [/if]
+	[if ( not p.class.name.oclIsInvalid() and ((p.upperBound()=1 and p.opposite.upperBound()=1)) and p.class.name<>e.name)]
+$query = $[e.name.toLowerFirst()/]->get[p.class.name.toUpperFirst()/]s();
+$[e.name.toLowerFirst()/]->set[p.class.name.toUpperFirst()/]s(new Collection());
+$[e.name.toLowerFirst()/]->save();
+foreach($query as $element) {
+$element->deleteCascade();
+}     
+	[/if]
+	[/for]
+[/for]
+[/template]
+
+[template public generateElementPHPNormalDelete(e : Class)]
+[for (ass:Association | e.getAssociations()) ]
+   [for (p:Property | ass.memberEnd) ]   
+      [if (not p.class.name.oclIsInvalid() and ((p.upperBound()<0 and p.opposite.upperBound()<0) or (p.upperBound()=1 and p.opposite.upperBound()<0)) and (not ((p.type.name=e.name) and (p.class.name=p.type.name)) or ((p.type.name=e.name and p.class.name<>p.type.name))))]
+      [let claseAsociacion: Class = if (p.class.name<>e.name) then p.class else p.type endif]     
+      [let clavePrimaria: String = if(claseAsociacion.eAllContents(Property)->select(l:Property | l.isID and e=l.class)->size()=0) then 'id'.concat(claseAsociacion.name) else claseAsociacion.getAllAttributes()->select(l:Property | l.isID and e=l.class)->asOrderedSet()->first().name endif]
+$query = $[e.name.toLowerFirst()/]->get[claseAsociacion.name.toUpperFirst()/]s();
+$[e.name.toLowerFirst()/]->set[claseAsociacion.name.toUpperFirst()/]s(new Collection());
+$[e.name.toLowerFirst()/]->save();
+
+    [/let]
+    [/let]
+    [/if]
+    [if (not p.class.name.oclIsInvalid() and (p.upperBound()<0 and p.opposite.upperBound()<0) and (p.type.name=e.name) and (p.class.name=p.type.name))]
+    [let nombreTabla: String = if (ass.name.oclIsUndefined()) then p.class.name.toUpperFirst().concat(p.name.toUpperFirst()) else ass.name.toUpperFirst() endif]
+    [let clavePrimaria: String = if(p.class.eAllContents(Property)->select(l:Property | l.isID and p.class=l.class)->size()=0) then 'id'.concat(p.class.name) else p.class.getAllAttributes()->select(l:Property | l.isID and p.class=l.class)->asOrderedSet()->first().name endif]   
+$query1 = [nombreTabla/]Query::create()->filterById[e.name.toUpperFirst()/]($this->getPrimaryKey())->find();
+foreach($query1 as $element) {
+$element->delete();
+}    
+$query2 = [nombreTabla/]Query::create()->filterByRelacion[p.type.name.toLowerFirst()/]($this->getPrimaryKey())->find();
+foreach($query2 as $element) {
+$element->delete();
+} 
+    [/let]
+    [/let]
+    [/if]
+    [if (not p.class.name.oclIsInvalid() and (p.upperBound()<0 and p.opposite.upperBound()=1) and (p.type.name=e.name) and (p.class.name=e.name))]
+[let clavePrimaria: String = if(p.class.eAllContents(Property)->select(l:Property | l.isID and p.class=l.class)->size()=0) then 'id'.concat(p.class.name) else p.class.getAllAttributes()->select(l:Property | l.isID and p.class=l.class)->asOrderedSet()->first().name endif]   
+
+      [/let]
+      [/if]
+	[/for]
+[/for]
+[/template]
+
+[template public generateElementPHPDeleteAttribute(e : Property)]
+[if ( not e.type.name.oclIsUndefined() and ((e.upperBound()=1 and e.opposite.upperBound()=1) or (e.upperBound()=1 and e.opposite.upperBound()<0)) and e.class.name<>e.name)]
+$[e.type.name.toLowerFirst()/] = new [e.type.name.toUpperFirst()/]();
+$[e.type.name.toLowerFirst()/] = $[e.type.name.toLowerFirst()/]->get($[e.class.name.toLowerFirst()/]->getFk[e.type.name.toUpperFirst()/]());
+[/if]
+[/template]
+
+[template public generateElementPHPDelete(e : Property)]
+[if ( not e.type.name.oclIsUndefined() and ((e.upperBound()=1 and e.opposite.upperBound()=1) or (e.upperBound()=1 and e.opposite.upperBound()<0)) and e.class.name<>e.name)]
+if(!is_null($[e.type.name.toLowerFirst()/])){
+$[e.type.name.toLowerFirst()/]->deleteCascade();
+}
+[/if]
+[/template]
+
+[template public generateUnique(e : Property)]
+[if (e.upper>0)]
+  [if (not e.getModel().eContents(Class)->exists(l:Class | e.type=l))]
+    <unique-column name="[e.name/]"/>
+   [/if]
+[/if]
+[/template]
+
+
+[template public generateElement(e : Generalization)]
+	<behavior name="concrete_inheritance">
+		<parameter name="extends" value="[e.general.name/]"/>
+	</behavior>
+[/template]
+
+[template public generateTipo(e : Property)]
+[if (e.type.toString().contains('EString'))]
+type="VARCHAR" size="[e.upper/]"
+[/if]
+[if (e.type.toString().contains('#Integer') or e.type.toString().contains('EInt'))]
+type="INTEGER"
+[/if]
+[if (e.type.toString().contains('Date'))]
+type="DATE"
+[/if]
+[if (e.type.toString().contains('Real'))]
+type="REAL"
+[/if]
+[if (e.type.toString().contains('#BigDecimal'))]
+type="DOUBLE"
+[/if]
+[if (e.type.toString().contains('Double'))]
+type="DOUBLE"
+[/if]
+[if (e.type.toString().contains('Float'))]
+type="FLOAT"
+[/if]
+[if (e.type.toString().contains('Char'))]
+type="CHAR"
+[/if]
+[if (e.type.toString().contains('Long'))]
+type="LONGVARCHAR"
+[/if]
+[if (e.type.toString().contains('BigInteger'))]
+type="BIGINT"
+[/if]
+[if (e.type.toString().contains('Boolean'))]
+type="BOOLEAN"
+[/if]
+[if (e.type.toString().contains('Array'))]
+type="ARRAY"
+[/if]
+[/template]
+
+
+[template public generateDatosTest(e : Property)]
+[if (e.upperBound()=1 and not e.type.name.oclIsUndefined())]
+	[let tipoPrimaria : OclAny = if(e.type.eAllContents(Property)->select(l:Property | l.isID)->size()=0) then null else e.type.eAllContents(Property)->select(l:Property | l.isID)->first().generateDatosTest() endif]
+[if (tipoPrimaria=null)]null[else][tipoPrimaria/][/if][if (e.opposite.upperBound()=1 or e.upperBound()=1)][for (c:Property | e.type.eAllContents(Property)->select(l:Property | not l.isID and not e.getModel().eContents(Class)->exists(t:Class | l.type=t and not (((l.upperBound()=1 and not l.type.name.oclIsUndefined()) or (l.upperBound()<0 and l.opposite.upperBound()=1)) )) ))],[c.generateDatosTest()/][/for][/if]
+	[/let]
+[/if]
+[if (e.upperBound()<0 and e.opposite.upperBound()=1 and not e.type.name.oclIsUndefined() and e.class.name=e.type.name)]
+	[if (e.opposite.lowerBound()=1)]
+	[let tipoPrimaria : OclAny = if(e.class.eAllContents(Property)->select(l:Property | l.isID)->size()=0) then null else e.class.eAllContents(Property)->select(l:Property | l.isID)->first() endif]
+[if (tipoPrimaria=null)]null[else][tipoPrimaria/][/if]
+	[/let]
+	[else]
+null
+	[/if]
+[/if]
+[if (e.upper>0)]
+[if (e.type.toString().contains('EString'))]
+[if (upper>=12)]"cadenaprueba"[else]"c"[/if]
+[/if]
+[if (e.type.toString().contains('#Integer') or e.type.toString().contains('EInt'))]
+1000
+[/if]
+[if (e.type.toString().contains('Date'))]
+'2000-01-01'
+[/if]
+[if (e.type.toString().contains('Real'))]
+1
+[/if]
+[if (e.type.toString().contains('#BigDecimal'))]
+10.44444444
+[/if]
+[if (e.type.toString().contains('Double'))]
+10.45
+[/if]
+[if (e.type.toString().contains('Float'))]
+10.0
+[/if]
+[if (e.type.toString().contains('Char'))]
+'a'
+[/if]
+[if (e.type.toString().contains('Long'))]
+"Esta es una cadena de prueba"
+[/if]
+[if (e.type.toString().contains('BigInteger'))]
+100000
+[/if]
+[if (e.type.toString().contains('Boolean'))]
+true
+[/if]
+[if (e.type.toString().contains('Array'))]
+"array"
+[/if]
+[/if]
+[/template]
+
+
+
+
+

@@ -1,0 +1,68 @@
+[comment encoding = UTF-8 /]
+[module agent_spec('http://multirobotsystem/1.0')/]
+[import utils/]
+
+[template public agent_spec(anAgent : Agent)]
+	
+[comment @main /]
+[file ('agent_'+anAgent.name+'.ads', false, 'UTF-8')]
+with Agent_[anAgent.name/]_Data_Types;
+
+package Agent_[anAgent.name/] is
+   -- This is remote interface to the agent
+   pragma Remote_Call_Interface;
+
+   [if effector.inputs->notEmpty()]
+   --  remote access to the input buffers of the effector
+   package effector is
+      [for (aInputBuffer : InputBuffer | effector.inputs)]
+      package [aInputBuffer.name/] is
+         use Agent_[anAgent.name/]_Data_Types.effector.inputs.[aInputBuffer.name/];
+         procedure Send (item : in Data_Type);
+      end [aInputBuffer.name/];
+      [/for]
+   end effector;
+   [else]
+   --  the effector does not have any input buffers
+   [/if]
+
+   [if sensors->notEmpty()]
+   --  remote access to the input buffers of the sensors
+   package sensors is
+   [for (aSensor : Sensor | sensors->select(inputs->notEmpty()))]
+      package [aSensor.name/] is
+         [for (aInputBuffer : InputBuffer | aSensor.inputs)]
+         package [aInputBuffer.name/] is
+            use Agent_[anAgent.name/]_Data_Types.sensors.[aSensor.name/].inputs.[aInputBuffer.name/];
+            procedure Send (item : in Data_Type);
+         end [aInputBuffer.name/];
+         [/for]
+      end [aSensor.name/];
+   [/for]
+   end sensors;
+   [else]
+   --  sensors does not have any input buffers
+   [/if]
+
+   [if transmitters->notEmpty()]
+   --  remote access to the input buffers of the transmitters
+   package transmitters is
+      [for (aTransmitter : Transmitter | transmitters->select(inputs->notEmpty()))]
+      package [aTransmitter.name/] is
+         [for (aInputBuffer : InputBuffer | aTransmitter.inputs)]
+         package [aInputBuffer.name/] is
+            use Agent_[anAgent.name/]_Data_Types.transmitters.[aTransmitter.name/].inputs.[aInputBuffer.name/];
+            procedure Send (item : in Data_Type);
+         end [aInputBuffer.name/];
+         [/for]
+      end [aTransmitter.name/];
+   [/for]
+   end transmitters;
+   [else]
+   --  transmitters does not have any input buffers
+   [/if]
+
+end Agent_[anAgent.name/];
+[/file]
+	
+[/template]

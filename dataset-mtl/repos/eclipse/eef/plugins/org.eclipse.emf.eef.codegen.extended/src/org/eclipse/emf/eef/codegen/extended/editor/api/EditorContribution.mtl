@@ -1,0 +1,145 @@
+[comment encoding = UTF-8 /]
+[module EditorContribution('http://www.eclipse.org/emf/eef/components/1.0.0', 'http://www.eclipse.org/emf/eef/mapping/1.0.0', 'http://www.eclipse.org/emf/eef/extended/editor/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel', 'http://www.eclipse.org/emf/eef/extended/query/1.0.0','http://www.eclipse.org/emf/eef/mapping/filters/1.0.0')/]
+
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::extended::query::oclquery /]
+[import org::eclipse::emf::eef::codegen::services::imports /]
+
+[comment =================== API ===================== /]
+
+[template public editorInput(input : EEFPageInput)]
+//FIXME: Input of type [input.eClass().name/] not managed. Override 'editorInput' template into EditorContribution to fix this. 
+[/template]
+
+[template public filterDeclaration(filter : BindingFilter)]
+//FIXME: Input of type [filter.eClass().name/] not managed. Override 'filterDeclaration' template into EditorContribution to fix this. 
+[/template]
+
+[template public editorPage(page : EEFPage, editorName : String)]
+//FIXME: Input of type [page.eClass().name/] not managed. Override 'editorPage' template into EditorContribution to fix this. 
+[/template]
+
+[comment =================== Editor Input implementations ===================== /]
+[template public editorInput(input : AllResourcesRootsRelativeInput)]
+	[if (input.query.oclIsUndefined())]
+Object input = getEditingDomain().getResourceSet();
+	[else]
+//FIXME: input not processed
+	[/if]
+[/template]
+
+[template public editorInput(input : FirstResourceRootRelativeInput)]
+Object input = null;
+	[if (input.query.oclIsUndefined())]
+if (getEditingDomain().getResourceSet() != null && getEditingDomain().getResourceSet().getResources().size() > 0) {
+	input = getEditingDomain().getResourceSet().getResources().get(0);
+}
+	[else]
+if (getEditingDomain().getResourceSet() != null && getEditingDomain().getResourceSet().getResources().size() > 0) {
+	Resource resource = getEditingDomain().getResourceSet().getResources().get(0);
+	if (resource.getContents() != null && resource.getContents().size() > 0) {
+		EObject element = resource.getContents().get(0);
+		[input.query.content()/]
+	}
+}
+	[/if]
+[/template]
+
+[comment =================== Filters implementations ===================== /]
+[template public filterImports(peContext : PropertiesEditionContext, filterType : EClass) ? (filterType.name = 'PartFilter')]
+[addImports(Sequence{
+	'org.eclipse.emf.eef.runtime.ui.viewers.filters.PropertiesEditionPartFilter'})/]
+[/template]
+
+[template public filterDeclaration(filter : PartFilter)]
+filters.add(new PropertiesEditionPartFilter("[filter.filteredPart.viewKey(filter.contextualComponent)/]"));
+[/template]
+
+[template public filterImports(peContext : PropertiesEditionContext, filterType : EClass) ? (filterType.name = 'OCLFilter')]
+[addImports(Sequence{
+	'org.eclipse.emf.ecore.EcorePackage',
+	'org.eclipse.jface.viewers.Viewer',
+	'org.eclipse.emf.eef.runtime.query.QueryWrapper'})/]
+[/template]
+
+[template public filterDeclaration(filter : OCLFilter)]
+filters.add(new ViewerFilter() {
+		public boolean select(Viewer viewer, Object parentElement, Object element) {
+			if (element instanceof EObject) {
+				final QueryWrapper query = new OCLQuery(EcorePackage.eINSTANCE.getEObject(), "[filter.OCLBody/]");
+				if (EEFExtendedRuntime.INSTANCE.getProcessor().canEvaluate(query)) {
+					final QueryResult evaluate = EEFExtendedRuntime.INSTANCE.getProcessor().evaluate((EObject) element, query);
+					if (evaluate.evaluationStatus.isOK()) {
+						return (Boolean)evaluate.evaluationResult;
+					}
+				}
+			}
+			return true;
+		}
+	});
+[/template]
+
+[comment =================== Editor page implementations ===================== /]
+[template public pageImports(peContext : PropertiesEditionContext, pageType : EClass) ? (pageType.name = 'TreeMasterPage')]
+[addImports(Sequence{
+	'org.eclipse.emf.eef.runtime.ui.editors.pages.tree.EEFTreeMDFormPage',
+	'org.eclipse.jface.viewers.ISelectionChangedListener',
+	'org.eclipse.jface.viewers.SelectionChangedEvent',
+	'org.eclipse.swt.widgets.Composite'})/]
+[/template]
+
+[template public editorPage(page : TreeMasterPage, editorName : String)]
+final EEFTreeMDFormPage page = new EEFTreeMDFormPage([editorName/].this, "[page.name/]") {
+
+	/**
+	 * {@inheritDoc}
+	 * @see org.eclipse.ui.forms.editor.FormPage#createPartControl(org.eclipse.swt.widgets.Composite)
+	 */
+	public void createPartControl(Composite parent) {
+		super.createPartControl(parent);
+		getModelViewer().addSelectionChangedListener(new ISelectionChangedListener() {
+			// This just notifies those things that are affected by the section.
+			//
+			public void selectionChanged(SelectionChangedEvent selectionChangedEvent) {
+				[editorName/].this.setSelection(selectionChangedEvent.getSelection());
+			}
+		}
+	
+		);
+	}
+	
+};
+page.setInitialMasterPartToolBarVisibility([page.toolbarVisible/]);
+page.setAdapterFactory(adapterFactory);
+page.setEditingDomain(editingDomain);
+[/template]
+
+[template public pageImports(peContext : PropertiesEditionContext, pageType : EClass) ? (pageType.name = 'StandardFormPage')]
+[addImports(Sequence{
+	'org.eclipse.emf.eef.runtime.ui.editors.pages.EEFStandardFormPage'})/]
+[/template]
+
+[template public editorPage(page : StandardFormPage, editorName : String)]
+final EEFStandardFormPage page = new EEFStandardFormPage([editorName/].this, "[page.name/]");
+[if ((not page.title.oclIsUndefined()) and (page.title.size() > 0))]	
+page.setPageTitle("[page.title/]");
+[/if]
+page.setAdapterFactory(adapterFactory);
+page.setEditingDomain(editingDomain);
+[/template]
+
+[template public pageImports(peContext : PropertiesEditionContext, pageType : EClass) ? (pageType.name = 'EEFMasterPage')]
+[addImports(Sequence{
+	'org.eclipse.emf.eef.runtime.ui.editors.pages.eefviewer.EEFPropertiesViewerMDFormPage'})/]
+[/template]
+
+[template public editorPage(page : EEFMasterPage, editorName : String)]
+final EEFPropertiesViewerMDFormPage page = new EEFPropertiesViewerMDFormPage([editorName/].this, "[page.name/]", true, true);
+page.setAdapterFactory(adapterFactory);
+page.setEditingDomain(editingDomain);
+[if ((not page.title.oclIsUndefined()) and (page.title.size() > 0))]	
+page.setPageTitle("[page.title/]");
+[/if]
+[/template]
+

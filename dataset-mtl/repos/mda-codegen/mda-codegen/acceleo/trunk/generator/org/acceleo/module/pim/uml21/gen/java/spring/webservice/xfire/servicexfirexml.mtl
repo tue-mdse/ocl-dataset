@@ -1,0 +1,119 @@
+[module servicexfirexml('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template public fullFilePath(model : Model)]
+[if (model.webservices()->notEmpty())][model.pathToMainResources()/]/META-INF/spring/[model.baseImports()/]/layer-xfire-services.xml[/if]
+[/template][/comment]
+
+
+[template public generateServiceFireSpringApplicationContext(model : Model) ? (model.webservices()->notEmpty())]
+[comment This template is called by the main module file /]
+[file (model.fullFilePath(model.pathToMainResources(), 'META-INF/spring/'.concat(model.baseImports()), 'layer-xfire-services.xml'), false))]
+[model.fullFilePath(model.pathToMainResources(), model.pathToMainResources().concat('/META-INF/spring'), 'layer-xfire-services.xml')/]
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:jee="http://www.springframework.org/schema/jee"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
+           http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.0.xsd
+           http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.0.xsd
+           http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-2.0.xsd">
+
+[for (class:Class|model.webservices())]
+		<!-- XFire Web Service remoting -->
+		<bean id="[class.name.toLowerFirst()/]SessionAware" class="org.springframework.aop.framework.ProxyFactoryBean">
+			<property name="proxyInterfaces">
+				<list>
+					<value>[class._package.getCompleteName()/].I[class.name/]</value>
+					<value>[class._package.getCompleteName()/].I[class.name/]WebService</value>
+	      		</list>
+	   		</property> 
+		 	<property name="interceptorNames">
+	      		<list>
+	        		<value>hibernateInterceptor</value>
+	        		<value>[class.name.toLowerFirst()/]</value>  
+	      		</list>
+	    	</property>	
+		</bean>
+		<bean name="/[class.name.toUpperFirst()/]WebService" parent="xfireServiceTemplate">
+			<property name="serviceBean">
+				<ref bean="[class.name.toLowerFirst()/]SessionAware"/>
+			</property>
+			<property name="serviceInterface">					
+				<value>[class.servicePackage()/].I[class.name/]WebService</value>
+			</property>
+[comment  inheritance bindings support /]			<property name="properties">
+				<map>
+					<entry key="writeXsiType">
+	                	<value type="java.lang.Boolean">true</value>
+	                </entry>
+            		<entry key="overrideTypesList">
+            			<list>                		
+            			[class.genOverrideTypesList()/]
+ 						</list>
+					</entry>
+					<!-- [protected ('WebService bindings')]
+                    I[class.name/]WebService bindings -->					
+					<!-- [/protected] I[class.name/]WebService bindings -->                  
+    			</map>
+    		</property>
+    		<!-- [protected ('WebService custom')]
+ I[class.name/]WebService custom -->			
+			<!-- [/protected] I[class.name/]WebService custom -->    				
+			</bean>			
+[/for]
+ 	<bean class="org.springframework.web.servlet.handler.SimpleUrlHandlerMapping">			
+    	<property name="urlMap">
+        	<map>
+[for (class:Class|model.webservices())]
+            	<entry key="/I[class.name/]WebService">
+                	<ref bean="/[class.name/]WebService"/>
+            	</entry>
+[/for]
+        	</map>
+    	</property>
+    	<property name="interceptors">
+		<list>
+			<!-- [protected ('urlMapping interceptors')]
+            urlMapping interceptors -->			
+			<!-- <ref bean="openSessionInViewInterceptor" /> --> 
+			<!-- [/protected] urlMapping interceptors -->			
+		</list>
+		</property>
+	</bean>
+</beans>
+[/file]
+[/template]
+
+
+[template public genOverrideTypesList(class : Class)]
+[for (param:Parameter|class.ownedOperation.returnResult())]
+	[for (param.type.inheritanceTree())]
+		<value>[param.getCompleteName()/]</value>
+	[/for]
+[/for]
+
+[/template]
+
+
+[query public inheritanceTree(type : Type):Sequence(Class) = 
+type.ancestors()->last().eAllContents(Class)->select(clientDependency->filter(InterfaceRealization).supplier.name = type.name or superClass.name = type.name)->asOrderedSet()->asSequence()
+/]
+

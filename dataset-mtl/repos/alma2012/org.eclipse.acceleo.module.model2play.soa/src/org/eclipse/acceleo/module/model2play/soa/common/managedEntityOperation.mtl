@@ -1,0 +1,51 @@
+[comment encoding = UTF-8 /]
+[**
+ * Implementation "standard" d'un Service gerant les entites (ajout,modification,suppression)
+ */]
+[module managedEntityOperation('http://www.obeonetwork.org/dsl/entity/2.0.0', 'http://www.obeonetwork.org/dsl/soa/2.0.0')]
+
+[import org::eclipse::acceleo::module::model2play::soa::requests::requests/]
+
+[template public generate_operation_body(anOperation : Operation) ? ( get_operation_type() = 'constructor' ) ]
+[get_managed_entity_name()/] [get_managed_entity_name().toLower()/] = new [get_managed_entity_name()/]([comment TODO/]);
+[for(anOperation.input)]
+[if(self.type.name <> anOperation.get_managed_entity_name() )]
+if ( [name/] != null ) {
+	[anOperation.get_managed_entity_name().toLower()/].[name/] = [name/];
+}
+[/if]
+[/for]
+[get_managed_entity_name().toLower()/].save();
+return [get_managed_entity_name().toLower()/];
+[/template]
+
+[template public generate_operation_body(anOperation : Operation) ? ( get_operation_type() = 'destructor' ) ]
+[input->first().name/].delete();
+[/template]
+
+[template public generate_operation_body(anOperation : Operation) ? ( get_operation_type() = 'setter' ) ]
+[comment TODO : Checker quel input est bien l'objet a modifier, et caser dans une request /]
+[for(anOperation.input)]
+[if(self.type.name <> anOperation.get_managed_entity_name() )]
+if ( [name/] != null ) {
+	[anOperation.input->first().name/].[name/] = [name/];
+}
+[/if]
+[/for]
+[anOperation.input->first().name/].save();
+return [anOperation.input->first().name/];
+[/template]
+
+
+[**
+ * The documentation of the template generateOperation.
+ * @param anOperation
+ */]
+[template public generateEntityManagmentOperation(myOperation : Operation)]
+
+// Operation type : [get_operation_type()/]
+
+[generate_operation_body()/]
+[comment TODO : Tenir compte des return/]
+
+[/template]

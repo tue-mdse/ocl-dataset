@@ -1,0 +1,78 @@
+[comment encoding = UTF-8 /]
+[module generate_nodes_h('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+
+[template public generateNode_h(aClass : Class)]
+
+[file (aClass.namespace.name + '/src/' + aClass.name.toUpperFirst() + '.h', false, 'UTF-8')]
+/*
+ * File: [aClass.name.toUpperFirst() +'.h'/]
+ * node [aClass.name/]
+ *
+ * @author: floribot_acceleo
+ */
+
+#ifndef [aClass.name.toUpper()/]_H_
+#define [aClass.name.toUpper()/]_H_
+
+#include <ros/ros.h>
+#include <string>
+[for (port : Port | aClass.ownedPort)]
+#include <[port.type.namespace.name/]/[port.type.name/].h>
+[/for]
+// [protected ('specific includes')]
+// TODO: include your own headers
+// [/protected] don't delete this line
+
+namespace [aClass.namespace.name/] {
+
+class [aClass.name.toUpperFirst()/] 
+{
+public:
+	[aClass.name.toUpperFirst()/](ros::NodeHandle n);
+	virtual ~[aClass.name.toUpperFirst()/]();
+	void tick();
+	int get_tick_rate();
+
+[for (port : Port | aClass.ownedPort)]
+[if (port.isConjugated)]
+	void [port.name.replaceAll('/', '_')/]_message (const [port.type.namespace.name/]::[port.type.name/]::ConstPtr& msg);
+[else]
+	void publish_[port.name.replaceAll('/', '_')/] ([port.type.namespace.name/]::[port.type.name/] msg);
+[/if]
+[/for]
+
+	// [protected ('additional public members')]
+	// TODO: declare your variables and methods
+	// [/protected]  don't delete this line
+private:
+	ros::NodeHandle n_;
+[for (attr : Property | aClass.attribute)]
+	[if (attr.type.name.equalsIgnoreCase('Boolean'))]
+	bool [attr.name/];
+	[elseif (attr.type.name.equalsIgnoreCase('Integer')) ]
+	int [attr.name/];
+	[elseif (attr.type.name.equalsIgnoreCase('Double')) ]
+	double [attr.name/];
+	[elseif (attr.type.name.equalsIgnoreCase('String')) ]
+	std::string [attr.name/];
+	[/if]
+[/for]
+[for (port : Port | aClass.ownedPort)]
+[if (port.isConjugated)]
+	ros::Subscriber [port.name.replaceAll('/', '_')/]_sub;
+[else]
+	ros::Publisher [port.name.replaceAll('/', '_')/]_pub;
+[/if]
+[/for]
+	// [protected ('additional members')]
+	// TODO: declare your variables and methods
+	// [/protected]  don't delete this line
+};
+
+} // end of namespace
+
+#endif /* [aClass.name.toUpper()/]_H_ */
+[/file]
+
+[/template]

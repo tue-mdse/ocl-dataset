@@ -1,0 +1,322 @@
+	[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generate.
+ */]
+[module UID('http://uid/1.0')]
+
+[**
+ * The documentation of the template generateElement.
+ * @param anApp
+ */]
+[template public generateElement(anApp : Application)]
+[comment @main/]
+
+[comment Stages/]
+[for (stage : Stage| anApp.hasViews.hasStage->select(oclIsTypeOf(Stage)))]
+	[generateStage(stage)/]
+[/for] 
+
+[comment Mediators/]
+[for (mediator : Mediator| anApp.hasViews.hasMediator->select(oclIsTypeOf(Mediator)))]
+	[generateMediator(mediator, anApp)/]
+[/for] 
+[generateMediator(anApp.hasMediator, anApp)/]
+
+[comment Controllers/]
+[for (command : Command| anApp.hasControllers.hasCommand->select(oclIsTypeOf(Command)))]
+	[generateCommand(command)/]
+[/for] 
+
+[comment Notifications/]
+[for (notification : Notification| anApp.hasNotifications.hasNotification->select(oclIsTypeOf(Notification)))]
+[/for] 
+
+[generateContext(anApp)/]
+[generateApplication(anApp)/]
+[generateMain(anApp)/]
+
+[/template]
+
+
+[template public generateStage(stage : Stage)]
+[file ('/views/'+stage.name.toString().toUpperFirst()+'.lua', false, 'UTF-8')]
+[stage.name.toString().toUpperFirst()/] = {}
+
+function [stage.name.toString().toUpperFirst()/]:new (parentGroup)
+	local view = RNGroup:new()
+  	view.classType = "[stage.name.toString().toUpperFirst()/]"
+
+	[comment Funktionen generiert durch die in den Komponenten hinterlegten Events/]
+	[generateStageComponentEventFunction(stage)/]
+
+	[generateStageComponentInits(stage)/]
+
+	[generateStageDestroy(stage)/]
+
+	view:init()
+	return view
+end
+return [stage.name.toString().toUpperFirst()/]
+[/file]
+[/template]
+
+[template public generateStageComponentEventFunction(stage : Stage)]
+[comment Button Event-Listener/]
+[for (button : Button| stage.hasButton->select(oclIsTypeOf(Button)))]
+	[for (event : Event| button.hasEvents->select(oclIsTypeOf(Event)))]
+	function view:[button.name.toString().toLowerCase()/]_[event.name.toString().toLowerCase()/](event)    
+		[for (notification : Notification| event.sendsNotification->select(oclIsTypeOf(Notification)))]
+		Runtime:dispatchEvent({name="[notification.name.toLowerFirst()/]"})
+		[/for] 
+	end
+	[/for] 
+[/for] 
+[/template]
+
+[template public generateStageComponentInits(stage : Stage)]
+	function view:init()
+		[generateStageComponentInitsButtons(stage)/]
+		Runtime:dispatchEvent({name="onRobotlegsViewCreated", target=self})
+	end
+[/template]
+
+[template public generateStageComponentInitsButtons(stage : Stage)]
+[comment init Buttons/]
+	[for (button : Button| stage.hasButton->select(oclIsTypeOf(Button)))]
+		self.[button.name.toString().toLowerCase()/] = RNFactory.createButton ( 
+			"./assets/images/[if (button.image_off <> null)][button.image_off/][else]button_off.png[/if]"
+			, {
+			imageOver = "/assets/images/[if (button.image_on <> null)][button.image_on/][else]button_over.png[/if]",
+	  		imageDisabled = "/assets/images/[if (button.image_disabled <> null)][button.image_disabled/][else]button_disabled.png[/if]",
+	[for (event : Event| button.hasEvents->select(oclIsTypeOf(Event)))]
+			[event.callback/] = self.[button.name.toString().toLowerCase()/]_[event.name.toString().toLowerCase()/],
+	[/for] 	
+			font = "./assets/fonts/arial.ttf",
+			width = 200,
+			height = 50,
+			left = [button.x/],
+			top = [button.y/]
+	 	})
+	[/for] 
+[/template]
+
+[template public generateStageDestroy(stage : Stage)]
+	function view:destroy()
+	[for (button : Button| stage.hasButton->select(oclIsTypeOf(Button)))]
+		self.[button.name.toString().toLowerCase()/]:remove()
+	[/for] 
+		Runtime:dispatchEvent({name="onRobotlegsViewDestroyed", target=self})
+		self:removeSelf()
+	end
+[/template]
+	
+
+[template public generateMediator(mediator : Mediator, anApp : Application)]
+[file ('/mediators/'+mediator.name.toString().toUpperFirst()+'.lua', false, 'UTF-8')]
+[mediator.name.toString().toUpperFirst()/] = {}
+
+function [mediator.name.toString().toUpperFirst()/]:new ()
+	local mediator = {}
+
+	[generateMediatorRegister(mediator, anApp)/]
+	[generateMediatorRemove(mediator)/]
+   	[generateMediatorCallbacks(mediator)/]
+  	return mediator
+end
+
+return [mediator.name.toString().toUpperFirst()/]
+[/file]
+[/template]
+
+
+[template public generateMediatorRegister(mediator : Mediator, anApp : Application)]
+	function mediator:onRegister()
+		local view = self.viewInstance
+[for (notificationHandler : NotificationHandler| mediator.hasNotificationHandler->select(oclIsTypeOf(NotificationHandler)))]
+	[for (notification : Notification| notificationHandler.recievesNotification->select(oclIsTypeOf(Notification)))]
+		Runtime:addEventListener("[notification.name.toLowerFirst()/]", self)
+	[/for]
+[/for] 
+[if (mediator = anApp.hasMediator)]
+		view:showView("[anApp.hasInitialView.name.toString().toLowerFirst()/]")
+[/if]
+	end
+[/template]
+
+[template public generateMediatorRemove(mediator : Mediator)]
+	function mediator:onRemove()
+		local view = self.viewInstance
+[for (notificationHandler : NotificationHandler| mediator.hasNotificationHandler->select(oclIsTypeOf(NotificationHandler)))]
+	[for (notification : Notification| notificationHandler.recievesNotification->select(oclIsTypeOf(Notification)))]
+		Runtime:removeEventListener("[notification.name.toLowerFirst()/]", self)
+	[/for]
+[/for] 
+	end
+[/template]
+
+[template public generateMediatorCallbacks(mediator : Mediator)]
+[for (notificationHandler : NotificationHandler| mediator.hasNotificationHandler->select(oclIsTypeOf(NotificationHandler)))]
+	[for (notification : Notification| notificationHandler.recievesNotification->select(oclIsTypeOf(Notification)))]
+	function mediator:[notification.name.toLowerFirst()/](event)  
+	[for (notification : Notification| notificationHandler.sendsNotification->select(oclIsTypeOf(Notification)))]
+		Runtime:dispatchEvent({name="[notification.name.toLowerFirst()/]"}) 
+	[/for]
+	[for (stage : Stage| notificationHandler.changeStageTo->select(oclIsTypeOf(Stage)))]
+		self.viewInstance:showView("[stage.name.toLowerFirst()/]")
+	[/for]
+	end
+	[/for]
+[/for] 
+[/template]
+
+[template public generateCommand(command : Command)]
+[file ('/commands/'+command.name.toString().toUpperFirst()+'.lua', false, 'UTF-8')]
+[command.name.toString().toUpperFirst()/] = {}
+
+function [command.name.toString().toUpperFirst()/]:new()
+	local command = {}
+
+	function command:execute(event)
+[for (notification : Notification| command.hasNotification->select(oclIsTypeOf(Notification)))]
+		Runtime:dispatchEvent({name="[notification.name.toLowerFirst()/]"})
+[/for]      
+	end
+  
+	return command
+end
+
+return [command.name.toString().toUpperFirst()/]
+[/file]
+[/template]
+
+
+[template public generateContext(anApp : Application)]
+[file ('/AppContext.lua', false, 'UTF-8')]
+require "robotlegs.Context"
+
+AppContext = {}
+
+function AppContext:new()
+	local context = Context:new()
+
+	function context:init()
+[for (stage : Stage| anApp.hasViews.hasStage->select(oclIsTypeOf(Stage)))]
+	[for (button : Button| stage.hasButton ->select(oclIsTypeOf(Button)))]
+		[for (event : Event| button.hasEvents ->select(oclIsTypeOf(Event)))]
+			[for (notificationView : Notification| event.sendsNotification->select(oclIsTypeOf(Notification)))]	
+				[for (mediator : Mediator| anApp.hasViews.hasMediator->select(oclIsTypeOf(Mediator)))]
+					[for (notificationHandler : NotificationHandler| mediator.hasNotificationHandler->select(oclIsTypeOf(NotificationHandler)))]
+						[for (notificationMediator : Notification| notificationHandler.recievesNotification->select(oclIsTypeOf(Notification)))]
+							[if (notificationView.name = notificationMediator.name)]
+		self:mapMediator("views.[stage.name.toString().toUpperFirst()/]", "mediators.[mediator.name.toString().toUpperFirst()/]")
+							[/if]
+						[/for] 
+					[/for] 
+				[/for] 			
+			[/for] 
+		[/for] 
+	[/for] 
+[/for] 
+[if (anApp.hasMediator <> null)]
+		self:mapMediator("[anApp.name.toString().toUpperFirst()/]", "mediators.[hasMediator.name.toString().toUpperFirst()/]")
+[/if]
+[for (notification : Notification | anApp.hasNotifications.hasNotification->select(oclIsTypeOf(Notification)))]		
+	[for (command : Command | notification.recievedByCommand->select(oclIsTypeOf(Command)))]		
+		self:mapCommand("[notification.name.toString().toLowerFirst()/]", "commands.[command.name.toString().toUpperFirst()/]")
+	[/for] 
+[/for] 		
+		
+		Runtime:dispatchEvent({name="startup"})
+	end	
+
+	return context
+end
+
+return AppContext
+[/file]
+[/template]
+
+[template public generateApplication(anApp : Application)]
+[file ('/'+anApp.name.toString().toUpperFirst()+'.lua', false, 'UTF-8')]
+require "AppContext"
+[for (stage : Stage| anApp.hasViews.hasStage->select(oclIsTypeOf(Stage)))]
+require "views.[stage.name.toString().toUpperFirst()/]"
+[/for]
+
+[anApp.name.toString().toUpperFirst()/] = {}
+
+function [anApp.name.toString().toUpperFirst()/]:new()
+	local application = RNGroup:new()
+	application.classType = "[anApp.name.toString().toUpperFirst()/]"
+	application.currentView = nil
+	application.currentViewName = nil
+
+	function application:init()
+		local context = AppContext:new()
+		context:init()    
+		Runtime:dispatchEvent({name="onRobotlegsViewCreated", target=self})
+	end
+
+	function application:showView(name)
+		if name == self.currentViewName then
+			return true
+		end
+
+		if self.currentView then
+			self.currentView:destroy()
+			self.currentView = nil
+		end
+
+		local view
+
+		self.currentViewName = name
+
+		if[for (stage : Stage| anApp.hasViews.hasStage->select(oclIsTypeOf(Stage))) separator('    elseif')] name == "[stage.name.toString().toLowerFirst()/]" then
+      		view = [stage.name.toString().toUpperFirst()/]:new(self)
+		[/for]
+		end 
+
+		self.currentView = view
+	end
+
+	application:init()
+
+	return application
+end
+
+return [anApp.name.toString().toUpperFirst()/]
+
+
+[/file]
+[/template]
+
+[template public generateMain(anApp : Application)]
+[file ('main.lua', false, 'UTF-8')]
+require("config")
+require("rapanui-sdk.rapanui")
+require("eventHandler")
+Runtime = eventHandler:new()
+
+local function startThisMug()
+  RNMainThread.removeAction(actionId)
+	local function bootstrap()
+		require "[anApp.name.toString().toUpperFirst()/]"
+		local app = [anApp.name.toString().toUpperFirst()/]:new()
+
+		function showProps(o)
+			for key,value in pairs(o) do
+				print("key: ", key, ", value: ", value);
+			end
+			print("-- end showProps --")
+		end
+	end
+
+	bootstrap()
+end	
+
+actionId = RNMainThread.addTimedAction(0.5, startThisMug)
+[/file]
+[/template]
+
+
+[query public getBrackets() : String = '[]'/]

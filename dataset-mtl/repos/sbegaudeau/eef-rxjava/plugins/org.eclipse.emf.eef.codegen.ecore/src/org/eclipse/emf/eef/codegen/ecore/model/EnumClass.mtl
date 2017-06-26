@@ -1,0 +1,343 @@
+[comment encoding = UTF-8 /]
+[module EnumClass('http://www.eclipse.org/emf/2002/GenModel')/]
+
+[import org::eclipse::emf::eef::codegen::ecore::services::common /]
+[import org::eclipse::emf::eef::codegen::ecore::services::header /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenModel /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenPackage /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenEnum /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenEnumLiteral /]
+[import org::eclipse::emf::eef::codegen::ecore::services::StringUtil /]
+
+[template public enumClass(genEnum : GenEnum)]
+[comment
+/**
+ * <copyright>
+ *
+ * Copyright (c) 2002-2007 IBM Corporation and others.
+ * All rights reserved.   This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *   IBM - Initial API and implementation
+ *
+ * </copyright>
+ */
+/]
+[let genPackage : GenPackage = genEnum.genPackage]
+[let genModel : GenModel = genPackage.genModel]
+[let packageName : String = genPackage.getInterfacePackageName()]
+[let enumName : String = genEnum.getName()]
+
+[genModel.initializeImportManager(genPackage, packageName, enumName)/]
+[genModel.addImport('java.util.Arrays')/]
+[genModel.addImport('java.util.List')/]
+[genModel.addImport('java.util.Collections')/]
+
+
+
+[file (genEnum.enumFilePath(), false, 'UTF-8')]
+[genModel.includeHeader()/]
+package [packageName/];
+[let content : String = genEnum.enumFileContent(genModel, genPackage)]
+[genModel.genSortedImports()/]
+[content/][/let]
+[/file]
+
+
+
+[/let][comment enumName /]
+[/let][comment packageName /]
+[/let][comment genModel /]
+[/let][comment genPackage /]
+[/template]
+
+[template protected enumFileContent(genEnum : GenEnum, genModel : GenModel, genPackage : GenPackage) ]
+[let isEnum : Boolean = genModel.useGenerics()]
+/**
+ * <!-- begin-user-doc -->
+ * A representation of the literals of the enumeration '<em><b>[genEnum.getFormattedName()/]</b></em>',
+ * and utility methods for working with them.
+ * <!-- end-user-doc -->
+[if (genEnum.hasDocumentation())]
+ * <!-- begin-model-doc -->
+ * [genEnum.getDocumentation(genModel.getIndentation())/]
+ * <!-- end-model-doc -->
+[/if]
+ * @see [genPackage.getQualifiedPackageInterfaceName()/]#get[genEnum.getName()/]()
+  [if (not genModel.suppressEMFModelTags)]
+    [let modelInfoLines : Sequence(String) = genEnum.getModelInfo().tokenize(genModel.getLineDelimiter() + '\r')]
+      [if (modelInfoLines->isEmpty())]
+ * @model
+      [else]
+ * @model [modelInfoLines->sep(genModel.getLineDelimiter() + ' *        ')/]
+      [/if]
+    [/let]
+  [/if]
+ * @generated
+ */
+public [if (isEnum)]enum[else]final class[/if] [genEnum.getName()/] [if (isEnum)]implements[else]extends[/if] [if (genModel.suppressEMFMetaData and not genModel.suppressInterfaces)]Internal[genEnum.getName()/][else][genModel.getImportedName(if (isEnum) then 'org.eclipse.emf.common.util.Enumerator' else 'org.eclipse.emf.common.util.AbstractEnumerator' endif)/][/if] {
+[if (isEnum)]
+  [if (genEnum.genEnumLiterals->isEmpty())]
+	;
+
+  [else]
+[genEnum.genEnumLiterals.genEnumLiteralTemplate(genModel)->sep(',' + genModel.getNonNLS() + genModel.getNonNLS(2) + genModel.getLineDelimiter() + genModel.getLineDelimiter())/];[genModel.getNonNLS()/][genModel.getNonNLS(2)/]
+
+  [/if]
+[/if]
+[if (genModel.hasCopyrightField())]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public static final [genModel.getImportedName('java.lang.String')/] copyright = [genModel.getCopyrightFieldLiteral()/];[genModel.getNonNLS()/]
+
+[/if]
+[for (genEnumLiteral : GenEnumLiteral | genEnum.genEnumLiterals)]
+	/**
+	 * The '<em><b>[genEnumLiteral.getFormattedName()/]</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+[if (not genEnumLiteral.hasDocumentation())]
+	 * <p>
+	 * If the meaning of '<em><b>[genEnumLiteral.getFormattedName()/]</b></em>' literal object isn't clear,
+	 * there really should be more of a description here...
+	 * </p>
+[/if]
+	 * <!-- end-user-doc -->
+[if (genEnumLiteral.hasDocumentation())]
+	 * <!-- begin-model-doc -->
+	 * [genEnumLiteral.getDocumentation(genModel.getIndentation())/]
+	 * <!-- end-model-doc -->
+[/if]
+	 * @see #[genEnumLiteral.getEnumLiteralInstanceConstantName()/]
+    [if (not genModel.suppressEMFModelTags)]
+      [let modelInfoLines : Sequence(String) = genEnumLiteral.getModelInfo().tokenize(genModel.getLineDelimiter() + '\r')]
+        [if (modelInfoLines->isEmpty())]
+	 * @model
+        [else]
+	 * @model [modelInfoLines->sep(genModel.getLineDelimiter() + '\t *        ')/]
+        [/if]
+      [/let]
+    [/if]
+	 * @generated
+	 * @ordered
+	 */
+	public static final int [genEnumLiteral.getEnumLiteralValueConstantName()/] = [genEnumLiteral.getValue()/];
+
+[/for]
+[if (not isEnum)]
+  [for (genEnumLiteral : GenEnumLiteral | genEnum.genEnumLiterals)]
+	/**
+	 * The '<em><b>[genEnumLiteral.getFormattedName()/]</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #[genEnumLiteral.getEnumLiteralValueConstantName()/]
+	 * @generated
+	 * @ordered
+	 */
+	public static final [genEnum.getName()/] [genEnumLiteral.getEnumLiteralInstanceConstantName()/] = new [genEnum.getName()/]([genEnumLiteral.getEnumLiteralValueConstantName()/], "[genEnumLiteral.getName()/]", [genModel.toStringLiteral(genEnumLiteral.getLiteral())/]);[genModel.getNonNLS()/][genModel.getNonNLS(2)/]
+
+  [/for]
+[/if]
+	/**
+	 * An array of all the '<em><b>[genEnum.getFormattedName()/]</b></em>' enumerators.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private static final [genEnum.getName()/]['[]'/] VALUES_ARRAY =
+		new [genEnum.getName()/]['[]'/] {
+[for (genEnumLiteral : GenEnumLiteral | genEnum.genEnumLiterals)]
+			[genEnumLiteral.getEnumLiteralInstanceConstantName()/],
+[/for]
+		};
+
+	/**
+	 * A public read-only list of all the '<em><b>[genEnum.getFormattedName()/]</b></em>' enumerators.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public static final List[if (isEnum)]<[genEnum.getName()/]>[/if] VALUES = Collections.unmodifiableList(Arrays.asList(VALUES_ARRAY));
+
+	/**
+	 * Returns the '<em><b>[genEnum.getFormattedName()/]</b></em>' literal with the specified literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public static [genEnum.getName()/] get([genModel.getImportedName('java.lang.String')/] literal) {
+		for (int i = 0; i < VALUES_ARRAY.length; ++i) {
+			[genEnum.getName()/] result = VALUES_ARRAY['[i]'/];
+			if (result.toString().equals(literal)) {
+				return result;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Returns the '<em><b>[genEnum.getFormattedName()/]</b></em>' literal with the specified name.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public static [genEnum.getName()/] getByName([genModel.getImportedName('java.lang.String')/] name) {
+		for (int i = 0; i < VALUES_ARRAY.length; ++i) {
+			[genEnum.getName()/] result = VALUES_ARRAY['[i]'/];
+			if (result.getName().equals(name)) {
+				return result;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Returns the '<em><b>[genEnum.getFormattedName()/]</b></em>' literal with the specified integer value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public static [genEnum.getName()/] get(int value) {
+		switch (value) {
+[for (genEnumLiteral : GenEnumLiteral | genEnum.getUniqueValuedGenEnumLiterals())]
+			case [genEnumLiteral.getEnumLiteralValueConstantName()/]: return [genEnumLiteral.getEnumLiteralInstanceConstantName()/];
+[/for]
+		}
+		return null;
+	}
+
+[if (isEnum)]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private final int value;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private final [genModel.getImportedName('java.lang.String')/] name;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private final [genModel.getImportedName('java.lang.String')/] literal;
+
+[/if]
+	/**
+	 * Only this class can construct instances.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private [genEnum.getName()/](int value, [genModel.getImportedName('java.lang.String')/] name, [genModel.getImportedName('java.lang.String')/] literal) {
+[if (isEnum)]
+		this.value = value;
+		this.name = name;
+		this.literal = literal;
+[else]
+		super(value, name, literal);
+[/if]
+	}
+
+[if (isEnum)]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public int getValue() {
+	  return value;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public [genModel.getImportedName('java.lang.String')/] getName() {
+	  return name;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public [genModel.getImportedName('java.lang.String')/] getLiteral() {
+	  return literal;
+	}
+
+	/**
+	 * Returns the literal value of the enumerator, which is its string representation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+  [if (genModel.useClassOverrideAnnotation())]
+	@Override
+  [/if]
+	public [genModel.getImportedName('java.lang.String')/] toString() {
+		return literal;
+	}
+	
+[/if]
+} //[genEnum.getName()/]
+[if (genModel.suppressEMFMetaData and not genModel.suppressInterfaces )]
+
+  [if (isEnum)]
+/**
+ * A private implementation interface used to hide the inheritance from Enumerator.
+ * <!-- begin-user-doc -->
+ * <!-- end-user-doc -->
+ * @generated
+ */
+interface Internal[genEnum.getName()/] extends org.eclipse.emf.common.util.Enumerator {
+	// Empty 
+}
+  [else]
+/**
+ * A private implementation class to construct the instances.
+ * <!-- begin-user-doc -->
+ * <!-- end-user-doc -->
+ * @generated
+ */
+class Internal[genEnum.getName()/] extends org.eclipse.emf.common.util.AbstractEnumerator {
+	/**
+	 * Only this class can construct instances.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected Internal[genEnum.getName()/](int value, [genModel.getImportedName('java.lang.String')/] name, [genModel.getImportedName('java.lang.String')/] literal) {
+		super(value, name, literal);
+	}
+}
+  [/if][comment isEnum /]
+[/if]
+[/let][comment isEnum /]
+[/template]
+
+[template public genEnumLiteralTemplate (genEnumLiteral : GenEnumLiteral, genModel : GenModel) ]
+	/**
+	 * The '<em><b>[genEnumLiteral.getFormattedName()/]</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #[genEnumLiteral.getEnumLiteralValueConstantName()/]
+	 * @generated
+	 * @ordered
+	 */
+	[genEnumLiteral.getEnumLiteralInstanceConstantName()/]([genEnumLiteral.getValue()/], "[genEnumLiteral.getName()/]", [genModel.toStringLiteral(genEnumLiteral.getLiteral())/])[/template]
+
+[query public enumFilePath(genEnum : GenEnum) : String
+	= genEnum.getGenModel().extractSourceDirectory(genEnum.getGenModel().modelDirectory) + '/' + genEnum.getQualifiedName().toPath() + '.java' /]

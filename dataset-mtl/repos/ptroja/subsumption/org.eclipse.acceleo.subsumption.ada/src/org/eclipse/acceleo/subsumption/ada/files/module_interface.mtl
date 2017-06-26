@@ -1,0 +1,75 @@
+[comment encoding = UTF-8 /]
+[module module_interface('http://subsumption/1.0')/]
+
+[template public module_interface(aModule : Module)]
+
+[file (aModule.name+'_module.ads', false, 'UTF-8'))]
+with [aModule.name/]_buffers; use [aModule.name/]_buffers;
+
+package [aModule.name/]_module is
+   -- This is remote interface to the agent
+   pragma Remote_Call_Interface;
+
+   -- remote access to the input buffers
+   [for (aModule.inputs)]
+   procedure Transmit_[self.name/](item : in [self.name/]_Buffer.Buffer_Data_Type);
+   [/for]
+
+   -- remote access to the output inhibitors
+   [for (aOutput : Output | aModule.outputs)]
+   [for (aOutput.inhibitedBy)]
+   procedure Inhibit_[aOutput.name/]_[i/];
+   [/for]
+   [/for]
+   
+   -- remote access to the input suppressors
+   [for (aInput : Input | aModule.inputs)]
+   [for (aInput.suppressedBy)]
+   procedure Suppress_[aInput.name/]_[i/] (item : in [aInput.name/]_Buffer.Buffer_Data_Type);
+   [/for]
+   [/for]    
+end [aModule.name/]_module;
+[/file]
+
+[if self.inputs->notEmpty() or self.outputs.inhibitedBy->notEmpty()]
+[file (aModule.name+'_module.adb', false, 'UTF-8'))]
+-- Module data types
+with [self.name/]_buffers; use [self.name/]_buffers;
+
+-- Input/Output state
+with [self.name/]_module_io; use [self.name/]_module_io;
+
+package body [self.name/]_module is
+
+   -- remote access to the input buffers
+   [for (self.inputs) separator ('\n')]
+   procedure Transmit_[name/] (item : in [name/]_Buffer.Buffer_Data_Type) is
+   begin
+      Protected_IO.Transmit_[name/] (item);
+   end Transmit_[name/];
+   [/for]
+
+   -- remote access to the output inhibitors
+   [for (aOutput : Output | self.outputs) separator ('\n')]
+   [for (aOutput.inhibitedBy)]
+   procedure Inhibit_[aOutput.name/]_[i/] is
+   begin
+      Protected_IO.Inhibit_[aOutput.name/]_[i/];
+   end Inhibit_[aOutput.name/]_[i/];
+   [/for]
+   [/for]
+   
+   -- remote access to the input suppressors
+   [for (aInput : Input | self.inputs) separator ('\n')]
+   [for (aInput.suppressedBy)]
+   procedure Suppress_[aInput.name/]_[i/] (item : in [aInput.name/]_Buffer.Buffer_Data_Type) is
+   begin
+      Protected_IO.Suppress_[aInput.name/]_[i/] (item);
+   end Suppress_[aInput.name/]_[i/];
+   [/for]
+   [/for]   
+end [aModule.name/]_module;
+[/file]
+[/if]
+
+[/template]

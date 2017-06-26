@@ -1,0 +1,81 @@
+[comment encoding = UTF-8 /]
+[module schema('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::acceleo::module::publicdocs::common::util /]
+
+[template public beginSchema(list : String, pack : Package, version: String)]
+<?xml version="1.0" encoding="UTF-8"?>
+<[getNS('xs')/]:schema
+	targetNamespace="[getURIFromPackName(pack.name)/]"
+	xmlns="[getURIFromPackName(pack.name)/]"
+	[for (packName: String | list.tokenize(','))]
+	[if packName <> pack.name]
+	[importNamespace(packName)/]
+	[/if]
+	[/for]
+	xmlns:[getNS('xs')/]="http://www.w3.org/2001/XMLSchema"	
+	elementFormDefault="qualified"
+	attributeFormDefault="unqualified"
+	version="[version/]">
+	<[getNS('xs')/]:annotation>	
+		<[getNS('xs')/]:documentation xml:lang="en">
+	        [getConf('title_model')/] [version/]
+	        Copyright (C) European Union, [getTodayDate('yyyy')/]
+	        Licensed under the [getConf('licence_model')/]
+	        Original authors:
+	        [addAuthor('author1')/],
+	        [addAuthor('author2')/],
+	        [addAuthor('author3')/]
+		</[getNS('xs')/]:documentation>
+	</[getNS('xs')/]:annotation>
+[/template]
+
+[template public addAuthor(author : String)]
+[getName(author)/] ([getEmail(author)/])
+[/template]
+
+[template public importNamespace(packName : String)]
+[insertXmlns(packName, getURIFromPackName(packName))/]
+[/template]
+
+[template public insertXmlns(namespace : String, url: String)]
+xmlns:[namespace/]="[url/]"	
+[/template]
+
+[template public importXSD(list : String)]
+<!-- ===== Imports======================================== -->
+[for (packName: String | list.tokenize(','))]
+[importPack(packName)/]
+[/for]  
+<!-- ===================================================== -->
+[/template]
+
+[template public importPack(packName : String)]
+[insertImport(getURIFromPackName(packName), getPathFromPackName(packName))/]
+[/template]
+
+[template public insertImport(url : String, location: String)]
+<[getNS('xs')/]:import namespace="[url/]"
+		   schemaLocation="[location/]"/>
+[/template]
+
+[template public includeXSD(list : String)]
+<!-- ===== Includes======================================= -->
+[for (packName: String | list.tokenize(','))]
+[includePack(packName)/]
+[/for]  
+<!-- ===================================================== -->
+[/template]
+
+[template public includePack(packName : String)]
+[insertInclude(getPathFromPackName(packName))/]
+[/template]
+
+[template public insertInclude(location: String)]
+<[getNS('xs')/]:include schemaLocation="[location/]"/>
+[/template]
+
+
+[template public endSchema(pack : Package, version: String)]
+</[getNS('xs')/]:schema>
+[/template]

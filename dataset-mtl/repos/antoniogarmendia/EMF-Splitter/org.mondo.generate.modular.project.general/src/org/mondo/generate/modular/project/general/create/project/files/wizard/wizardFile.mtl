@@ -1,0 +1,70 @@
+[comment encoding = UTF-8 /]
+[module wizardFile('http://www.eclipse.org/emf/2002/Ecore', 'http://mondo.org/runtimePatterns')]
+[import org::mondo::generate::modular::project::general::create::project::request::generalQueries /]
+
+[template public generateWizardFile(anProjectName : String, anPatternInstances : PatternInstances)]
+
+[for (c :  ClassRoleInstance | anPatternInstances.getClassesRoleProject())]
+
+	[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name')).replaceAll('\\.','/').
+					concat('/wizard/folder/'+ c.element.name +'CreateFolderWizard.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].wizard.folder;	
+
+import org.eclipse.core.resources.IProject;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.TreeSelection;
+import org.eclipse.ui.IWorkbench;
+import [anProjectName.toLower()/].[getProperty('prefix_name')/].[c.element.name.toLower()/].wizard.[c.element.name/]NewProjectWizard;
+import [anProjectName.toLower()/].[getProperty('prefix_name')/].[c.element.name.toLower()/].ModularModel;
+import [anProjectName.toLower()/].[getProperty('prefix_name')/].[c.element.name.toLower()/].wizard.[c.element.name/]NewProjectInfo;
+
+public class [c.element.name /]CreateFolderWizard extends [c.element.name/]NewProjectWizard {
+
+	public IProject project;
+
+	public [c.element.name /]CreateFolderWizard() {
+		super();
+	}
+
+	@Override
+	public void init(IWorkbench workbench, IStructuredSelection selection) {
+		super.init(workbench, selection);
+		
+		// obtain current project selection
+		TreeSelection treeselection = (TreeSelection)selection;
+		Object firstelement = treeselection.getFirstElement();
+		if(firstelement instanceof IProject)
+			this.project = (IProject) firstelement;
+	}
+
+	@Override
+	public boolean performFinish() {
+		
+		projectInfo = new [c.element.name/]NewProjectInfo(mainpage.Get_Features());
+		String addr = mainpage.getDiagram_address();
+		if(addr != null) {
+			
+			URI addrURI = URI.createFileURI(addr);
+			if(addrURI.isFile()){
+				
+				ModularModel createProject = new ModularModel();
+				createProject.reverseEngineeringContainer(addrURI,project);				
+			}
+			
+		} else {
+			projectInfo.setProject(project);
+			projectInfo.createFolder();
+		}
+		
+		evaluateSiriusProjectCreation();
+		return true;
+	}
+
+}
+
+	[/file]
+
+[/for]
+
+[/template]

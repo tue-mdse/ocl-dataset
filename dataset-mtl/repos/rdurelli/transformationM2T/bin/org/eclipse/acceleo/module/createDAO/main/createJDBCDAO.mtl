@@ -1,0 +1,232 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module createJDBCDAO.
+ */]
+[module createJDBCDAO('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+
+[**
+ * The documentation of the template createJDBCDAO.
+ * Created by Rafael Durelli
+ * @param aClass
+ */]
+[template public createJDBCDAO(aClass : Class)]
+
+[file ('/br/com/uspicmc/modernization/DAO/implement/JDBC/JDBC'+aClass.name.toLower().toUpperFirst().concat('DAO').concat('.java'), false, 'UTF-8')]
+
+package br.com.uspicmc.modernization.DAO.implement.JDBC;
+
+import java.util.ArrayList;
+import java.util.List;
+
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+
+import br.com.uspicmc.modernization.DAO.[aClass.name.toLower().toUpperFirst()/]DAO;
+import br.com.uspicmc.modernization.DAO.entity.*;
+import br.com.uspicmc.modernization.DAO.factory.JDBC.ConnectionFactory;
+
+/**
+ * 
+ * @author Rafael Durelli
+ * @version v1
+ */
+public class JDBC[aClass.name.toLower().toUpperFirst()/]DAO implements [aClass.name.toLower().toUpperFirst()/]DAO  {
+
+	private Connection connection = null;
+	
+	public JDBCAlunoDAO(){
+		
+		if (this.connection == null) {
+			
+			this.connection = ConnectionFactory.getInstance();
+			
+		}
+		
+	}
+	
+	@Override
+	public void save([aClass.name.toLower().toUpperFirst()/] [aClass.name.toLower()/]){
+		
+		String sql = "INSERT INTO [aClass.name.toUpper()/] ( [for (p : Property | aClass.attribute) separator (', ')] [p.name/][/for]) values ([for (p : Property | aClass.attribute) separator (', ')]?[/for])";
+		PreparedStatement stmt = null;
+		try {
+			stmt = this.connection.prepareStatement(sql);
+			
+						
+
+			[for (p : Property | aClass.attribute) ]
+			[if (p.type.name.equalsIgnoreCase('VARCHAR'))] stmt.setString([i/], [aClass.name.toLower()/].get[p.name.toUpperFirst()/]() );[elseif (p.type.name.equalsIgnoreCase('INT'))] stmt.setInt([i/], [aClass.name.toLower()/].get[p.name.toUpperFirst()/]() ); [/if]
+			[/for]
+		
+			stmt.execute();
+			stmt.close();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+
+	public void delete([aClass.name.toLower().toUpperFirst()/] [aClass.name.toLower()/]) {
+		
+		String sql = "DELETE FROM [aClass.name.toUpper()/] WHERE [aClass.attribute->asOrderedSet()->at(1).name/] = ?";
+		PreparedStatement stmt = null;
+		try {
+			stmt = this.connection.prepareStatement(sql);
+			[if (aClass.attribute->asOrderedSet()->at(1).type.name.equalsIgnoreCase('VARCHAR'))] stmt.setString(1, [aClass.name.toLower()/].get[aClass.attribute->asOrderedSet()->at(1).name.toUpperFirst()/]() );[elseif (aClass.attribute->asOrderedSet()->at(1).type.name.equalsIgnoreCase('INT'))] stmt.setInt(1, [aClass.name.toLower()/].get[aClass.attribute->asOrderedSet()->at(1).name.toUpperFirst()/]() ); [/if]
+			stmt.execute();
+			stmt.close();
+		}catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+
+	}
+
+	public List<[aClass.name.toLower().toUpperFirst()/]> list () {
+		
+		List<[aClass.name.toLower().toUpperFirst()/]> args = new ArrayList<[aClass.name.toLower().toUpperFirst()/]>();
+		
+		String sql = "SELECT * FROM [aClass.name.toUpper()/]";
+		
+		PreparedStatement stmt = null;
+		
+		try {
+			stmt = this.connection.prepareStatement(sql);
+			ResultSet rSet = stmt.executeQuery();
+			
+			while (rSet.next()) {
+				
+				[aClass.name.toLower().toUpperFirst()/] al = new [aClass.name.toLower().toUpperFirst()/]();
+				
+				[for (p : Property | aClass.attribute) separator ('\n')]
+				al.set[p.name.toUpperFirst()/](rSet.get[if (p.type.name.equalsIgnoreCase('VARCHAR'))]String("[p.name/]"));[elseif (p.type.name.equalsIgnoreCase('INT'))]Int("[p.name/]")); [/if]
+				[/for]
+				
+				args.add(al);//add [aClass.name.toLower().toUpperFirst()/] to the Collection
+				
+			}
+			rSet.close();
+			stmt.close();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return args;
+				
+	}
+
+
+	public [aClass.name.toLower().toUpperFirst()/] find ([if (aClass.attribute->asOrderedSet()->at(1).type.name.equalsIgnoreCase('VARCHAR'))] String [aClass.attribute->asOrderedSet()->at(1).name.toLowerFirst()/])[elseif (aClass.attribute->asOrderedSet()->at(1).type.name.equalsIgnoreCase('INT'))] Integer [aClass.attribute->asOrderedSet()->at(1).name.toLowerFirst()/])[/if]{
+		
+		[aClass.name.toLower().toUpperFirst()/] [aClass.name.toLower()/]Local = new  [aClass.name.toLower().toUpperFirst()/]();
+		
+		String sql = "SELECT * FROM [aClass.name.toLower().toUpperFirst()/] WHERE [aClass.name.toLower().toUpper()/].[aClass.attribute->asOrderedSet()->at(1).name/] = ?";
+									
+		
+		PreparedStatement stmt = null;
+		
+		try {
+			
+			stmt = this.connection.prepareStatement(sql);
+			
+			[if (aClass.attribute->asOrderedSet()->at(1).type.name.equalsIgnoreCase('VARCHAR'))] stmt.setString(1, [aClass.attribute->asOrderedSet()->at(1).name.toLowerFirst()/]);[elseif (aClass.attribute->asOrderedSet()->at(1).type.name.equalsIgnoreCase('INT'))] stmt.setInt(1, [aClass.attribute->asOrderedSet()->at(1).name.toLowerFirst()/]); [/if]
+			
+			ResultSet rSet = stmt.executeQuery();
+			
+			while (rSet.next()) {
+				
+				[for (p : Property | aClass.attribute) separator ('\n')]
+				[aClass.name.toLower()/]Local.set[p.name.toUpperFirst()/](rSet.get[if (p.type.name.equalsIgnoreCase('VARCHAR'))]String("[p.name/]"));[elseif (p.type.name.equalsIgnoreCase('INT'))]Int("[p.name/]")); [/if]
+				[/for]
+				
+			}
+			
+			
+		} catch (SQLException e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		
+		return [aClass.name.toLower()/]Local;
+		
+	}
+	
+
+	public void update([aClass.name.toLower().toUpperFirst()/] [aClass.name.toLower()/]){
+		
+	PreparedStatement stmt = null;
+	
+	String sql = "UPDATE [aClass.name.toLower().toUpper()/] set [for (p : Property | aClass.attribute) separator (', ')] [p.name/] = ?[/for] WHERE [aClass.name.toUpper()/].[aClass.attribute->asOrderedSet()->at(1).name/] = ?"; 
+
+	try {
+			stmt = this.connection.prepareStatement(sql);
+			
+			[for (p : Property | aClass.attribute) ]
+			[if (p.type.name.equalsIgnoreCase('VARCHAR'))] stmt.setString([i/], [aClass.name.toLower()/].get[p.name.toUpperFirst()/]() );[elseif (p.type.name.equalsIgnoreCase('INT'))] stmt.setInt([i/], [aClass.name.toLower()/].get[p.name.toUpperFirst()/]() ); [/if]
+			[/for]
+			[if (aClass.attribute->asOrderedSet()->at(1).type.name.equalsIgnoreCase('VARCHAR'))] stmt.setString([aClass.attribute->size()+1/], [aClass.name.toLower()/].get[aClass.attribute->asOrderedSet()->at(1).name.toUpperFirst()/]() );[elseif (aClass.attribute->asOrderedSet()->at(1).type.name.equalsIgnoreCase('INT'))] stmt.setInt([aClass.attribute->size()+1/], [aClass.name.toLower()/].get[aClass.attribute->asOrderedSet()->at(1).name.toUpperFirst()/]() ); [/if]
+		
+			stmt.execute();
+			stmt.close();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	
+		
+	}
+
+	public [aClass.name.toLower().toUpperFirst()/] select([aClass.name.toLower().toUpperFirst()/] [aClass.name.toLower()/]) {
+	
+	[aClass.name.toLower().toUpperFirst()/] [aClass.name.toLower()/]Local = new  [aClass.name.toLower().toUpperFirst()/]();
+
+	String sql = "SELECT * FROM [aClass.name.toLower().toUpper()/] WHERE [aClass.name.toUpper()/].[aClass.attribute->asOrderedSet()->at(1).name/] = ?";
+	
+	PreparedStatement stmt = null;
+		
+		try {
+			
+			stmt = this.connection.prepareStatement(sql);
+			
+			[if (aClass.attribute->asOrderedSet()->at(1).type.name.equalsIgnoreCase('VARCHAR'))] stmt.setString(1, [aClass.name.toLower()/].get[aClass.attribute->asOrderedSet()->at(1).name.toUpperFirst()/]() );[elseif (aClass.attribute->asOrderedSet()->at(1).type.name.equalsIgnoreCase('INT'))] stmt.setInt(1, [aClass.name.toLower()/].get[aClass.attribute->asOrderedSet()->at(1).name.toUpperFirst()/]() ); [/if]
+			
+			ResultSet rSet = stmt.executeQuery();
+			
+			while (rSet.next()) {
+				
+				[for (p : Property | aClass.attribute) separator ('\n')]
+				[aClass.name.toLower()/]Local.set[p.name.toUpperFirst()/](rSet.get[if (p.type.name.equalsIgnoreCase('VARCHAR'))]String("[p.name/]"));[elseif (p.type.name.equalsIgnoreCase('INT'))]Int("[p.name/]")); [/if]
+				[/for]
+				
+			}
+			
+			
+		} catch (SQLException e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		
+		return [aClass.name.toLower()/]Local;	
+	
+		
+
+
+	}
+
+}
+
+[/file]
+[/template]
+
+[template public newClassTemplate (aClass : Class) ]
+x, y, z
+[/template]

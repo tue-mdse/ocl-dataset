@@ -1,0 +1,115 @@
+[module daofactory('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon/]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[comment][template private fullFilePath(model:Model)]
+[model.pathToMainJava()/]/[model.daoFactoryPackage().toPath()/]/[model.projectName().toUpperFirst()/]DaoFactory.java
+[/template][/comment]
+
+
+[template public generateDaoFactory(model:Model)]
+[comment This template is called by the main module file /]
+[file (model.fullFilePath(model.pathToMainJava(),model.daoFactoryPackage().toPath(), model.projectName().toUpperFirst().concat('DaoFactory.java')), false))]
+package [model.daoFactoryPackage()/];
+
+import java.util.MissingResourceException;
+import java.util.ResourceBundle;
+
+[model.importDaoException()/]
+[for (class:Class|model.eAllContents()->filter(Class)->select(isEntity() or isDao())->asSet())]
+import [class.daoInterfaceQualifiedName()/];
+[/for]
+
+/**
+ * Factory in charge of creating the appropriate instances of DAO objects by
+ * using the properties in the dao.properties resource bundle.
+ */
+public class [model.projectName().toUpperFirst()/]DaoFactory {
+    
+    /**
+     * Constant that represents the name of the bundle with the DAO mappings.
+     */
+    private static final String FILE_DAO_MAPPING = "dao";
+    
+    /**
+     * ResourceBundle that contains the mappings between interfaces and their
+     * implementations.
+     */
+    private static ResourceBundle bundle =
+        ResourceBundle.getBundle(FILE_DAO_MAPPING);
+
+    /**
+     * Protected constructor to prevent instanciation. See
+     * <a href="http://checkstyle.sourceforge.net/config_design.html">this
+     * CheckStyle site's page</a> for details (section DesignForExtension).
+     */
+    protected [model.projectName().toUpperFirst()/]DaoFactory() {
+        // prevents subclass calls
+        throw new UnsupportedOperationException();
+    }
+
+[comment  All Entity class and DAO customized class are gatherd here /]
+[for (class:Class|model.allOwnedElements()->filter(Class)->select(isEntity() or isDao()))]
+    /**
+     * Factory method which provides the appropriate implementation for the
+     * [class.daoInterfaceName()/] DAO interface.
+     * @return Returns an instance of a class that implements
+     * [class.daoInterfaceName()/] as specified in the mapping bundle.
+     * @throws DaoException If the declared implementation cannot be found or
+     * cannot be instanciated.
+     */
+    public static [class.packageDeclaration()/][class.daoInterfaceName()/] get[class.getterPrefix()/][class.name/]Dao() throws DaoException {
+        try {
+            String className = bundle.getString([class.packageDeclaration()/][class.daoInterfaceName()/].class.getName());
+
+            // Cast and instanciate with JDK 1.5 control
+            Class< ? extends [class.packageDeclaration()/][class.daoInterfaceName()/]> daoClass = 
+                Class.forName(className).asSubclass([packageDeclaration()/][class.daoInterfaceName()/].class);
+            return daoClass.newInstance();
+        } catch (MissingResourceException e) {
+            throw new DaoException("Key "
+                    + [class.packageDeclaration()/][class.daoInterfaceName()/].class.getName()
+                    + " not found in " + FILE_DAO_MAPPING + ".properties", e);
+        } catch (ClassNotFoundException e) {
+            throw new DaoException("DAO implementation not found for "
+                    + [class.packageDeclaration()/][class.daoInterfaceName()/].class.getName(),
+                    e);
+        } catch (InstantiationException e) {
+            throw new DaoException(e);
+        } catch (IllegalAccessException e) {
+            throw new DaoException(e);
+        }   
+    }
+    
+[/for]
+}
+
+[/file]
+[/template]
+
+
+[query public packageDeclaration(class:Class) : String = 
+if (class.getModel().hashSameEntityName(class.name)) then
+class.daoInterfacePackage()
+else 
+''
+endif  
+/]
+
+[query public hashSameEntityName(model : Model, entityName : String) : Boolean = 
+	model.eAllContents(Class)->select(class:Class|class.name = entityName)->size() > 1
+/]
+
+
+[query public getterPrefix(class:Class) : String =
+if (class.getModel().hashSameEntityName(class.name)) then
+class._package.normalizedName().toUpperFirst() 
+else 
+''
+endif 
+/]
+

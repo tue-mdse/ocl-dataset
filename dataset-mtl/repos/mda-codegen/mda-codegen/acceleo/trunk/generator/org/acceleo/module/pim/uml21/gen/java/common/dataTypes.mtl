@@ -1,0 +1,136 @@
+[module dataTypes('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests/]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[template public convertToJavaType(parameter:Parameter) post (trim())]
+[if (parameter <> null)]
+	[if (parameter.upper = -1)]
+		[if (isOrdered)]
+List<[parameter.type.convertToJavaType()/]>
+		[elseif (isUnique)]
+Set<[type.convertToJavaType()/]>
+		[else]
+Collection<[type.convertToJavaType()/]>
+		[/if]
+	[else]
+[type.convertToJavaType()/]
+	[/if]
+[/if]
+[/template]
+
+
+[template public convertToJavaType(structuralFeature:StructuralFeature)]
+[if (structuralFeature.upper = -1)][if (isOrdered)]List<[structuralFeature.type.convertToJavaType()/]>[elseif (isUnique)]Set<[type.convertToJavaType()/]>[else]Collection<[type.convertToJavaType()/]>[/if][else][type.convertToJavaType()/][/if]
+[/template]
+
+
+[template public convertToJavaDtoType(parameter:Parameter)]
+[if (parameter.upper = -1)][if (isOrdered)]List<[parameter.type.convertToJavaDtoType()/]>[elseif (isUnique)]Set<[parameter.type.convertToJavaDtoType()/]>[else]Collection<[parameter.type.convertToJavaDtoType()/]>[/if][else][parameter.type.convertToJavaDtoType()/][/if]
+[/template]
+
+
+[template public convertToJavaDtoType(structuralFeature:StructuralFeature)]
+[if (structuralFeature.upper = -1)][if (isOrdered)]List<[structuralFeature.type.convertToJavaDtoType()/]>[elseif (isUnique)]Set<[structuralFeature.type.convertToJavaDtoType()/]>[else]Collection<[structuralFeature.type.convertToJavaDtoType()/]>[/if][else][structuralFeature.type.convertToJavaDtoType()/][/if]
+[/template]
+
+
+[template public dtoSuffix(element:Element)]
+[getProperty('dto.suffix')/]
+[/template]
+
+
+[template public entitySuffix(element:Element)]
+[getProperty('entity.suffix')/]
+[/template]
+
+
+[template public convertToJavaType(type:Type) post (trim())]
+[if (type.namespace.name = 'datatype' and getProperty('java.typeconversion.'+type.name)<>'')]
+	[getProperty('java.typeconversion.'+type.name)/]
+[else]
+	[type.name/]
+[/if]
+[/template]
+
+
+[template public dtoName(type : Type) post(trim())]
+[if (getProperty('useDtoPackage') = 'no' or (type.oclAsType(Class).isEntity() and getProperty('generate.dto.per.entity') <> 'yes'))]
+    [type.name/]
+[else]
+    [type.name/][type.dtoSuffix()/]
+[/if]
+
+[/template]
+
+
+[template public entityName(type : Type) post(trim())]
+[type.name/][type.entitySuffix()/]
+[/template]
+
+
+[template public convertToJavaDtoType(type : Type)]
+[type.dtoName()/]
+[/template]
+
+
+[template public convertToJavaDtoType(interface:Interface)]
+[interface.name/]
+[/template]
+
+
+[template public convertToJavaType(primitiveType:PrimitiveType)]
+[getProperty('java.typeconversion.'.concat(primitiveType.name))/]
+[/template]
+
+[template public convertToJavaWrapperType(primitiveType:PrimitiveType)]
+[getProperty('java.wrapper.'.concat(primitiveType.convertToJavaType()))/]
+[/template]
+
+[query public convertToJavaWrapperType(javaPrimityTypeName:String) : String = 
+if (getProperty('java.wrapper.'.concat(javaPrimityTypeName))<>null) then
+	getProperty('java.wrapper.'.concat(javaPrimityTypeName))
+else
+	javaPrimityTypeName
+endif
+/]
+
+[template public convertToJavaDtoType(primitiveType:PrimitiveType)]
+[primitiveType.convertToJavaType()/]
+[/template]
+
+
+[template public nullValue(type : Type) post(trim())]
+[let typeName : String = type.convertToJavaType()]
+	[if (typeName = 'int' or typeName = 'long' or typeName = 'byte')]
+	    0
+	[elseif (typeName = 'double' or typeName = 'float')]
+	    0.0
+	[elseif (typeName = 'boolean')]
+	    false
+	[elseif (typeName = 'char')]
+	    ''
+	[else]
+	    null
+	[/if]
+[/let]
+
+[/template]
+
+
+[template public defaultPKType(element:Element)]
+[getProperty('default.pk.type')/]
+[/template]
+
+[template public defaultPKName(element:Element)]
+[getProperty('default.pk.name')/]
+[/template]
+
+[template public defaultPKTypeWrapper(element:Element)]
+[getProperty('java.wrapper.' + element.defaultPKType())/]
+[/template]
+
+[query public isJavaPrimitiveType(type : Type) : Boolean =
+type.convertToJavaType().isPrimitiveType()
+/]
+
+
+

@@ -1,0 +1,78 @@
+[comment encoding = UTF-8 /]
+[module pnml2dot('http:///ptnet.ecore')/]
+
+
+[template public generateGspn(petriNetDoc : PetriNetDoc, filename : String)]
+[comment @main /]
+[let net : PetriNet = petriNetDoc.nets->asOrderedSet()->first()]
+[file (filename, false, 'Cp1252')]
+strict digraph {
+	graph ['['/] pad="1.3", ranksep="1.3", nodesep="1.3" [']'/];
+	overlap=scale;
+	splines=true;
+	rankdir="LR";
+	
+	node ['['/] fixedsize=true [']'/];
+	    
+    subgraph "places" {
+        node ['['/] label="", shape=circle, width=1.3 [']'/]
+		[for (place : Place | net.pages.objects->select(oclIsKindOf(Place)).oclAsType(Place)->select(initialMarking.text.oclIsUndefined()._not()))]
+		"[ place.id /]" ['['/] label="[( if place.name.text.oclIsUndefined() then '' else place.name.text endif )/]", [comment labelloc=t, /] xlabel="M=[ place.initialMarking.text /]" [']'/];
+		[/for]
+		[for (place : Place | net.pages.objects->select(oclIsKindOf(Place)).oclAsType(Place)->select(initialMarking.text.oclIsUndefined()))]
+		"[ place.id /]" ['['/] label="[( if place.name.text.oclIsUndefined() then '' else place.name.text endif )/]", [comment labelloc=t, /] [']'/];
+		[/for]
+    }
+    
+    subgraph "immediate" {
+    	node ['['/] label="", color=black, shape=box, width=0.2, height=1.3, style=filled [']'/];
+		[for (trans : Transition | net.pages.objects->select(oclIsKindOf(Transition)).oclAsType(Transition)->select(t | isImmediate(t)))]
+		"[ trans.id /]" ['['/] [if (getProbability(trans) <> 1)] xlabel="p=[ getProbability(trans) /]" [/if] [']'/];
+		[/for]
+    }
+
+    subgraph "timed" {
+    	node ['['/] label="", shape=box, width=0.2, height=1.3 [']'/];
+		[for (trans : Transition | net.pages.objects->select(oclIsKindOf(Transition)).oclAsType(Transition)->select(t | isExponential(t)))]
+		"[ trans.id /]" ['['/] xlabel="t=[ getRate(trans) /][(if isOneServer(trans) then '\\noneServ' else if isInfiniteServer(trans) then '\\ninfServ' else '' endif endif)/]" [']'/];
+		[/for]
+    }
+
+	[for (arc : Arc | net.pages.objects->select(oclIsKindOf(Arc)).oclAsType(Arc))]
+	"[ arc.source.id /]" -> "[ arc.target.id /]";
+	[/for]    
+}
+[/file]
+[/let]
+[/template]
+
+[query public getRate(trans : Transition) : Real = 
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','getTransitionRate(fr.lip6.move.pnml.ptnet.Transition)', Sequence{trans})
+/]
+
+[query public getProbability(trans : Transition) : Real = 
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','getTransitionProbability(fr.lip6.move.pnml.ptnet.Transition)', Sequence{trans})
+/]
+
+[query public isExponential(trans : Transition) : Boolean =
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','isExponential(fr.lip6.move.pnml.ptnet.Transition)', Sequence{trans})
+/]
+
+[query public isImmediate(trans : Transition) : Boolean = 
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','isImmediate(fr.lip6.move.pnml.ptnet.Transition)', Sequence{trans})
+/]
+
+[query public isOneServer(trans : Transition) : Boolean = 
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','isOneServer(fr.lip6.move.pnml.ptnet.Transition)', Sequence{trans})
+/]
+
+[query public isInfiniteServer(trans : Transition) : Boolean = 
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','isInfiniteServer(fr.lip6.move.pnml.ptnet.Transition)', Sequence{trans})
+/]
+

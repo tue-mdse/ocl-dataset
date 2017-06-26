@@ -1,0 +1,214 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module classJavaFile.
+ */]
+[module classUtilsJavaFile('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import org::eclipse::acceleo::sisgom::uml2java::common::fileUtils /]
+[import org::eclipse::acceleo::sisgom::uml2java::common::stereotypeUtils /]
+[import org::eclipse::acceleo::sisgom::properties::properties /]
+
+[**
+ * The documentation of the template genClassJavaFile.
+ * @param aClass
+ */]
+
+[template public genClassJavaGenericDao(aPack : Package){packName : String = aPack.getGenericDao(); }]
+[file (aPack.genFilePathUtils(packName), false, 'UTF-8')]
+package [aPack.name +'.' + aPack.getUtilsNamespace()/];
+
+import java.lang.reflect.ParameterizedType;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Query;
+
+@SuppressWarnings("unchecked")
+public abstract class [aPack.getGenericDao()/]<T, PK> {
+
+	private final EntityManager entityManager;
+
+	private final EntityManagerFactory factory;
+
+	private Class<?> clazz;
+
+	///////////////////////////////////////////////////////////////////
+	// CONSTRUCTOR
+	///////////////////////////////////////////////////////////////////
+
+	public GenericDao() {
+		this(DaoFactory.entityManagerFactorInstance());
+	}
+
+	public GenericDao(EntityManagerFactory factory) {
+		this.factory = factory;
+		this.entityManager = factory.createEntityManager();
+		this.clazz = (Class<?>) ((ParameterizedType) this.getClass()
+				.getGenericSuperclass()).getActualTypeArguments()['[0]'/];
+	}
+
+	///////////////////////////////////////////////////////////////////
+	// CRUD Methods
+	///////////////////////////////////////////////////////////////////
+
+	public Object executeQuery(String query, Object... params) {
+		Query createdQuery = this.entityManager.createQuery(query);
+
+		for (int i = 0; i < params.length; i++) {
+			createdQuery.setParameter(i, params['[i]'/]);
+		}
+
+		return createdQuery.getResultList();
+	}
+
+	public List<T> findAll() {
+		String name = this.clazz.getName();
+		return this.entityManager.createQuery(("FROM " + name))
+				.getResultList();
+	}
+
+	public T findById(PK pk) {
+		return (T) this.entityManager.find(this.clazz, pk);
+	}
+
+	public void save(T entity) {
+		try {
+			this.beginTransaction();
+			this.entityManager.persist(entity);
+			this.commit();
+		} catch (Exception e) {
+			this.rollBack();
+			throw e;
+		}
+	}
+
+	public void update(T entity) {
+		try {
+			this.beginTransaction();
+			this.entityManager.merge(entity);
+			this.commit();
+		} catch (Exception e) {
+			this.rollBack();
+			throw e;
+		}
+	}
+
+	public void delete(T entity) {
+		try {
+			this.beginTransaction();
+			this.entityManager.remove(entity);
+			this.commit();
+		} catch (Exception e) {
+			this.rollBack();
+			throw e;
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////
+	// Transaction Methods
+	///////////////////////////////////////////////////////////////////
+
+	public void beginTransaction(){
+		this.entityManager.getTransaction().begin();
+	}
+
+	public void commit(){
+		this.entityManager.getTransaction().commit();
+	}
+
+	public void close(){
+		this.entityManager.close();
+		this.factory.close();
+	}
+
+	public void rollBack(){
+		this.entityManager.getTransaction().rollback();
+	}
+
+	public EntityManager getEntityManager(){
+		return this.entityManager;
+	}
+
+}
+[/file]
+[/template]
+
+[template public genGenericDaoNamespace(aType : Type) post (trim())]
+[aType.packagePath() +'.' + aType.getUtilsNamespace() + '.' + aType.getGenericDao()/]
+[/template]
+
+[template public genClassBeanBase(aPack : Package){packName : String = aPack.getBaseBean(); }]]
+[file (aPack.genFilePathUtils(packName), false, 'UTF-8')]
+package [aPack.name + '.' + aPack.getUtilsNamespace()/];
+
+import java.io.Serializable;
+
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang3.builder.ToStringStyle;
+
+public abstract class [aPack.getBaseBean()/] implements Serializable {
+
+	private static final long serialVersionUID = -5377726703339445533L;
+
+	@Override
+	public String toString() {
+		return ToStringBuilder.reflectionToString(this, ToStringStyle.MULTI_LINE_STYLE);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		return EqualsBuilder.reflectionEquals(this, obj);
+	}
+
+}
+[/file]
+[/template]
+
+[template public genClassDaoFactory(aPack : Package){packName : String = aPack.getDaoFactory(); }]
+[file (aPack.genFilePathUtils(packName), false, 'UTF-8')]
+package [aPack.name +'.' + aPack.getUtilsNamespace()/];
+
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+
+[for (aClass : Class | aPack.getClassOfFactory()) ? (aClass.hasStereotypeQuery('Service'))]
+import [aClass.genPackageValue() + '.' + aClass.getDaoNamespace()+'.'+ aClass.name + aClass.getDaoSuffix()/];
+[/for]
+
+public final class [aPack.getDaoFactory()/] {
+
+	private DaoFactory() {
+	}
+
+	private static final String PERSISTENCE_UNIT_NAME = "[aPack.getPersistenceUnit().trim()/]";
+
+	private static EntityManagerFactory entityManagerFactoryInstance;
+
+	public static EntityManagerFactory entityManagerFactorInstance() {
+		if (entityManagerFactoryInstance == null) {
+			entityManagerFactoryInstance = Persistence
+					.createEntityManagerFactory(PERSISTENCE_UNIT_NAME);
+		}
+
+		return entityManagerFactoryInstance;
+	}
+
+	[for (aClass : Class | aPack.getClassOfFactory()) separator ('\n') ? (aClass.hasStereotypeQuery('Service'))]
+	private static [aClass.name + aClass.getDaoSuffix()/] [aClass.name.toLowerFirst() + aClass.getDaoSuffix()/]Instance;
+
+	public static [aClass.name + aClass.getDaoSuffix()/] [aClass.name.toLowerFirst() /]Instance() {
+		if (servicoDaoInstance == null) {
+			[aClass.name.toLowerFirst() + aClass.getDaoSuffix()/]Instance = new [aClass.name + aClass.getDaoSuffix()/]();
+		}
+
+		return [aClass.name.toLowerFirst() + aClass.getDaoSuffix()/]Instance;
+	}
+	[/for]
+
+}
+[/file]
+[/template]
+
+[query private getClassOfFactory(arg : Package) : Set(Class) = 
+	self.ownedElement->filter(Class)->select(c : Class | not c.isAbstract) /]

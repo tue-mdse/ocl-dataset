@@ -1,0 +1,196 @@
+[comment encoding = UTF-8 /]
+[module ref('uri:rok/model')/]
+[import rok::generator::service::texttools/]
+[import rok::generator::java::template::common /]
+[import rok::generator::service::rokservices/]
+
+[template public ref_getFilePath(e : MClass) post (clearSpace())]
+java/[e.parentDomainsPath()/]/[e.className_ref()/].java
+[/template]
+
+[template public ref_getImportList(e : MClass)]
+static rok.parser.UriUtils.uriUtils
+
+java.io.Serializable
+
+javax.validation.constraints.NotNull
+javax.validation.constraints.Min
+javax.validation.constraints.Max
+javax.validation.constraints.DecimalMin
+javax.validation.constraints.DecimalMax
+
+rok.model.exception.ApiException
+rok.model.exception.BadRequestException
+rok.model.exception.EvaluationDetail
+rok.model.exception.NotFoundException
+
+rok.model.Entity
+rok.model.EntityRef
+rok.model.MClass
+rok.model.metadata.Metadata
+rok.model.Transformer
+[/template]
+
+[template public ref_writeFile(e : MClass)]
+[file (e.ref_getFilePath(), false, 'UTF-8')]
+package	[e.parentDomains()/];
+
+[e.ref_getImportList().javaImports() /]
+[e.ref_getContent()/]
+[/file]
+[/template]
+
+[template public ref_getContent(e : MClass)]
+
+/**
+ * 
+[e.javadoc()/]
+[if (e.keyProperties()->size() > 0)]
+[if (e.keyProperties()->size() > 1)]
+ * <p>Les propriétés permettant d'assurer l'unicité des {@link [e.filterNameCapitalized()/]} (les clés d'unicités) sont :</p>
+[else]
+ * <p>La propriété permettant d'assurer l'unicité des {@link [e.filterNameCapitalized()/]} (la clé d'unicité) est :</p>
+[/if]
+ * <dl>
+ [for (p : Property | e.keyProperties())]
+ * <dt>[p.filterName()/]</dt><dd>[p.javadoc()/]</dd>
+ [/for]
+ * </ul>
+[/if]
+ */
+public static final class Ref implements EntityRef<[e.filterNameCapitalized()/]> {
+[if (e.keyProperties()->size()=0)]
+
+  /!\ ### MISSING KEY PROPERTIES ### /!\
+
+[/if]
+[for (p : Property | e.keyProperties())]
+
+	/**
+	 * [p.javadoc()/]
+	 */[p.contraintAnnotations()/]
+	private final [p.javaType(false)/] [p.filterName()/]; 
+[/for]
+	
+	/**
+	 * <p>Constructeur permettant d'initialiser les propriétés définies comme étant les clés de l'instance mais également des propriétés en lectures seules</p>
+	 *
+[for (p : Property | e.constructorParams())]
+	 * @param p_[p.filterName()/] 
+	 * 					<p>Permet de définir la propriété {@link #[p.filterName()/]} :</p>
+	 *					[p.javadoc()/]
+[/for]
+	 */
+	private Ref(
+[for (p : Property | e.keyProperties()) separator (',')]
+		final [p.javaType()/] p_[p.filterName()/]
+[/for]
+	){
+[for (p : Property | e.keyProperties())]
+		this.[p.filterName()/] = p_[p.filterName()/];
+[/for]
+	}
+
+	@Override
+	public void checkRef() throws BadRequestException {
+		final List<EvaluationDetail> details = new ArrayList<>();
+[for (p : Property | e.keyProperties())]
+		if(this.[p.filterName()/] == null) {
+			details.add(EvaluationDetail.error(this, "[p.filterName()/]", null, "must not be null"));
+		}
+[/for]
+		if (details.size() > 0) {
+			throw new BadRequestException("Ref not valid", details.toArray(new EvaluationDetail[ '[0]' /] ));
+		}
+	}
+[for (p : Property | e.keyProperties())]
+
+	/**
+	 * <p>Permet de récupérer la valeur de la propriété : {@link #[p.filterName()/]} :</p>
+[p.javadoc()/]
+	 *
+	 * @return La valeur de la propriété {@link #[p.filterName()/]}.
+	 */
+	public [p.javaType() /] get[p.filterNameCapitalized()/]() {
+		return this.[p.filterName()/];
+	}
+[/for]
+
+	@Override
+	@Nonnull
+	public String getUri() {
+		return new StringBuilder() //
+[if(not(e.createPropertyFromContainer().oclIsUndefined()))]
+[let p : Property = e.createPropertyFromContainer()]
+			.append( //
+				uriUtils.encodeAllExceptSlashes( //
+					m[e.filterNameCapitalized()/].[p.filterName()/].toString(this.[p.filterName()/]) //
+					, Addressable.WILDCARD
+				) //
+			) //
+			.append("/[e.eContainer(EntityProperty).filterName()/]") //
+[/let]
+[else]
+			.append("[e.filterName()/]") //
+[/if]
+[for (p : Property | e.keyProperties(false)) before ('\t\t\t.append("/").append(') separator (').append(\'-\').append(') after (') //\n')]
+				uriUtils.encode( //
+					m[e.filterNameCapitalized()/].[p.filterName()/].toString(this.[p.filterName()/]) //
+					, Addressable.WILDCARD
+				)
+[/for] 
+			.toString();
+	}
+
+	@Override
+	@Nonnull
+	public final [e.className_mClass()/] getMclass() {
+		return m[e.filterNameCapitalized()/];
+	}
+
+	@Override
+	public String toString() {
+		return new StringBuilder("ref<[e.className_entity()/]>:").append(getUri()).toString();
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+[for (p : Property | e.keyProperties())]
+		result = prime * result + ((this.[p.filterName()/] == null) ? 0 : this.[p.filterName()/].hashCode());
+[/for]
+		return result;
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+		if (this == obj){return true;}
+		if (obj == null){return false;}
+		if (getClass() != obj.getClass()){return false;}
+		[e.className_ref()/] other = ([e.className_ref()/]) obj;
+[for (p : Property | e.keyProperties())]
+		if (this.[p.filterName()/] == null) {
+			if (other.[p.filterName()/] != null){return false;}
+		}
+		else if (!this.[p.filterName()/].equals(other.[p.filterName()/])){
+			return false;
+		}
+[/for]
+		return true;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see rok.model.EntityRef#get(rok.model.Uniform)
+	 */
+	@Override
+	public [e.className_entity()/] get(final @Nonnull Uniform api) throws NotFoundException, ApiException {
+		if (api == null) {
+			throw new BadRequestException("Uniform inferface must not be null");
+		}
+		return api.get(this);
+	}
+}
+[/template]

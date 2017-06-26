@@ -1,0 +1,383 @@
+[comment encoding = UTF-8 /]
+[module statemachine('http://www.sb.net/statemachine/dsl/Stm')]
+[import net::sb::statemachine::generator::services::utility /]
+[import net::sb::statemachine::generator::services::configuration /]
+
+[template public stateMachineTemplate (aStateMachine : Statemachine) ]
+[file (getFilePath(getPackage() + '.' + getImplementationSuffix(), 'StateMachine'), false, 'UTF-8')]
+/**
+* This code is generated
+*/
+package [getPackage()/][if (getImplementationSuffix() <> '')].[getImplementationSuffix()/][/if];
+
+import [getPackage()/].ICommands;
+import [getPackage()/].IContext;
+import [getPackage()/].IGuards;
+import [getPackage()/].IStateMachine;
+[if (isGenerateUtils())]
+import [getPackage()/].StateMachineUtils;
+[/if]
+[if (isGenerateAdapter() and not isGenerateAbstractStateMachine())]
+import [getPackage()/].IStateMachineListener;
+[/if]
+
+public [if (isGenerateAbstractStateMachine())]abstract [/if]class StateMachine implements IStateMachine {
+	private int startingState_ = [aStateMachine.getStartingState().stateName()/];
+	private int state_ = NOT_STARTED;
+	private ICommands commands_;
+	private IGuards guards_;
+	private boolean generateException_ = false;
+[if (hasActivities_())]
+	private static interface IRunnable extends Runnable {
+		void stop();
+	}
+	
+	private IRunnable runnable_ = null;
+	private Thread activityThread_ = null;
+[/if]
+
+	public StateMachine(ICommands commands, IGuards guards) {
+		commands_ = commands;
+		guards_ = guards;
+	}
+
+	[getOverrideAnnotation()/]
+	public void start() {
+		enterState_(-1, getStartingState(), null);
+	}
+	
+	public boolean isGenerateException() {
+		return generateException_;
+	}
+
+	public void setGenerateException(boolean generateException) {
+		generateException_ = generateException;
+	}
+	
+	[getOverrideAnnotation()/]
+	public int getState() {
+		return state_;
+	}
+
+	/**
+	 * Protected for the tests
+	 */
+	protected void setState_(int state) {
+		state_ = state;
+[if (isGenerateUtils())] 
+		System.out.println(StateMachineUtils.stateToString(state_));
+[/if]	}
+
+	[getOverrideAnnotation()/]
+	public int getStartingState() {
+		return startingState_;
+	}
+
+	[getOverrideAnnotation()/]
+	public void postEvent(int event, IContext context) {
+		processEvent_(event, context);
+	}
+[if (isGenerateAbstractStateMachine())]
+	protected abstract void processEvent_(int event, IContext context);
+[else]
+	protected void processEvent_(final int event, final IContext context) {
+		processEventImpl_(event, context);
+	}
+[/if]
+[for (state : State | aStateMachine.getAllStates())]
+[selfEventHandler(state)/]
+[transitionHandler(state)/]
+[/for]
+[processEventImpl(aStateMachine)/]
+
+[if (hasActivities_())]
+	private void terminateDoActivity_() {
+		if (runnable_ !=  null) {
+			runnable_.stop();
+			runnable_ = null;
+		}
+	}
+[/if]
+	/**
+	 * protected for the tests
+	 */
+	protected void exitState_(int event, int targetState, IContext context) {
+		exitActions_(state_, targetState, context);
+[if (isGenerateAdapter())]
+		fireStateExited_(this, event, context);
+[/if]	}
+	
+	private void executeActionFreeTransition_(int event, int targetState, IContext context) {
+		exitState_(event, targetState, context);
+		
+		enterState_(event, targetState, context);
+	}
+	
+	/**
+	 * protected for the tests
+	 */
+	protected void enterState_(int event, int state, IContext context) {
+		setState_(state);
+		
+		entryActions_(context);
+[if (isGenerateAdapter())]
+		fireStateEntered_(this, event, context);
+[/if]
+	
+[if (hasActivities_())]
+		if (!doActivity_(state, context)) {
+[/if]			if (!enterSubState_(event, context)) {
+				fireCompletionEvent_(context);
+			}
+[if (hasActivities_())]
+		}
+[/if]	}
+
+	private void fireCompletionEvent_(IContext context) {
+[if (hasState(aStateMachine.getAllStates()))]
+		switch(state_) {
+	[for (state : State | aStateMachine.getAllStates())]
+		[if (state.handleCompletionEvent())]
+		case [state.stateName()/]:
+		[/if]
+	[/for]
+			postEvent(EVENT_completion, context);
+			break;
+		}
+[/if]	}
+	
+	private boolean enterSubState_(int event, IContext context) {
+		switch (state_) {
+	[for (state : State | aStateMachine.getAllStates())]
+			[if (state.states->notEmpty())]
+			case [state.stateName()/]: {
+				enterState_(event, [state.states->at(1).stateName()/], context);
+				return true;
+			}
+			[/if]
+	[/for]
+		} // end switch
+		return false;
+	}
+
+[if (hasActivities_())]
+	private boolean doActivity_(int state, final IContext context) {
+		switch (state) {
+		[for (state : State | aStateMachine.getAllStates())]
+			[if (not state.doAction.oclIsUndefined())]
+			case [state.stateName()/]: {
+				runnable_ = new IRunnable() {
+					public void run() {
+						commands_.[state.doAction.name/](context);
+						runnable_ = null;
+						activityThread_ = null;
+						fireCompletionEvent_(context);
+					}
+					public void stop() {
+						commands_.[state.stopAction.name/](context);
+					}
+				};
+				doActivity_(runnable_);
+				return true;
+			}
+			[/if]
+		[/for]
+		} // end switch
+		return false;
+	}
+
+	protected void doActivity_(Runnable runnable) {
+		activityThread_ = new Thread(runnable);
+		activityThread_.start();
+	}
+
+	protected final void joinThreadActivity_() {
+		if (activityThread_ != null) {
+			try {
+				activityThread_.join();
+			} catch (InterruptedException e) {
+			}
+		}
+	}
+[/if]
+	
+	private void exitActions_(int currentState, int targetState, IContext context) {		
+		exitActionsUnit_(currentState, context);
+		
+		// execute exit actions of the parent states
+		switch (currentState) {
+		[for (item : OclAny | getStates2ExitedStates()) ]
+		case [getOriginalState(item).stateName()/]:
+			switch (targetState) {
+			[for(exitedStates : OclAny | getExitedStates(item))]
+				[for (transitionState : State | getStatesStates2ExitActions(exitedStates))]
+			case [transitionState.stateName()/]:
+				[/for]
+				[for (exitedState : State | getExitedStatesStates2ExitActions(exitedStates))]
+				exitActionsUnit_([exitedState.stateName()/], context);
+				[/for]
+				break;
+			[/for]
+			} // end switch targetState
+			break;
+		[/for]
+		} // end switch currentState
+	}
+
+	/**
+	 * for the tests
+	 */
+	protected void exitActionsUnit_(int currentState, IContext context) {
+		switch (currentState) {
+		[for (state : State | aStateMachine.getAllStates())]
+			[if (state.exitActions->notEmpty())]
+			case [state.stateName()/]: {
+			[for(command : Command | state.exitActions)]
+				commands_.[command.name/](context);
+			[/for]
+				break;
+			}
+			[/if]
+		[/for]
+		}
+	}
+
+	private void entryActions_(IContext context) {
+		switch (state_) {
+		[for (state : State | aStateMachine.getAllStates())]
+			[if (state.entryActions->notEmpty())]
+			case [state.stateName()/]: {
+			[for(command : Command | state.entryActions)]
+				commands_.[command.name/](context);
+			[/for]
+				break;
+			}
+			[/if]
+		[/for]
+		}
+	}
+	
+[if (isGenerateAdapter())]
+	protected [if (isGenerateAbstractStateMachine())]abstract [/if]void fireStateExited_(IStateMachine stateMachine, int event, IContext context)[if (isGenerateAbstractStateMachine())];[else]{}[/if]
+
+	protected [if (isGenerateAbstractStateMachine())]abstract [/if]void fireStateEntered_(IStateMachine stateMachine, int event, IContext context)[if (isGenerateAbstractStateMachine())];[else]{}[/if]
+
+	protected [if (isGenerateAbstractStateMachine())]abstract [/if]void fireSelfEvent_(IStateMachine stateMachine, int event, IContext context)[if (isGenerateAbstractStateMachine())];[else]{}[/if]
+[/if]
+[if (isGenerateAdapter() and not isGenerateAbstractStateMachine())]
+	[getOverrideAnnotation()/]
+	public void addStateMachineListener(IStateMachineListener listener) {}
+	
+	[getOverrideAnnotation()/]
+	public void removeStateMachineListener(IStateMachineListener listener) {}
+[/if]
+}
+[/file]
+[/template]
+
+[template private processEventImpl (aStateMachine : Statemachine) ]
+	protected void processEventImpl_(int event, IContext context) {
+		boolean eventConsumed = false;
+		// self events
+		switch (state_) {
+[for (state : State | aStateMachine.getAllStates())]
+	[if (state.selfEvents->notEmpty())]	
+			case [state.stateName()/]:
+				eventConsumed = [state.stateName()/]_selfEvent_(event, context);
+				break;
+	[/if]
+[/for]
+		} // end switch
+		
+		if (eventConsumed) return;
+		
+		// transitions
+		switch (state_) {
+[for (state : State | aStateMachine.getAllStates())]
+	[if (state.transitions->notEmpty())]
+			case [state.stateName()/]:
+				[state.stateName()/]_transitions_(event, context);
+				break;
+	[/if]
+[/for]
+		} // end switch
+	}
+[/template]
+
+[template private selfEventHandler (state : State) ]
+[if (state.selfEvents->notEmpty())]	
+	private boolean [state.stateName()/]_selfEvent_(int event, IContext context) {
+		boolean eventConsumed = false;
+		switch (event) {
+	[for (event : Event | state.selfEvents.event->asSet()->sortedBy(name))]
+			case [event.eventName()/]:
+		[for (selfEvent : SelfEvent | state.getSelfEvents(event))]
+			[if (selfEvent.guard.oclIsUndefined())]
+				[fireSelfEvent_(state, event, selfEvent)/]
+				eventConsumed = true;
+			[else]
+				if([guardCall('guards_', selfEvent.guard)/]) {
+					[fireSelfEvent_(state, event, selfEvent)/]
+					eventConsumed = true;
+					break;
+				}
+			[/if]
+		[/for]
+				break;
+	[/for]
+
+		}
+		return eventConsumed;
+	}
+[/if]
+[/template]
+
+[template private transitionHandler (state : State) ]
+[if (state.transitions->notEmpty())]
+	private void [state.stateName()/]_transitions_(int event, IContext context) {
+		switch (event) {
+	[for (event : Event | state.transitions.event->asSet()->sortedBy(name))]
+			case [event.eventName()/]: {
+		[for (transition : Transition | state.getTransitions(event))]
+			[if (transition.guard.oclIsUndefined())]
+				[generateTransition_(state, event, transition)/]
+			[else]
+				if([guardCall('guards_', transition.guard)/]) {
+					[generateTransition_(state, event, transition)/]
+					break;
+				}
+			[/if]
+		[/for]
+				break;
+			}
+	[/for]
+			default:
+				String error = "no transition on state [state.stateName()/], event " + 
+					[if(isGenerateUtils())]StateMachineUtils.eventToString(event)[else] event[/if];
+				if(generateException_) {
+					throw new RuntimeException(error);
+				} else {
+					System.out.println(error);
+				}
+		}
+	}
+[/if]
+[/template]
+
+[template private fireSelfEvent_(state : State, event : Event, selfEvent : SelfEvent)]
+[terminateDoActivity_(state)/]commands_.[selfEvent.action.name/](context); [if (isGenerateAdapter())
+]fireSelfEvent_(this, [event.eventName()/], context);[/if]
+[/template]
+	
+[template private generateTransition_(state : State, event : Event, transition : Transition)]
+[terminateDoActivity_(state)/][if (transition.action.oclIsUndefined())
+]executeActionFreeTransition_([event.eventName()/], [transition.state.stateName()/], context);[else]exitState_([event.eventName()/], [transition.state.stateName()/], context); commands_.[transition.action.name/](context); enterState_([event.eventName()/], [transition.state.stateName()/], context);[/if]
+[/template]
+
+[template private terminateDoActivity_(state : State)]
+[if (not state.doAction.oclIsUndefined())]
+terminateDoActivity_(); [/if]
+[/template]
+
+[query private hasActivities_(aStateMachine : Statemachine) : Boolean 
+	= not aStateMachine.getAllStates()->forAll(doAction.oclIsUndefined())/]

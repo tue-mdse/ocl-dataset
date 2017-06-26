@@ -1,0 +1,150 @@
+[comment encoding = UTF-8 /]
+[module associations('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import AUTCPP::header::files::coreServices /]
+
+[template public generateAssociationMethodsOperationI(aProperty : Property)]
+
+[if (lower<>upper or (lower=upper and lower>1 ))]
+[generateAddMethod()/]
+[generateAddAtMethod()/]
+[generateRemoveMethod()/]
+[generateRemoveAtMethod()/]
+[elseif (lower=1)]
+[generateSetMethod()/]
+[/if]
+[/template]
+
+[template public generateSetMethod(aProperty : Property)]
+bool [class.name.toUpperFirst()/]::set[aProperty.name.toUpperFirst()/]([generateTypeNames(aProperty.type)/]* in[aProperty.name.toUpperFirst()/]){
+	bool wasSuccess = false;
+	[name/] = in[aProperty.name.toUpperFirst()/];
+	wasSuccess = true;
+	return wasSuccess;
+}
+[/template]
+
+[template public generateAddMethod(aProperty : Property)]
+bool [class.name.toUpperFirst()/]::add[aProperty.name.toUpperFirst()/]([generateTypeNames(aProperty.type)/]* in[aProperty.name.toUpperFirst()/]){
+	bool wasSuccess = false;
+	[if (lower=upper and lower>1)]
+	if (numberOf[aProperty.name.toUpperFirst()/]s()>= maximumNumberOf[aProperty.name.toUpperFirst()/]()) {
+		return wasSuccess;
+	}
+	[/if]
+	[name/]->push_back(in[aProperty.name.toUpperFirst()/]);
+	wasSuccess = true;
+	return wasSuccess;
+}
+[/template]
+
+[template public generateAddAtMethod(aProperty : Property)]
+bool [class.name.toUpperFirst()/]::add[aProperty.name.toUpperFirst()/]At(unsigned int index, [generateTypeNames(aProperty.type)/]* in[aProperty.name.toUpperFirst()/]){
+	bool wasSuccess = false;
+	if (index<0) {
+		return wasSuccess;	
+	}
+	[if (lower=upper and lower>1)]
+	if (index>= maximumNumberOf[aProperty.name.toUpperFirst()/]()) {
+		return wasSuccess;
+	}
+	[/if]
+	[name/]->insert([name/]->begin()+ index, in[aProperty.name.toUpperFirst()/]);
+	wasSuccess = true;
+	return wasSuccess;
+}
+[/template]
+
+[template public generateRemoveMethod(aProperty : Property)]
+bool [class.name.toUpperFirst()/]::remove[aProperty.name.toUpperFirst()/]([generateTypeNames(aProperty.type)/]* in[aProperty.name.toUpperFirst()/]){
+	bool wasSuccess = false;
+	vector<[generateTypeNames(type)/]*>::iterator temIterator = find([name/]->begin(), [name/]->end(), in[aProperty.name.toUpperFirst()/]);
+	if (temIterator==[name/]->end()){
+		return wasSuccess;
+	}
+	[name/]->erase(temIterator);
+	wasSuccess = true;
+	return wasSuccess;
+}
+[/template]
+
+[template public generateRemoveAtMethod(aProperty : Property)]
+bool [class.name.toUpperFirst()/]::remove[aProperty.name.toUpperFirst()/]At(unsigned int index){
+	bool wasSuccess = false;
+	if(index<0){
+		return wasSuccess;
+	}
+	unsigned int size= this->numberOf[aProperty.name.toUpperFirst()/]s();
+	if(index> size){
+		return false;
+	}
+	[name/]->erase([name/]->begin()+index);
+	wasSuccess = size== this->numberOf[aProperty.name.toUpperFirst()/]s()+1;
+	return wasSuccess;
+}
+[/template]
+
+[comment ------------------------------------------------------------- /]
+
+[template public generateAssociationMethodsOperationO(aProperty : Property)]
+[if (lower<>upper or (lower=upper and lower>1 ))]
+[generateGetVMethod()/]
+[generateGetIMethod()/]
+[generateNumberOfMethod()/]
+[generateHasMethod()/]
+[generateIndexOfMethod()/]
+[if (lower=upper and lower>1)][generateMaximumMethod()/][/if]
+[elseif (lower=1)]
+[generateGetMethod()/]
+[/if]
+[/template]
+
+[template public generateGetMethod(aProperty : Property)]
+[generateTypeNames(aProperty.type)/]* [class.name.toUpperFirst()/]::get[aProperty.name.toUpperFirst()/](){
+	return [name/];
+}
+[/template]
+
+[template public generateGetVMethod(aProperty : Property)]
+vector<[generateTypeNames(aProperty.type)/]*>* [class.name.toUpperFirst()/]::get[aProperty.name.toUpperFirst()/]s(){
+	vector<[generateTypeNames(aProperty.type)/]*>* copyOf[name.toUpperFirst()/] = new vector<[generateTypeNames(aProperty.type)/]*>();
+	vector<[generateTypeNames(aProperty.type)/]*>::iterator [name/]BeginIterator(this->[name/]->begin());
+	vector<[generateTypeNames(aProperty.type)/]*>::iterator [name/]EndIterator(this->[name/]->end());
+	for (; [name/]BeginIterator != [name/]EndIterator; ++[name/]BeginIterator) {
+		copyOf[name.toUpperFirst()/]->push_back(*[name/]BeginIterator);
+	}
+	return copyOf[name.toUpperFirst()/];
+}
+[/template]
+
+[template public generateGetIMethod(aProperty : Property)]
+[generateTypeNames(aProperty.type)/]* [class.name.toUpperFirst()/]::get[aProperty.name.toUpperFirst()/](unsigned int index){
+	[generateTypeNames(aProperty.type)/]* l[name.toUpperFirst()/]= (*(this->[name/]))['['/]index[']'/];
+	return l[name.toUpperFirst()/];
+}
+[/template]
+
+[template public generateNumberOfMethod(aProperty : Property)]
+unsigned int [class.name.toUpperFirst()/]::numberOf[aProperty.name.toUpperFirst()/]s(){
+	return [name/]->size();
+}
+[/template]
+
+[template public generateHasMethod(aProperty : Property)]
+bool [class.name.toUpperFirst()/]::has[aProperty.name.toUpperFirst()/]s(void){
+	return numberOf[aProperty.name.toUpperFirst()/]s()>0;
+}
+[/template]
+
+[template public generateIndexOfMethod(aProperty : Property)]
+int [class.name.toUpperFirst()/]::indexOf[aProperty.name.toUpperFirst()/]([generateTypeNames(aProperty.type)/]* in[aProperty.name.toUpperFirst()/]){
+	vector<[generateTypeNames(type)/]*>::iterator temIterator = find([name/]->begin(), [name/]->end(), in[aProperty.name.toUpperFirst()/]);
+	unsigned int index = distance([name/]->begin(), temIterator);
+	return temIterator != [name/]->end() ? index : -1;
+}
+[/template]
+
+[template public generateMaximumMethod(aProperty : Property)]
+unsigned int [class.name.toUpperFirst()/]::maximumNumberOf[aProperty.name.toUpperFirst()/](){
+	return [lower/];
+}
+[/template]

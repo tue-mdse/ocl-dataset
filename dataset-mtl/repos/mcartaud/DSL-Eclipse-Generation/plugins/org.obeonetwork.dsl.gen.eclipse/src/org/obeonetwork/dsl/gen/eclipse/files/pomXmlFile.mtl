@@ -1,0 +1,177 @@
+[comment encoding = UTF-8 
+
+Copyright (c) 2012 Obeo
+All rights reserved.  This program and the accompanying materials
+are made available under the terms of the Eclipse Public License 1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+You can apply any license to the files generated with this module and Acceleo.
+
+Contributors :
+	Mathieu Cartaud (Obeo) - initial API and implementation
+/]
+[module pomXmlFile('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel', 'http://www.obeonetwork.org/dsl/eclipse')]
+
+[import org::obeonetwork::dsl::gen::eclipse::common::normalizeName /]
+[import org::obeonetwork::dsl::gen::eclipse::services::findModelBundle /]
+
+[template private pomXmlFile(aProject : Project)]
+[aProject.pomPath()/]/pom.xml
+[/template]
+
+[template public genPomXmlFile(aProject : Project)]
+[file (aProject.pomXmlFile(), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>[aProject.eContainer(Application).genApplicationID()/]</groupId>
+    <artifactId>[aProject.ancestors(Application).genParentID()/]</artifactId>
+    <version>[aProject.eContainer(Application).applicationVersion().substitute('.qualifier', '')/]-SNAPSHOT</version>
+    <relativePath>../../[aProject.eContainer(Application).getTheBundleForModel()/]</relativePath>
+  </parent>
+
+  [if (aProject.oclIsKindOf(Bundle))]
+  [aProject.oclAsType(Bundle).pomBundle()/]
+  [elseif aProject.oclIsKindOf(Feature)]
+  [aProject.oclAsType(Feature).pomFeature()/]
+  [elseif aProject.oclIsKindOf(Repository)]
+  [aProject.oclAsType(Repository).pomRepository()/]
+  [/if]
+</project>
+[/file]
+[/template]
+
+
+[template private pomRepository(aRepository : Repository)]
+<artifactId>[aRepository.genRepositoryID()/]</artifactId>
+<packaging>eclipse-repository</packaging>
+
+<name>[aRepository.name/]</name>
+
+<version>1.0.0-SNAPSHOT</version>
+
+<build>
+  <plugins>
+    <plugin>
+      <artifactId>maven-resources-plugin</artifactId>
+      <executions>
+        <execution>
+          <id>copy-resources</id>
+          <phase>validate</phase>
+          <goals>
+            <goal>copy-resources</goal>
+          </goals>
+          <configuration>
+            <outputDirectory>${basedir}/target/repository</outputDirectory>
+            <resources>
+              <resource>
+                <directory>.</directory>
+                <includes>
+                  <include>index.html</include>
+                  <include>web/*</include>
+	              <include>compositeArtifacts.xml</include>
+	              <include>compositeContent.xml</include>
+                </includes>
+              </resource>
+            </resources>
+          </configuration>
+        </execution>
+      </executions>
+    </plugin>
+  </plugins>
+</build>
+[/template]
+
+[template private pomFeature(aFeature : Feature)]
+<artifactId>[aFeature.genFeatureID()/]</artifactId>
+<version>[aFeature.featureVersion().substitute('.qualifier', '')/]-SNAPSHOT</version>
+<packaging>eclipse-feature</packaging>
+
+<name>[aFeature.name/] Feature</name>
+
+[if (aFeature.generateSdkFeature)]
+  <build>
+     <plugins>
+       <plugin>
+         <groupId>org.eclipse.tycho.extras</groupId>
+         <artifactId>tycho-source-feature-plugin</artifactId>
+         <executions>
+           <execution>
+             <phase>package</phase>
+             <id>source-feature</id>
+             <goals>
+               <goal>source-feature</goal>
+             </goals>
+             <configuration>
+               <excludes>
+[for (anExcludedBundle : Bundle | aFeature.excludeBundleForSdk)]
+                 <plugin id="[anExcludedBundle.genBundleID()/]"/>
+[/for]
+               </excludes>
+             </configuration>
+           </execution>
+         </executions>
+       </plugin>
+    </plugins>
+  </build>
+[elseif (aFeature.siblings(Feature).generateSdkFeature->size() > 0)]
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.eclipse.tycho.extras</groupId>
+        <artifactId>tycho-source-feature-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <id>source-feature</id>
+            <goals>
+              <goal>source-feature</goal>
+            </goals>
+            <configuration>
+              <excludes>
+                <feature id="[aFeature.genFeatureID()/]-source"/>
+              </excludes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+[/if]
+[/template]
+
+[template private pomBundle(aBundle : Bundle)]
+<artifactId>[aBundle.genBundleID()/]</artifactId>
+<version>[aBundle.bundleVersion().substitute('.qualifier', '')/]-SNAPSHOT</version>
+<packaging>eclipse-plugin</packaging>
+
+<name>[aBundle.name/]</name>
+
+<!-- workaround for https://issues.sonatype.org/browse/TYCHO-168 -->
+<build>
+  <resources>
+    <resource>
+      <directory>src</directory>
+      <excludes>
+        <exclude>**/*.java</exclude>
+      </excludes>
+    </resource>
+  </resources>
+  <plugins>
+    <plugin>
+      <groupId>org.eclipse.tycho</groupId>
+      <artifactId>tycho-source-plugin</artifactId>
+    </plugin>
+  </plugins>
+</build>
+[/template]
+
+[template private pomPath(aProject : Project) post(trim())]
+[if (aProject.oclIsKindOf(Feature))][aProject.oclAsType(Feature).genFeaturePath()/][elseif (aProject.oclIsKindOf(Repository))][aProject.oclAsType(Repository).genRepositoryPath()/][elseif (aProject.oclIsKindOf(Bundle))][aProject.oclAsType(Bundle).genBundlePath()/][/if]
+[/template]

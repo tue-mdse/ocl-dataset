@@ -1,0 +1,95 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2010, 2014 Obeo and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Mikael Barbero (Obeo) - initial API and implementation
+ *     Fabien Toral (CS Information Systems) - Circular dependencies and other corrections for PolarSys migration
+[/comment]
+[module dataTypeQueries('http://www.eclipse.org/uml2/4.0.0/UML', 'http://www.eclipse.org/emf/2002/Ecore')/]
+
+[query public isRedefined(e : Classifier) : Boolean = 
+	eContainer(Package).eAllContents(Classifier)->exists(redefinedClassifier->includes(e))
+/]
+
+[query public redefinee(e : Classifier) : Sequence(Classifier) = 
+	eContainer(Package).eAllContents(Classifier)->select(redefinedClassifier->includes(e))
+/]
+
+[comment][/comment]
+[query public isValidType(e : Type) : Boolean = 
+	if not name.oclIsUndefined() then
+		not e.isMacro() and
+		not e.oclAsType(DataType).isEnumeration() and
+		not e.oclAsType(DataType).isStructure()
+	else false
+	endif
+/]
+
+[query public isSimpleTypeDefDataType(e : DataType) : Boolean = 
+	redefinedClassifier->notEmpty() and
+	not isStructure() and
+	not isTypeDefStruct() and
+	not isEnumeration() and
+	not isTypeDefEnum() and
+	not isFunctionPointerTypeDefDataType()
+/]
+
+[comment]struct[/comment]
+[query public isStructure(e : Type) : Boolean = 
+	oclIsTypeOf(DataType) and
+	oclAsType(DataType).ownedAttribute->notEmpty() and
+	oclAsType(DataType).ownedOperation->isEmpty() and
+	oclAsType(DataType).redefinedClassifier->isEmpty()
+/]
+
+[comment]typedef struct[/comment]
+[query public isTypeDefStruct(e : Type) : Boolean = 
+	oclIsTypeOf(DataType) and
+	oclAsType(DataType).ownedAttribute->isEmpty() and
+	oclAsType(DataType).ownedOperation->isEmpty() and
+	oclAsType(DataType).redefinedClassifier->notEmpty() and 
+	oclAsType(DataType).redefinedClassifier->exists(isStructure())
+/]
+
+[comment]enum[/comment]
+[query public isEnumeration(e : Type) : Boolean = 
+	oclIsTypeOf(Enumeration) and
+	oclAsType(Enumeration).ownedLiteral->notEmpty() and
+	oclAsType(Enumeration).redefinedClassifier->isEmpty()
+/]
+
+[comment]typedef enum[/comment]
+[query public isTypeDefEnum(e : Type) : Boolean = 
+	oclIsTypeOf(Enumeration) and
+	oclAsType(Enumeration).ownedLiteral->isEmpty() and
+	oclAsType(Enumeration).redefinedClassifier->notEmpty() and
+	oclAsType(DataType).redefinedClassifier->exists(isEnumeration())
+/]
+
+[comment]macro[/comment]
+[query public isMacro(e : Type) : Boolean = 
+	not name.oclIsUndefined() and name = 'Macro'
+/]
+
+[query public isFunctionPointerTypeDefDataType(e : DataType) : Boolean = 
+	ownedOperation->exists(name = e.name)
+/]
+
+[query public declaredVars(e : DataType) : Sequence(Property) =
+	if owner.oclIsKindOf(Interface) then
+		owner.oclAsType(Interface).ownedAttribute
+			->select(type = e)->asSequence()
+	else 
+		if owner.oclIsKindOf(Class) then
+			owner.oclAsType(Class).ownedAttribute
+				->select(type = e)->asSequence()
+		else
+			Sequence{}
+		endif
+	endif
+/]

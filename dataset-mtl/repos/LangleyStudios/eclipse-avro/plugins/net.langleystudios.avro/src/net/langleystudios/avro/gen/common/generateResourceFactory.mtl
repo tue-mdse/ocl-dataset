@@ -1,0 +1,66 @@
+[comment
+/*******************************************************************************
+ * Copyright (c) 2014 Langley Studios
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     Langley Studios - initial API and implementation
+ *******************************************************************************/
+/]
+[comment encoding = UTF-8 /]
+[module generateResourceFactory('http://www.eclipse.org/emf/2002/Ecore')]
+
+
+[template public generateResourceFactory(anEPackage : EPackage){
+basePackage : String = getBasePackage();
+avroPrefix : String = basePackage.concat('.avro.');
+emfPrefix : String = basePackage.concat('.');
+emfPackage : String = emfPrefix.concat(getPackage());
+emfFactory : String = emfPrefix.concat(getFactory());
+}]
+[comment @main/]
+[file ('AvroResourceFactory.java', false, 'UTF-8')]
+package [basePackage/].avro;
+
+import net.langleystudios.avro.ecore.AvroResource;
+
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.impl.ResourceFactoryImpl;
+
+public class AvroResourceFactory extends ResourceFactoryImpl {
+
+	/**
+	 * Constructor for AvroResourceFactory.
+	 */
+	public AvroResourceFactory() {
+		super();
+	}
+
+	@Override
+	public Resource createResource(URI uri) {
+		AvroResource resource = new AvroResource(uri);
+		resource.setClassLoader([emfPackage/].class.getClassLoader());
+
+		ConvertEMFtoAvro converter = new ConvertEMFtoAvro();
+		resource.setConverter(converter);
+		return resource;
+	}
+
+}
+[/file]
+[/template]
+
+[query public getBasePackage(tracecontext : OclAny) : EString
+	= invoke('net.langleystudios.avro.gen.Utility', 'getBasePackage()', Sequence{tracecontext})
+/]
+[query public getPackage(tracecontext : OclAny) : EString
+	= invoke('net.langleystudios.avro.gen.Utility', 'getPackage()', Sequence{tracecontext})
+/]
+[query public getFactory(tracecontext : OclAny) : EString
+	= invoke('net.langleystudios.avro.gen.Utility', 'getFactory()', Sequence{tracecontext})
+/]
+

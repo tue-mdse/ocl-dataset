@@ -1,0 +1,52 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2011, 2014 CS Systèmes d'Information (CS-SI).
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Sebastien Gabel (CS-SI) - initial API and implementation
+ *     Fabien Toral (CS Information Systems) - Circular dependencies and other corrections for PolarSys migration
+[/comment]
+[module struct('http://www.eclipse.org/uml2/4.0.0/UML', 'http://www.eclipse.org/emf/2002/Ecore')/]
+[import org::eclipse::umlgen::gen::c::files::common /]
+[import org::eclipse::umlgen::gen::c::files::structural::dataTypeQueries /]
+[import org::eclipse::umlgen::gen::c::files::structural::property /]
+
+[comment] -- A simple struct[/comment]
+[template public gen (e : DataType) ? (isStructure() and not isRedefined())]
+[if (declaredVars()->notEmpty() and declaredVars()->forAll(isStatic))]static [/if][e.structUnion()/][name/]
+{
+  [structMembers()/]
+}[if declaredVars()->notEmpty()] [declaredVars().commonGen()->sep(', ')/][/if];
+
+[/template]
+
+[comment] -- A typedef struct[/comment]
+[template public gen (e : DataType) ? (isStructure() and isRedefined())]
+[if redefinee()->first().getComment().trim().size() > 0]
+[redefinee()->first().getComment().format()/]
+[/if]
+typedef [e.structUnion()/][name/]
+{
+  [structMembers()/]
+} [redefinee().name->sep(', ')/];
+
+[/template]
+
+[comment] -- Generate the struct members[/comment]
+[template private structMembers (e : DataType)]
+[for (property : Property | e.eContents(Property))]
+[if (property.hasComment())][property.getComment().formatInLine().concat('\n')/][/if]
+[property.gen('C')/]
+[/for]
+[/template]
+
+[comment writes 'struct' or 'union' depending on the type of struct /]
+[template private structUnion(e: NamedElement)]
+[if e.getAnnotation('struct')->notEmpty()]struct [else]
+[if e.getAnnotation('union')->notEmpty()]union [else]
+[comment fallback for old models that don't have the struct keyword/]struct [/if][/if]
+[/template]

@@ -1,0 +1,117 @@
+[comment encoding = UTF-8 /]
+[**
+ * Copyright (c) 2017 TU Ilmenau, Systems and Software Engineering Group
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), 
+ * to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, 
+ * and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+ * WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */]
+[module generateReference('http://www.eclipse.org/emf/2002/Ecore')]
+
+[import ecore4CPP::generator::main::generateClass /]
+[import ecore4CPP::generator::main::generateType /]
+[import ecore4CPP::generator::main::helper /]
+
+[query public hasSetter(aReference : EReference) : EBoolean = (aReference.changeable and aReference.upperBound=1) or hasKey('setterbody') /]
+[query public hasGetter(aReference : EReference) : EBoolean = true or hasKey('getterbody') /]
+
+[template public generateReferenceDecl(aReference : EReference, impl : EBoolean) ]
+[aReference.generateReferenceGetterDeclaretaion(impl)/]
+[aReference.generateReferenceSetterDeclaretaion(impl)/]
+[/template]
+
+[template public generateReferenceGetterDeclaretaion(aReference : EReference, impl : EBoolean)? (hasGetter() and (not isUnion()) )]
+[aReference.generateDokumentation()/]
+virtual [aReference.generateReferenceType()/] [aReference.GetterName()/]() const [abstractSufix(impl)/];
+
+[/template]
+
+[template public generateReferenceSetterDeclaretaion(aReference : EReference, impl : EBoolean) ? ( hasSetter() )]
+[aReference.generateDokumentation()/]
+virtual void [aReference.SetterName()/]([if (not aReference.eGenericType.oclIsKindOf(EDataType))]
+std::shared_ptr<[aReference.eGenericType.generateCppType()/]> [else]
+[aReference.eGenericType.generateCppType()/][/if]
+_[aReference.name/]) [abstractSufix(impl)/];
+
+[/template]
+
+[template public generateProtectedReference(aReference : EReference) ]
+[aReference.generateDokumentation()/]
+[aReference.generateReferenceType()/] m_[aReference.name/];
+
+[/template]
+
+[template public generateProtectedReferenceDeleter(aReference : EReference) ]
+[/template]
+
+[template public generateReferenceCpp(aReference : EReference)]
+[aReference.generateReferenceGetterCpp()/]
+[aReference.generateReferenceSetterCpp()/]
+[/template]
+
+[template public generateReferenceInit(aReference : EReference)? (not(aReference.upperBound=1))]
+m_[aReference.name/].reset(new std::vector<std::shared_ptr<[aReference.eGenericType.generateCppType()/]>>());
+[/template]
+
+[template public generateReferenceSetterCpp(aReference : EReference) ? (hasSetter())]
+void [aReference.eContainingClass.name/]Impl::[aReference.SetterName()/](std::shared_ptr<[aReference.eGenericType.generateCppType()/]> _[aReference.name/])
+{
+[if (hasKey('setterbody'))]
+//generated from setterbody annotation
+[valueKey('setterbody')/] 
+[else]
+    m_[aReference.name/] = _[aReference.name/];
+[/if]
+}
+[/template]
+
+[template public generateReferenceGetterCpp(aReference : EReference) ? (hasGetter()and (not isUnion()))]
+[aReference.generateReferenceType()/] [aReference.eContainingClass.name/]Impl::[aReference.GetterName()/]() const
+{
+[if (hasKey('getterbody'))]
+//generated from getterbody annotation
+[valueKey('getterbody')/]
+[else]
+[if(aReference.lowerBound>0)]//assert(m_[aReference.name/]);[/if]
+    return m_[aReference.name/];
+[/if]
+}
+[/template]
+
+[template public generateReferenceGetter(aReference : EReference,impl : Boolean) ]
+virtual std::shared_ptr<[aReference.metamodelaTypedElementString()/]> get[aReference.memberName()/]() const [abstractSufix(impl)/];
+
+[/template]
+
+[template public generateReferenceGetterImpl(aReference : EReference)]
+std::shared_ptr<[aReference.metamodelaTypedElementString()/]> [aReference.eContainingClass.ePackage.name.toUpperFirst()/]PackageImpl::get[aReference.memberName()/]() const
+{
+	return std::dynamic_pointer_cast<[aReference.metamodelaTypedElementString()/]>([aReference.eContainingClass.classNameMember()/]->getEStructuralFeatures()->at([aReference.listNumber()/]));
+}
+
+[/template]
+
+[template public generateStaticReferenceID(aReference : EReference)]
+static const int [aReference.memberNameUpper()/] = [aReference.eContainingClass.getClassifierID()/][aReference.getFeatureID()/];
+
+[/template]
+
+[template public generateReferenceCreation(aReference : EReference)]
+createEReference([aReference.eContainingClass.classNameMember()/], [aReference.memberNameUpper()/]);
+
+[/template] 
+ 
+[template public generateReferenceInitialization(aReference : EReference)]
+initEReference([aReference.packageGetter()/],[aReference.eGenericType.eClassifier.packageGetter(aReference)/],[aReference.eOpposite.packageGetter()/],"[aReference.name/]","[aReference.defaultValueLiteral/]",[aReference.lowerBound/],[aReference.upperBound/], nullptr , [aReference.transient.toString()/],[aReference.volatile.toString()/], [aReference.changeable.toString()/], [aReference.containment.toString()/], [aReference.resolveProxies.toString()/], [aReference.unsettable.toString()/], [aReference.unique.toString()/], [aReference.derived.toString()/],[aReference.ordered.toString()/]);
+
+[/template]
+
+
+
+

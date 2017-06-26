@@ -1,0 +1,59 @@
+[comment encoding = UTF-8 /]
+[module classHeader('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import AUTCPP::header::files::coreServices /]
+[import AUTCPP::header::files::classHeaderElements /]
+[import AUTCPP::header::files::classConstructor /]
+[import AUTCPP::header::files::classDestructor /]
+[import AUTCPP::stateMachine::header::files::stateMachineHeaderElements /]
+
+[template public generateClassHeader(aClass : Class) { hasSM : Boolean = hasStateMachine(); } ]
+[file (getNearestPackage().Getpath()+'/Headers/'+aClass.name.concat('.h'), false, 'UTF-8')]
+#ifndef [name.toUpperCase()/]_H
+#define [name.toUpperCase()/]_H
+[dependentHeaders(aClass)/]
+
+class [name.toUpperFirst()/][aClass.generateInheritance()/]{
+[if (attribute->select(visibility=VisibilityKind::private)->size()>0 or aClass.ownedOperation->select(visibility=VisibilityKind::private)->size()>0 or hasSM)]
+	private:
+		[generateAttributes(VisibilityKind::private)/]
+		[generateOperations(VisibilityKind::private)/]
+		[comment SateMachine start /]
+		[if (hasSM)]
+		//Begin : Related to state machines	
+		[generateStatMachineStates()/]
+		//End : Related to state machines
+		[/if]
+		[comment SateMachine stop /]
+[/if]
+[if (attribute->select(visibility=VisibilityKind::protected)->size()>0 or aClass.ownedOperation->select(visibility=VisibilityKind::protected)->size()>0)]
+	protected:
+		[generateAttributes(VisibilityKind::protected)/]
+		[generateOperations(VisibilityKind::protected)/]
+[/if]	
+	public:
+		[generateAttributes(VisibilityKind::public)/]
+		[generateOperations(VisibilityKind::public)/]
+		[generateSetMethods(aClass)/]
+		[generateSetMethodsForAssociations(aClass)/]
+		[generateGetMethods(aClass)/]
+		[generateGetMethodsForAssociations(aClass)/]
+		[comment SateMachine start /]
+		[if (hasSM)]
+		//Begin : Related to state machines		
+		[generateStatMachineBehaviours()/]
+		//End : Related to state machines
+		[/if]
+		[comment SateMachine stop /]
+		[generateConstructorsHeader(aClass)/]
+		[generateDesctuctorsHeader(aClass)/]		
+		
+};
+
+#endif	
+[/file]
+[/template]
+[template public dependentHeaders(aClass : Class) post (trim())]
+[getClassInheritanceDependencies(aClass)/]
+[getUsedLibraries(aClass).trim()/]
+[getClassDependencyLibraries(aClass).trim()/]
+[/template]

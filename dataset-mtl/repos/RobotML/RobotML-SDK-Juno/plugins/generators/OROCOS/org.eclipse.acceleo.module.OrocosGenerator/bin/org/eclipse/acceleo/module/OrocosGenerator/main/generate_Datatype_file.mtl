@@ -1,0 +1,221 @@
+[comment encoding = UTF-8 /]
+[module generate_Datatype_file('http://www.eclipse.org/uml2/3.0.0/UML')]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DataTypeQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import org::eclipse::acceleo::module::OrocosGenerator::mmqueries::OrocosQueries/]
+
+[template public generate_Datatype_file(c : Class, m: Model)]
+[comment] [for (elt : Element | getDataTypesInClass(c))] [/comment]
+[for (elt : Element | getElementsDataType(m))]
+[let type: Type = elt] [comment] (isRobotMLDataType(m, type.name)  = false) and [/comment]
+[if(isPrimitiveType(type) = false)] [comment] introduire test sur le plan de déploiement [/comment]
+[if (isExistingType(type) = false)]
+[file ( 'src/DataTypes/'+type.name.substitute(' ', '_')+'.hpp', false, 'UTF-8')]
+#ifndef _[type.name.toUpper()/]_H_
+#define _[type.name.toUpper()/]_H_
+[comment]
+[for (elt : Element | getDataTypesInElement(type))]
+[let type: Type = elt] 
+[if(isRobotMLDataType(m, type.name))]
+[let ne : NamedElement = type.owner]
+#include <[ne.name.replace('_datatypes', '_msgs')/]/[type.name/].hpp>
+[/let]
+[else]
+
+[/let]
+[/for]
+
+
+[/comment]
+
+#include "../DataTypes/CppDataTypes.hpp"
+[let nspace : String = type.qualifiedName.substitute('::'+type.name,'')]
+[let nameSpace : Sequence(String) = nspace.tokenize('::')]
+[for(s : String | nameSpace)]
+namespace [s/]{
+[/for]
+[/let]
+[/let]
+
+	[if(isEnumeration(type))]
+	enum [type.name/]{
+	[for (enumeration : EnumerationLiteral |getEnumeration(type))]
+	[enumeration.name/] ,
+	[/for]
+    }
+	[else]
+	struct [type.name/]{
+	[for (property : Property |getProperties(type))]
+    [let t :Type = property.type]
+    [if(isPrimitiveType(t))]
+	[if(t.name.equalsIgnoreCase('boolean'))]
+		[property.visibility/]: bool [property.name/];
+	[else]
+		[property.visibility/]: [t.name/] [property.name/] [getInstanceMultiplicity(property)/];
+	[/if]
+	[else]
+	 [t.name/] [property.name/];
+	[/if]	
+	[comment in case of ros datatypes, uncomment]
+	[if(isRobotMLDataType(m, t.name))]
+	[let ne : NamedElement = t.owner]
+	[property.visibility/]:	[ne.name.replace('_datatypes', '_msgs')/]::[t.name/] [property.name/] [getInstanceMultiplicity(property)/];
+	[/let]
+	[else]
+	[t.name/] [property.name/];
+	[/comment]
+		
+	[/let]	
+	[/for]	
+  
+ 	[for (op : Operation |getOperations(type))]
+		[let t :Type = op.type]
+
+		[if(op.isStatic)]
+	 		[if(isPrimitiveType(t))]
+				[if(t.name.equalsIgnoreCase('boolean'))]
+				[op.visibility/]: static bool [op.name/](
+				[else]
+				[op.visibility/]: static [t.name/] [op.name/](
+				[/if]
+			[else]
+	 			[op.visibility/]: [t.name/] static [op.name/](
+			[/if]
+
+			[comment in case of ros datatypes, uncomment]
+			[if(isRobotMLDataType(m, t.name))]
+				[let ne : NamedElement = t.owner]
+				[op.visibility/]: static [ne.name.replace('_datatypes', '_msgs')/]::[t.name/] [op.name/](
+				[/let]
+			[elseif(t.name.equalsIgnoreCase('invalid') or t.name.size() = 0)]
+				 static void [op.name/](
+			[else]
+			[/if]
+			[/comment]
+
+			
+
+		[elseif(op.isAbstract and not op.isStatic)]
+			[if(isPrimitiveType(t))]
+				[if(t.name.equalsIgnoreCase('boolean'))]
+				[op.visibility/]: virtual bool [op.name/](
+				[else]
+				[op.visibility/]: virtual [t.name/] [op.name/](
+				[/if]
+			[else]
+		 		 virtual [t.name/] [op.name/](		
+			[/if]
+
+			[comment in case of ros datatypes, uncomment]
+			[if(isRobotMLDataType(m, t.name))]
+				[let ne : NamedElement = t.owner]
+				[op.visibility/]: virtual [ne.name.replace('_datatypes', '_msgs')/]::[t.name/] [op.name/]( 
+				[/let]
+			[elseif(t.name.equalsIgnoreCase('invalid') or t.name.size() = 0)]
+				 virtual void [op.name/](
+			[else]
+		 		 virtual [t.name/] [op.name/](
+			[/if]
+			[/let]		
+			[/comment]
+
+			
+		[else]
+			[if(isPrimitiveType(t))]
+				[if(t.name.equalsIgnoreCase('boolean'))]
+				[op.visibility/]: bool [op.name/](
+				[else]
+				[op.visibility/]: [t.name/] [op.name/](
+				[/if]
+			[else]
+		 		 [t.name/] [op.name/](		
+			[/if]
+			[comment in case of ros datatypes, uncomment]
+			[if(isRobotMLDataType(m, t.name))]
+				[let ne : NamedElement = t.owner]
+				[op.visibility/]: virtual [ne.name.replace('_datatypes', '_msgs')/]::[t.name/] [op.name/]( 
+				[/let]
+			[elseif(t.name.equalsIgnoreCase('invalid') or t.name.size() = 0)]
+				 virtual void [op.name/](
+			[else]
+		 		 virtual [t.name/] [op.name/](		
+			[/comment]
+			[/if]
+			[/let]
+			
+		
+		[if(getOperationInputParameters(op) <> null)]
+		[for (input: Element | getOperationInputParameters(op))]
+			[let p : Parameter = input]
+			[let paramType : Type = p.type]
+			[if(isPrimitiveType(paramType))]
+				[if(paramType.name.equalsIgnoreCase('boolean'))]
+				bool [p.name/],
+				[else]
+				[paramType.name/] [p.name/],
+				[/if]
+			[else]
+				[paramType.name/] [p.name/],
+			[/if]
+			[comment in case of ros datatypes, uncomment]
+			[if(isRobotMLDataType(m, paramType.name))]
+				[let ne : NamedElement = paramType.owner]
+				[ne.name.replace('_datatypes', '_msgs')/]::[paramType.name/] [p.name/], 
+				[/let]
+			[else]
+				[paramType.name/] [p.name/],
+			[/comment] 
+			[/let]
+			[/let]
+		[/for]
+		[/if]
+
+		[if(getOperationOutputParameters (op) <> null)]
+		[for (output: Element | getOperationOutputParameters(op))]
+			[let p : Parameter = output]
+			[let paramType : Type = p.type]
+			[if(isPrimitiveType(paramType))]
+				[if(paramType.name.equalsIgnoreCase('boolean'))]
+				bool &[p.name/],
+				[else]
+				[paramType.name/] &[p.name/],
+				[/if]
+			[else]
+		 		[paramType.name/] &[p.name/],
+			[/if]
+			[comment in case of ros datatypes, uncomment]
+			[if(isRobotMLDataType(m, paramType.name))]
+				[let ne : NamedElement = paramType.owner]
+				[ne.name.replace('_datatypes', '_msgs')/]::[paramType.name/] &[p.name/], 
+				[/let]
+			[else]
+		 		 [paramType.name/] &[p.name/],		
+
+			[/comment]
+ 
+			[/let]
+			[/let]
+		[/for]
+		[/if]
+        );
+    [/for]
+};
+[/if]
+
+[let nspace : String = type.qualifiedName.substitute('::'+type.name,'')]
+[let nameSpace : Sequence(String) = nspace.tokenize('::')]
+[for(s : String | nameSpace)]
+}
+[/for]
+[/let]
+[/let]
+
+#endif // _[type.name.toUpper()/]_H_
+[/file]
+[/if]
+[/if]
+
+[/let]
+[/for]
+[/template]

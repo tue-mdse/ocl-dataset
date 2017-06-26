@@ -1,0 +1,78 @@
+[module ui('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(class : Class)]
+[if (class.isUi())]
+[class.pathToMainJava()/]/[class.uiPackage().toPath()/]/I[class.name/].java
+[/if]
+
+[/template][/comment]
+
+
+[template public generateUi(class : Class)? (class.isUi())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(), class.uiPackage().toPath(), 'I'.concat(class.name).concat('.java')), false))]
+package [class.uiPackage()/];
+
+// [protected ('imports')] 
+// for import
+import java.io.Writer;
+
+[for (class.operationsParametersTypes())]
+///// [class.isEntity()/] [class/]
+[/for]
+[for (classifier:Classifier|class.operationsParametersTypes())]
+	[if (classifier.isEntity())]
+import [classifier.entityPackage()/].[classifier.name/];
+	[else]
+import [classifier.getCompleteName()/];	
+	[/if]
+[/for]
+
+[for (oper:Operation|class.ownedOperation)]
+	[for (type:Type|oper.raisedException)]
+import [type.getCompleteName()/];
+	[/for]
+[/for]
+
+[if (superClass->notEmpty() and superClass->asSequence()->first().isUi())]
+import [class.superClass.uiPackage()/].I[class.superClass.name/];
+[/if]
+
+import org.sharengo.exceptions.TechnicalException;
+
+import java.util.Collection;
+// [/protected] for import
+
+public interface I[class.name/][class.extensions()/] {
+[for (oper:Operation|class.ownedOperation)]
+	[oper.generateJavadoc()/]	
+	public [oper.generateReturn()/] [oper.name/]([oper.generateUiParameters()/]) throws TechnicalException[oper.genExceptions()/];
+[/for]
+}
+[/file]
+[/template]
+
+
+[template public generateUiParameters(operation : Operation)]
+[if (operation.hasStereotype(getProperty('Remote')))][operation.generateRawParameters()/][else]Writer writer[if (operation.ownedParameter->select(direction = 'in' or direction = 'inout')->notEmpty())], [/if][operation.generateRawParameters()/][/if]
+[/template]
+
+
+[template public extensions(class : Class)]
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().isUi())] extends I[class.superClass.name/][/if]
+[/template]

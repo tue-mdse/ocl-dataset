@@ -1,0 +1,90 @@
+[comment encoding = UTF-8 /]
+[module routes('http://www.intrawarez.de/dbca')]
+
+[import de::intrawarez::dbca::m2t::common::attributes/]
+[import de::intrawarez::dbca::m2t::common::entities/]
+[import de::intrawarez::dbca::m2t::common::relationships/]
+[import de::intrawarez::dbca::m2t::common::accessors/]
+[import de::intrawarez::dbca::m2t::common::client/]
+
+[query private route (ev : EntityForm) : String 
+	= 'entities/' + ev.entity.name.toLower() 
+/]
+
+[query private routeUpdate (p : Attribute) : String 
+	= ':' + p.name
+/]
+
+[query private routeUpdate (ev : EntityForm) : String 
+	= 'entities/' + ev.entity.name.toLower() + '/' + ev.entity.selectPrimaryProperties().routeUpdate()->sep('/')
+/]
+
+[template private generateRoutes(ev : EntityForm)]
+
+[if (ev.type.toString()='Select')]
+routes['["'+ev.route()+'"]'/] = {
+	defaults: 	{ view: "[ev.name/]" },
+	constrains:	undefined
+};
+[elseif (ev.type.toString()='Insert')]
+routes['["'+ev.route()+'/new"]'/] = {
+	defaults: 	{ view: "[ev.name/]" },
+	constrains:	undefined
+};
+[elseif (ev.type.toString()='Update')]
+routes['["'+ev.routeUpdate()+'"]'/] = {
+	defaults: 	{ view: "[ev.name/]",[for(p : Attribute | ev.entity.selectPrimaryProperties()) separator(',')] [p.name/]: undefined[/for] },
+	constrains:	undefined
+};
+[elseif (ev.type.toString()='Delete')]
+routes['["'+ev.route()+'/delete"]'/] = {
+	defaults: 	{ view: "[ev.name/]" },
+	constrains:	undefined
+};
+[/if]
+
+[/template]
+
+[template private generateRoutes(ev : CustomForm)]
+
+routes['["'+ev.name+'"]'/] = {
+	defaults: 	{ view: "[ev.name/]" },
+	constrains:	undefined
+};
+
+[/template]
+
+[template private generateRoutes(c : Client)]
+[file ('/client/devextreme/'+c.name.toLower()+'/js/routes.js', false, 'UTF-8')]
+(function thornms_routes ($, DX, ko, [c.name/], undefined){
+
+	"use strict";
+
+	var routes = {};
+
+	routes['[""]'/] = {
+		defaults: 	{ view: "[c.elements->selectByKind(EntityForm)->first().name/]" },
+		constrains:	undefined
+	};
+
+	
+	[c.elements->selectByKind(EntityForm)->select(not isUpdateView()).generateRoutes()/]
+	[c.elements->selectByKind(EntityForm)->select(isUpdateView()).generateRoutes()/]
+	
+	[c.selectCustomForms().generateRoutes()/]
+	
+	// [protected('routes::'+c.name)]
+	// [/protected]
+
+
+	
+	
+	[c.name/].routes = routes;
+
+}(jQuery, DevExpress, ko, (window.[c.name/] = window.[c.name/] || {}) ));
+[/file]
+[/template]
+
+[template public generateRoutes(app : Application)]
+[app.clients.generateRoutes()/]
+[/template]

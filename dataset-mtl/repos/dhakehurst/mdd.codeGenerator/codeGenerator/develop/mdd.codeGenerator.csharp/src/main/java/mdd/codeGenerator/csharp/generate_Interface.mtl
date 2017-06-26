@@ -1,0 +1,51 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_Interface('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Classifier/]
+[import mdd::codeGenerator::csharp::generate_Operation /]
+[import mdd::codeGenerator::csharp::generate_Property /]
+[import mdd::codeGenerator::csharp::generate_Reception /]
+
+[template public generate(c : Interface, srcDir:String)]
+[file (srcDir+getProperty('artifact.codeFolder')+'/'+c.qualifiedName('/')+'.cs', false, 'UTF-8')]
+
+namespace [c.namespace.qualifiedName('.')/] {
+
+    /// <summary> Interface Description </summary>
+	public interface [c.name/]
+	[c.gen_Implements()/]
+	{
+	  // --- Receptions ---
+	  [for (r : Reception | c.ownedReception)]
+        /// <summary> Reception Description </summary>
+		[r.generateSignatureAndSignal(srcDir)/];
+	  [/for]  
+	
+	  // --- Operations ---
+	  [for (op : Operation | c.ownedOperation->reject(op2|op2.name = c.name))]
+        /// <summary> Operation Description </summary>
+		[op.generateSignature()/];
+	  [/for]	
+	
+	  // --- Properties ---
+	  [for (pr : Property | c.ownedAttribute)]
+        /// <summary> Property Description </summary>
+		[pr.generateSignature()/]
+	  [/for]
+	
+	}
+
+}
+[/file]
+[/template]

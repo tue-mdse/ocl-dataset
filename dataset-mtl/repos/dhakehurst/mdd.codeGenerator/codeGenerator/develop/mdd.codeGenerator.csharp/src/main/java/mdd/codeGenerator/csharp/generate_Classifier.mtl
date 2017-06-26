@@ -1,0 +1,251 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_Classifier('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Property /]
+
+[template public startCompositeParts(arg : StructuredClassifier)]
+  [for ( pr : Property | self.activeProperties() )]
+this.[pr.name/].start();
+  [/for]
+[/template]
+
+
+[template public gen_Implements(c : Interface)]
+[if c.implements()->isEmpty()]
+[else]
+: [for (i : Type | c.implements()) separator (', ') ][i.fullName()/][/for]
+[/if]
+[/template]
+
+[template public gen_Implements(c : Class)]
+[if c.implements()->isEmpty()]
+[if c.isActive]: global::framework.os.threading.Runnable[else][/if]
+[else][if c.isActive]: [for (i : String | c.implements().fullName()->including('global::framework.os.threading.Runnable')) separator (', ') ][i/][/for][else]: [for (i : Type | c.implements()) separator (', ') ][i.fullName()/][/for][/if]
+[/if]
+[/template]
+
+
+
+[query public implements(c : Class) : Set(Type) =
+  c.interfaceRealization.contract->asSet()
+/]
+
+[query public implements(c : DataType) : Set(Type) =
+  c.general->asSet()
+/]
+
+[query public implements(c : Interface) : Set(Type) =
+  c.generalization.general->filter(Interface)->asSet()
+/]
+
+[template public generate_DefaultConstructor(c : StructuredClassifier)]
+public [c.name/](global::framework.basicTypes.String objectId) {
+  this.objectId = objectId;
+  this.os = new global::framework.os.OsRef();
+  this.log = new global::framework.logging.LoggerRef(new global::framework.logging.Location(objectId));
+  this.config = new global::framework.persistence.PersistenceRef(new framework.persistence.PersistenceStoreIdentity("configuration")); 
+  log.trace(() => new framework.logging.Message("[c.name/](" + objectId + ")"));
+
+  [c.createParts() /]
+  [c.createLinks() /]
+
+}
+[/template]
+
+
+
+[template public createParts(c : StructuredClassifier)]
+  #region Ports
+  [for (pr : Property | c.ownedAttribute->asSequence()->filter(Port))]
+	this._port_[pr.name/] = new [pr.typeName()/]();
+  [/for]
+  #endregion
+  #region Composite Properties
+  [for (pr : Property | c.ownedAttribute->asSequence()->reject(a|a.oclIsTypeOf(Port))->select(a:Property|a.isComposite))]
+	[pr.generateComposite()/]
+  [/for]
+  #endregion
+[/template]
+
+[query public isPort(end : ConnectorEnd) : Boolean =
+   end.role.oclIsTypeOf(Port)
+/]
+[query public isExternalPort(end : ConnectorEnd) : Boolean =
+   end.partWithPort.oclIsUndefined() and end.isPort()
+/]
+
+[template public createLinks(c : StructuredClassifier)]
+#region Connectors
+  [for (cn : Connector | c.ownedConnector->sortedBy(cn:Connector | cn.name))]
+	[for (end : ConnectorEnd | cn.end->sortedBy(e | e.role.name))]
+      // [cn.name/] : Connector [end.role.name/] --> [end.otherEnd().role.name/]
+      [if end.isExternalPort()] [comment must be a port to the outside/]
+
+        [for (i : Interface | end.role.type.oclAsType(Class).interfaceRealization.contract->select(i|i.realisedBy(end.otherEnd())) ) ]
+    this.port_[end.role.name/].[i.name.toLowerFirst()/] = [end.gen_getOtherEnd()/];  //external port realises interface {this.port.interface = otherEnd.port}
+        [/for]
+      [else] [comment an internal part or port /]
+        [if end.isPort()]
+          [for (i : Interface | end.role.type.uses()->filter(Interface)) ]
+    [assignTo(end.partWithPort, end.role, i, end.gen_getOtherEnd())/];   // internal port uses interface {this.part.port.interface = otherEnd.port}
+          [/for]
+        [else] [comment end is an internal part /]
+          [if end.otherEnd().isExternalPort()]
+            [for (p : Property | end.propertiesRealisedBy() )]
+    this.[end.role.name/].[p.name/] = [end.gen_getOtherEnd()/];       // internal part using an interface {part.property = external.port}
+            [/for]
+          [else]
+            [if end.otherEnd().isPort()]
+            [for (p : Property | end.xxx() )]
+    this.[end.role.name/].[p.name/] = [end.gen_getOtherEnd()/];       // internal part using an interface {part.property = otherPart.port}
+            [/for]
+            [else] [comment other end is an internal part also /]
+              [if not end.definingEnd().oclIsUndefined() and end.definingEnd().isNavigable()] [comment part using an interface /]
+    this.[end.role.name/].[end.definingEnd().name/] = [end.gen_getOtherEnd()/];       // internal part connected to other internal part {part.property = otherEnd}
+              [else]
+				[if not end.definingEnd().oclIsUndefined()]
+    // definingEnd of connector undefined
+                [else]
+    // this.[end.role.name/].[end.definingEnd().name/] not navigable
+                [/if] 
+              [/if]
+            [/if]
+          [/if]
+        [/if]
+      [/if]
+	[/for]
+  [/for]
+#endregion
+[/template]
+
+[template public assignTo(partWithPort : Property, role:ConnectableElement, i:Interface, v:String)]
+this.[partWithPort.name/].port_[role.name/].uses.[i.name.toLowerFirst()/].Add( [v/] );
+[/template]
+
+[template public createLinks1(c : StructuredClassifier)]
+#region Connectors
+  [for (cn : Connector | c.ownedConnector)]
+	[for (end : ConnectorEnd | cn.end)]
+      // [cn.name/] : Connector [end.role.name/] --> [end.otherEnd().role.name/]
+      [if end.isExternalPort()] [comment must be a port to the outside/]
+
+        [for (i : Interface | end.role.type.oclAsType(Class).interfaceRealization.contract->select(i|i.realisedBy(end.otherEnd())) ) ]
+    this.port_[end.role.name/].[i.name.toLowerFirst()/] = [end.gen_getOtherEnd()/];  //external port realises interface {this.port.interface = otherEnd.port}
+        [/for]
+      [else] [comment an internal part or port /]
+        [if end.isPort()]
+          [for (i : Interface | end.role.type.uses()->filter(Interface)) ]
+    this.[end.partWithPort.name/].port_[end.role.name/].uses.[i.name.toLowerFirst()/] = [end.gen_getOtherEnd()/];       // internal port uses interface {this.part.port.interface = otherEnd.port}
+          [/for]
+        [else] [comment end is an internal part /]
+          [if end.otherEnd().isExternalPort()]
+            [for (p : Property | end.propertiesRealisedBy() )]
+    this.[end.role.name/].[p.name/] = [end.gen_getOtherEnd()/];       // internal part using an interface {part.property = external.port}
+            [/for]
+          [else]
+            [if end.otherEnd().isPort()]
+            [for (p : Property | end.xxx() )]
+    this.[end.role.name/].[p.name/] = [end.gen_getOtherEnd()/];       // internal part using an interface {part.property = otherPart.port}
+            [/for]
+            [else] [comment other end is an internal part also /]
+              [if not end.definingEnd().oclIsUndefined() and end.definingEnd().isNavigable()] [comment part using an interface /]
+    this.[end.role.name/].[end.definingEnd().name/] = [end.gen_getOtherEnd()/];       // internal part connected to other internal part {part.property = otherEnd}
+              [else]
+				[if not end.definingEnd().oclIsUndefined()]
+    // definingEnd of connector undefined
+                [else]
+    // this.[end.role.name/].[end.definingEnd().name/] not navigable
+                [/if] 
+              [/if]
+            [/if]
+          [/if]
+        [/if]
+      [/if]
+	[/for]
+  [/for]
+#endregion
+[/template]
+
+[query public xxx(arg : ConnectorEnd) : Set(Property) =
+ self.role.type.ownedElement->filter(Property)->select( p |
+   self.otherEnd().role.oclAsType(Port).provided->exists(i|i = p.type)
+ )
+/]
+
+[query public propertiesRealisedBy(arg : ConnectorEnd) : Set(Property) =
+ self.role.type.ownedElement->filter(Property)->select( p |
+   self.otherEnd().role.oclAsType(Port).required->exists(i|i = p.type)
+   or self.otherEnd().role.type.conformsTo(p.type)
+ )
+/]
+
+[query public realisedBy(arg : Interface, end : ConnectorEnd) : Boolean =
+  end.role.type.oclAsType(Class).interfaceRealization.supplier->includes(arg)
+/]
+
+
+[template public gen_getOtherEnd1(end : ConnectorEnd, t:Type)]
+      [if end.isExternalPort()] [comment must be a port to the outside/]
+      [else] [comment an internal part or port /]
+        [if end.isPort()]
+          [if not end.otherEnd().isPort()] [comment other end is a part /]
+          [/if]
+        [else] [comment an internal part /]
+           [if not end.definingEnd.oclIsUndefined()] [comment part using an interface /]
+           [/if]
+        [/if]
+      [/if]
+[/template]
+
+[template public gen_getOtherEnd(e : ConnectorEnd)]
+[if e.otherEnd().partWithPort.oclIsUndefined()][if e.otherEnd().role.oclIsTypeOf(Port)]
+this.port_[e.otherEnd().role.name/].uses[else]
+this.[e.otherEnd().role.name/][/if][else]
+this.[e.otherEnd().partWithPort.name/].port_[e.otherEnd().role.name/][/if]
+[/template]
+
+
+[query public partWithPort(e : ConnectorEnd) : Property =
+ e.role.owner.oclAsType(Property)
+/]
+
+
+[query public otherEnd(e : ConnectorEnd) : ConnectorEnd =
+  e.owner.oclAsType(Connector).end->any(e2|e2 <> e)
+/]
+
+[query public otherEnd(p : Property) : Property =
+  p.association.memberEnd->any(p2|p2<>p)
+/]
+
+[comment this will fail with multiple properties of same type /]
+[query public definingEnd1(e : ConnectorEnd) : Property =
+  e.role.type.oclAsType(StructuredClassifier).ownedAttribute
+  ->any(p:Property |p.type.conformsTo( e.otherEnd().role.type) )
+/]
+
+[comment this will fail with connectors/associations to self /]
+[query public definingEnd(e : ConnectorEnd) : Property =
+  e.owner.oclAsType(Connector).type.memberEnd
+  ->any(p:Property |p.type.conformsTo( e.otherEnd().role.type) )
+/]
+
+[template public gen_Port(pt : Port)]
+private [pt.typeName()/] _port_[pt.name/];
+public [pt.typeName()/] port_[pt.name/] { get { return  _port_[pt.name/]; } }
+[/template]
+
+
+
+

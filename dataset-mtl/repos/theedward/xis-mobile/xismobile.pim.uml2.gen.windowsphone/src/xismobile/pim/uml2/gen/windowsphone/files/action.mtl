@@ -1,0 +1,173 @@
+[comment encoding = UTF-8 /]
+[module action('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::windowsphone::common::xisMobileUtils /]
+[import xismobile::pim::uml2::gen::windowsphone::services::services /]
+
+[template private getXisArgumentsTypeAndName(p : Parameter)]
+[p.getXisArgumentType()/] [p.name.toLowerFirst()/]
+[/template]
+
+[template private getXisArgumentsForCall(o : Operation)]
+[o.getInParameters().getXisArgumentsTypeAndName()->sep(', ')/]
+[/template]
+
+[template public writeXisAction(o : Operation) post (trim())]
+[if (o.isCancelAction())]
+NavigationService.GoBack();
+[elseif (o.isOpenBrowserAction())]
+Intent i = new Intent(Intent.ACTION_VIEW);
+i.setData(Uri.parse("[o.getOpenBrowserActionUrl()/]"));
+startActivity(i);
+[elseif (o.performsNavigation())]
+NavigationService.Navigate(new Uri("/[o.getNavigation().toUpperFirst()/]Page.xaml", UriKind.Relative));
+[/if]
+[/template]
+
+[template private getDao(c : Class) post (trim())]
+[if (c.isPersistent())]
+helper
+[else]
+manager
+[/if]
+[/template]
+
+[template private writeCrudActionEntitySetters(w : Class, e : Class) post (trim())]
+[if (w.isXisInteractionSpace())]
+[for (el : Class | w.allOwnedElements()->selectByType(Class))]
+	[if (el.isXisTextBox() and el.getXisSimpleWidgetEntityAttributeName(el.getXisTextBox()).contains(e.name))]
+[e.writeEntitySetter(el, el.getXisSimpleWidgetEntityAttributeName(el.getXisTextBox()))/]
+	[elseif (el.isXisCheckBox() and el.getXisSimpleWidgetEntityAttributeName(el.getXisCheckBox()).contains(e.name))]
+[e.writeEntitySetter(el, el.getXisSimpleWidgetEntityAttributeName(el.getXisCheckBox()))/]
+	[elseif (el.isXisDatePicker() and el.getXisSimpleWidgetEntityAttributeName(el.getXisDatePicker()).contains(e.name))]
+[e.writeEntitySetter(el, el.getXisSimpleWidgetEntityAttributeName(el.getXisDatePicker()))/]
+	[elseif (el.isXisTimePicker() and el.getXisSimpleWidgetEntityAttributeName(el.getXisTimePicker()).contains(e.name))]
+[e.writeEntitySetter(el, el.getXisSimpleWidgetEntityAttributeName(el.getXisTimePicker()))/]
+	[elseif (el.isXisDropdown() and el.getXisSimpleWidgetEntityAttributeName(el.getXisDropdown()).contains(e.name))]
+[e.writeEntitySetter(el, el.getXisSimpleWidgetEntityAttributeName(el.getXisDropdown()))/]
+	[elseif (el.isXisRadioButton() and el.getXisSimpleWidgetEntityAttributeName(el.getXisRadioButton()).contains(e.name))]
+[e.writeEntitySetter(el, el.getXisSimpleWidgetEntityAttributeName(el.getXisRadioButton()))/]
+	[/if]
+[/for]
+[elseif (w.isXisMenu())]
+[let space : Class = w.getParentXisInteractionSpace()]
+[writeCrudActionEntitySetters(space, e)/]
+[/let]
+[else]
+[for (el : Class | w.allOwnedElements()->selectByType(Class))]
+	[if (el.isXisTextBox() and el.getXisSimpleWidgetEntityAttributeName(el.getXisTextBox()).contains(e.name))]
+[e.writeEntitySetter(el, el.getXisSimpleWidgetEntityAttributeName(el.getXisTextBox()))/]
+	[elseif (el.isXisCheckBox() and el.getXisSimpleWidgetEntityAttributeName(el.getXisCheckBox()).contains(e.name))]
+[e.writeEntitySetter(el, el.getXisSimpleWidgetEntityAttributeName(el.getXisCheckBox()))/]
+	[elseif (el.isXisDatePicker() and el.getXisSimpleWidgetEntityAttributeName(el.getXisDatePicker()).contains(e.name))]
+[e.writeEntitySetter(el, el.getXisSimpleWidgetEntityAttributeName(el.getXisDatePicker()))/]
+	[elseif (el.isXisTimePicker() and el.getXisSimpleWidgetEntityAttributeName(el.getXisTimePicker()).contains(e.name))]
+[e.writeEntitySetter(el, el.getXisSimpleWidgetEntityAttributeName(el.getXisTimePicker()))/]
+	[elseif (el.isXisDropdown() and el.getXisSimpleWidgetEntityAttributeName(el.getXisDropdown()).contains(e.name))]
+[e.writeEntitySetter(el, el.getXisSimpleWidgetEntityAttributeName(el.getXisDropdown()))/]
+	[elseif (el.isXisRadioButton() and el.getXisSimpleWidgetEntityAttributeName(el.getXisRadioButton()).contains(e.name))]
+[e.writeEntitySetter(el, el.getXisSimpleWidgetEntityAttributeName(el.getXisRadioButton()))/]
+	[/if]
+[/for]
+[/if]
+[/template]
+
+[template private writeEntitySetter(e : Class, w : Class, s : String) post (trim())]
+[let p : Set(Property) = e.getXisEntityAttributes()
+		->select(a : Property | s.toLower().contains(a.name.toLower()))]
+[if (p->size() = 1)]
+[let type : String = p->asOrderedSet()->at(1).type.name.toLower()]
+[if (p->asOrderedSet()->at(1).type.name.toLower() = 'string')]
+[e.name.toLowerFirst()/].set[p.name.toUpperFirst()/]([w.writeWidgetValue()/]);
+[else]
+[e.name.toLowerFirst()/].set[p.name.toUpperFirst()/]([type.writeArgTypeValue()/][w.writeWidgetValue()/]));
+[/if]
+[/let]
+[/if]
+[/let]
+[/template]
+
+[template private writeWidgetValue(c : Class) post (trim())]
+[if (c.isXisTextBox())]
+mTextBox[c.name.toUpperFirst()/].getText().toString()
+[elseif (c.isXisCheckBox())]
+mCheckBox[c.name.toUpperFirst()/].isChecked().toString()
+[elseif (c.isXisDatePicker())]
+mDatePicker[c.name.toUpperFirst()/].getText().toString()
+[elseif (c.isXisTimePicker())]
+mTimePicker[c.name.toUpperFirst()/].getText().toString()
+[elseif (c.isXisDropdown())]
+mDropdown[c.name.toUpperFirst()/].getSelectedItem().toString()
+[elseif (c.isXisRadioButton())]
+mRadioButton[c.name.toUpperFirst()/].isChecked().toString()
+[/if]
+[/template]
+
+[template private writeArgTypeValue(type : String) post (trim())]
+[if (type = 'int' or type = 'integer')]
+Integer.valueOf(
+[elseif (type = 'double')]
+Double.valueOf(
+[elseif (type = 'long')]
+Long.valueOf(
+[elseif (type = 'short')]
+Short.valueOf(
+[elseif (type = 'float')]
+Float.valueOf(
+[elseif (type = 'byte')]
+Byte.valueOf(
+[elseif (type = 'char')]
+Character.valueOf(
+[elseif (type = 'boolean')]
+Boolean.valueOf(
+[elseif (type = 'date')]
+Date.valueOf(
+[elseif (type = 'time')]
+Time.valueOf(
+[/if]
+[/template]
+
+[**
+ * WebService Actions templates 
+ */]
+
+[template private writeParameterDefaultValue(p : Parameter)]
+[if (p.type.name.toLower() = 'string' or p.type.name.toLower() = 'char')]
+"[p.default/]"
+[else]
+[p.default/]
+[/if]
+[/template]
+
+[template private writeXisServiceArguments(o : Operation) post (trim())]
+[o.getInParameters().writeParameterDefaultValue()->sep(', ')/]
+[/template]
+
+[**
+ * Custom Actions templates 
+ */]
+
+[template public writeCustomActionArea(cls : Set(Operation)) post (trim())]
+/** Custom Actions Region */
+[for (o : Operation | cls) separator ('\n')]
+[o.writeCustomActionDeclaration()/]
+[/for]
+[/template]
+
+[template private writeCustomActionCall(o : Operation)]
+[o.name.toLowerFirst()/]([o.getXisArgumentsForCall()/]);
+[/template]
+
+[template public writeCustomActionDeclaration(o : Operation)]
+public void [o.name.toLowerFirst()/]([o.getXisArgumentsForCall()/]) {
+	[writeTODO()/]
+}
+[/template]
+
+[template private writeXisArgumentType(p : Parameter) post (trim())]
+[if (p.type.name.toLower() = 'image' or p.type.name.toLower() = 'url')]
+String
+[else]
+[p.type.name/]
+[/if]
+[/template]

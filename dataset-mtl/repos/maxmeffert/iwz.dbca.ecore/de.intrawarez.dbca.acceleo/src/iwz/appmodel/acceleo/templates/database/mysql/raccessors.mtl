@@ -1,0 +1,251 @@
+[comment encoding = UTF-8 /]
+[module raccessors('http://iwz/appmodel')]
+
+[import iwz::appmodel::acceleo::templates::common/]
+[import iwz::appmodel::acceleo::templates::database::names/]
+[import iwz::appmodel::acceleo::templates::database::accessors/]
+[import iwz::appmodel::acceleo::templates::database::mysql::types/]
+
+[query private getParameters(r : Relation) : Collection(Property)
+	= r.getSource().getPrimaryProperties()
+		->addAll(r.target.getPrimaryProperties())
+		->addAll(r.properties)
+/]
+
+
+
+[query private getSelectAllParameters(r : Relation) : Collection(Property)
+	= r.getSource().getPrimaryProperties()
+/]
+
+[query private getSelectOneParameters(r : Relation) : Collection(Property)
+	= r.getSource().getPrimaryProperties()->addAll(r.target.getPrimaryProperties())
+/]
+
+[query private getInsertParameters(r : Relation) : Collection(Property)
+	= r.getParameters()
+/]
+
+[query private getUpdateParameters(r : Relation) : Collection(Property)
+	= r.getParameters()
+/]
+
+[query private getDeleteParameters(r : Relation) : Collection(Property)
+	= r.getPrimaryProperties()
+/]
+
+
+[template private createAccessorSelectAllSources(r : Relation)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameSelectAllSources()/];
+CREATE PROCEDURE [r.accessorNameSelectAllSources()/] (
+[for (prop : Property | r.accessorParametersSelectAllSources()) separator(',')]
+	[prop.getParameterName()/] [prop.getDatabaseDataType()/]
+[/for]
+) 
+BEGIN
+
+SELECT * 
+FROM [r.getDatabaseName()/]
+JOIN [r.target.getDatabaseName()/] ON 
+[for (p : Property | r.target.getPrimaryProperties()) separator(' AND ')]
+	[r.target.getDatabaseName()/].[p.getDatabaseName()/]=[r.getDatabaseName()/].[p.getDatabaseName()/]
+[/for]
+WHERE 
+[for (p : Property | r.accessorParametersSelectAllSources()) separator(' AND ')]
+	[r.getDatabaseName()/].[p.getDatabaseName()/]=[p.getParameterName()/]
+[/for];
+
+END$$
+[/template]
+
+
+[template private createAccessorSelectOneSource(r : Relation)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameSelectOneSource()/];
+CREATE PROCEDURE [r.accessorNameSelectOneSource()/] (
+[for (prop : Property | r.accessorParametersSelectOneSource()) separator(',')]
+	[prop.getParameterName()/] [prop.getDatabaseDataType()/]
+[/for]
+) 
+BEGIN
+
+SELECT * 
+FROM [r.getDatabaseName()/]
+JOIN [r.target.getDatabaseName()/] ON 
+[for (p : Property | r.target.getPrimaryProperties()) separator(' AND ')]
+	[r.target.getDatabaseName()/].[p.getDatabaseName()/]=[r.getDatabaseName()/].[p.getDatabaseName()/]
+[/for]
+WHERE 
+[for (p : Property | r.accessorParametersSelectOneSource()) separator(' AND ')]
+	[r.getDatabaseName()/].[p.getDatabaseName()/]=[p.getParameterName()/]
+[/for];
+
+END$$
+[/template]
+
+
+[template private createAccessorSelectAllTargets(r : Relation)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameSelectAllTargets()/];
+CREATE PROCEDURE [r.accessorNameSelectAllTargets()/] (
+[for (prop : Property | r.accessorParametersSelectAllTargets()) separator(',')]
+	[prop.getParameterName()/] [prop.getDatabaseDataType()/]
+[/for]
+) 
+BEGIN
+
+SELECT * 
+FROM [r.getDatabaseName()/]
+JOIN [r.target.getDatabaseName()/] ON 
+[for (p : Property | r.target.getPrimaryProperties()) separator(' AND ')]
+	[r.target.getDatabaseName()/].[p.getDatabaseName()/]=[r.getDatabaseName()/].[p.getDatabaseName()/]
+[/for]
+WHERE 
+[for (p : Property | r.accessorParametersSelectAllTargets()) separator(' AND ')]
+	[r.getDatabaseName()/].[p.getDatabaseName()/]=[p.getParameterName()/]
+[/for];
+
+END$$
+[/template]
+
+
+[template private createAccessorSelectOneTarget(r : Relation)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameSelectOneTarget()/];
+CREATE PROCEDURE [r.accessorNameSelectOneTarget()/] (
+[for (prop : Property | r.accessorParametersSelectOneTarget()) separator(',')]
+	[prop.getParameterName()/] [prop.getDatabaseDataType()/]
+[/for]
+) 
+BEGIN
+
+SELECT * 
+FROM [r.getDatabaseName()/]
+JOIN [r.target.getDatabaseName()/] ON 
+[for (p : Property | r.target.getPrimaryProperties()) separator(' AND ')]
+	[r.target.getDatabaseName()/].[p.getDatabaseName()/]=[r.getDatabaseName()/].[p.getDatabaseName()/]
+[/for]
+WHERE 
+[for (p : Property | r.accessorParametersSelectOneTarget()) separator(' AND ')]
+	[r.getDatabaseName()/].[p.getDatabaseName()/]=[p.getParameterName()/]
+[/for];
+
+END$$
+[/template]
+
+
+[template private createAccessorInsert(r : Relation)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameInsert()/];
+CREATE PROCEDURE [r.accessorNameInsert()/] (
+[for (prop : Property | r.accessorParametersInsert()) separator(',')]
+	[prop.getParameterName()/] [prop.getDatabaseDataType()/]
+[/for]
+) 
+BEGIN
+
+INSERT INTO [r.getDatabaseName()/] ([r.getParameters().getDatabaseName()->sep(',')/]) 
+VALUES ([r.getParameters().getParameterName()->sep(',')/]);
+
+END$$
+[/template]
+
+
+[template private createAccessorUpdate(r : Relation)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameUpdate()/];
+CREATE PROCEDURE [r.accessorNameUpdate()/] (
+[for (prop : Property | r.accessorParametersUpdate()) separator(',')]
+	[prop.getParameterName()/] [prop.getDatabaseDataType()/]
+[/for]
+) 
+BEGIN
+
+UPDATE [r.getDatabaseName()/] SET
+[for (prop : Property | r.accessorParametersUpdate()) separator(',')]
+	[prop.getDatabaseName()/]=[prop.getParameterName()/]
+[/for]
+WHERE 
+[for (prop : Property | r.getSource().getPrimaryProperties()) separator(' AND ')]
+	[prop.getDatabaseName()/]=[prop.getParameterName()/]
+[/for];
+
+END$$
+[/template]
+
+
+[template private createAccessorSave(r : Relation)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameSave()/];
+CREATE PROCEDURE [r.accessorNameSave()/] (
+[for (prop : Property | r.accessorParametersSave()) separator(',')]
+	[prop.getParameterName()/] [prop.getDatabaseDataType()/]
+[/for]
+) 
+BEGIN
+
+DECLARE ex bool;
+
+SET ex = (
+	SELECT count(*) > 0
+	FROM [r.getDatabaseName()/]
+	WHERE
+	[for (prop : Property | r.getPrimaryProperties()) separator(' AND ')]
+		[prop.getDatabaseName()/]=[prop.getParameterName()/]
+	[/for]
+);
+
+IF ex THEN
+
+	CALL [r.accessorNameUpdate()/]([r.getParameters().getParameterName()->sep(',')/]);
+
+ELSE
+
+	CALL [r.accessorNameInsert()/]([r.getParameters().getParameterName()->sep(',')/]);
+
+END IF;
+
+END$$
+[/template]
+
+
+[template private createAccessorDelete(r : Relation)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [r.accessorNameDelete()/];
+CREATE PROCEDURE [r.accessorNameDelete()/] (
+[for (prop : Property | r.accessorParametersDelete()) separator(',')]
+	[prop.getParameterName()/] [prop.getDatabaseDataType()/]
+[/for]
+) 
+BEGIN
+
+DELETE FROM [r.getDatabaseName()/]
+WHERE 
+[for (prop : Property | r.getPrimaryProperties()) separator(' AND ')]
+	[prop.getDatabaseName()/]=[prop.getParameterName()/]
+[/for];
+
+END$$
+[/template]
+
+
+[template public generateAccessors(r : Relation)]
+
+[r.createAccessorSelectAllSources()/]
+[r.createAccessorSelectOneSource()/]
+[r.createAccessorSelectAllTargets()/]
+[r.createAccessorSelectOneTarget()/]
+[r.createAccessorInsert()/]
+[r.createAccessorUpdate()/]
+[r.createAccessorSave()/]
+[r.createAccessorDelete()/]
+[/template]

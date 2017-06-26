@@ -1,0 +1,67 @@
+[comment encoding = UTF-8 /]
+[module main('http://www.intrawarez.de/dbca')/]
+
+[import de::intrawarez::dbca::m2t::common::database/]
+[import de::intrawarez::dbca::m2t::common::attributes/]
+[import de::intrawarez::dbca::m2t::common::entities/]
+[import de::intrawarez::dbca::m2t::common::accessors/]
+[import de::intrawarez::dbca::m2t::common::relationships/]
+
+[import de::intrawarez::dbca::m2t::dbca2php::entities/]
+[import de::intrawarez::dbca::m2t::dbca2php::servers/]
+[import de::intrawarez::dbca::m2t::dbca2php::databases/]
+[import de::intrawarez::dbca::m2t::dbca2php::entitybase/]
+[import de::intrawarez::dbca::m2t::dbca2php::managers/]
+[import de::intrawarez::dbca::m2t::dbca2php::names/]
+[import de::intrawarez::dbca::m2t::dbca2php::routes/]
+
+[template public generateAutoloadFile(app : Application)]
+[file ('/server/php/src/autoload.php', false, 'UTF-8')]
+<?php
+
+spl_autoload_register(function($class){
+	
+	$class = str_replace("\\", DIRECTORY_SEPARATOR, $class);
+	
+	$filename =  __DIR__."/$class.php";
+	
+	if (file_exists($filename)) {
+		
+		include_once $filename;
+		
+	}
+
+});
+
+?>
+[/file]
+[/template]
+
+[template public generateIndexFile(app : Application)]
+[file ('/server/php/index.php', false, 'UTF-8')]
+<?php
+
+include_once "src/autoload.php";
+
+$server = new Server();
+[for (es : EntityService | app.server.elements->selectByKind(EntityService))]
+$server->serve("[es.entity.phpRoute()/]",new [es.phpNamespaceName()/]());
+[/for]
+
+?>
+[/file]
+[/template]
+
+[template public main(app : Application)]
+[comment @main /]
+[app.generateAutoloadFile()/]
+[app.database.generateEntities()/]
+[app.database.selectEntities().generatePHPClass()/]
+[app.database.generateEntitybase()/]
+[app.database.generateEntityManagers()/]
+[app.generateServer()/]
+[app.generateServlet()/]
+[app.server.elements->selectByType(EntityService).generateServlet()/]
+[app.database.generateDatabase()/]
+[app.generateIndexFile()/]
+[/template]

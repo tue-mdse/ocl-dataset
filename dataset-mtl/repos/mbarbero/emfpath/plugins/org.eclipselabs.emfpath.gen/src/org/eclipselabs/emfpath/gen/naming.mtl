@@ -1,0 +1,148 @@
+[comment encoding = UTF-8 /]
+[module naming('http://www.eclipse.org/emf/2002/GenModel', 'http://www.eclipse.org/emf/2002/Ecore')/]
+
+[import org::eclipselabs::emfpath::gen::typing /]
+
+[template public generatedFullFilename(e : GenClass) post (trim())]
+	[modelDirectory()/][generatedQualifiedClassName().replaceAll('\\.', '/')/].java
+[/template]
+
+[template private modelDirectory(e : GenClass) post(trim())]
+[if (not getProperty('targetFolder').oclIsUndefined())]
+	[getProperty('targetFolder')/][if (not getProperty('targetFolder').endsWith('/'))]/[/if]
+[else]
+	[genPackage.genModel.modelDirectory.substring(1)/][if (not genPackage.genModel.modelDirectory.endsWith('/'))]/[/if]
+[/if]
+[/template]
+
+[template public generatedClassName(e : GenClass) post (trim())]
+[if (getProperty('hook.classname.' + e.ecoreClass.name).oclIsUndefined())]
+	[getProperty('classname.prefix')/][javaName()/][if (not getProperty('classname.suffix').oclIsUndefined())][getProperty('classname.suffix')/][else]Path[/if]
+[else]
+	[getProperty('hook.classname.' + e.ecoreClass.name)/]
+[/if]
+[/template]
+
+[template public generatedQualifiedClassName(e : GenClass) post (trim())]
+	[generatedQualifiedJavaName()/]
+[/template]
+
+[template public generatedQualifiedJavaName (genClass : GenClass) post (trim())]
+	[genPackage.generatedQualifiedJavaName()/].[generatedClassName()/]
+[/template]
+
+[template public generatedQualifiedJavaName (genPackage : GenPackage) post (trim())]
+[if (not getProperty('basePackage').oclIsUndefined())]
+	[getProperty('basePackage')/].[javaName()/].path
+[else]
+	[basePackage/].[javaName()/].path
+[/if]
+[/template]
+
+[template public javaName(e : GenClass) post(trim())]
+	[ecoreClass.javaName()/]
+[/template]
+
+[template public javaName(e : EClassifier) ? (not instanceTypeName.oclIsUndefined()) post(trim())]
+	[instanceTypeName.replaceAll('\\$', '.')/]
+[/template]
+
+[template public javaName(e : EClassifier) post (trim())]
+	[name/]
+[/template]
+
+[template public javaName(e : GenPackage) post(trim().escapeJavaKeyword())]
+	[ecorePackage.name/]
+[/template]
+
+[template public qualifiedJavaName(e : GenClass) post(trim())]
+	[genPackage.qualifiedJavaName()/].[javaName()/]
+[/template]
+
+[template public qualifiedJavaName(e : GenPackage) post(trim())]
+	[basePackage/].[javaName()/][interfacePackageSuffix()/]
+[/template]
+
+[template private interfacePackageSuffix(e : GenPackage) ? (not interfacePackageSuffix.oclIsUndefined() and interfacePackageSuffix.trim() <> '') post(trim())]
+	.[interfacePackageSuffix/]
+[/template]
+
+[template private interfacePackageSuffix(e : GenPackage)/]
+
+[template public getterName(e : GenFeature) ? (not willGeneratePredicate()) post(trim().avoidObjectMethodsNameClash())]
+	get[ecoreFeature.name.toUpperFirst()/]
+[/template]
+
+[template public getterName(e : GenFeature) ? (willGeneratePredicate()) post(trim().avoidObjectMethodsNameClash())]
+	is[ecoreFeature.name.toUpperFirst()/]
+[/template]
+
+[template public operationName(e : GenOperation) post(trim().avoidObjectMethodsNameClash())]
+	[ecoreOperation.name/]
+[/template]
+
+[template public predicateName(e : GenFeature) ? (not ecoreFeature.name.startsWith('is')) post(trim().escapeJavaKeyword())]
+	is[ecoreFeature.name.toUpperFirst()/]
+[/template]
+
+[template public predicateName(e : GenFeature) ? (ecoreFeature.name.startsWith('is')) post(trim().escapeJavaKeyword())]
+	[ecoreFeature.name/]
+[/template]
+
+[template public predicateName(e : GenOperation) post(trim().escapeJavaKeyword())]
+	[ecoreOperation.name/]
+[/template]
+
+[template public functionName(e : GenFeature) post(trim().escapeJavaKeyword())]
+	[ecoreFeature.name/]
+[/template]
+
+[template public functionName(e : GenOperation) post(trim().escapeJavaKeyword())]
+	[ecoreOperation.name/]
+[/template]
+
+[template public predicateClassname(e : OclAny) post (trim())]
+[if (getProperty('predicate.fullclassname').oclIsUndefined())]
+	Predicate
+[else]
+	[getProperty('predicate.fullclassname').substring(getProperty('predicate.fullclassname').lastIndex('.') + 1)/]
+[/if]
+[/template]
+
+[query public avoidObjectMethodsNameClash(e : String) : String =  
+	if (objectsMethods()->includes(e)) then
+		e + '_'
+	else
+		e
+	endif
+/]
+
+[query protected objectsMethods(e : OclAny) : Sequence(String) = 
+	Sequence{
+		'getClass',	'hashCode',	'equals', 'clone', 'toString',	
+		'notify', 'notifyAll', 'wait', 'finalize'
+	}
+/]
+
+[query protected escapeJavaKeyword(e : String) : String = 
+	if (javaKeywords()->includes(e)) then
+		e + '_'
+	else
+		e
+	endif
+/]
+
+[query protected javaKeywords(e : OclAny) : Sequence(String) = 
+	Sequence{
+		'abstract',	'continue',	'for', 'new', 'switch',	
+		'assert', 'default', 'package', 'synchronized',
+		'boolean', 'do', 'if', 'private', 'this',
+		'break', 'double', 'implements', 'protected', 'throw',
+		'byte', 'else', 'import', 'public', 'throws',
+		'case', 'enum', 'instanceof', 'return', 'transient',
+		'catch', 'extends', 'int', 'short', 'try',
+		'char', 'final', 'interface', 'static', 'void',
+		'class', 'finally', 'long', 'strictfp', 'volatile',
+		'const', 'float', 'native', 'super', 'while'
+	}
+/]

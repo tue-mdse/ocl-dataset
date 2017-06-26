@@ -1,0 +1,195 @@
+[comment encoding = UTF-8 /]
+
+[module Index('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthenticationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+[template public Index(anAnnotationStack: AnnotationStack)]
+[file ('/'.concat(anAnnotationStack.hasCorePSM.name.concat('Client/index.html')), false, 'UTF-8')]
+<!DOCTYPE html>
+<html>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="lib/w3.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat">
+<link rel="stylesheet" href="lib/font-awesome.min.css">
+<link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css">
+<style>
+html,body,h1,h2,h3,h4,h5,h6 {font-family: "Lato", sans-serif}
+h3{color: white;}
+.w3-navbar,h1,button {font-family: "Montserrat", sans-serif}
+.fa-anchor,.fa-coffee {font-size:200px}
+[if (anAnnotationStack.cssSelection='Default')]
+.button{ background-color: #00cc99; 
+	border: none; 
+	color: white; 
+	border-radius: 4px; 
+	text-align: center; 
+	text-decoration: none;
+	display: inline-block; 
+	font-size: 16px;}
+[else]
+button = .button{
+	background-color: #374c59; 
+    border: none;
+    color: #fcc7ad;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 20px;
+}[/if]
+input['['/]type=text[']'/], select {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+input['['/]type=password[']'/], select {
+    width: 100%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+div {
+    border-radius: 5px;
+    background-color: #f2f2f2;
+    padding: 20px;
+}
+</style>
+<head>
+	<meta charset="ISO-8859-1">
+	<title>Start Page</title>
+	<script src="lib/angular.min.js"></script>
+	<script src="lib/angular-route.min.js"></script>
+	<script src="lib/angular-resource.min.js"></script>
+	[if (anAnnotationStack.topLayer()->size()>1)]<script src="js/frontCtrl.js"></script>[else]<script src="js/[anAnnotationStack.topLayer().parentName/]Ctrl.js"></script>[/if]
+	[for (p: JavaResourceModelManager | anAnnotationStack.otherLayer())]
+	<script src="js/[p.parentName/]Ctrl.js"></script>
+	[/for]
+	[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]
+	<script src="js/LoginCtrl.js"></script>
+	[/if]
+	<script src="js/services.js"></script>
+	<script src="js/app.js"></script>
+</head>
+<body ng-app="[anAnnotationStack.hasCorePSM.name/]">
+<div ng-view></div>
+</body>
+</html>
+[/file]
+
+[if (anAnnotationStack.topLayer()->size()>1)]
+[file ('/'+ anAnnotationStack.hasCorePSM.name + 'Client/views/front.html', false, 'UTF-8')]
+<div ng-controller="frontCtrl">
+[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+<p align="right"><button class="button" ng-click="signOut()">Sign Out</button></p>
+[/if]
+	[if (anAnnotationStack.cssSelection='Default')]
+	<div style="background-color:#00cc99" class="w3-container  w3-center w3-padding-100px"><a href="#[if (anAnnotationStack.topLayer()->size()>1)]/front[else]/[anAnnotationStack.topLayer().parentName/][/if]" style="text-decoration: none">
+      <h1 style="color:grey" class="w3-margin w3-jumbo">wapoAdminToolApi</h1></a>
+    </div>
+	[else]
+	<div style="background-color:#fcc7ad" class="w3-container  w3-center w3-padding-100px"><a href="#[if (anAnnotationStack.topLayer()->size()>1)]/front[else]/[anAnnotationStack.topLayer().parentName/][/if]" style="text-decoration: none">
+      <h1 style="#425e6c" class="w3-margin w3-jumbo">wapoAdminToolApi</h1></a>
+    </div>
+	[/if]
+	<div class="w3-row-padding w3-center w3-margin-top">
+[for (layer: JavaResourceModelManager| anAnnotationStack.topLayer())][for (p: JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel->asOrderedSet())][if (p.parentName=layer.parentName)]
+	<div class="w3-third">
+		<div class="w3-card-2 w3-padding-top" style="min-height:120px">
+		<h4>[p.parentName.toUpperFirst()/]</h4><br>
+		<i class="fa fa-desktop w3-margin-bottom w3-text-theme" style="font-size:120px"></i>
+		</div>
+		<button class="w3-btn-block w3-dark-grey"  ng-click="chosen[p.parentName.toUpperFirst()/]=true">See More</button>
+	</div>
+[/if][/for][/for]
+</div>
+[for (layer: JavaResourceModelManager| anAnnotationStack.topLayer())][for (p: JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel->asOrderedSet())][if (p.parentName=layer.parentName)]
+	<div ng-show="chosen[p.parentName.toUpperFirst()/]">	
+		<div ng-show="list[p.parentName/]" class="w3-responsive w3-container  w3-center w3-padding-100px"><div>&nbsp;</div>
+	        <table class="w3-table w3-striped w3-bordered w3-border w3-hoverable w3-white">
+	            <thead>
+	              <tr>
+					<td><h5>[p.parentName.toUpperFirst()/]Id</h5></td>
+					<td><h5>[p.parentName.toUpperFirst()/] Name</h5></td>
+	               	<td><h5>&nbsp;</h5></td>
+	                <td><h5>&nbsp;</h5></td>
+	                <td><h5>&nbsp;</h5></td>
+	                <td><h5>&nbsp;</h5></td>
+					<td><h5>&nbsp;</h5></td>
+	              </tr>
+	            </thead>
+	            <tbody ng-repeat="[p.parentName/] in [p.parentName/].linklist"  ng-if="[p.parentName/].idType != 0">
+	              <tr>
+					<td><h5>{{[p.parentName/].idType}}</h5></td>
+					<td><h5>{{[p.parentName/].linkRel}}</h5></td>
+	                [let e: String = 'PUT'][for (c: JavaResourceController | anAnnotationStack.hasCorePSM.hasJavaRController )][for (d: HTTPActivity | c.JavaRControllerHasHTTPActivity)][if (d.ActivityHTTPVerb.toString()=e and c.parentName = p.parentName and self.name=c.firstOnly(d.ActivityHTTPVerb.toString()))]
+					<td><input type="button" class="button" ng-click="edit[p.parentName.toUpperFirst()/]([p.parentName/].idType)" value="Edit"></td>
+					[/if][/for][/for][/let]
+	                [let e: String = 'DELETE'][for (c: JavaResourceController | anAnnotationStack.hasCorePSM.hasJavaRController )][for (d: HTTPActivity | c.JavaRControllerHasHTTPActivity)][if (d.ActivityHTTPVerb.toString()=e and c.parentName = p.parentName and self.name=c.firstOnly(d.ActivityHTTPVerb.toString()))]
+					<td><input type="button" class="button" ng-click="delete[p.parentName.toUpperFirst()/]([p.parentName/].idType)" value="Delete"></td>
+					[/if][/for][/for][/let]
+					<td><input type="button" class="button" ng-click="details[p.parentName/]([p.parentName/].idType)" value="Details"></td>
+					[for (c: JavaResourceModelManager | anAnnotationStack.relatedResource(p))]
+					 <td><input type="button" class="button" ng-click="choose[anAnnotationStack.relatedResource(p)->at(i).parentName.toUpperFirst()/]([p.parentName/].idType)" value="[anAnnotationStack.relatedResource(p)->at(i).parentName.toUpperFirst()/]"></td>
+					[/for]
+	    		  </tr>
+	    		</tbody>
+	        </table>
+	    </div>
+		<div>
+	        <input type="button" class="button" ng-click="create[p.parentName/]=true" value="Create New [p.parentName.toUpperFirst()/]">
+			<input type="button" class="button" ng-click="chosen[p.parentName.toUpperFirst()/]=false" value="Hide [p.parentName.toUpperFirst()/]">
+	    </div>
+		<div ng-show="detail[p.parentName/]">
+	        <table class="w3-table w3-striped w3-bordered w3-border w3-hoverable w3-white">
+	            <tbody>
+				[for (c: PSMComponentProperty | p.JavaRModelHasProperty)][if (c.type='String')]
+	              <tr>
+	                <td><h5>[c.name.toUpperFirst()/]</h5></td><td><h5>{{[p.parentName/].[c.name/]}}</h5></td>
+	              </tr>
+				[/if][/for]
+	            </tbody>
+	        </table>
+	        <div>
+	        <input type="button" class="button" ng-click="hideDetails[p.parentName/]()" value="Hide">
+	        </div>
+	    </div>
+	    <div ng-show="create[p.parentName/]">
+	        <form id="new">
+	        <div class="w3-container w3-grey">
+	            <h3>New [p.parentName.toUpperFirst()/] Form</h3>
+	        </div>
+	        [for (c: PSMComponentProperty | p.JavaRModelHasProperty)][if ((c.type.startsWith('String')))]
+			<label>[c.name.toUpperFirst()/]<input type="[if (c.name='password')]password[else]text[/if]" name="input[c.name.toUpperFirst()/]" ng-model="[p.parentName/].[c.name/]"></label>[lineSeparator()/][/if][/for]
+	        <input type="button" class="button" ng-click="createNew[p.parentName.toUpperFirst()/]()" value="Create">
+	        <input type="button" class="button" ng-click="cancel[p.parentName/]()" value="Cancel">
+	        </form>
+	    </div>
+	    <div ng-show="Edit[p.parentName/]">
+	        <form id="update">
+	        <div class="w3-container w3-grey">
+	            <h3>Edit [p.parentName.toUpperFirst()/] Form</h3>
+	        </div>
+	        [for (c: PSMComponentProperty | p.JavaRModelHasProperty)][if ((c.type.startsWith('String')))]
+			<label>[c.name.toUpperFirst()/]<input type="[if (c.name='password')]password[else]text[/if]" name="input[c.name.toUpperFirst()/]" ng-model="[p.parentName/].[c.name/]"></label>[lineSeparator()/][/if][/for]
+	        <input type="button" class="button" ng-click="doupdate[p.parentName/]([p.parentName/].[p.parentName/]Id)" value="Update">
+	        <input type="button" class="button" ng-click="cancelEdit[p.parentName/]()" value="Cancel">
+	        </form>
+	    </div>
+	</div>
+[/if][/for][/for]
+</div>
+[/file]
+[/if]
+[/template]
+
+[query public firstOnly(c: JavaResourceController,e: String): String =  c.JavaRControllerHasHTTPActivity->select(s: HTTPActivity | s.ActivityHTTPVerb.toString()=e)->asSequence()->first().name/]
+[query public otherLayer(anAnnotationStack: AnnotationStack): OrderedSet(JavaResourceModelManager) = (anAnnotationStack.hasCorePSM.hasJavaRMManager->intersection(anAnnotationStack.hasCorePSM.hasJavaRModel.hasRelatedJavaRMManager->asOrderedSet()))->asOrderedSet()/]
+[query public relatedResource(anAnnotationStack : AnnotationStack, p: JavaResourceModel ) : OrderedSet(JavaResourceModelManager) = anAnnotationStack.hasCorePSM.hasJavaRCManager.hasAssociatedRMManager->asOrderedSet()->intersection(p.hasRelatedJavaRMManager)->asOrderedSet()/]
+[query public topLayer(anAnnotationStack: AnnotationStack): OrderedSet(JavaResourceModelManager) = (anAnnotationStack.hasCorePSM.hasJavaRMManager-anAnnotationStack.hasCorePSM.hasJavaRMManager->intersection(anAnnotationStack.hasCorePSM.hasJavaRModel.hasRelatedJavaRMManager->asOrderedSet()))->asOrderedSet()/]

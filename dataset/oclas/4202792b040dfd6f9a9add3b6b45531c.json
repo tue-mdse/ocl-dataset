@@ -1,0 +1,810 @@
+[
+  {
+    "name": "User",
+    "expressions": [
+      {
+        "operations": {"includesAll": 1},
+        "name": "RoleHierarchy",
+        "body": "\n\tself.roles\n\t->forAll(r : Role | self.roles\n\t\t->includesAll(r.juniors))\n\t\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 3,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "rbacmodel::User::roles",
+          "rbacmodel::Role::juniors"
+        ]
+      },
+      {
+        "operations": {
+          "allInstances": 2,
+          "includes": 2,
+          "union": 1,
+          "implies": 1,
+          "asSet": 1,
+          "=": 2
+        },
+        "name": "PreqRole",
+        "body": "\nlet r1 : Role = Role.allInstances()\n\t->select(m : Role | m.idRole = 'r1')\n\t->any(true) , r2 : Role = Role.allInstances()\n\t->select(m : Role | m.idRole = 'r2')\n\t->any(true) , \n\troleSet : Set(Role) = self.roles\n\t->union(self.delegatedRoles)\n\t->asSet()\nin roleSet\n\t->includes(r1) implies roleSet\n\t->includes(r2)\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 4,
+          "VariableExpImpl": 8,
+          "OperationCallExpImpl": 9,
+          "LetExpImpl": 3,
+          "StringLiteralExpImpl": 2,
+          "TypeExpImpl": 2,
+          "BooleanLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "rbacmodel::User::roles",
+          "rbacmodel::Role::idRole",
+          "rbacmodel::User::delegatedRoles"
+        ]
+      },
+      {
+        "operations": {
+          "<=": 1,
+          "size": 1,
+          "union": 1,
+          "asSet": 1
+        },
+        "name": "Card",
+        "body": "\n\tlet roleSet : Set(Role) = self.roles\n\t->union(self.delegatedRoles)\n\t->asSet()\nin roleSet\n\t->size() <= 5\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 4,
+          "VariableExpImpl": 3,
+          "LetExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "rbacmodel::User::roles",
+          "rbacmodel::User::delegatedRoles"
+        ]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "allInstances": 2,
+          "xor": 1,
+          "includes": 4,
+          "union": 1,
+          "asSet": 1,
+          "=": 2
+        },
+        "name": "SSoDCR",
+        "body": "\nlet r1 : Role = Role.allInstances()\n\t->select(r : Role | r.idRole = 'r1')\n\t->any(true) , r2 : Role = Role.allInstances()\n\t->select(r : Role | r.idRole = 'r4')\n\t->any(true),\n\troleSet : Set(Role) = self.roles\n\t->union(self.delegatedRoles)\n\t->asSet()\n\t\nin if roleSet\n\t\t->includes(r1) or self.roles\n\t\t->includes(r2)\n\tthen (roleSet\n\t\t->includes(r1) xor self.roles\n\t\t->includes(r2))\n\telse true\n\tendif\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 4,
+          "VariableExpImpl": 12,
+          "OperationCallExpImpl": 12,
+          "LetExpImpl": 3,
+          "TypeExpImpl": 2,
+          "StringLiteralExpImpl": 2,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 6,
+          "BooleanLiteralExpImpl": 3
+        },
+        "properties": [
+          "rbacmodel::User::roles",
+          "rbacmodel::Role::idRole",
+          "rbacmodel::User::delegatedRoles"
+        ]
+      }
+    ],
+    "properties": []
+  },
+  {
+    "name": "Role",
+    "expressions": [
+      {
+        "operations": {
+          "<=": 1,
+          "size": 1
+        },
+        "name": "Card",
+        "body": "\n\tself.permissions\n\t->size() <= 5\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 2,
+          "VariableExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["rbacmodel::Role::permissions"]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "allInstances": 2,
+          "includes": 4,
+          "xor": 1,
+          "=": 3
+        },
+        "name": "SSoDCU",
+        "body": "\n\tif self.idRole = 'r6'\n\tthen\n\tlet u1 : User = User.allInstances()\n\t\t->select(u : User | u.idUser = 'u1')\n\t\t->any(true) , u2 : User = User.allInstances()\n\t\t->select(u : User | u.idUser = 'u2')\n\t\t->any(true)\n\tin if self.users\n\t\t\t->includes(u2) or self.users\n\t\t\t->includes(u1)\n\t\tthen self.users\n\t\t\t->includes(u2) xor self.users\n\t\t\t->includes(u1)\n\t\telse true\n\t\tendif\n\telse true\n\tendif\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 4,
+          "OperationCallExpImpl": 11,
+          "VariableExpImpl": 11,
+          "LetExpImpl": 2,
+          "StringLiteralExpImpl": 3,
+          "TypeExpImpl": 2,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 7,
+          "BooleanLiteralExpImpl": 4
+        },
+        "properties": [
+          "rbacmodel::Role::users",
+          "rbacmodel::Role::idRole",
+          "rbacmodel::User::idUser"
+        ]
+      },
+      {
+        "operations": {"includesAll": 1},
+        "name": "RoleHierarchyPermission",
+        "body": "\n\tself.juniors\n\t->forAll(r : Role | r.permissions\n\t\t->includesAll(self.permissions))\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "rbacmodel::Role::juniors",
+          "rbacmodel::Role::permissions"
+        ]
+      },
+      {
+        "operations": {
+          "allInstances": 2,
+          "includes": 2,
+          "implies": 1,
+          "=": 2
+        },
+        "name": "PreqPermisssion",
+        "body": "\nlet p1 : Permission = Permission.allInstances()\n\t->select(m : Permission | m.idPermission = 'p1')\n\t->any(true) , p2 : Permission = Permission.allInstances()\n\t->select(m : Permission | m.idPermission = 'p2')\n\t->any(true)\nin self.permissions\n\t->includes(p1) implies self.permissions\n\t->includes(p2)\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 4,
+          "VariableExpImpl": 6,
+          "OperationCallExpImpl": 7,
+          "LetExpImpl": 2,
+          "TypeExpImpl": 2,
+          "StringLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 4,
+          "BooleanLiteralExpImpl": 2
+        },
+        "properties": [
+          "rbacmodel::Permission::idPermission",
+          "rbacmodel::Role::permissions"
+        ]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "allInstances": 2,
+          "includes": 4,
+          "xor": 1,
+          "=": 2
+        },
+        "name": "SSoDCP1",
+        "body": "\nlet p1 : Permission = Permission.allInstances()\n\t->select(p : Permission | p.idPermission = 'p1')\n\t->any(true) , p2 : Permission = Permission.allInstances()\n\t->select(p : Permission | p.idPermission = 'p6')\n\t->any(true)\nin if self.permissions\n\t\t->includes(p2) or self.permissions\n\t\t->includes(p1)\n\tthen self.permissions\n\t\t->includes(p2) xor self.permissions\n\t\t->includes(p1)\n\telse true\n\tendif\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 4,
+          "OperationCallExpImpl": 10,
+          "VariableExpImpl": 10,
+          "LetExpImpl": 2,
+          "StringLiteralExpImpl": 2,
+          "TypeExpImpl": 2,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 6,
+          "BooleanLiteralExpImpl": 3
+        },
+        "properties": [
+          "rbacmodel::Permission::idPermission",
+          "rbacmodel::Role::permissions"
+        ]
+      }
+    ],
+    "properties": []
+  },
+  {
+    "name": "Session",
+    "expressions": [
+      {
+        "operations": {
+          "allInstances": 3,
+          "includes": 2,
+          "implies": 1,
+          "=": 2
+        },
+        "name": "RoleEnablingPrecedence",
+        "body": "\nlet r1 : Role = Role.allInstances()\n\t->select(a : Role | a.idRole = 'r1')\n\t->any(true) , r2 : Role = Role.allInstances()\n\t->select(a : Role | a.idRole = 'r2')\n\t->any(true)\nin self.enabledRoles\n\t->includes(r1) implies Session.allInstances()\n\t->exists(s : Session | s.enabledRoles\n\t\t->includes(r2))\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 5,
+          "OperationCallExpImpl": 8,
+          "VariableExpImpl": 6,
+          "LetExpImpl": 2,
+          "StringLiteralExpImpl": 2,
+          "TypeExpImpl": 3,
+          "BooleanLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "rbacmodel::Session::enabledRoles",
+          "rbacmodel::Role::idRole"
+        ]
+      },
+      {
+        "operations": {
+          "and": 1,
+          "allInstances": 3,
+          "includes": 2,
+          "union": 1,
+          "implies": 1,
+          "asSet": 2,
+          "notEmpty": 1,
+          "-": 1,
+          "=": 2
+        },
+        "name": "OperationalDSoD",
+        "body": "\nlet r1 : Role = Role.allInstances()\n\t->select(r : Role | r.idRole = 'r3')\n\t->any(true) , r2 : Role = Role.allInstances()\n\t->select(r : Role | r.idRole = 'r2')\n\t->any(true) , u : RBACUtility = RBACUtility.allInstances()\n\t->any(true) , opBT : Set(Operation) = u.businessTaskList , op : Set(Operation) = r1.permissions.operations\n\t->asSet()\n\t->union(r2.permissions.operations\n\t\t->asSet())\nin (self.activeRoles\n\t->includes(r1) and self.activeRoles\n\t->includes(r2)) implies (opBT - op)\n\t->notEmpty()\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 7,
+          "OperationCallExpImpl": 14,
+          "VariableExpImpl": 13,
+          "LetExpImpl": 5,
+          "TypeExpImpl": 3,
+          "StringLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 9,
+          "BooleanLiteralExpImpl": 3
+        },
+        "properties": [
+          "rbacmodel::RBACUtility::businessTaskList",
+          "rbacmodel::Role::idRole",
+          "rbacmodel::Permission::operations",
+          "rbacmodel::Session::activeRoles",
+          "rbacmodel::Role::permissions"
+        ]
+      },
+      {
+        "operations": {
+          "allInstances": 3,
+          "includes": 2,
+          "implies": 1,
+          "=": 2
+        },
+        "name": "RoleActivationPrecedence",
+        "body": "\nlet r1 : Role = Role.allInstances()\n\t->select(a : Role | a.idRole = 'r2')\n\t->any(true) , r2 : Role = Role.allInstances()\n\t->select(a : Role | a.idRole = 'r5')\n\t->any(true)\nin self.activeRoles\n\t->includes(r1) implies Session.allInstances()\n\t->exists(s : Session | s.activeRoles\n\t\t->includes(r2))\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 5,
+          "OperationCallExpImpl": 8,
+          "VariableExpImpl": 6,
+          "LetExpImpl": 2,
+          "TypeExpImpl": 3,
+          "StringLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 4,
+          "BooleanLiteralExpImpl": 2
+        },
+        "properties": [
+          "rbacmodel::Role::idRole",
+          "rbacmodel::Session::activeRoles"
+        ]
+      },
+      {
+        "operations": {
+          "not": 1,
+          "includesAll": 1,
+          "and": 1,
+          "excludesAll": 1,
+          "oclAsType": 3,
+          "=": 1,
+          "checkAccess": 2
+        },
+        "name": "locationbased",
+        "body": "\n     let userLocation: SpatialContext = self.user.userContext.oclAsType(SpatialContext), \n         disabled: Set (Role) = self.user.roles -> select (r:Role | \n         r.roleContext.oclAsType(SpatialContext) ->\n             forAll (loc: SpatialContext | not(loc.checkAccess(userLocation)))),   \n         enabled: Set (Role) = self.user.roles -> select (r:Role | \n         r.roleContext.oclAsType(SpatialContext) ->\n             exists (loc: SpatialContext | loc.checkAccess(userLocation) = true)\n             )\n        in \n             self.enabledRoles -> excludesAll(disabled) and self.enabledRoles -> includesAll(enabled)\n        \n              \n     ",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 6,
+          "VariableExpImpl": 15,
+          "OperationCallExpImpl": 10,
+          "LetExpImpl": 3,
+          "TypeExpImpl": 3,
+          "PropertyCallExpImpl": 10,
+          "BooleanLiteralExpImpl": 1
+        },
+        "properties": [
+          "rbacmodel::Session::enabledRoles",
+          "rbacmodel::User::roles",
+          "rbacmodel::User::userContext",
+          "rbacmodel::Role::roleContext",
+          "rbacmodel::Session::user"
+        ]
+      },
+      {
+        "operations": {
+          "including": 1,
+          "and": 4,
+          "allInstances": 7,
+          "includes": 3,
+          "union": 2,
+          "notEmpty": 1,
+          "asSet": 2,
+          "=": 10,
+          "-": 1
+        },
+        "name": "HistoryDSOD",
+        "body": "\nlet u : RBACUtility = RBACUtility.allInstances()\n\t->any(true) , opBT : Set(Operation) = u.businessTaskList , r1 : Role = Role.allInstances()\n\t->select(r : Role | r.idRole = 'r1')\n\t->any(true) , r2 : Role = Role.allInstances()\n\t->select(r : Role | r.idRole = 'r6')\n\t->any(true) , p : Permission = Permission.allInstances()\n\t->select(p : Permission | p.idPermission = 'p1')\n\t->any(true) , op : Operation = Operation.allInstances()\n\t->select(op : Operation | op.idOperation = 'op1')\n\t->any(true) , perm1 : Set(Permission) = r1.permissions\n\t->select(a : Permission | a.object = p.object) , perm2 : Set(Permission) = r2.permissions\n\t->select(a : Permission | a.object = p.object) , opObjBT : Set(Operation) = (perm1.operations\n\t->union(perm2.operations))\n\t->select(a : Operation | opBT\n\t\t->includes(a))\n\t->asSet() , logr2 : Set(History) = History.allInstances()\n\t->select(a : History | a.role = r2 and perm2\n\t\t->includes(a.permission) and a.user = self.user) , \n\t\tlogr1 : Set(History) = History.allInstances()\n\t->select(a : History | a.role = r1 and perm1\n\t\t->includes(a.permission) and a.user = self.user) , log : Set(History) = logr1\n\t->union(logr2) , opLog : Set(Operation) = log\n\t->collect(l | l.operation)\n\t->asSet() , newopLog : Set(Operation) = opLog\n\t->including(op)\nin (opObjBT - newopLog)\n\t->notEmpty()\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 17,
+          "VariableExpImpl": 37,
+          "OperationCallExpImpl": 31,
+          "LetExpImpl": 14,
+          "StringLiteralExpImpl": 4,
+          "TypeExpImpl": 7,
+          "PropertyCallExpImpl": 22,
+          "BooleanLiteralExpImpl": 5
+        },
+        "properties": [
+          "rbacmodel::History::role",
+          "rbacmodel::History::user",
+          "rbacmodel::Operation::idOperation",
+          "rbacmodel::RBACUtility::businessTaskList",
+          "rbacmodel::History::permission",
+          "rbacmodel::Role::idRole",
+          "rbacmodel::Permission::object",
+          "rbacmodel::History::operation",
+          "rbacmodel::Permission::operations",
+          "rbacmodel::Permission::idPermission",
+          "rbacmodel::Role::permissions",
+          "rbacmodel::Session::user"
+        ]
+      },
+      {
+        "operations": {
+          "<=": 1,
+          "size": 1
+        },
+        "name": "Card",
+        "body": "\n\tself.activeRoles\n\t->size() <= 4\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 2,
+          "VariableExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["rbacmodel::Session::activeRoles"]
+      },
+      {
+        "operations": {
+          "and": 2,
+          "isEmpty": 2,
+          "allInstances": 5,
+          "includes": 2,
+          "=": 9
+        },
+        "name": "ObjectDSOD",
+        "body": "\nlet r2 : Role = Role.allInstances()\n\t->select(r : Role | r.idRole = 'r6')\n\t->any(true) , r1 : Role = Role.allInstances()\n\t->select(r : Role | r.idRole = 'r1')\n\t->any(true) , p : Permission = Permission.allInstances()\n\t->select(o : Permission | o.idPermission = 'p3')\n\t->any(true) , \n\tlogr2 : Set(History) = History.allInstances()\n\t->select(a : History | a.role = r2 and a.user = self.user) , \n\tlogr1 : Set(History) = History.allInstances()\n\t->select(a : History | a.role = r1 and a.user = self.user)\nin if self.activeRoles\n\t\t->includes(r1)\n\tthen (logr2\n\t\t->select(a : History | a.object = p.object))\n\t\t->isEmpty()\n\telse if self.activeRoles\n\t\t\t->includes(r2)\n\t\tthen (logr1\n\t\t\t->select(a : History | a.object = p.object))\n\t\t\t->isEmpty()\n\t\telse true\n\t\tendif\n\tendif\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 10,
+          "VariableExpImpl": 21,
+          "OperationCallExpImpl": 20,
+          "LetExpImpl": 5,
+          "StringLiteralExpImpl": 3,
+          "TypeExpImpl": 5,
+          "IfExpImpl": 2,
+          "BooleanLiteralExpImpl": 4,
+          "PropertyCallExpImpl": 15
+        },
+        "properties": [
+          "rbacmodel::History::object",
+          "rbacmodel::History::user",
+          "rbacmodel::History::role",
+          "rbacmodel::Role::idRole",
+          "rbacmodel::Permission::object",
+          "rbacmodel::Permission::idPermission",
+          "rbacmodel::Session::activeRoles",
+          "rbacmodel::Session::user"
+        ]
+      },
+      {
+        "operations": {
+          "includesAll": 1,
+          "and": 1,
+          "oclAsSet": 1,
+          "isEmpty": 2,
+          "allInstances": 4,
+          "includes": 3,
+          "=": 2
+        },
+        "name": "RoleBoD",
+        "body": "\nlet u : RBACUtility = RBACUtility.allInstances()\n\t->any(true) , boundedPermissions : Set(Permission) = u.boundedPermissions , r1 : Role = Role.allInstances()\n\t->select(r : Role | r.idRole = 'r3')\n\t->any(true) , p : Permission = Permission.allInstances()\n\t->select(p : Permission | p.idPermission = 'p2')\n\t->any(true) , roles : Set(Role) = Role.allInstances()\n\t->select(r : Role | r.permissions\n\t\t->includesAll(boundedPermissions)) , roleLog : Set(History) = r1.logRole\n\t->select(log : History | boundedPermissions\n\t\t->includes(log.permission))\nin if boundedPermissions\n\t\t->includes(p) and roleLog\n\t\t->isEmpty()\n\tthen roles\n\t\t->forAll(r : Role | boundedPermissions\n\t\t\t->includes(r.logRole.permission))\n\t\t->isEmpty()\n\telse true\n\tendif\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 9,
+          "VariableExpImpl": 15,
+          "OperationCallExpImpl": 14,
+          "LetExpImpl": 6,
+          "StringLiteralExpImpl": 2,
+          "TypeExpImpl": 4,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 8,
+          "BooleanLiteralExpImpl": 4
+        },
+        "properties": [
+          "rbacmodel::History::permission",
+          "rbacmodel::RBACUtility::boundedPermissions",
+          "rbacmodel::Role::idRole",
+          "rbacmodel::Permission::idPermission",
+          "rbacmodel::Role::logRole",
+          "rbacmodel::Role::permissions"
+        ]
+      },
+      {
+        "operations": {
+          "includesAll": 1,
+          "not": 1,
+          "and": 1,
+          "excludesAll": 1,
+          "=": 1,
+          "checkAccess": 2
+        },
+        "name": "RoleContext",
+        "body": "\n     let userContext: RBACContext = self.user.userContext,\n     disabled: Set (Role) = self.user.roles -> select (r:Role | \n         r.roleContext ->\n             forAll (c: RBACContext | not(c.checkAccess(userContext)))),   \n     enabled: Set (Role) = self.user.roles -> select (r:Role | \n         r.roleContext ->\n             exists (c: RBACContext | c.checkAccess(userContext) = true)\n             )\n        in \n             self.enabledRoles -> excludesAll(disabled) and self.enabledRoles -> includesAll(enabled)\n   \n     \n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 4,
+          "VariableExpImpl": 13,
+          "OperationCallExpImpl": 7,
+          "LetExpImpl": 3,
+          "PropertyCallExpImpl": 10,
+          "BooleanLiteralExpImpl": 1
+        },
+        "properties": [
+          "rbacmodel::Session::enabledRoles",
+          "rbacmodel::User::roles",
+          "rbacmodel::User::userContext",
+          "rbacmodel::Role::roleContext",
+          "rbacmodel::Session::user"
+        ]
+      },
+      {
+        "operations": {
+          "includesAll": 1,
+          "and": 1,
+          "isEmpty": 2,
+          "oclAsSet": 1,
+          "allInstances": 4,
+          "includes": 2,
+          "=": 4
+        },
+        "name": "SubjectBoD",
+        "body": "\n\tif self.user.idUser = 'u1'\n\tthen\n\tlet u : RBACUtility = RBACUtility.allInstances()\n\t\t->any(true) , boundedPermissions : Set(Permission) = u.boundedPermissions , r1 : Role = Role.allInstances()\n\t\t->select(r : Role | r.idRole = 'r1')\n\t\t->any(true) , p : Permission = Permission.allInstances()\n\t\t->select(p : Permission | p.idPermission = 'p2')\n\t\t->any(true) , roles : Set(Role) = Role.allInstances()\n\t\t->select(r : Role | r.permissions\n\t\t\t->includesAll(boundedPermissions)) , subjectLog : Set(History) = r1.logRole\n\t\t->select(a : History | a.user = self.user)\n\tin if boundedPermissions\n\t\t\t->includes(p) and subjectLog\n\t\t\t->isEmpty()\n\t\tthen roles\n\t\t\t->forAll(r : Role | boundedPermissions\n\t\t\t\t->includes(r.logRole.permission))\n\t\t\t->isEmpty()\n\t\telse true\n\t\tendif\n\telse true\n\tendif\n\n\t\t\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 9,
+          "OperationCallExpImpl": 15,
+          "VariableExpImpl": 16,
+          "LetExpImpl": 6,
+          "TypeExpImpl": 4,
+          "StringLiteralExpImpl": 3,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 11,
+          "BooleanLiteralExpImpl": 5
+        },
+        "properties": [
+          "rbacmodel::History::user",
+          "rbacmodel::History::permission",
+          "rbacmodel::RBACUtility::boundedPermissions",
+          "rbacmodel::Role::idRole",
+          "rbacmodel::User::idUser",
+          "rbacmodel::Permission::idPermission",
+          "rbacmodel::Role::permissions",
+          "rbacmodel::Session::user",
+          "rbacmodel::Role::logRole"
+        ]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "allInstances": 2,
+          "xor": 1,
+          "includes": 4,
+          "=": 2
+        },
+        "name": "DSoD",
+        "body": "\nlet r1 : Role = Role.allInstances()\n\t->select(r : Role | r.idRole = 'r1')\n\t->any(true) , r2 : Role = Role.allInstances()\n\t->select(r : Role | r.idRole = 'r3')\n\t->any(true)\nin if self.activeRoles\n\t\t->includes(r2) or self.activeRoles\n\t\t->includes(r1)\n\tthen self.activeRoles\n\t\t->includes(r2) xor self.activeRoles\n\t\t->includes(r1)\n\telse true\n\tendif\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 4,
+          "OperationCallExpImpl": 10,
+          "VariableExpImpl": 10,
+          "LetExpImpl": 2,
+          "TypeExpImpl": 2,
+          "StringLiteralExpImpl": 2,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 6,
+          "BooleanLiteralExpImpl": 3
+        },
+        "properties": [
+          "rbacmodel::Role::idRole",
+          "rbacmodel::Session::activeRoles"
+        ]
+      }
+    ],
+    "properties": []
+  },
+  {
+    "name": "Delegation",
+    "expressions": [
+      {
+        "operations": {
+          "asSet": 2,
+          "implies": 1,
+          "=": 2
+        },
+        "name": "TotalDelegation",
+        "body": "\n\tself.isTotal = true implies self.delegatedPermissions\n\t->asSet() = self.delegatedRole.permissions\n\t->asSet()\n\n\t\n\t\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 5,
+          "PropertyCallExpImpl": 4,
+          "BooleanLiteralExpImpl": 1
+        },
+        "properties": [
+          "rbacmodel::Delegation::isTotal",
+          "rbacmodel::Delegation::delegatedRole",
+          "rbacmodel::Delegation::delegatedPermissions",
+          "rbacmodel::Role::permissions"
+        ]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "includes": 1,
+          "=": 4
+        },
+        "name": "GrantDependent",
+        "body": "\n\tif self.isRevoked = true\n\tthen if self.delegatedRole.isDependent = true\n\t\tthen self.revokingUser = self.delegatorUser\n\t\telse self.revokingUser = self.delegatorUser or self.delegatedRole.users\n\t\t\t->includes(self.revokingUser)\n\t\tendif\n\telse true\n\tendif\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 6,
+          "VariableExpImpl": 8,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 10,
+          "BooleanLiteralExpImpl": 3
+        },
+        "properties": [
+          "rbacmodel::Role::isDependent",
+          "rbacmodel::Role::users",
+          "rbacmodel::Delegation::delegatorUser",
+          "rbacmodel::Delegation::delegatedRole",
+          "rbacmodel::Delegation::isRevoked",
+          "rbacmodel::Delegation::revokingUser"
+        ]
+      },
+      {
+        "operations": {
+          "not": 1,
+          "notEmpty": 1,
+          "implies": 1,
+          "-": 1
+        },
+        "name": "PartialDelegation",
+        "body": "\n\tnot (self.isTotal) implies (self.delegatedRole.permissions - self.delegatedPermissions)\n\t->notEmpty()\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 4,
+          "VariableExpImpl": 3,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "rbacmodel::Delegation::isTotal",
+          "rbacmodel::Delegation::delegatedRole",
+          "rbacmodel::Delegation::delegatedPermissions",
+          "rbacmodel::Role::permissions"
+        ]
+      },
+      {
+        "operations": {
+          "getAlljuniors": 1,
+          "including": 1,
+          "and": 1,
+          "excludesAll": 1,
+          "includes": 1,
+          "implies": 1,
+          "=": 1
+        },
+        "name": "StrongTransfer",
+        "body": "\nlet roles : Set(Role) = self.delegatedRole.getAlljuniors()\n->including(self.delegatedRole)\nin\nself.isTransfer = delegationType:: strong implies \n(self.delegatorUser.roles\n\t->excludesAll(roles)) \n\tand (self.delegateUser.delegatedRoles\n\t->includes(self.delegatedRole))\n\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 7,
+          "OperationCallExpImpl": 7,
+          "LetExpImpl": 1,
+          "EnumLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 8
+        },
+        "properties": [
+          "rbacmodel::Delegation::delegateUser",
+          "rbacmodel::User::roles",
+          "rbacmodel::Delegation::isTransfer",
+          "rbacmodel::Delegation::delegatorUser",
+          "rbacmodel::Delegation::delegatedRole",
+          "rbacmodel::User::delegatedRoles"
+        ]
+      },
+      {
+        "operations": {
+          "getAlljuniors": 2,
+          "includesAll": 1,
+          "including": 1,
+          "and": 2,
+          "excludesAll": 1,
+          "excluding": 1,
+          "includes": 2,
+          "union": 1,
+          "implies": 1,
+          "=": 1,
+          "-": 1
+        },
+        "name": "StaticWeakTransfer",
+        "body": "\n\t \n\t  let \n\t  acquiredRoles : Set(Role) = self.delegatorUser.roles\n\t  ->union(self.delegatorUser.delegatedRoles),\n\t  allowedRoles : Set(Role) = self.delegatedRole.getAlljuniors() -> select (r : Role | \n\t  \t(r.seniors ->excluding(delegatedRole)) ->exists(r1 : Role | acquiredRoles ->includes(r1))),\n       roles : Set(Role) = (self.delegatedRole.getAlljuniors()\n\t  ->including(self.delegatedRole)) - allowedRoles\n\t  in self.isTransfer = delegationType:: weakStatic implies\n\t   self.delegatorUser.roles\n\t  ->excludesAll(roles) and  self.delegatorUser.roles\n\t  ->includesAll(allowedRoles) and self.delegateUser.delegatedRoles\n\t  ->includes(self.delegatedRole)\n\t\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "VariableExpImpl": 17,
+          "OperationCallExpImpl": 14,
+          "LetExpImpl": 3,
+          "EnumLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 17
+        },
+        "properties": [
+          "rbacmodel::User::roles",
+          "rbacmodel::Delegation::delegateUser",
+          "rbacmodel::Delegation::isTransfer",
+          "rbacmodel::Delegation::delegatedRole",
+          "rbacmodel::Delegation::delegatorUser",
+          "rbacmodel::Role::seniors",
+          "rbacmodel::User::delegatedRoles"
+        ]
+      },
+      {
+        "operations": {
+          "getAlljuniors": 2,
+          "includesAll": 1,
+          "including": 1,
+          "and": 2,
+          "excludesAll": 1,
+          "excluding": 1,
+          "includes": 2,
+          "union": 1,
+          "implies": 1,
+          "=": 1,
+          "-": 1
+        },
+        "name": "DynamicWeakTransfer",
+        "body": "\n\t let  acquiredRoles : Set(Role) = self.delegatorUser.roles\n\t  ->union(self.delegatorUser.delegatedRoles),\n\t  allowedRoles : Set(Role) = self.delegatedRole.getAlljuniors() -> select (r : Role | \n\t  \t(r.seniors ->excluding(delegatedRole)) -> exists(r1 : Role | self.delegatorUser.sessions -> exists (s:Session| s.activeRoles ->includes(r1)))),\n\t  roles : Set(Role) = (self.delegatedRole.getAlljuniors()\n\t  ->including(self.delegatedRole)) - allowedRoles\n\t in  self.isTransfer = delegationType:: weakDynamic implies\n\t  self.delegatorUser.roles\n\t ->excludesAll(roles) and self.delegatorUser.roles\n\t  ->includesAll(allowedRoles) and self.delegateUser.delegatedRoles\n\t  ->includes(self.delegatedRole)\n\n\n\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 3,
+          "VariableExpImpl": 18,
+          "OperationCallExpImpl": 14,
+          "LetExpImpl": 3,
+          "EnumLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 20
+        },
+        "properties": [
+          "rbacmodel::User::roles",
+          "rbacmodel::Delegation::delegateUser",
+          "rbacmodel::Delegation::isTransfer",
+          "rbacmodel::Delegation::delegatedRole",
+          "rbacmodel::Delegation::delegatorUser",
+          "rbacmodel::Role::seniors",
+          "rbacmodel::User::sessions",
+          "rbacmodel::User::delegatedRoles",
+          "rbacmodel::Session::activeRoles"
+        ]
+      },
+      {
+        "operations": {
+          "excludesAll": 1,
+          "implies": 1,
+          "=": 2
+        },
+        "name": "StrongRevocation",
+        "body": "\n\tif self.isRevoked = true\n\tthen self.delegatedRole.isStrong = true implies self.delegateUser.delegatedRoles\n\t\t->excludesAll(delegatedRole.juniors)\n\telse true\n\tendif\n\n\t",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 4,
+          "OperationCallExpImpl": 4,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 7,
+          "BooleanLiteralExpImpl": 3
+        },
+        "properties": [
+          "rbacmodel::Delegation::delegateUser",
+          "rbacmodel::Role::isStrong",
+          "rbacmodel::Delegation::delegatedRole",
+          "rbacmodel::Role::juniors",
+          "rbacmodel::Delegation::isRevoked",
+          "rbacmodel::User::delegatedRoles"
+        ]
+      },
+      {
+        "operations": {
+          "implies": 1,
+          "=": 3
+        },
+        "name": "CascadingRevocation",
+        "body": "\n\tif self.isRevoked = true\n\tthen self.delegatedRole.isCascading = true implies self.delegatedDelegation\n\t\t->forAll(d | d.isRevoked = true)\n\telse true\n\tendif\n     \n\n     \n      ",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 4,
+          "VariableExpImpl": 4,
+          "IfExpImpl": 1,
+          "BooleanLiteralExpImpl": 4,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "rbacmodel::Delegation::delegatedDelegation",
+          "rbacmodel::Role::isCascading",
+          "rbacmodel::Delegation::delegatedRole",
+          "rbacmodel::Delegation::isRevoked"
+        ]
+      }
+    ],
+    "properties": []
+  },
+  {
+    "name": "Permission",
+    "expressions": [{
+      "operations": {
+        "or": 1,
+        "allInstances": 2,
+        "includes": 4,
+        "xor": 1,
+        "=": 3
+      },
+      "name": "SSoDCP2",
+      "body": "\n\tif self.idPermission = 'p1'\n\tthen\n\tlet r1 : Role = Role.allInstances()\n\t\t->select(r : Role | r.idRole = 'r1')\n\t\t->any(true) , r2 : Role = Role.allInstances()\n\t\t->select(r : Role | r.idRole = 'r2')\n\t\t->any(true)\n\tin if self.roles\n\t\t\t->includes(r2) or self.roles\n\t\t\t->includes(r1)\n\t\tthen self.roles\n\t\t\t->includes(r2) xor self.roles\n\t\t\t->includes(r1)\n\t\telse true\n\t\tendif\n\telse true\n\tendif\n\n\t",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "IteratorExpImpl": 4,
+        "OperationCallExpImpl": 11,
+        "VariableExpImpl": 11,
+        "LetExpImpl": 2,
+        "StringLiteralExpImpl": 3,
+        "TypeExpImpl": 2,
+        "IfExpImpl": 2,
+        "PropertyCallExpImpl": 7,
+        "BooleanLiteralExpImpl": 4
+      },
+      "properties": [
+        "rbacmodel::Permission::roles",
+        "rbacmodel::Role::idRole",
+        "rbacmodel::Permission::idPermission"
+      ]
+    }],
+    "properties": []
+  }
+]

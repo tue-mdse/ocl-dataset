@@ -1,0 +1,187 @@
+[comment encoding = UTF-8 /]
+[module stateFlowMap('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import com::iauto::mist::spec::m2t::uml2html::query::commonQuery/]
+
+[template public genStatesFlowXmlFile(aModel : Model)]
+[file ('stateFlow.xml', false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<model name="[aModel.name/]">
+  <statemachinelist>
+[for (asm : StateMachine | aModel.getAllStateMachine()->sortedBy(name))]
+    [for (pseudostate : Pseudostate | asm.region.getAllVertexInRegion()->selectByType(Pseudostate)->select(kind=PseudostateKind::choice)->sortedBy(name))][setNullChoiceSomeName(pseudostate)/][/for]
+    <statemachine name="[asm.name/]">
+	  <incommingstatelist>
+		<incomming name="[asm.region->asSequence()->at(1).getInitTransition().target.name/]">
+		  <type>initial</type>
+		</incomming>
+	[for (it : Transition | asm.getEntryPointTransition()->sortedBy(name))]
+		<incomming name="[it.target.name/]">
+		  <type>entryPoint</type>
+		</incomming>
+	[/for]	
+	  </incommingstatelist>
+      <statelist>
+	[for (is : State | asm.region.getAllVertexInRegion()->selectByType(State)->select(region->isEmpty())->sortedBy(name))]
+		<state name="[is.name/]">
+		[let ic : Constraint = is.stateInvariant]
+            [let ils : LiteralString = ic.specification]
+          <symbol>[if (ils.name<>null and ils.name<>'' and ils.name<>'constraintSpec')][ils.name/][else][is.name/][/if]</symbol>
+            [else]
+          <symbol>[is.name/]</symbol>
+            [/let]
+		  <diagram>[ic.name.addPicSuffix()/]</diagram>
+        [else]
+          <symbol>[is.name/]</symbol>
+          <diagram>[getDefaultPre()/][is.name/][getDefaultPost()/]</diagram>
+        [/let]
+		[if(is.submachine->notEmpty())]
+		  <winscape>submachineState</winscape>
+		  <smbinded>[is.submachine.name/]</smbinded>
+		[else]
+		  <winscape>normalState</winscape>
+		  <smbinded></smbinded>
+		[/if]
+		  <eventlist>
+        [for (transition : Transition | is.getoutGoingTransitions())]
+			[let outgoings : Sequence(Transition) = Sequence{}]
+				[getTransitionExtend(transition,outgoings)/]
+				[for (it : Transition | outgoings->select(checkTransition())->select(visibility<>VisibilityKind::private or visibility=null)->sortedBy(name))]
+		            <event type="[if (transition.name.startsWith('interrupt_') or transition.name.startsWith('INT@'))]interrupt[elseif (transition.name.startsWith('HDKey_') or transition.name.startsWith('HDK@'))]hardkey[else]normal[/if]">
+		              <transition name="[transition.name.removePrefix()/]">
+						<image>[let ic : Constraint = transition.ownedRule->any(name='image')][let ils : LiteralString = ic.specification][if (ils.name<>null)][ils.name/][/if][/let][/let]</image>
+						<info>[let ic : Constraint = transition.ownedRule->any(name='info')][let ils : LiteralString = ic.specification][if (ils.name<>null)][ils.name/][/if][/let][/let]</info>
+						<source>[is.name/]</source>
+					[if(it.containingStateMachine()=transition.containingStateMachine())]
+						<target>[it.getTargetName()/]</target>
+						<targetid>[it.getExpectValue()/]</targetid>
+						[if(it.target.oclIsTypeOf(Pseudostate) and (
+							it.target.oclAsType(Pseudostate).kind = PseudostateKind::shallowHistory or
+							it.target.oclAsType(Pseudostate).kind = PseudostateKind::terminate))]
+						<targetclass>ht</targetclass>
+						[else]
+						<targetclass>in</targetclass>
+						[/if]
+					[else]
+						<target>[it.getExpectValue()/]</target>
+						<targetsm>[it.getStateMachineName()/]</targetsm>
+						[comment][if(it.target.oclIsTypeOf(Pseudostate) and (
+							it.target.oclAsType(Pseudostate).kind = PseudostateKind::shallowHistory or
+							it.target.oclAsType(Pseudostate).kind = PseudostateKind::terminate))]
+						<targetclass>ht</targetclass>[/comment]
+						[comment][else][/comment]
+						<targetclass>out</targetclass>
+						[comment][/if][/comment]
+					[/if]
+					  </transition>
+		            </event>					
+				[/for]
+			[/let]
+        [/for]
+          </eventlist>
+        </state>
+    [/for]
+      </statelist>
+	  <choicelist>
+    [for (ips : Pseudostate | asm.region.getAllVertexInRegion()->selectByType(Pseudostate)->select(kind=PseudostateKind::choice)->sortedBy(name))]
+        <choice name="[ips.name/]">
+          <data_model></data_model>
+          <guardlist>
+        [for (transition : Transition | ips.outgoing)]
+			[let outgoings : Sequence(Transition) = Sequence{}]
+			[getTransitionExtend(transition,outgoings)/]
+			[for (it : Transition | outgoings->select(target->notEmpty())
+			->select(visibility<>VisibilityKind::private or visibility=null)->sortedBy(name))]
+            <guard>
+              <key></key>
+              <value></value>
+              <event type="choice">
+				<transition name="[transition.name/]">
+				  <image>[let ic : Constraint = transition.ownedRule->any(name='image')][let ils : LiteralString = ic.specification][if (ils.name<>null)][ils.name/][/if][/let][/let]</image>
+				  <info>[let ic : Constraint = transition.ownedRule->any(name='info')][let ils : LiteralString = ic.specification][if (ils.name<>null)][ils.name/][/if][/let][/let]</info>
+				  <source>[ips.name/]</source>
+			[if(it.containingStateMachine()=transition.containingStateMachine())]
+				  <target>[it.getTargetName()/]</target>
+				  <targetid>[it.getExpectValue()/]</targetid>
+				  [if(it.target.oclIsTypeOf(Pseudostate) and (
+					it.target.oclAsType(Pseudostate).kind = PseudostateKind::shallowHistory or
+					it.target.oclAsType(Pseudostate).kind = PseudostateKind::terminate))]
+				  <targetclass>ht</targetclass>
+				  [else]
+				  <targetclass>in</targetclass>
+				  [/if]
+			[else]
+				  <target>[it.getExpectValue()/]</target>
+				  <targetsm>[it.getStateMachineName()/]</targetsm>
+				  [comment][if(it.target.oclIsTypeOf(Pseudostate) and (
+					it.target.oclAsType(Pseudostate).kind = PseudostateKind::shallowHistory or
+					it.target.oclAsType(Pseudostate).kind = PseudostateKind::terminate))]
+				  <targetclass>ht</targetclass>[/comment]
+				  [comment][else][/comment]
+				  <targetclass>out</targetclass>
+				  [comment][/if][/comment]
+			[/if]
+				</transition>
+              </event>
+            </guard>
+			[/for]
+			[/let]
+        [/for]
+          </guardlist>
+        </choice>
+    [/for]
+      </choicelist>
+	  <extendstatelist>
+	[for (it : Transition | asm.getInComingTransitions()->sortedBy(name))]
+		[for(iet : Transition | it.getTransitionBeginExtend()->sortedBy(name))]
+		<state name="[iet.source.name/]">
+		  <symbol>[iet.getExtendStateName()/]</symbol>
+		  <diagram></diagram>
+		  <winscape>[iet.getExtendStateType()/]</winscape>
+		  <smbinded>[iet.getExtendStateMachineName()/]</smbinded>
+		  <eventlist>
+            <event type="[if (it.name.startsWith('interrupt_') or it.name.startsWith('INT@'))]interrupt[elseif (it.name.startsWith('HDKey_') or it.name.startsWith('HDK@'))]hardkey[else]normal[/if]">
+              <transition name="[it.name.removePrefix()/]">
+				<source>[it.source.name/]</source>
+				<target>[it.getTransitionEnd().getExpectValue()/]</target>
+				<targetclass>out</targetclass>
+			  </transition>
+            </event>
+          </eventlist>
+		</state>
+		[/for]
+	[/for]
+	[comment]MainDiagram的initial是没有外面进来的迁移，这时候在前面加一个App启动的线[/comment]
+	[if(asm.name='MainDiagram')]
+		<state name="App启动">
+		  <symbol>App启动</symbol>
+		  <diagram></diagram>
+		  <winscape>otherIncoming</winscape>
+		  <smbinded></smbinded>
+		[let it : Transition = asm.region->asSequence()->at(1).getInitTransition()]
+		  <eventlist>
+            <event type="[if (it.name.startsWith('interrupt_') or it.name.startsWith('INT@'))]interrupt[elseif (it.name.startsWith('HDKey_') or it.name.startsWith('HDK@'))]hardkey[else]normal[/if]">
+              <transition name="[it.name.removePrefix()/]">
+				<source>[it.source.name/]</source>
+				<target>[it.target.name/]</target>
+				<targetclass>out</targetclass>
+			  </transition>
+            </event>
+          </eventlist>
+		[/let]
+		</state>
+	[/if]
+	  </extendstatelist>
+    </statemachine>
+[/for]
+  </statemachinelist>
+</model>
+[/file]
+[/template]
+
+[template private getTransitionExtend(transition : Transition,list : Sequence(Transition))]
+[    invoke('com.iauto.mist.spec.m2t.uml2html.util.utils', 'getTransitionExtend(org.eclipse.uml2.uml.Transition,java.util.List)', Sequence{transition,list})/]
+[/template]
+[template private setNullChoiceSomeName(pseudostate : Pseudostate)]
+[    invoke('com.iauto.mist.spec.m2t.uml2html.util.utils', 'setNullChoiceSomeName(org.eclipse.uml2.uml.Pseudostate)', Sequence{pseudostate})/]
+[/template]

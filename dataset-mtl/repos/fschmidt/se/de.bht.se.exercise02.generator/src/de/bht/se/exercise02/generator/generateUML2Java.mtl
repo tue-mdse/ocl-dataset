@@ -1,0 +1,138 @@
+[comment encoding = UTF-8 /]
+[module generateUML2Java('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[template public generateElement(model : Model)]
+[comment @main/]
+[for (p : Package | model.ownedElement->select(oclIsTypeOf(Package)))]
+	[for(class:Class | p.ownedElement->select(oclIsTypeOf(Class)))]
+
+	[if (not ((class.name) = ''))]								
+		[file (generateFullPathName(class), false)]
+			package [class._package.name/];
+			public class [class.name/]
+				[if (not class.general ->isEmpty())]
+				extends [class.general.name->sep(', ')/]
+				[/if]
+				[if (not class.interfaceRealization->isEmpty())]
+				implements [class.interfaceRealization.contract.name->sep(', ')/]
+				[/if]
+ {
+			[for (p:Property | class.getAllAttributes())]
+				[attribute(p)/]
+			[/for]
+		
+			[for (o:Operation | class.getAllOperations())]
+				[operation(o)/]
+			[/for]
+	
+			[for (p:Property | class.getAllAttributes())]
+				[getterSetter(p)/]
+			[/for]
+
+			[for (interface : InterfaceRealization | class.interfaceRealization)]
+				[for (op : Operation | interface.contract.getAllOperations())]
+					@Override
+ 					[operation(op)/]
+				[/for]
+			[/for]
+		} 
+		[/file]
+	[/if]
+	[/for]
+
+	[for(interface:Interface | p.ownedElement->select(oclIsTypeOf(Interface)))]
+
+	[if (not ((interface.name) = ''))]								
+		[file (generateFullPathName(interface), false)]
+			package [interface._package.name/];
+			public interface [interface.name/]
+				[if (not interface.general ->isEmpty())]
+				extends [interface.general.name->sep(', ')/]
+				[/if]
+		{
+			[for (o:Operation | interface.getAllOperations())]
+				[abstractOperation(o)/]
+			[/for]
+		} 
+		[/file]
+	[/if]
+	[/for]
+
+	[for(enum:Enumeration | p.ownedElement->select(oclIsTypeOf(Enumeration)))]
+
+	[if (not ((enum.name) = ''))]
+		[file (generateFullPathName(enum), false)]
+		package [enum._package.name/];
+		public enum [enum.name/] {
+			[enum.ownedLiteral.name->sep(', ')/]
+		}
+ 
+		[/file]
+	[/if]
+	[/for]	
+	
+[/for]
+
+[/template]
+
+[template public parameterList(op : Operation, delimiter :String)]
+[for (param : Parameter | op.ownedParameter->select(name.strcmp('return')<>0))separator(delimiter)]
+	[SingleParameter(param)/];
+[/for]
+[/template]
+
+[template public SingleParameter(param : Parameter)]
+	[param.type.name/] [param.name/];
+[/template]
+
+[template public generateFullPathName(c : Class)]
+	[c._package.name.replaceAll('\\.','/') + '/' + (c.name).concat('.java')/]
+[/template]
+
+[template public generateFullPathName(i : Interface)]
+	[i._package.name.replaceAll('\\.','/') + '/' + (i.name).concat('.java')/]
+[/template]
+
+[template public generateFullPathName(e : Enumeration)]
+	[e._package.name.replaceAll('\\.','/') + '/' + (e.name).concat('.java')/]
+[/template]
+
+[template public attribute (prop : Property) ]
+	[if (prop.upperBound() = -1)]
+		private ['java.util.Collection<' + prop.type.name + '>'/] [prop.name/];
+	[else]
+		private [prop.type.name/] [prop.name/];
+	[/if]
+[/template]
+
+[template public operation (operation : Operation) ]
+[operation.visibility/] [operation.type.name/] [operation.name/]([parameterList(operation, ', ')/]) {
+	// [protected ('operation.name')]
+	// TODO auto generated method stub
+	// [/protected]
+}
+[/template]
+
+[template public abstractOperation (operation : Operation) ]
+	[operation.type.name/] [operation.name/]([parameterList(operation, ', ')/]);
+[/template]
+
+[template public getterSetter (property : Property) ]
+	[if (property.upperBound() = -1)]
+	public ['java.util.Collection<' + property.type.name + '>'/] get[ property.name.toUpperFirst()/]() {
+		return this.[property.name/];
+	}
+
+	public void set[property.name.toUpperFirst()/](['java.util.Collection<' + property.type.name + '>'/] [property.name/]) { 
+		this.[property.name/] = [property.name/];
+	}
+	[else]
+	public [property.type.name/] get[ property.name.toUpperFirst()/]() {
+		return this.[property.name/];
+	}
+
+	public void set[property.name.toUpperFirst()/]([property.type.name/] [property.name/]) { 
+		this.[property.name/] = [property.name/];
+	}
+	[/if]
+[/template]

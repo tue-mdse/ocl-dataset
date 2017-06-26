@@ -1,0 +1,65 @@
+[comment encoding = UTF-8 /]
+[module genCommonUI('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::gen::as::presentation::genEntityUI /]
+[import com::mgs::uml::gen::as::common::mxmlUtils /]
+[import com::mgs::uml::gen::as::entity::genEntityInterface /]
+[import com::mgs::uml::gen::as::common::asUtils /]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::common::umlUtils /]
+
+[template public genCommonUI(m : Model)]
+	
+[comment @main /]
+
+[file ('ui/EntityTabNavigator.mxml', false, 'UTF-8')]
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TabNavigator creationPolicy="all" implements="ui.Navigation" xmlns:ui="ui.*" xmlns:entityUI="ui.entity.*" xmlns:mx="http://www.adobe.com/2006/mxml">
+	[mxmlScriptBegin()/]
+	
+			[m.genInterfaceImports()/]
+			
+			import mx.controls.Alert;
+			
+			public function handleNavigation(object:Object):void{
+				var defObject:Object = object;
+				if(object is Array){
+					defObject = (object as Array)['[0]'/];
+				}
+[for (c : Class | m.getAllClassesChildToRoot()) ? (profile_isEntity())]
+				if(defObject is [c.interfaceName()/]){
+					selectedChild = [c.UIID()/];
+					[c.UIID()/].handleNavigation(object);
+				} else
+[/for]
+				{
+					// TODO gen throw something ?
+				}
+			}
+			
+			private function onObjectSelection(event:SelectionUIEvent):void{
+				handleNavigation(event.selection);
+			}
+			private function onServiceSend(event:ServiceSendUIEvent):void{
+				enabled = false;
+			}
+			private function onServiceRecv(event:ServiceRecvUIEvent):void{
+				enabled = true;
+				if(event.error){
+					Alert.show(event.message, "Error");
+				}
+			}
+			
+	[mxmlScriptEnd()/]
+	
+	
+[for (c : Class | m.profile_getAllEntities())]
+	<entityUI:[c.entityUIName()/] id="[c.UIID()/]" 
+		objectSelection="onObjectSelection(event)"
+		serviceSend="onServiceSend(event)" 
+		serviceRecv="onServiceRecv(event)"
+		width="100%" height="100%"/>
+[/for]
+</mx:TabNavigator>
+[/file]
+	
+[/template]

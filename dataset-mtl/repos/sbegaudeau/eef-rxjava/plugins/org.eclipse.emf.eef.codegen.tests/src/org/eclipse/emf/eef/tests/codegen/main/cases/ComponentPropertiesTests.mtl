@@ -1,0 +1,112 @@
+[comment 
+ *******************************************************************************
+ * Copyright (c) 2008-2010 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+ 
+[module ComponentPropertiesTests('http://www.eclipse.org/emf/eef/components/1.0.0','http://www.eclipse.org/emf/eef/mapping/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/eef/views/1.0.0', 'http://www.eclipse.org/emf/eef/generation/1.0.0') extends ComponentCommonTests/]
+
+[import common /]
+[import naming /]
+[import testsNaming /]
+[import widgetTest /]
+
+[template public PropertySection(peContext : PropertiesEditionContext)]
+[comment @main /]
+[for (pec : PropertiesEditionComponent | peContext.eAllContents(PropertiesEditionComponent)) ? (pec.mustBeGenerated() and pec.testMustBeGenerated())]
+	[for (view : View | pec.views) ? (view.explicit)]
+[file (pec.fullFilePath(), false)]
+[peContext.associatedGenModel().licenceText().trim()/]
+[packagePropertySection(pec)/]
+
+[headPropertySection(peContext, pec)/]
+[peContext.additionalImports()/]
+/**
+ * TestCase for [pec.name/]
+ * [peContext.associatedGenModel().authorText().trim()/]
+ */
+public class [pec.propertyTestCase()/] extends SWTBotEEFTestCase {
+
+[testCasePropertySection(peContext, pec)/]
+[for (peElement : PropertiesEditionElement | pec.properties->select(oclIsKindOf(components::PropertiesEditionElement)).oclAsType(components::PropertiesEditionElement)) ? (pec.canGenerateTest(peElement) <> 'false')]
+[if (not peElement.isAbstractType())]
+[testAddPropertySection(pec, peElement)/]
+[if (peElement.canRemove())]
+[testRemovePropertySection(pec, peElement)/]
+[/if]
+[/if]
+[/for]
+[for (peElement : PropertiesEditionElement | pec.properties->select(oclIsKindOf(components::PropertiesEditionElement)).oclAsType(components::PropertiesEditionElement)) ? (pec.canGenerateTest(peElement) <> 'false')]
+[if (not peElement.isAbstractType())]
+[additionnalMethodsForWidgets(pec, peElement)/]
+[additionalMethodsPropertiesForTableComposition(pec, peElement)/]
+[/if]
+[/for]
+[additionalMethods()/]
+
+}
+			[/file]
+		[/for]
+	[/for]
+[/template]
+
+[template public testAddPropertySection(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement)]
+[initializeExpectedModelPropertySection(pec, peElement)/]
+[commentTestPropertySection()/]
+[testEditPropertySection(pec, peElement)/]
+[editFeaturePropertySection(pec, peElement)/]
+[comparePropertySection(pec, peElement)/]
+[/template]
+
+[template public testRemovePropertySection(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement)]
+[initializeRemoveExpectedModelPropertySection(pec, peElement)/]
+[commentTestPropertySection()/]
+[testRemoveEditPropertySection(pec, peElement)/]
+[removeFeaturePropertySection(pec, peElement)/]
+[comparePropertySection(pec, peElement)/]
+[/template]
+
+[template public fullFilePath(pec : PropertiesEditionComponent)]
+[pec.model.completePackage().toPath()/]/tests/junit/properties/[pec.propertyTestCase()/].java
+[/template]
+
+[comment overrides this template if additional imports is needed/]
+[template public additionalImports(peContext : PropertiesEditionContext) overrides additionalImports]
+import org.eclipse.swtbot.swt.finder.widgets.SWTBotShell;
+[/template]
+
+[comment overrides this template if additional methods are needed/]
+[template public additionalMethods()]
+[/template]
+
+[template public packagePropertySection(pec : PropertiesEditionComponent)]
+package [pec.model.completePackage()/].tests.junit.properties;
+[/template]
+
+[template public editFeaturePropertySection(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement)]
+		// Open the EEF properties view to edit the [pec.model.name/] element
+		EObject firstInstanceOf = EEFTestsModelsUtils.getFirstInstanceOf(bot.getActiveResource(), [pec.model.name.toLowerFirst()/]MetaClass);
+		if (firstInstanceOf == null)
+			throw new InputModelInvalidException([pec.model.name.toLowerFirst()/]MetaClass.getName());
+		SWTBotView propertiesView = bot.prepareLiveEditing(modelEditor, firstInstanceOf, [if (pec.involvedViews()->size() > 1)]"[peElement.views->first().owningView().viewKey(pec).toASCII().substituteAll(' ', '_')/]"[else]null[/if]);
+
+		[pec.editPropertyFeature(peElement)/]
+[/template]
+
+[template public removeFeaturePropertySection(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement)]
+		// Open the EEF properties view to edit the [pec.model.name/] element
+		EObject firstInstanceOf = EEFTestsModelsUtils.getFirstInstanceOf(bot.getActiveResource(), [pec.model.name.toLowerFirst()/]MetaClass);
+		if (firstInstanceOf == null)
+			throw new InputModelInvalidException([pec.model.name.toLowerFirst()/]MetaClass.getName());
+
+		SWTBotView propertiesView = bot.prepareLiveEditing(modelEditor, firstInstanceOf, [if (pec.involvedViews()->size() > 1)]"[peElement.views->first().owningView().viewKey(pec).toASCII().substituteAll(' ', '_')/]"[else]null[/if]);
+
+		[pec.removePropertyFeature(peElement)/]
+[/template]

@@ -1,0 +1,50 @@
+[comment encoding = UTF-8 /]
+[module ResourceManagerControllerCSharpFile('platform:/plugin/PIM2DotNetPlugin/metamodels/PSMMetamodel.ecore')]
+[import org::eclipse::acceleo::psm2code::utilities::ControllerManagerHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyFileHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyClassHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyMembersHelpers/]
+
+[template public generateResourceManagerControllerClasses(aCSharpResourceManagerController : CSharpResourceManagerController)]
+
+[file (aCSharpResourceManagerController.genManagerControllerFileName(), false, 'UTF-8')]
+[aCSharpResourceManagerController.genFileDocumentation(aCSharpResourceManagerController.Cbrief() , aCSharpResourceManagerController.Cdetails())/]
+namespace [aCSharpResourceManagerController.ancestors(RESTfulServicePSM).name/].Controllers
+{
+	using System;
+	using System.Collections.Generic;
+	using System.Linq;
+	using System.Net;
+	using System.Net.Http;
+	using System.Web.Http;
+	using System.Web.Http.Description;
+
+	using [aCSharpResourceManagerController.ancestors(RESTfulServicePSM).name/].Models;
+	using [aCSharpResourceManagerController.ancestors(RESTfulServicePSM).name/].Handlers;
+
+	[aCSharpResourceManagerController.genClassDocumentation(aCSharpResourceManagerController.CCbrief(), aCSharpResourceManagerController.Cdetails() )/]
+	[aCSharpResourceManagerController.CSharpRMControllerHasARAnnotation.AttributeRoutingAnnotationText/]
+	public class [aCSharpResourceManagerController.name/] : ApiController
+	{
+
+		[for(aHTTPAction : HTTPAction | aCSharpResourceManagerController.CSharpRMControllerHasAction) separator('\n')]
+		[aHTTPAction.genRMCMemberDocumentation()/]
+		[for (aAttributeRoutingAnnotation : AttributeRoutingAnnotation | aHTTPAction.HTTPActionHasARAnnotation) separator('\n') ]
+		[aAttributeRoutingAnnotation.AttributeRoutingAnnotationText/][/for]
+
+		public IHttpActionResult [aHTTPAction.name/]( [aHTTPAction.genActionParameters()/] )
+		{		
+			[let handlerType : String = aHTTPAction.hasHTTPActionHandler.name]
+			[let handlerInstance : String = aHTTPAction.hasHTTPActionHandler.name.toLowerFirst()]
+			[handlerType/] [handlerInstance/] = new [handlerType/](Request.RequestUri [aHTTPAction.genActionParametersForInput()/]);
+			[if (aHTTPAction.ActionHTTPVerb.toString()='GET')][aHTTPAction.getReturnType()/] [/if][aHTTPAction.getReturnType().toLowerFirst()/] = [handlerInstance/].[aHTTPAction.ActionHTTPVerb.toString().toLower()/][aHTTPAction.getReturnType()/]();
+		
+			return Content<[aHTTPAction.getReturnType()/]>([handlerInstance/].Code, [aHTTPAction.getReturnType().toLowerFirst()/]);
+		}
+		[/let]
+		[/let]		
+		[/for]
+	}
+}
+[/file]
+[/template]

@@ -1,0 +1,166 @@
+[comment encoding = UTF-8 /]
+[module HTMLBootstrapGenDocument('http://www.eclipse.org/intent/intentdocument/0.8', 'http://www.eclipse.org/intent/modelingunit/0.8', 'http://www.eclipse.org/intent/markup/0.7', 'http://www.eclipse.org/intent/markup/generator/0.7')/]
+
+[import org::eclipse::mylyn::docs::intent::exporter::main::generateToc/]
+[import org::eclipse::mylyn::docs::intent::exporter::main::generateHTMLContent/]
+[import org::eclipse::mylyn::docs::intent::markup::gen::files::html /]
+[import org::eclipse::mylyn::docs::intent::markup::gen::files::htmlGenDocument/]
+[import org::eclipse::mylyn::docs::intent::exporter::queries::documentQueries/]
+
+[query public fileName(documentName : String) : String = 
+ 	'html/' + documentName.replaceAll(' ', '').replaceAll('/','_') + '.html'
+/]
+
+[template public HTMLBootstrapGenDocumentDocument(element : IntentStructuredElement, intentDocumentName : String )]
+[comment @main /]
+[if (element.oclIsKindOf(IntentDocument))]
+[element.doGenerateHTMLDocument('', intentDocumentName)/]
+[else]
+[element.doGenerateHTMLDocument(element.oclAsType(IntentSection).getIndex().replaceAll('_','.') + '_', element.oclAsType(IntentSection).generateSubSectionTitle(true).trim())/]
+[/if]
+[/template]
+
+[template public doGenerateHTMLDocument(element:IntentStructuredElement, filePrefix:String, intentDocumentName : String)]
+[file (fileName(filePrefix+intentDocumentName), false, 'UTF-8')]
+[comment Step 1: create top navigation bar/]
+[generateNavigationBar(element, intentDocumentName)/]
+
+[comment Step 2: generate TOC/]
+[generateTOCRoot(element)/]
+
+[comment Step 3: generate documentation content/]
+[generateHTMLContentRoot(element)/]
+
+[comment Step 4: generate footer/]
+[generateFooter(element)/]
+[/file]
+[/template]
+
+
+[template public generateNavigationBar (intentDocument : IntentStructuredElement, intentDocumentName : String) ]
+<!doctype html>  
+<html> 
+	<head> 
+		<title>[intentDocumentName/]</title>
+	<link href="../css/bootstrap.css" rel="stylesheet">
+	<link href="../css/bootstrap-responsive.css" rel="stylesheet">
+	<link href="../css/toc.css" rel="stylesheet">			
+	<link href="../css/tree.css" rel="stylesheet">		
+	<style>
+	   body {
+	       padding-top: 60px;
+	   }
+    </style>
+  	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+</head>
+<body>
+
+ 	<div id="topbar" class="navbar navbar-fixed-top" data-dropdown="dropdown">
+  		<div class="navbar-inner">
+       		<div class="container" style="width: auto;">
+	         	 <h3> <a class="brand" href="#"> [intentDocumentName/] </a></h3>
+				 <ul class="nav">
+					<li><a href="#">Text documentation</a></li>
+					<li><a href="#">Models</a></li>
+				 </ul>
+				 <form class="navbar-search pull-left" action="">
+						<input type="text" placeholder="Search" />
+				</form>
+				
+				<ul class="nav pull-right">
+					<li class="dropdown">
+						<a href="#" class="dropdown-toggle" data-toggle="dropdown">Options <b class="caret"></b></a>
+						<ul class="dropdown-menu">
+							<li id="hidden_table_of_content">
+								[if shouldShowTableOfContents()]
+									<a href="#" onClick="hideToc()">Hide Table Of Contents</a>
+								[else]
+									<a href="#" onClick="revealToc()">Show Table Of Contents</a>
+								[/if]
+							</li>
+						</ul>
+					</li>
+				</ul>
+        	</div>
+  		</div>
+	</div>
+[/template]
+
+[template public generateFooter (intentElement : IntentStructuredElement) ]
+<script type="text/javascript" src="../scripts/jquery.js"></script>
+<script type="text/javascript" src="../scripts/jquery.jstree.js" ></script>	
+<script type="text/javascript" src="../scripts/bootstrap-twipsy.js"></script>
+<script type="text/javascript" src="../scripts/bootstrap-tooltip.js"></script>
+<script type="text/javascript" src="../scripts/bootstrap-popover.js"></script>
+<script type="text/javascript" src="../scripts/bootstrap-modal.js"></script>
+<script type="text/javascript" src="../scripts/bootstrap-tabs.js"></script>
+<script type="text/javascript" src="../scripts/bootstrap-dropdown.js" ></script>	
+<script type="text/javascript" src="../scripts/prettify.js"></script>
+<script type="text/javascript" src="../scripts/bootstrap-transition.js"></script>
+<script type="text/javascript" src="../scripts/bootstrap-scrollspy.js"></script>
+<script type="text/javascript">
+	$(function () {
+		$("#toc").jstree({ "plugins" : ['['/]"themes","html_data","ui"]})
+	});
+</script>
+<script language="javascript"> 
+		var toc = document.getElementById("table_of_content");							
+		var hiddenToc = document.getElementById("hidden_table_of_content");
+		var content = document.getElementById("content");
+		
+		function hideToc() {								
+			toc.style.display = "none";
+			content.style.padding = "0px 0px 0px 50px";
+			hiddenToc.innerHTML = '<a href="#" onClick="revealToc()"><i class="icon-list-alt"/>Show Table Of Contents</a>';
+		}
+		function revealToc() {								
+			toc.style.display = "block";
+			content.style.padding = "0px 0px 0px 350px";								
+			hiddenToc.innerHTML = '<a href="#" onClick="hideToc()"><i class="icon-remove"/>Hide Table Of Contents</a>';
+		}
+		function bindToc(id){
+			var parentId = "#toc_";
+			for (i =5; i<id.length-1; i = i+2){
+				if (i==5) {
+					parentId += id['['/]i];
+				} else {
+				parentId += "." + id['['/]i];
+				}
+				alert(parentId);
+				$.jstree._reference(parentId).open_node(parentId);
+			}
+			$("#toc").jstree("set_focus");
+			$.jstree._focused().select_node(id);
+		}
+	
+	$('html').click(function(e) {
+    	$("a['['/]rel=popover]").popover('hide');
+	});
+	
+	$(function () {
+		$("a['['/]rel=popover]")
+        .popover({
+			animation:true,
+            offset:10,
+            html:true,
+	        trigger:"manual",
+            template:'<div class="popover" onClick="javascript:style.display =\'none\'" onmouseover="$(this).mouseleave(function() {$(this).hide(); });"><div class="arrow"></div><div class="popover-inner"><h3 class="popover-title"></h3><div class="popover-content"><p></p></div></div></div>'
+        })
+		.click(function(e) {
+		   	e.preventDefault();
+        })
+		.mouseenter(function(e) {
+			$("a['['/]rel=popover]").popover('hide');
+            $(this).popover('show');
+        })
+	})
+
+</script>
+</body>	
+</html>
+[/template]
+
+
+[query public documentTitle(intentDocument : IntentDocument) :String = 
+    invoke('org.eclipse.mylyn.docs.intent.exporter.services.IntentAcceleoServices', 'getDocumentTitle(org.eclipse.emf.ecore.EObject)', Sequence{intentDocument})
+/]

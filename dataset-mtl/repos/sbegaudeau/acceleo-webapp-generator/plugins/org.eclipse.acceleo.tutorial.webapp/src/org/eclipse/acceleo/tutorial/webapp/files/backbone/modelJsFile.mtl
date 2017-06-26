@@ -1,0 +1,43 @@
+[comment encoding = UTF-8 /]
+[module modelJsFile('http://www.eclipse.org/acceleo/tutorial/webapp')]
+
+[import org::eclipse::acceleo::tutorial::webapp::common::fileUtils /]
+
+[template private modelJsFilePath(aModel : Model)]
+[aModel.genJsDirectoryPath()/]/[aModel.genModelsDirectory()/]/[aModel.genVarName()/].js
+[/template]
+
+[template public genModelJsFile(aModel : Model)]
+[file (aModel.modelJsFilePath(), false, 'UTF-8')]
+[aModel.genJsCopyrightHeader()/]
+
+var [aModel.application.genTypeName()/] = [aModel.application.genTypeName()/] || {};
+[aModel.application.genTypeName()/].[aModel.genTypeName()/] = Backbone.Model.extend({
+	defaults: {
+		[for (anAttribute : Attribute | aModel.attributes)]
+		[anAttribute.genVarName()/]: [anAttribute.defaultValue/][if ((aModel.references->size()>0) or (i<aModel.attributes->size()))],[/if]
+		[/for]
+		[for (aReference : Reference | aModel.references)]
+		[aReference.genVarName()/]: ['[]'/][if (i<aModel.references->size())],[/if]
+		[/for]
+		/* [protected ('additional attributes or references */')]
+		/* [/protected] */
+	},
+	initialize: function(){
+		[for (aNamedElem : NamedElement | aModel.references->union(aModel.attributes))]
+		this.[aNamedElem.genVarName()/] = this.get('[aNamedElem.genVarName()/]');
+		[/for]
+		/* [protected ('additional initializations */')]
+		/* [/protected] */
+	}[if (aModel.operations->size() > 0)],[/if]
+	[for (anOperation : Operation | aModel.operations) separator(',')]
+	[anOperation.genVarName()/]: function([anOperation.parameters.genVarName()->sep(', ')/]) {
+		
+	}
+	[/for]
+	/* [protected ('additional functions */')]
+	/* [/protected] */
+});
+
+[/file]
+[/template]

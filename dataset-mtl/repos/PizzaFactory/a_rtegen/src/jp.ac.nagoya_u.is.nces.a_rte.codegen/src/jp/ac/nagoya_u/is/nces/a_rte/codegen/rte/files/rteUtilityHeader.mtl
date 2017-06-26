@@ -1,0 +1,411 @@
+[comment]
+/*
+ *  TOPPERS/A-RTEGEN
+ *      Automotive Runtime Environment Generator
+ *
+ *  Copyright (C) 2013-2016 by Eiwa System Management, Inc., JAPAN
+ *
+ *  上記著作権者は，以下の(1)〜(4)の条件を満たす場合に限り，本ソフトウェ
+ *  ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
+ *  変・再配布（以下，利用と呼ぶ）することを無償で許諾する．
+ *  (1) 本ソフトウェアをソースコードの形で利用する場合には，上記の著作
+ *      権表示，この利用条件および下記の無保証規定が，そのままの形でソー
+ *      スコード中に含まれていること．
+ *  (2) 本ソフトウェアを，ライブラリ形式など，他のソフトウェア開発に使
+ *      用できる形で再配布する場合には，再配布に伴うドキュメント（利用
+ *      者マニュアルなど）に，上記の著作権表示，この利用条件および下記
+ *      の無保証規定を掲載すること．
+ *  (3) 本ソフトウェアを，機器に組み込むなど，他のソフトウェア開発に使
+ *      用できない形で再配布する場合には，次のいずれかの条件を満たすこ
+ *      と．
+ *    (a) 再配布に伴うドキュメント（利用者マニュアルなど）に，上記の著
+ *        作権表示，この利用条件および下記の無保証規定を掲載すること．
+ *    (b) 再配布の形態を，別に定める方法によって，TOPPERSプロジェクトに
+ *        報告すること．
+ *  (4) 本ソフトウェアの利用により直接的または間接的に生じるいかなる損
+ *      害からも，上記著作権者およびTOPPERSプロジェクトを免責すること．
+ *      また，本ソフトウェアのユーザまたはエンドユーザからのいかなる理
+ *      由に基づく請求からも，上記著作権者およびTOPPERSプロジェクトを
+ *      免責すること．
+ *
+ *  本ソフトウェアは，AUTOSAR（AUTomotive Open System ARchitecture）仕
+ *  様に基づいている．上記の許諾は，AUTOSARの知的財産権を許諾するもので
+ *  はない．AUTOSARは，AUTOSAR仕様に基づいたソフトウェアを商用目的で利
+ *  用する者に対して，AUTOSARパートナーになることを求めている．
+ *
+ *  本ソフトウェアは，無保証で提供されているものである．上記著作権者お
+ *  よびTOPPERSプロジェクトは，本ソフトウェアに関して，特定の使用目的
+ *  に対する適合性も含めて，いかなる保証も行わない．また，本ソフトウェ
+ *  アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
+ *  の責任を負わない．
+ * 
+ *  $Id: rteUtilityHeader.mtl 19918 2016-01-08 06:05:46Z hiroki.kitagawa $
+ */
+[/comment]
+[comment encoding = UTF-8 /]
+[module rteUtilityHeader('http://nces.is.nagoya-u.ac.jp/a-rte/rte/module')]
+
+[import jp::ac::nagoya_u::is::nces::a_rte::codegen::rte::common::fileUtil /]
+[import jp::ac::nagoya_u::is::nces::a_rte::codegen::rte::common::symbolUtil /]
+
+[template public genRteUtilityHeader(aRteUtilityHeader : RteUtilityHeader)]
+[file (aRteUtilityHeader.fileName, false, 'ASCII')]
+	[aRteUtilityHeader.genFileHeader()/]
+
+	[aRteUtilityHeader.genFileIncludes()/]
+
+	[aRteUtilityHeader.genCommonMacroDefinitions()/]
+
+	[aRteUtilityHeader.genRteBufferCopyOperationDefinitions()/]
+
+	[aRteUtilityHeader.genRteBufferQueueOperationDefinitions()/]
+
+	[aRteUtilityHeader.genModeControlMacroDefinitions()/]
+
+	[aRteUtilityHeader.genFilterCheckMacroDefinitions()/]
+
+	[aRteUtilityHeader.genFileFooter()/]
+[/file]
+[/template]
+
+[template private genFileHeader(aRteUtilityHeader : RteUtilityHeader)]
+[aRteUtilityHeader.genFileHeaderComment()/]
+
+[aRteUtilityHeader.genGuardDeclarationStart()/]
+
+[aRteUtilityHeader.genExternCDeclarationStart()/]
+[/template]
+
+[template private genFileFooter(aRteUtilityHeader : RteUtilityHeader)]
+[aRteUtilityHeader.genExternCDeclarationEnd()/]
+
+[aRteUtilityHeader.genGuardDeclarationEnd()/]
+[/template]
+
+[template private genRteBufferCopyOperationDefinitions(aRteUtilityHeader : RteUtilityHeader)]
+/*
+ * Internal Copy Macro Definitions
+ */
+#define Rte_ArrayMemcpy(dest, src, type)	\
+do {	\
+	uint32 rte_arraymemcpy_inx;	\
+	for (rte_arraymemcpy_inx = 0U; rte_arraymemcpy_inx < sizeof(type); rte_arraymemcpy_inx++) {	\
+		((uint8*)(dest))['['/]rte_arraymemcpy_inx[']'/] = ((uint8*)(src))['['/]rte_arraymemcpy_inx[']'/];	\
+	}	\
+} while (0) /* MISRA RULE 11.4, 11.5 VIOLATION : It is safe because the arguments are managed by RTE codes */
+#define Rte_StructMemcpy(dest, src, type)	\
+do {	\
+	*((type *)(dest))  = *((type *)(src)); /* MISRA RULE 19.10 VIOLATION: "((type) *)" causes a compile error.  */	\
+} while (0) /* MISRA RULE 11.4, 11.5 VIOLATION : It is safe because the arguments are managed by RTE codes */
+#define Rte_UnionMemcpy(dest, src, type)	\
+do {	\
+	*((type *)(dest))  = *((type *)(src));  /* MISRA RULE 19.10 VIOLATION: "((type) *)" causes a compile error.  */	\
+} while (0) /* MISRA RULE 11.4, 11.5, 17.4 VIOLATION : It is safe because the arguments are managed by RTE codes */
+[/template]
+
+[comment]
+キュー操作用マクロの定義
+[/comment]
+[template private genRteBufferQueueOperationDefinitions(aRteUtilityHeader : RteUtilityHeader)]
+/*
+ * Internal Queue Macro Definitions
+ *
+ * Fields of each queue are
+ * 	<size_type> quecnt:<quecnt_bitsize>;
+ * 	<size_type> head:<head_bitsize>;
+ * 	<size_type> stat:1;
+ * 	<data_type> element['['/]<max_quecnt>[']'/];
+ */
+#define RTE_QUEUE_STATUS_LOST_DATA	(1U)
+#define RTE_QUEUE_STATUS_NORMAL	(0U)
+
+#define Rte_Enqueue(queue, value, max_quecnt, ercd)	\
+do {	\
+	if ((queue)->quecnt == (max_quecnt)) {	\
+		(queue)->stat = RTE_QUEUE_STATUS_LOST_DATA;	\
+		*(ercd) = RTE_E_LIMIT;	\
+	}	\
+	else {	\
+	    ((queue)->element['['/] ((queue)->head  + (queue)->quecnt) % (sizeof((queue)->element) / sizeof((queue)->element['['/]0]))[']'/]) = (value);	\
+	    ++((queue)->quecnt);	\
+	}	\
+} while (0)
+
+#define Rte_EnqueueNoReturn(queue, value, max_quecnt)	\
+do {	\
+	if ((queue)->quecnt == (max_quecnt)) {	\
+		(queue)->stat = RTE_QUEUE_STATUS_LOST_DATA;	\
+	}	\
+	else {	\
+	    ((queue)->element['['/] ((queue)->head  + (queue)->quecnt) % (sizeof((queue)->element) / sizeof((queue)->element['['/]0]))[']'/]) = (value);	\
+	    ++((queue)->quecnt);	\
+	}	\
+} while (0) /* MISRA RULE 11.4 VIOLATION : It is safe because the arguments are managed by RTE codes */
+
+#define Rte_Dequeue(queue, dest, ercd)	\
+do {	\
+	if ((queue)->quecnt > 0U) {	\
+		if ((queue)->stat == RTE_QUEUE_STATUS_NORMAL) {	\
+			*(ercd) = RTE_E_OK;	\
+		}	\
+		else {	\
+			(queue)->stat = RTE_QUEUE_STATUS_NORMAL;	\
+			*(ercd) = RTE_E_LOST_DATA;	\
+		}	\
+	    *(dest) = ((queue)->element['['/](queue)->head]);	\
+	    (queue)->head = ((queue)->head + 1U) % (sizeof((queue)->element) / sizeof((queue)->element['['/]0[']'/]));	\
+        --((queue)->quecnt);	\
+	}	\
+	else {	\
+		*(ercd) = RTE_E_NO_DATA;	\
+	}	\
+} while (0)
+
+#define Rte_InitQueue(queue)	\
+do {	\
+    (queue)->quecnt = 0U;	\
+    (queue)->stat = RTE_QUEUE_STATUS_NORMAL;	\
+    (queue)->head = 0U;	\
+} while (0)
+
+#define Rte_EnqueueArray(queue, value, type, max_quecnt, ercd)	\
+do {	\
+    if ((queue)->quecnt == (max_quecnt)) {	\
+        (queue)->stat = RTE_QUEUE_STATUS_LOST_DATA;	\
+        *(ercd) = RTE_E_LIMIT;	\
+    }	\
+    else {	\
+        Rte_ArrayMemcpy((queue)->element['['/]((queue)->head  + (queue)->quecnt) % (sizeof((queue)->element) / sizeof((queue)->element['['/]0[']'/]))[']'/], value, type);	\
+        ++((queue)->quecnt);	\
+    }	\
+} while (0) /* MISRA RULE 11.4, 11.5, 17.4 VIOLATION : It is safe because the arguments are managed by RTE codes */
+
+#define Rte_EnqueueStruct(queue, value, type, max_quecnt, ercd)	\
+do {	\
+    if ((queue)->quecnt == (max_quecnt)) {	\
+        (queue)->stat = RTE_QUEUE_STATUS_LOST_DATA;	\
+        *(ercd) = RTE_E_LIMIT;	\
+    }	\
+    else {	\
+        Rte_StructMemcpy(&((queue)->element['['/]((queue)->head  + (queue)->quecnt) % (sizeof((queue)->element) / sizeof((queue)->element['['/]0[']'/]))[']'/]), value, type);	\
+        ++((queue)->quecnt);	\
+    }	\
+} while (0) /* MISRA RULE 11.4, 11.5 VIOLATION : It is safe because the arguments are managed by RTE codes */
+
+#define Rte_EnqueueUnion(queue, value, type, max_quecnt, ercd)	\
+	do {	\
+		if ((queue)->quecnt == (max_quecnt)) {	\
+			(queue)->stat = RTE_QUEUE_STATUS_LOST_DATA;	\
+			*(ercd) = RTE_E_LIMIT;	\
+		}	\
+		else {	\
+			Rte_UnionMemcpy(&((queue)->element['['/]((queue)->head  + (queue)->quecnt) % (sizeof((queue)->element) / sizeof((queue)->element['['/]0[']'/]))[']'/]), value, type);	\
+			++((queue)->quecnt);	\
+		}	\
+	} while (0) /* MISRA RULE 11.4, 11.5 VIOLATION : It is safe because the arguments are managed by RTE codes */
+
+#define Rte_DequeueArray(queue, dest, type, ercd)	\
+do {	\
+    if ((queue)->quecnt > 0U) {	\
+        if ((queue)->stat == RTE_QUEUE_STATUS_NORMAL) {	\
+            *(ercd) = RTE_E_OK;	\
+        }	\
+        else {	\
+            (queue)->stat = RTE_QUEUE_STATUS_NORMAL;	\
+            *(ercd) = RTE_E_LOST_DATA;	\
+        }	\
+        Rte_ArrayMemcpy(dest, (queue)->element['['/](queue)->head[']'/], type);	\
+        (queue)->head = ((queue)->head + 1U) % (sizeof((queue)->element) / sizeof((queue)->element['['/]0[']'/]));	\
+        --((queue)->quecnt);	\
+    }	\
+    else {	\
+        *(ercd) = RTE_E_NO_DATA;	\
+    }	\
+} while (0) /* MISRA RULE 11.4, 17.4 VIOLATION : It is safe because the arguments are managed by RTE codes */
+
+#define Rte_DequeueStruct(queue, dest, type, ercd)	\
+do {	\
+    if ((queue)->quecnt > 0U) {	\
+        if ((queue)->stat == RTE_QUEUE_STATUS_NORMAL) {	\
+            *(ercd) = RTE_E_OK;	\
+        }	\
+        else {	\
+            (queue)->stat = RTE_QUEUE_STATUS_NORMAL;	\
+            *(ercd) = RTE_E_LOST_DATA;	\
+        }	\
+        Rte_StructMemcpy(dest, &((queue)->element['['/](queue)->head[']'/]), type);	\
+        (queue)->head = ((queue)->head + 1U) % (sizeof((queue)->element) / sizeof((queue)->element['['/]0[']'/]));	\
+        --((queue)->quecnt);	\
+    }	\
+    else {	\
+        *(ercd) = RTE_E_NO_DATA;	\
+    }	\
+} while (0)
+
+#define Rte_DequeueUnion(queue, dest, type, ercd)	\
+	do {	\
+		if ((queue)->quecnt > 0U) {	\
+			if ((queue)->stat == RTE_QUEUE_STATUS_NORMAL) {	\
+				*(ercd) = RTE_E_OK;	\
+			}	\
+			else {	\
+				(queue)->stat = RTE_QUEUE_STATUS_NORMAL;	\
+				*(ercd) = RTE_E_LOST_DATA;	\
+			}	\
+			Rte_UnionMemcpy(dest, &((queue)->element['['/](queue)->head[']'/]), type);	\
+			(queue)->head = ((queue)->head + 1U) % (sizeof((queue)->element) / sizeof((queue)->element['['/]0[']'/]));	\
+			--((queue)->quecnt);	\
+		}	\
+		else {	\
+			*(ercd) = RTE_E_NO_DATA;	\
+		}	\
+	} while (0)
+
+#define Rte_EnqueueArrayNoReturn(queue, value, type, max_quecnt)	\
+	do {	\
+		if ((queue)->quecnt == (max_quecnt)) {	\
+			(queue)->stat = RTE_QUEUE_STATUS_LOST_DATA;	\
+		}	\
+		else {	\
+			Rte_ArrayMemcpy(((queue)->element['['/]((queue)->head  + (queue)->quecnt) % (sizeof((queue)->element) / sizeof((queue)->element['['/]0[']'/]))[']'/]), value, type);	\
+			++((queue)->quecnt);	\
+		}	\
+	} while (0) /* MISRA RULE 11.4 VIOLATION : It is safe because the arguments are managed by RTE codes */
+
+#define Rte_EnqueueStructNoReturn(queue, value, type, max_quecnt)	\
+	do {	\
+		if ((queue)->quecnt == (max_quecnt)) {	\
+			(queue)->stat = RTE_QUEUE_STATUS_LOST_DATA;	\
+		}	\
+		else {	\
+			Rte_StructMemcpy(&((queue)->element['['/]((queue)->head  + (queue)->quecnt) % (sizeof((queue)->element) / sizeof((queue)->element['['/]0[']'/]))[']'/]), value, type);	\
+			++((queue)->quecnt);	\
+		}	\
+	} while (0)
+
+#define Rte_EnqueueUnionNoReturn(queue, value, type, max_quecnt)	\
+	do {	\
+		if ((queue)->quecnt == (max_quecnt)) {	\
+			(queue)->stat = RTE_QUEUE_STATUS_LOST_DATA;	\
+		}	\
+		else {	\
+			Rte_UnionMemcpy(&((queue)->element['['/]((queue)->head  + (queue)->quecnt) % (sizeof((queue)->element) / sizeof((queue)->element['['/]0[']'/]))[']'/]), value, type);	\
+			++((queue)->quecnt);	\
+		}	\
+	} while (0)
+
+[/template]
+
+[template private genModeControlMacroDefinitions(aRteUtilityHeader : RteUtilityHeader)]
+/*
+ * Mode Queue Macro Definitions
+ *
+ * Fields of each queue are
+ * 	<size_type> quecnt:<quecnt_bitsize>;
+ * 	<size_type> head:<head_bitsize>;
+ * 	<mode_type> element['['/]<max_quecnt>[']'/];
+ */
+#define SchM_Queue_Count(queue)	((queue).quecnt) /* MISRA RULE 19.7 VIOLATION: use macro func for optimization */
+
+#define SchM_SwitchMode_Enqueue(queue, value, max_quecnt, ercd)	\
+	do {	\
+		if (SchM_Queue_Count(queue) == (max_quecnt)) {	\
+			(ercd) = SCHM_E_LIMIT;	\
+		}	\
+		else {	\
+			(queue).element['['/]((queue).head  + (queue).quecnt) % (sizeof((queue).element) / sizeof((queue).element['['/]0[']'/]))[']'/] = (value);	\
+			++((queue).quecnt);	\
+		}	\
+	} while (0)
+
+#define SchM_SwitchMode_Dequeue(queue, next_mode)	\
+	do {	\
+		if (SchM_Queue_Count(queue) > 0U) {	\
+			(queue).head = ((queue).head + 1U) % (sizeof((queue).element) / sizeof((queue).element['['/]0[']'/]));	\
+			--((queue).quecnt);	\
+			if ((queue).quecnt > 0U) {								 \
+				(next_mode) = (queue).element['['/](queue).head[']'/];	\
+			}														 \
+		}	\
+	} while (0)
+
+#define SchM_SwitchMode_Initqueue(queue)	\
+	do {	\
+		(queue).head = 0U;	\
+		(queue).quecnt = 0U;	\
+	} while (0)
+
+/*
+ * Mode Macro Definitions
+ */
+#define RTE_MODE_IS_START(startMode, next)	((startMode) == (next)) /* MISRA RULE 19.7 VIOLATION: use macro func for optimization */
+#define RTE_MODE_IS_NOT_DISABLED(disabledMode, current, next)	(((disabledMode) != (current)) && ((disabledMode) != (next))) /* MISRA RULE 19.7 VIOLATION: use macro func for optimization */
+[/template]
+
+[template private genFilterCheckMacroDefinitions(aRteUtilityHeader : RteUtilityHeader)]
+/*
+ * Internal Filter Macro Definitions
+ */
+#define Rte_FilterMaskedNewEqualsX(newValue, maskValue, desinatedValue)	((boolean) (((newValue) & (maskValue)) == (desinatedValue)) ) /* MISRA RULE 19.7 VIOLATION: use macro func for optimization */
+#define Rte_FilterMaskedNewDiffersX(newValue, maskValue, desinatedValue)	((boolean) (((newValue) & (maskValue)) != (desinatedValue)) ) /* MISRA RULE 19.7 VIOLATION: use macro func for optimization */
+#define Rte_FilterMaskedNewDiffersMaskedOld(newValue, oldValue, maskValue)	((boolean) (((newValue) & (maskValue)) != ((oldValue) & (maskValue))) ) /* MISRA RULE 19.7 VIOLATION: use macro func for optimization */
+#define Rte_FilterNewIsWithin(newValue, minValue, maxValue)	((boolean) (((newValue) >= (minValue)) && ((newValue) <= (maxValue))) ) /* MISRA RULE 19.7 VIOLATION: use macro func for optimization */
+#define Rte_FilterNewIsOutside(newValue, minValue, maxValue) ((boolean) (((newValue) < (minValue)) || ((newValue) > (maxValue))) ) /* MISRA RULE 19.7 VIOLATION: use macro func for optimization */
+#define Rte_FilterOneEveryN(occurrenceVariable, period, offset) ((boolean) (((occurrenceVariable) % (period)) == (offset)) ) /* MISRA RULE 19.7 VIOLATION: use macro func for optimization */
+[/template]
+
+[template private genCommonMacroDefinitions(aRteUtilityHeader : RteUtilityHeader)]
+/*
+ * Common Macro Definitions
+ */
+#ifndef Rte_offsetof
+#define Rte_offsetof(structure, field)	((uintptr) & (((structure *) 0)->field)) /* MISRA RULE 19.7 VIOLATION: use macro func for optimization. MISRA RULE 3.1 11.3 VIOLATION: use cast for simplification. MISRA RULE 19.10 VIOLATION: "((structure) *)" causes a compile error.  */
+#endif /* Rte_offsetof */
+
+#ifndef RTE_SUPPRESS_API_CHECK_ARGS
+#define RTE_DECLARE_TASK_ID(val)    TaskType (val) /* MISRA RULE 19.7 VIOLATION: use macro func for optimization. */
+#define RTE_GET_TASK_ID(val)	\
+	do {	\
+		ercd = Rte_Call_Bsw_GetTaskID(&(val));	\
+		if ((ercd != E_OK) || ((val) == INVALID_TASK)) {	\
+			ercd = RTE_E_DEV_DEFECT;	\
+			goto err_return;	\
+		}	\
+	} while (0)
+	#define RTE_CHECK_ARG_IN(val, arg, type)	\
+	do {	\
+		AccessType rte_status;	\
+		rte_status = Rte_Call_Bsw_CheckTaskMemoryAccess((val), (MemoryStartAddressType)(arg), sizeof(type));	\
+		if ((Rte_Call_Bsw_ALIGNED_TYPE((arg), type) == FALSE) || (Rte_Call_Bsw_OSMEMORY_IS_READABLE(rte_status) == FALSE)) {	\
+			ercd = RTE_E_SEG_FAULT;	\
+			goto err_return;	\
+		}	\
+	} while (0)
+	#define RTE_CHECK_ARG_INOUT_OR_OUT(val, arg, type)	\
+	do {	\
+		AccessType rte_status;	\
+		rte_status = Rte_Call_Bsw_CheckTaskMemoryAccess((val), (MemoryStartAddressType)(arg), sizeof(type));	\
+		if ((Rte_Call_Bsw_ALIGNED_TYPE((arg), type) == FALSE) || (Rte_Call_Bsw_OSMEMORY_IS_WRITEABLE(rte_status) == FALSE)) {	\
+			ercd = RTE_E_SEG_FAULT;	\
+			goto err_return;	\
+		}	\
+	} while (0)
+	#define RTE_CHECK_ARG_POINTER_IN(val, arg, type)	\
+	do {	\
+		AccessType rte_status;	\
+		rte_status = Rte_Call_Bsw_CheckTaskMemoryAccess((val), (MemoryStartAddressType)(arg), 1U);	\
+		if (Rte_Call_Bsw_OSMEMORY_IS_READABLE(rte_status) == FALSE) {	\
+			ercd = RTE_E_SEG_FAULT;	\
+			goto err_return;	\
+		}	\
+	} while (0)
+#define RTE_CHECK_ARG_POINTER_INOUT_OR_OUT CHECK_ARG_INOUT_OR_OUT
+#else
+#define RTE_DECLARE_TASK_ID(val)
+#define RTE_GET_TASK_ID(val)
+#define RTE_CHECK_ARG_IN(val, arg, type)
+#define RTE_CHECK_ARG_INOUT_OR_OUT(val, arg, type)
+#define RTE_CHECK_ARG_POINTER_IN(val, arg, type)
+#define RTE_CHECK_ARG_POINTER_INOUT_OR_OUT
+#endif
+[/template]

@@ -1,0 +1,62 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2010, 2014 Obeo and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Mikael Barbero (Obeo) - initial API and implementation
+ *     Fabien Toral (CS Information Systems) - Circular dependencies and other corrections for PolarSys migration
+[/comment]
+[module operation('http://www.eclipse.org/uml2/4.0.0/UML', 'http://www.eclipse.org/emf/2002/Ecore')/]
+[import org::eclipse::umlgen::gen::c::files::common /]
+[import org::eclipse::umlgen::gen::c::files::structural::valueSpecification /]
+[import org::eclipse::umlgen::gen::c::files::structural::parameter /]
+
+[comment]Generate an operation signature[/comment]
+[template public gen(op : Operation, fType: String)]
+[if op.hasComment()][if fType = 'H' and isPublic()][op.genComment()/][else][if fType = 'C'][op.genComment()/][/if][/if][/if]
+[comment]This is to be removed ? Obsolete ?[/comment][if commentsBeforeTrim().size() > 0][commentsBeforeTrim()/] [/if]
+[op.getStorageModifier(fType)/][op.type.formatReturnType()/] [op.name/]([ownedParameter->formatParameters()/]);
+[/template]
+
+[comment]Generate an operation implementation. Use the Operation to deduce the storage modifier to apply as well as the return type[/comment]
+[template public gen(behavior : OpaqueBehavior)]
+[let operation : Operation = getOperation()]
+[if operation->notEmpty()]
+[if hasComment()][genComment()/][/if]
+[comment]This is to be removed ? Obsolete ?[/comment][if commentsBeforeTrim().size() > 0][commentsBeforeTrim()/] [/if]
+[operation.getStorageModifier('C')/][operation.type.formatReturnType()/] [name/]([behavior.ownedParameter->formatParameters()/])
+[behavior.serialize()/]
+[/if]
+[/let][/template]
+
+[comment]Get the right storage modifier according to the file being generated[/comment]
+[template private getStorageModifier(o : Operation, kind: String)]
+[if isPublic() and kind = 'H']extern [/if][if o.isStatic and isPrivate()]static [/if]
+[/template]
+
+[comment]Format the return type name : if no return type specified 'int' is returned[/comment]
+[template private formatReturnType(t : Type)]
+[if t.oclIsUndefined()]int[else][t.name/][/if]
+[/template]
+
+[comment]Format the parameter list excluding the return type[/comment]
+[template private formatParameters(parameters : OrderedSet(Parameter))]
+[parameters->reject(direction = ParameterDirectionKind::return).gen()->sep(', ')/]
+[/template]
+
+[comment]Allow to get the operation attached to a an opaque behavior[/comment]
+[query private getOperation(e : OpaqueBehavior) : Operation =
+	if specification->notEmpty() then
+		if specification.oclIsTypeOf(Operation) then
+			specification.oclAsType(Operation)
+		else
+			null
+		endif
+	else
+		null
+	endif
+/]

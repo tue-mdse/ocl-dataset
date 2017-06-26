@@ -1,0 +1,85 @@
+[comment encoding = UTF-8 /]
+[module generate('PetriNet')]
+
+
+[template public generateRoot(aPetriNetRoot : PetriNetRoot) ]
+[comment @main/]
+[file ('highway_petri_romeo.xml', false)]
+<?xml version="1.0" encoding="UTF-8" ?>
+<TPN name="C:/Users/Esteban/Desktop/noName.xml">
+		
+		[for (el : Element | aPetriNetRoot.elements)]
+		 
+		[if (el.oclIsKindOf(Place))]
+			
+			[el.oclAsType(Place).generatePlace(aPetriNetRoot.elements->asSequence()->indexOf(el)) /]
+		[else]
+			
+			[el.oclAsType(Transition).generateTransition(aPetriNetRoot.elements->asSequence()->indexOf(el)) /]
+		[/if]
+		 
+		
+	[/for]
+
+	[for (arc : Arc | aPetriNetRoot.arcs)]
+		[if (arc.In.oclIsKindOf(Place))]
+			[arc.generateArcPlace2Transition(getElementID(aPetriNetRoot, arc.In.name) , getElementID(aPetriNetRoot, arc.Out.name))/]
+		[else]
+			[arc.generateArcTransition2Place(getElementID(aPetriNetRoot, arc.In.name) , getElementID(aPetriNetRoot, arc.Out.name))/]
+		[/if]
+		
+	[/for]
+	  	<preferences> 
+	      <colorPlace  c0="SkyBlue2"  c1="gray"  c2="cyan"  c3="green"  c4="yellow"  c5="brown" /> 
+	 
+	      <colorTransition  c0="yellow"  c1="gray"  c2="cyan"  c3="green"  c4="SkyBlue2"  c5="brown" /> 
+	 
+	      <colorArc  c0="black"  c1="gray"  c2="blue"  c3="#beb760"  c4="#be5c7e"  c5="#46be90" /> 
+	 
+	  	</preferences> 
+</TPN> 
+[/file]
+[/template]
+
+[template public generatePlace(anPlace : Place, id : Integer)]
+	<place id="[id /]" label="[anPlace.name /]" initialMarking="[anPlace.Tokens /]" eft="0" lft="inf"> 
+      <graphics color="0"> 
+         <position x="200" y="[id*30/]"/> 
+         <deltaLabel deltax="10" deltay="10"/> 
+      </graphics> 
+      <scheduling gamma="0" omega="0"/> 
+  	</place> 
+		
+[/template]
+
+[template public generateTransition(anTransition : Transition, id : Integer )]
+	<transition id="[id/]" label="[anTransition.name /]"  eft="0" lft="inf"  obs="1"> 
+     <graphics color="0"> 
+        <position x="300" y="[id*30/]"/> 
+        <deltaLabel deltax="10" deltay="10"/> 
+     </graphics> 
+  	</transition> 
+		
+[/template]
+
+[template public generateArcTransition2Place(anArc : Arc, idIn : Integer , idOut : Integer)]
+   <arc place="[idOut/]" transition="[idIn /]" type="TransitionPlace" weight="1"> 
+     <nail xnail="0" ynail="0"/> 
+     <graphics  color="0"> 
+     </graphics> 
+  </arc> 
+		
+[/template]
+
+[template public generateArcPlace2Transition(anArc : Arc, idIn : Integer , idOut : Integer)]
+   <arc place="[idIn/]" transition="[idOut /]" type="PlaceTransition" weight="1"> 
+     <nail xnail="0" ynail="0"/> 
+     <graphics  color="0"> 
+     </graphics> 
+  </arc> 
+		
+[/template]
+
+[query public getElementID(aPetriNetRoot : PetriNetRoot , name : String) : Integer = 
+	aPetriNetRoot.elements->asSequence()->indexOf(aPetriNetRoot.elements->select(el| el.name =name)->asSequence()->first())
+/]

@@ -1,0 +1,1341 @@
+(*
+	FICHIER  	: Tracabilite.mtl
+	CREATION 	: 13/11/2007
+	AUTEUR	: R.CHAUMET
+	
+	------------------------------------------------------------------------------
+	MODIF									DATE		Ind
+	Ajout gestion du repertoire "nom du produit"		24/01/2008	@1
+	Chgt du nom du fichier de capabilite			07/02/2008	@2
+	Ajout mode d'enregistrement ds BDD dpku			07/02/2008	@3
+	Modif parametre TestHeader nom du pas de test		11/03/2008	@4
+	Modif gestion resulats handler				30/07/2008	@5
+	Correction Bug defaut de contactage trop grand		22/01/2009	@6
+	Changement des TP testeur par TP produit			23/01/2009	@7
+	Gestion Fichier trace par produit/format			19/02/2009	@8
+	Ajustement label test à 25 (Capabilite CP2009)  	01/07/2010  @9
+	Modification enregistrement TRACK ds fichier resultat 23/11/2010 	@10
+	Ajout suivit capabilite sur base de données           30/03/2011 	@11
+	Ajout du numero de carte dans l'enregistrement des traces	02/04/2012	@12
+	Ajout de la date dans le nom d'enregistrement de la MDB	05/04/2012	@13
+	------------------------------------------------------------------------------
+
+*)
+
+library "Ticket_Faute_Standard_03.mtl", Ticket_Faute;
+
+(* Les variables *)
+
+%nb_champs_enregistres=20; (*5 defauts fois 4 champs par defaut*)
+%nb_defauts_enregistres=5;
+%nb_mesure_defauts=400;
+%nb_max_circuits_dans_format=25;
+
+:ligne_data_defauts[1..nb_mesure_defauts][1..nb_max_circuits_dans_format] string;
+:pas_de_test_defauts[1..nb_max_circuits_dans_format] int;
+
+
+:separateur,separateur2 string;
+separateur:=";";
+separateur2:=";";
+
+:chemin_fichier_defauts string;
+chemin_fichier_defauts:="D:\\traces\\";
+
+:nom_fichier_defauts string;
+nom_fichier_defauts:="resultats";
+
+:extension_fichier_defauts string;
+extension_fichier_defauts:=".csv";
+
+:type_testeur string;
+type_testeur:="ICT_L16";
+
+:code_operateur string;
+code_operateur:="0000";
+
+:Vers_Prg_test string;
+Vers_Prg_test:="01";
+
+
+(* CAPABILITE *)
+:pas_de_test_capabilite int;
+%nb_mesure=4000;
+:ligne_data[1..nb_mesure] string;
+:Capabilite boolean ;
+:EtatCapabilite boolean ;
+(* ********** *) 
+
+
+
+(* ** UGS ************************************************************* *)
+(* UGS - Variables							*)
+
+:Buffer string;
+(* !! C'est MTL qui reserve la mémoire pour la variable et non la DLL !! *)
+Buffer :=  "                                                           .                                                                                 .                                                                   ." ;
+
+(* DEFINI LE NOMBRE DE DEFAUT MAX RETOUNER A UGS *)
+:NbMaxUgsDefault int ;
+NbMaxUgsDefault := 2 ;
+
+(* DEFINI LE NOMBRE MAX DE TP A RETOUNER A UGS EN CAS DE DEFAUT DE CONTATC *)
+(*@6*)
+:NbMaxUgsTpContact int ;
+NbMaxUgsTpContact := 5 ;
+
+(* DEFINI LE NOMBRE DE CSE MAX *)
+:NbMaxCse int;
+NbMaxCse := 1;
+
+:VarCSE[nb_max_circuits_dans_format] int ;
+:VarDef[nb_max_circuits_dans_format] int;
+
+%NumMaxCarteDsFormat = 30 ;
+:UgsNumCarteDsFormat int ;
+UgsNumCarteDsFormat := 1 ;
+
+(* Sauvergarde du NIP de la carte *)
+:UgsNipCode string ;
+(* @5 tableau des Nip du format *)
+:UgsNipCodeFormat[nb_max_circuits_dans_format] string ;
+:UgsStatusFormat[nb_max_circuits_dans_format] boolean ;
+:UgsNbDefCarteFormat[nb_max_circuits_dans_format] int ;
+:UgsCarteActive int;
+UgsCarteActive := 1;
+
+(******* VARIABLES DE CONFIGURATION BIBLIOTHEQUE ********)
+(* @1 Sauvergarde de la famille du produit *)
+:UgsTypeProduit string;
+
+(* Nom du programme de test *)
+:UgsNomProgram string;
+
+(* defini si le repertoire de sauvegarde est divive par le nom du produit *)
+:UgsTypeDirectory string;
+
+(* @3 Mode d'enregistrement Suivit DPKU *)
+%TypeModeSuivitDpku enum { UNDEF, TYPEPRODUIT, MODELEMID, PROGRAM }
+:ModeSuivitDpku TypeModeSuivitDpku ;
+
+
+(* Pour la gestion du retrie contacts, on enregistre le defaut de contact *)
+(* mais on le passe a UGSLink, que si il n'y a pas d'autre defauts        *)
+:UgsDefContacts string;
+
+ (* Variable de gestion Time out *)
+%UGSTIMEOUT=20s
+:UgsTimeOutDeb int;
+
+(* Les options de tests USG sont defini ds la fichier INI *)
+:OptionUgs int ;
+
+(* @11 *)
+:IndexCapabilite[NumMaxCarteDsFormat] int;
+:TabCababilite[NumMaxCarteDsFormat][nb_mesure] string;
+:UgsNipformat[NumMaxCarteDsFormat] string;
+
+
+
+(* UGS - Fin Variables									*)
+
+
+
+(*-----------------------------------------------------------------------------*)
+
+(* @11 ******************************** MDB ************************************)
+(* Nom de connection ODBC *)
+%DSN = "MDBmtl" ;
+(* Chemin de la base de donnéés *)
+%CHEMIN_MDB = "C:\\IFR\\MDB\\";
+(* Pour garder la compatibilité avec les fichiers texte metre 1 *)
+%CAPABILITE_FICHIER_TXT = 0;
+
+
+(* Pointeur sur la DLL MDB *)
+:Ptr_DLL_MDBmtl DLL.Handle;
+Ptr_DLL_MDBmtl := 0 ;
+
+(* Definition des fonctions de la DLL *)
+:MDBmtl##'@DLL' ( param1 @int, param2 @string, param3 @string) int;
+
+(* Fonction Initialisation de la DLL 	*)
+:InitDll_MDB ( ) void
+{	
+	(* Initialisation du pointeur sur la DLL *)
+	if ( Ptr_DLL_MDBmtl = 0 )
+	{
+	
+		Ptr_DLL_MDBmtl := DLL.LoadLibrary ("\\UGSLink\\MDBmtl.dll");	
+		(* Initialisation des fonctions de la DLL*)
+		DLL.BindProc( Ptr_DLL_MDBmtl,"MDBmtl", MDBmtl );
+	}
+}
+
+(*-----------------------------------------------------------------------------*)
+(* Liberation de la DLL *)
+:FreeDll_MDB ( ) void
+{
+	DLL.FreeLibrary(Ptr_DLL_MDBmtl);
+	Ptr_DLL_MDBmtl := 0 ;
+}
+(********************************** FIN MDB ************************************)
+(*------------------------------------------------------------------------------------------------------------------------------*)
+
+
+
+
+
+(********************************************************************************************************************************)
+(********************************************************************************************************************************)
+(**************** LES FONCTIONS *************************************************************************************************)
+(********************************************************************************************************************************)
+(********************************************************************************************************************************)
+
+(* Retourne le TP produit en fonction du TP testeur *)
+(*@7*)
+:Pin2Tp ( PinTest Pin ) string
+{
+	:Tp string;
+	:CodeError int ;
+	:i int;
+	
+	CodeError := 0 ;
+	Tp := "" ;
+	
+	Dbase.ErrorMode := ErrorReturn ;
+	Dbase.TestPin := PinTest ;
+	CodeError := Dbase.ErrorCode ;
+	if ( CodeError = 0 )
+	{
+		for ( i:= 1 ; i<Dbase.DeviceCount; i:=i+1 )
+		{
+			if ( Dbase.DeviceIdent[i][1..2] = "TP" )
+			{
+				Tp := sprintf ( "%s",  Dbase.DeviceIdent[i] ) ;
+				i := Dbase.DeviceCount + 1 ;
+			}
+		}
+	}	
+	return (Tp) ;
+}
+
+
+(*******************************************************************************************************************************)
+(*******************************************************************************
+@11 mis en commentaire + renomage
+(* CAPABILITE 															*)
+:OLD_init_capabilite( ) void
+{
+        pas_de_test_capabilite:=1;
+}
+
+
+:OLD_resultat_capabilite( ) void
+{
+	if ( ( (Test.type = _DIODE) || (Test.type = _TRAN) || (Test.type = _LED) || (Test.type = _FET) ) && (Test.mode = OFF) )
+		return;
+
+	if ( (Test.Type = _DISCHARGE) || (Test.type= _LINK) || (Test.type = _CONTACT) || (Test.type = _TRACK) || (Test.type = _TESTMODULE) ) 
+		return;
+
+
+        if ((result.inrange = 1) || (test.fail))
+        {
+   		ligne_data[pas_de_test_capabilite]:=sprintf ("%-25.25s %-8v %-8v %-10v\n",Test.Ident, Result.Lolimit, Result.Hilimit, Result.Measured) ;
+        }
+        else
+        if ((result.outofrangehi = 1) && (test.pass))
+        {
+   		ligne_data[pas_de_test_capabilite]:=sprintf ("%-25.25s %-8v %-8v %-10v\n", Test.Ident, Result.Lolimit, Result.Hilimit, Result.hilimit) ;
+        }
+        else
+        if ((result.outofrangelo = 1)  && (test.pass))
+        {
+   		ligne_data[pas_de_test_capabilite]:=sprintf ("%-25.25s %-8v %-8v %-10v\n",  Test.Ident, Result.Lolimit, Result.Hilimit, Result.lolimit) ;
+        }
+
+	pas_de_test_capabilite:=pas_de_test_capabilite+1;
+}
+
+
+:OLD_sauver_capabilite(nom_fichier string) void
+{
+	:i int;
+	:PtrFic int ;
+	:Modele string ;
+	
+	Modele := UgsNipCode[1] + UgsNipCode[2] ;
+	
+	(* Gestion MID/NIP *)
+	if ( sizeof (UgsNipCode) > 8 )
+	{
+		Modele := Modele + UgsNipCode[3] ;
+	}
+
+	if (prog.faults=0)
+	{
+   		PtrFic := fopen (nom_fichier+"_"+Modele+".Capa","a");
+   		for (i:=1; i<= pas_de_test_capabilite; i:=i+1)
+        	{
+        		fprintf(PtrFic,"%s",ligne_data[i]);
+        	}
+   		fclose(PtrFic);
+	}
+
+}
+********************************************************************************)
+
+(********************************************************************************************************************************)
+(* @11 Nouvelle fonction de suivit capabilite **********************************)
+:init_capabilite( ) void
+{
+	:i int;
+
+	for ( i:=1; i<NumMaxCarteDsFormat; i:=i+1 )
+	    IndexCapabilite[i]:=1;
+}
+
+:resultat_capabilite( ) void
+{
+    :i int;
+    :y int;
+
+    :StatusTest string;
+    :MesureTest value;
+
+	if ( ( (Test.type = _DIODE) || (Test.type = _TRAN) || (Test.type = _LED) || (Test.type = _FET) ) && (Test.mode = OFF) )
+		return;
+
+	if ( (Test.Type = _DISCHARGE) || (Test.type= _LINK) || (Test.type = _CONTACT) || (Test.type = _TRACK) || (Test.type = _TESTMODULE) ) 
+		return;
+
+
+    if ( CAPABILITE_FICHIER_TXT = 1 )
+	{
+	 if ((result.inrange = 1) || (test.fail))
+ 	 {
+         TabCababilite[UgsCarteActive][IndexCapabilite[UgsCarteActive]]:=sprintf ("%-25.25s %-8v %-8v %-10v\n",Test.Ident, Result.Lolimit, Result.Hilimit, Result.Measured) ;
+     }
+     else
+     if ((result.outofrangehi = 1) && (test.pass))
+     {
+         TabCababilite[UgsCarteActive][IndexCapabilite[UgsCarteActive]]:=sprintf ("%-25.25s %-8v %-8v %-10v\n", Test.Ident, Result.Lolimit, Result.Hilimit, Result.hilimit) ;
+     }
+     else
+     if ((result.outofrangelo = 1)  && (test.pass))
+     {
+   		 TabCababilite[UgsCarteActive][IndexCapabilite[UgsCarteActive]]:=sprintf ("%-25.25s %-8v %-8v %-10v\n",  Test.Ident, Result.Lolimit, Result.Hilimit, Result.lolimit) ;
+     }
+    }
+    else
+    {
+      i:=UgsCarteActive;
+      y:=IndexCapabilite[UgsCarteActive] ;
+      if ( test.pass ) { StatusTest := "Passed" ; } else { StatusTest := "Failed" ; }
+      MesureTest := Result.Measured ;
+      if ((result.outofrangehi = 1) && (test.pass)) MesureTest := Result.hilimit ;
+      if ((result.outofrangelo = 1) && (test.pass)) MesureTest := Result.Lolimit ;
+      if ((result.outofrangehi = 1) && (test.fail)) MesureTest := Result.hilimit+99 ;
+      if ((result.outofrangelo = 1) && (test.fail)) MesureTest := Result.Lolimit-99 ;
+
+      (* bug mtl si la valeur d'un type value est trpo grande ou trop petite pour conversion float (%f) *)
+      if ( Result.hilimit > 1.0e11 ) Result.hilimit := 1.0e11 ;
+      if ( Result.hilimit < -1.0e11 ) Result.hilimit := -1.0e11;
+      if ( Result.lolimit > 1.0e11 ) Result.lolimit := 1.0e11 ;
+      if ( Result.lolimit < -1.0e11 ) Result.lolimit := -1.0e11;
+      if ( MesureTest > 1.0e11 ) MesureTest := 1.0e11 ;
+      if ( MesureTest < -1.0e11 ) MesureTest := -1.0e11;
+      (* ---------------------------------------------------------------------------------------------- *)
+
+      TabCababilite[i][y] := sprintf ("%-25.25s", Test.Ident ) ;
+      TabCababilite[i][y] := TabCababilite[i][y] + sprintf ("%-25.12f%", Result.Lolimit );
+      TabCababilite[i][y] := TabCababilite[i][y] + sprintf ("%-25.12f%", Result.Hilimit );
+      TabCababilite[i][y] := TabCababilite[i][y] + sprintf ("%-25.25s%", StatusTest );
+      TabCababilite[i][y] := TabCababilite[i][y] + sprintf ("%-25.12f%", MesureTest ) ;
+    }
+    
+    IndexCapabilite[UgsCarteActive]:=IndexCapabilite[UgsCarteActive]+1;
+}
+
+:sauver_capabilite(nom_fichier string) void
+{
+	:i int;
+	:y int
+	:PtrFic int ;
+	:Modele string ;
+
+
+	:Cmde int;
+	:DataIn string;
+	:RepData string;
+	:Tps Time.buf;
+	:MdbChar string;
+	:CodeRetour int;
+	CodeRetour := 0 ;
+	
+	:StatusCarte string ;
+	StatusCarte := "--------" ;
+	
+	(* @13 *)
+	:nom_fichier_date string;
+	
+	(* @11 On reserve suffisament de place en memoire pour RepData *)     
+	RepData := "................................................................................................................................................" ;
+	RepData := RepData + "......................................................................................................................................" ;
+          
+
+	if ( CAPABILITE_FICHIER_TXT = 1 )
+	{
+	   Modele := UgsNipCode[1] + UgsNipCode[2] ;
+	
+       (* Gestion MID/NIP *)
+	   if ( sizeof (UgsNipCode) > 8 )
+			Modele := Modele + UgsNipCode[3] ;
+
+	  if (prog.faults=0)
+	  {
+   		for (y:=1; y<=UgsNumCarteDsFormat; y:=y+1)
+       	{
+           		nom_fichier := sprintf ( "%s_%s_Carte_%d", nom_fichier, Modele, y ) ;
+            	PtrFic := fopen (nom_fichier,"a");
+       		
+   		  	for (i:=1; i<= IndexCapabilite[y]; i:=i+1)
+        		{
+        	    		fprintf(PtrFic,"%s",TabCababilite[y][i]);
+        		}
+        
+           		fclose(PtrFic);
+		}
+	  }
+    }
+    else
+    {
+        (* @11 BASE DE DONNEES ================================================*)
+        (* Eng de la date et heure courante *)                
+        Time.Local (Time.Current, @Tps);
+        
+	(* @13 *)
+	(*Création du nom_fichier_ + la date du jour*)        
+	nom_fichier_date := nom_fichier + "_" + sprintf ("%02d%02d%d",Tps.day, Tps.Month+1, Tps.Year+1900);
+                
+          (* Ouverture/Creation de la base *)
+        if ( sizeof (FindFile(nom_fichier_date,CHEMIN_MDB,"mdb")) != sizeof (CHEMIN_MDB+nom_fichier_date+".mdb") )	(* @13 *)
+	      {
+             shell ( "CMD.EXE /C COPY "+CHEMIN_MDB+"VIDE_.MDB "+CHEMIN_MDB+nom_fichier_date+".mdb > sup"  ) ;          	(* @13 *)
+		}
+		
+ 	    (* Connection ODBC *)
+        	Cmde := 0 ;
+		DataIn := DSN ;
+        	CodeRetour := MDBmtl (@Cmde, @DataIn , @RepData ) ;
+		if ( CodeRetour<0 ) { printf ( "[MDB]>Error %d -Cmde : %d-%s- %s\n", CodeRetour, Cmde, DataIn, RepData ) ; return }
+	    (* - *)                
+
+        (* Ouverture de la base de données *)
+        if ( CodeRetour = 0 )
+        {
+          	Cmde := 1 ;
+		    DataIn := CHEMIN_MDB+nom_fichier_date ;	(* @13 *)
+            CodeRetour := MDBmtl (@Cmde, @DataIn , @RepData ) ;
+		    if ( CodeRetour<0 ) { printf ( "[MDB]>Error %d -Cmde : %d-%s- %s\n", CodeRetour, Cmde, DataIn, RepData ) ; return }
+        }
+        (* - *)  
+        
+          if ( CodeRetour = 0 )
+          {                
+          	for (y:=1; y<=UgsNumCarteDsFormat; y:=y+1)
+     	  	{   
+             	(* Requete Immediate -Enregistrement de valeur- *)
+             	if ( UGSStatusFormat[y] = true ) { StatusCarte := "Passed" ; }
+                else { StatusCarte := "Failed" ; }  
+	         	Cmde := 3 ;
+	         	DataIn := sprintf ( "INSERT INTO UUTResults (SerialNumber,DateTime_,Status, Product, Jig, Head) VALUES ('%s', '%d/%d/%d %d:%d:%d', '%s', '%s', '%.4x', '%d')", 
+                                              UgsNipCodeFormat[y], Tps.day, Tps.Month+1, Tps.Year+1900, Tps.Hour, Tps.Min, Tps.Sec, StatusCarte, nom_fichier, Fixture.Ident,y );
+	         	CodeRetour := MDBmtl (@Cmde, @DataIn , @RepData ) ;
+	         	if ( CodeRetour<0 ) { printf ( "[MDB]>Error %d -Cmde : %d-%s- %s\n", CodeRetour, Cmde, DataIn, RepData ) ; return }
+        
+	         	(* Requete Active -Selection de la valeur de UniqueID ds la table UUTResults pour le SerialNumber UUT2- *)
+	         	Cmde := 4 ;
+          	 	DataIn := sprintf ( "SELECT TOP 1 UniqueID FROM UUTResults WHERE SerialNumber='%s' ORDER BY UniqueID DESC", UgsNipCodeFormat[y] ) ;
+           	 	CodeRetour := MDBmtl (@Cmde, @DataIn , @RepData ) ;
+           	 	if ( CodeRetour<0 ) { printf ( "[MDB]>Error %d -Cmde : %d-%s- %s\n", CodeRetour, Cmde, DataIn, RepData ) ; return }
+             	(* - *)
+
+             	(* Recuperation de la valeur de la derniere requete active -Resultat de la colonne 1 ds RepData- *)
+	         	Cmde := 12 ;
+	         	DataIn := "1" ;
+             	CodeRetour := MDBmtl (@Cmde, @DataIn , @RepData ) ;
+             	if ( CodeRetour<0 ) { printf ( "[MDB]>Error %d -Cmde : %d-%s- %s\n", CodeRetour, Cmde, DataIn, RepData ) ; return }
+	         	(* - *)
+          
+	         	for (i:=1; i< IndexCapabilite[y]; i:=i+1)
+        	 	{
+        	    		MdbChar := sprintf ( "%s", TabCababilite[y][i] );	         
+	            	(* Requete Immediate -Enregistrement de valeur apres mise en forme- *)
+                		Cmde := 3 ;
+   	            	DataIn := sprintf ( "VALUES ('%s','%s','%s','N','%s', 'N', '%s', '%s' )",RepData, MdbChar[1..25], MdbChar[76..100], MdbChar[101..125], MdbChar[26..50], MdbChar[51..75]) ;
+   	            	DataIn := "INSERT INTO UUTResultsTests (UUTUniqueID, TestName, Status,  ResultType, Result, LimitsType, LimitLo, LimitHi) " + DataIn ;
+                		CodeRetour := MDBmtl (@Cmde, @DataIn , @RepData ) ;
+                		if ( CodeRetour<0 ) { printf ( "[MDB]>Error %d -Cmde : %d-%s- %s\n", CodeRetour, Cmde, DataIn, RepData ) ; return }
+	            	(* - *)
+        	 	}
+	            
+          	} (*du for*)
+          
+          	(* Fermeture de la base *)
+	      Cmde := 2 ;
+     	  	DataIn := "Fermeture" ;
+	      CodeRetour := MDBmtl (@Cmde, @DataIn , @RepData ) ;
+	      if ( CodeRetour<0 ) printf ( "[MDB]>Error %d -Cmde : %d-%s- %s\n", CodeRetour, Cmde, DataIn, RepData ) ;
+	      (* - *)
+	      
+          } (* du if *)
+              
+    } (* du else *)
+  
+}
+(*------------------------------------------------------------------------------------------------------------------------------*)
+
+(*------------------------------------------------------------------------------------------------------------------------------*)
+(* Pointeur sur la DLL *)
+:Ptr_DLL_UGS DLL.Handle;
+
+(* Definition des fonctions de la DLL *)
+:UgsLink##'@DLL'(param1 @string, param2 @string) int;
+
+
+(*------------------------------------------------------------------------------------------------------------------------------*)
+(* UGS                          *)
+(* Initialisation de la DLL 	*)
+:InitDll_UGS ( ) void
+{
+
+	:Text string;
+	:Buffer string;
+	
+	(* !! C'est MTL qui reserve la mémoire pour la variable et non la DLL !! *)
+	Buffer :=  "                                                           .                                                                                 .                                                                   ." ;
+	Text := Buffer ;
+	
+	(* Initialisation du pointeur sur la DLL *)
+	if ( Ptr_DLL_UGS = 0 )
+	{
+		(*DLL.FreeLibrary(Ptr_DLL_UGS);*)
+	
+		Ptr_DLL_UGS := DLL.LoadLibrary("\\UGSLink\\UGSLink.dll");
+	
+		(* Initialisation des fonctions de la DLL*)
+		DLL.BindProc(Ptr_DLL_UGS,"UgsLink", UgsLink);
+	}
+}
+
+(*------------------------------------------------------------------------------------------------------------------------------*)
+(* Liberation de la DLL *)
+:FreeDll_UGS ( ) void
+{
+	:Text string;
+	:Buffer string;
+
+	Text := sprintf ( "%s", "QUIT" ) ;
+	UgsLink ( @Text, @Buffer ) ;	
+
+	DLL.FreeLibrary(Ptr_DLL_UGS);
+}
+
+
+(*------------------------------------------------------------------------------------------------------------------------------*)
+(* retourne une chaine de caractere unite de mesure en fonction du test *)
+:UgsAffecteUnite ( ) string
+{
+	:StrResultat	string;
+
+	case (Test.Type)
+	{
+		_RES    :	StrResultat := "Ohms" ;
+		_CAP    :	StrResultat := "Farads" ;
+		_IND    :	StrResultat := "Henrys" ;
+		_TRANSF :	StrResultat := "Ratio" ;
+		_DIODE,_LED,_TRAN,_FET  :
+		{	case (Test.Mode)
+			{
+				OFF :	StrResultat := "Amperes" ;
+			 	ON  :	StrResultat := "Volts" ;
+			 	RDS  :	StrResultat := "Ohms" ;
+				else	StrResultat := "None" ;
+			}
+		}
+		_ZENER,_OPTO,_ACV,_DCV :	StrResultat := "Volts" ;
+		_DCI :	StrResultat := "Amperes" ;
+		_PULSE  :	
+		{	case (Test.Mode)
+			{
+				FREQ   : StrResultat := "Hz" ;
+			 	PERIOD : StrResultat := "S" ;
+			 	TIME   : StrResultat := "S" ;
+				else	 StrResultat := "None" ;
+			}
+		}
+	
+		else
+		{
+			StrResultat := "None" ;
+		}
+	}
+
+
+	return (StrResultat) ;
+}
+
+(*------------------------------------------------------------------------------------------------------------------------------*)
+(* Retourne une chaine de caractere formatee UGS template *)
+:UgsAffecteResultat ( Type int ) string
+{
+	:StrResultat	string;
+	:StrCmd		string ;
+	
+	:ValMesure		string ;
+	:Unite		string;
+
+	:i int ;
+	:StrPin		string ;
+
+	
+	
+	Unite := UgsAffecteUnite ( ) ;
+			
+	case(Test.type)
+	{
+		_RES.._DCI :
+		{
+			(*@4*)
+			if ( Type = 1 ) StrCmd := "PUSHDEFANA# "+Test.Ident+"# FAILED# None"
+			else		StrCmd := "PUSHCSEANA# "+Test.Ident+"# PASSED# CSE" ;
+
+			if ( Result.OutofRange = false ) ValMesure := sprintf ( "%v", Result.Measured )
+			else 				 ValMesure := sprintf ( "-900.000" ) ;
+			
+			
+			(*Nom du test*)(*Valeur mesuree*)(*Limite basse*)(*Limite haute*)(*Valeur Cible*)(*Unitée*)
+			StrResultat := sprintf ("%s# %s# %s# %!v# %!v# %!v# %s"	, StrCmd
+										, Test.Ident
+										, ValMesure
+										, Result.Lolimit
+										, Result.Hilimit
+										, (Result.Hilimit+Result.Lolimit)/2
+										, Unite );
+		}
+		_CONTACT :
+		{
+			(*@4*)
+			if ( Type = 1 ) StrCmd := "PUSHDEFDIG# "+Test.Ident+"# FAILED# None"
+			else		StrCmd := "PUSHCSEDIG# "+Test.Ident+"# PASSED# CSE" ;
+
+			(* On met bout a bout les TPs *)
+			ValMesure := "" ;
+			for ( i:=1; i<=Test.Faults; i:=i+1 )
+			{
+				(* Limitation du nombre d'enregistrement contact *)
+				(*@6*)
+				if ( i > NbMaxUgsTpContact ) i:=Test.Faults+1 ; 
+				
+				(*@7*)
+				StrPin := Pin2Tp ( Result.ContactFaults[i] ) ;
+				if ( ValMesure = "" )
+					ValMesure := StrPin
+				else
+					ValMesure := ValMesure +";"+ StrPin
+			}
+			
+			(*Nom du test*)(*Valeur mesuree*)(*Valeur Cible*)
+			StrResultat := sprintf ("%s# %s# %s# %d"	, StrCmd
+									, Test.Ident		(* contact *)
+									, ValMesure		(* le nom tp testeur *)
+									, Test.Faults );	(* Nb defaut *)
+		}
+		_LINK :
+		{
+			(*@4*)
+			if ( Type = 1 ) StrCmd := "PUSHDEFDIG# "+Test.Ident+"# FAILED# None"
+			else		StrCmd := "PUSHCSEDIG# "+Test.Ident+"# PASSED# CSE" ;
+			
+			(*Nom du test*)(*Valeur mesuree*)(*Valeur Cible*)
+			StrResultat := sprintf ("%s# %s# %s not linked to# %s"	, StrCmd
+										, Test.Ident				(* contact *)
+										, Pin2Tp ( Result.LinkFaults[1]	)	(* le nom tp testeur *)(*@7*)
+										, Pin2Tp ( Result.LinkFaults[2] ) );	(* le nom tp testeur *)(*@7*)
+		}
+		_TRACK :
+		{
+			(*@4*)
+			if ( Type = 1 ) StrCmd := "PUSHDEFDIG# "+Test.Ident+"# FAILED# None"
+			else		StrCmd := "PUSHCSEDIG# "+Test.Ident+"# PASSED# CSE" ;
+			
+			(*Nom du test*)(*Valeur mesuree*)(*Valeur Cible*)
+			StrResultat := sprintf ("%s# %s# %s linked to# %s"	, StrCmd
+										, Test.Ident				(* contact *)
+										, Pin2Tp ( Result.TrackFaults[1][1])	(* le nom tp testeur *)(*@7*)
+										, Pin2Tp ( Result.TrackFaults[1][2]) );	(* le nom tp testeur *)(*@7*)
+		}
+
+		
+		else
+		{
+			(*@4*)
+			if ( Type = 1 ) StrCmd := "PUSHDEFDIG# "+Test.Ident+"# FAILED# None"
+			else		StrCmd := "PUSHCSEDIG# "+Test.Ident+"# PASSED# CSE" ;
+			
+			if ( Result.OutofRange = false ) ValMesure := sprintf ( "%v", Result.Measured )
+			else 				 ValMesure := sprintf ( "-900.000" ) ;
+
+			StrResultat := sprintf ("%s# %s# %s# None"	, StrCmd
+									, Test.Ident
+									, ValMesure ) ;
+		}
+	}
+	
+	return (StrResultat);
+}
+
+(*------------------------------------------------------------------------------------------------------------------------------*)
+(* Definie la pile des enregistrements UGS en fonction du numero de carte ds le format *)
+(* Attention la numerotation commence a 1 pour UGS *)
+:UGS_NumCarteDsFormat (NumCarteDsFormat int ) int
+{	
+	:CodeRetour int ;
+	:Text	string;
+	:DecaleNumerotation int
+	
+	DecaleNumerotation := 0 ;
+		
+	if ( UgsNumCarteDsFormat < NumCarteDsFormat+DecaleNumerotation )
+	{
+		UgsNumCarteDsFormat := NumCarteDsFormat+DecaleNumerotation ;
+	}
+	
+	Text := sprintf ( "%s %d", "ACTIVEPAGE#", NumCarteDsFormat+DecaleNumerotation ) ;
+	CodeRetour := UgsLink ( @Text, @Buffer ) ;
+
+	UgsCarteActive := NumCarteDsFormat+DecaleNumerotation ;
+	
+	return (CodeRetour) ;
+}
+
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+:UsgAskRoute ( ) int
+{
+	:Text string;
+	:CodeRetour int;
+	:SavBuffer string;
+
+	UgsTimeOutDeb := time.elapsed ;
+
+	CodeRetour := 0 ;
+	
+	if ( UgsTypeDirectory = "" )
+		Text := sprintf ( "%s# %s", "ASKROUTE", UgsNipCode )
+	else
+		Text := sprintf ( "%s# %s# %s", "ASKROUTE", UgsTypeDirectory, UgsNipCode );
+	
+	CodeRetour := UgsLink ( @Text, @Buffer ) ;
+	SavBuffer := Buffer ;
+	if ( CodeRetour<>0 )
+	{
+		VERB ACTIVE "UGSLink" "RouteChecker" >0 {Result.measured := CodeRetour ; }
+		fprintf(sys.print.channel,"-ASK RouteChecker\n");
+		fprintf(sys.print.channel,"-Erreur : %s\n", SavBuffer);
+		fflush(sys.print.channel);
+	}
+	
+	return (CodeRetour ) ;
+
+}
+
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+:UsgResRoute ( ) int
+{
+	:Text string;
+	:CodeRetour int;
+	:SavBuffer string;
+
+	CodeRetour := 0 ;
+	
+	repeat
+	{
+		if ( UgsTypeDirectory = "" )
+			Text := sprintf ( "%s# %s", "RESROUTE", UgsNipCode )
+		else
+			Text := sprintf ( "%s# %s# %s", "RESROUTE", UgsTypeDirectory, UgsNipCode );
+			
+		CodeRetour := UgsLink ( @Text, @Buffer ) ;
+		(* Si CodeRetour = -75 c'est que le fichier ResRoute n'exste pas *)
+	}
+	until ( (time.Elapsed-UgsTimeOutDeb) > UGSTIMEOUT || CodeRetour = 0 || CodeRetour <> -75 ) 
+
+	SavBuffer := Buffer ;
+	if ( CodeRetour<>0 )
+	{
+		VERB ACTIVE "UGSLink" 100,100 {Result.measured := CodeRetour ; }
+		fprintf(sys.print.channel,"-RES RouteChecker\n");
+		if ( CodeRetour <>1 ) fprintf(sys.print.channel,"-Erreur : %s\n", SavBuffer)
+		else fprintf(sys.print.channel,"-Erreur : Pas de reponse d'UGS.\n")
+		fflush(sys.print.channel);
+	}
+	
+	return (CodeRetour ) ;
+
+}
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+
+(*------------------------------------------------------------------------------------------------------------------------------*)
+(* Enregistrement du fichier USG *)
+:UGS_Unitaire (CodeBarre string, IdProgramme string, CodeOperateur string, UgsStatusCarte boolean) int
+{
+	:CodeRetour int ;
+
+	:i int ;
+	:Text	string;
+
+	CodeRetour := 0 ;
+	i := 0 ;
+
+	(* Recupere la reponse à la demande de route *)
+	if ( OptionUgs = 10 || OptionUgs = 11 || CodeRetour <0 )
+		UsgResRoute ( ) ;
+
+	Prog.Onfault:= void;
+	Prog.OnTest := void ;
+
+
+	if ( OptionUgs = 1 || OptionUGS = 11 || CodeRetour <0 )
+	{
+		(* Gestion du defait de contactage *)
+		if ( VarDef[UgsCarteActive] < NbMaxUgsDefault )
+		{
+			if ( UgsDefContacts <> "" )
+			{
+				CodeRetour := UgsLink ( @UgsDefContacts , @Buffer ) ;
+			}
+		}
+
+		(* Creation du fichier UGS ****************************************************************)
+		if ( CodeRetour = 0 )
+		{
+			if ( UgsTypeDirectory = "" )
+				Text := sprintf ( "%s# %s%s", "OPEN_LB", CodeBarre, ".XML" )
+			else
+				Text := sprintf ( "%s# %s# %s%s", "OPEN", UgsTypeDirectory, CodeBarre, ".XML" ) ;
+				
+			CodeRetour := UgsLink ( @Text, @Buffer ) ;
+		}
+		if ( CodeRetour = 0 )
+		{
+			Text := sprintf ( "%s %s", "BARCODE#", CodeBarre ) ;
+			CodeRetour := UgsLink ( @Text, @Buffer ) ;
+		}
+		if ( CodeRetour = 0 )
+		{
+			Text := sprintf ( "%s %s", "TESTERPROGRAM#", IdProgramme ) ;
+			CodeRetour := UgsLink ( @Text, @Buffer ) ;
+		}
+		if ( CodeRetour = 0 )
+		{
+			if ( UgsStatusCarte = true )
+			{	
+				Text := sprintf ( "%s %s", "STATUS#", "PASS" ) ;
+				CodeRetour := UgsLink ( @Text, @Buffer ) ;
+			}
+			else
+			{
+				Text := sprintf ( "%s %s", "STATUS#", "FAILED" ) ;
+				CodeRetour := UgsLink ( @Text, @Buffer ) ;
+			}
+		}
+		if ( CodeRetour = 0 )
+		{
+			Text := sprintf ( "%s %s", "OPERATOR# ", CodeOperateur ) ;
+			CodeRetour := UgsLink ( @Text, @Buffer ); 
+		}
+		if ( CodeRetour = 0 )
+		{
+			Text := sprintf ( "%s", "STARTTIME" ) ;
+			CodeRetour := UgsLink ( @Text, @Buffer ) ;
+		}
+		if ( CodeRetour = 0 )
+		{
+			Text := sprintf ( "%s", "ENDTIME" ) ;
+			CodeRetour := UgsLink ( @Text, @Buffer ); 
+		}
+		if ( CodeRetour = 0 )
+		{
+			Text := sprintf ( "%s", "TESTERNAME" ) ;
+			CodeRetour := UgsLink ( @Text, @Buffer ) ;
+		}
+		if ( CodeRetour = 0 )
+		{
+			if ( CodeBarre[1..3] = "4BM" )
+				Text := sprintf ( "%s %s", "LOTSMEG#", "4BMS" ) 
+			else 
+				Text := sprintf ( "%s %s", "LOT#", CodeBarre ) ;
+
+			CodeRetour := UgsLink ( @Text, @Buffer ) ;
+		}
+		if ( CodeRetour = 0 )
+		{
+			Text := sprintf ( "%s", "TESTSTEPS" ) ;
+			CodeRetour := UgsLink ( @Text, @Buffer ) ;
+		}
+		if ( CodeRetour = 0 )
+		{	if ( UgsStatusCarte = true )
+			{	
+				(* Les CSE *)
+				Text := sprintf ( "%s", "PULLCSEANA" ) ;
+				CodeRetour := UgsLink ( @Text, @Buffer ) ;
+				(* -91 : pile vide *)
+				if ( CodeRetour = 0 || CodeRetour = -91 )
+				{
+					Text := sprintf ( "%s", "PULLCSEDIG" ) ;
+					CodeRetour := UgsLink ( @Text, @Buffer ) ;
+					if ( CodeRetour = -91 ) CodeRetour := 0 ;
+				}
+			}
+			else
+			{
+				(* Les Defauts *)
+				Text := sprintf ( "%s", "PULLDEFANA" ) ;
+				CodeRetour := UgsLink ( @Text, @Buffer ) ;
+				(* -91 : pile vide *)
+				if ( CodeRetour = 0 || CodeRetour = -91 )
+				{
+					Text := sprintf ( "%s", "PULLDEFDIG" ) ;
+					CodeRetour := UgsLink ( @Text, @Buffer ) ;
+					if ( CodeRetour = -91 ) CodeRetour := 0 ;
+				}
+			}
+		}
+		if ( CodeRetour = 0 )
+		{
+			Text := sprintf ( "%s", "CLOSETESTSTEPS" ) ;
+			CodeRetour := UgsLink ( @Text, @Buffer ) ;
+		}
+		if ( CodeRetour = 0 )
+		{
+			Text := sprintf ( "%s", "CLOSE" ) ;
+			CodeRetour := UgsLink ( @Text, @Buffer ) ;
+		}
+		if ( CodeRetour<>0 )
+		{
+			VERB ACTIVE "UGSLink" 1,1 {Result.measured := CodeRetour ; }
+			fprintf(sys.print.channel,"-Erreur : %s\n", Buffer);
+			fflush(sys.print.channel);
+		}
+
+	} (* if OptionUgs *)		
+
+	return ( CodeRetour ) ;
+}
+(*************************************************************************************)
+
+(* Enregistrement du fichier USG *)
+:UGS (CodeBarre string, IdProgramme string, CodeOperateur string) int
+{
+	:CodeRetour int ;
+
+	:i int ;
+	:Text	string;
+	:CarteFault boolean ;
+
+	CodeRetour := 0 ;
+	i := 0 ;
+	if ( Prog.Faults=0 ) CarteFault := true 
+	else CarteFault := false;
+	if ( UgsNumCarteDsFormat = 1 )
+		CodeRetour := UGS_Unitaire (CodeBarre , IdProgramme, CodeOperateur, CarteFault )
+	else
+	{
+		for ( i:=1; i<=UgsNumCarteDsFormat; i:=i+1 )
+		{	
+			Text := sprintf ( "%s %d", "ACTIVEPAGE#", i ) ;
+			CodeRetour := UgsLink ( @Text, @Buffer ) ;
+
+			CodeRetour := UGS_Unitaire (UgsNipCodeFormat[i] , IdProgramme, CodeOperateur,UgsStatusFormat[i]);
+		}
+	}
+
+	return ( CodeRetour ) ;
+}
+
+
+(* Tracabilite testing *)
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+
+:date_France(choix_date string) string
+{
+	:date_fab string;
+	:jour, mois,annee,heure string;
+
+	date_fab :="";
+
+	if (time.ascii(time.current)[5..7]="Jan") { mois:="01" }
+	if (time.ascii(time.current)[5..7]="Feb") { mois:="02" }
+	if (time.ascii(time.current)[5..7]="Mar") { mois:="03" }
+	if (time.ascii(time.current)[5..7]="Apr") { mois:="04" }
+	if (time.ascii(time.current)[5..7]="May") { mois:="05" }
+	if (time.ascii(time.current)[5..7]="Jun") { mois:="06" }
+	if (time.ascii(time.current)[5..7]="Jul") { mois:="07" }
+	if (time.ascii(time.current)[5..7]="Aug") { mois:="08" }
+	if (time.ascii(time.current)[5..7]="Sep") { mois:="09" }
+	if (time.ascii(time.current)[5..7]="Oct") { mois:="10" }
+	if (time.ascii(time.current)[5..7]="Nov") { mois:="11" }
+	if (time.ascii(time.current)[5..7]="Dec") { mois:="12" }
+
+	jour:=time.ascii(time.current)[9..10];
+	annee:=time.ascii(time.current)[21..24];
+	heure:=time.ascii(time.current)[12..19];
+
+	if(choix_date="pour interieur fichier")
+	{
+		date_fab := jour + "/" + mois + "/" + annee + separateur + heure;
+	}
+	if(choix_date="pour le nom du fichier")
+	{
+	date_fab := annee+"_"+mois+"_"+jour;
+	}
+
+	return(date_fab);
+}
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+
+
+
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+(* Surcharge de la fonction Prog.OnFault      *)
+:resultat_defauts( ) void
+{
+	:Text string;
+		
+	if ( pas_de_test_defauts[UgsCarteActive] <= nb_defauts_enregistres )
+	{
+		case(Test.type)
+		{
+			_DISCHARGE : ligne_data_defauts[pas_de_test_defauts[UgsCarteActive]][UgsCarteActive]:=sprintf ("%s%-10.10s%s%s%s",separateur,Test.Ident,separateur2,separateur2,separateur2) ;
+			_LINK : ligne_data_defauts[pas_de_test_defauts[UgsCarteActive]][UgsCarteActive]:=sprintf ("%s%-10.10s%s%s%s",separateur,Test.Ident,separateur2,separateur2,separateur2) ;
+			_CONTACT : ligne_data_defauts[pas_de_test_defauts[UgsCarteActive]][UgsCarteActive]:=sprintf ("%s%-10.10s%s%d%s%d%s%p",separateur,Test.Ident,separateur2,Test.Faults,separateur2,Test.Faults,separateur2,Result.ContactFaults[Test.Faults]) ;
+(*@10*)			_TRACK : ligne_data_defauts[pas_de_test_defauts[UgsCarteActive]][UgsCarteActive]:=sprintf ("%s%-10.10s%s%d%s%p%s%p",separateur,Test.Ident,separateur2,Test.Faults,separateur2,Result.TrackFaults[1][1],separateur2,Result.TrackFaults[1][2]) ;
+			_TESTMODULE : ligne_data_defauts[pas_de_test_defauts[UgsCarteActive]][UgsCarteActive]:=sprintf ("%s%-10.10s%s%s%s",separateur,Test.Ident,separateur2,separateur2,separateur2) ;
+
+			else
+			ligne_data_defauts[pas_de_test_defauts[UgsCarteActive]][UgsCarteActive]:=sprintf ("%s%-10.10s%s%-8v%s%-8v%s%-10v",separateur,Test.Ident,separateur2,Result.Lolimit,separateur2,Result.Hilimit,separateur2,Result.Measured) ;
+		}
+
+		pas_de_test_defauts[UgsCarteActive]:=pas_de_test_defauts[UgsCarteActive]+1;
+	}
+	
+	
+	(* Modif RC : ajout des defauts ds la table d'UGS -------------------------------------------------------------------*)
+	if ( VarDef[UgsCarteActive] < NbMaxUgsDefault )
+	{
+		Text := UgsAffecteResultat (1) ;
+		
+		if ( Test.type = _CONTACT )
+		{
+			UgsDefContacts := Text;
+		}
+		else
+		{
+			UgsDefContacts := "" ;	
+			UgsLink ( @Text, @Buffer );
+			VarDef[UgsCarteActive] := VarDef[UgsCarteActive] + 1 ;
+		}
+	}
+	(* Fin Modif RC ------------------------------------------------------------------------------------------------------*)
+
+    With Sys 
+	{
+            (*Stop := Off;
+            Cycle := Off;*)
+            Print.Mode := OnFault;
+            Print.Stop := OnFault;
+            Print.Cycle := Off;
+            Print.channel:= ticketprinter;
+            Print.Function := Ticket_Faute.Ticket;
+	    	Display.Mode := OnFault;
+            Display.Stop := OnTest;
+            Display.Cycle := Ontest;
+            Log.Mode := Off;
+            Log.Stop := Off;
+            Log.Cycle := Off;
+     }
+
+	
+    (* Ticket de faute Papier, a oui c'est y pas malheureux *)
+	fprintf ( Sys.Print.channel, "DEF NIP(%d):%s\n", UgsCarteActive, UgsNipCodeFormat[UgsCarteActive] );
+	Ticket_Faute.Ticket();
+	fflush (Sys.Print.channel);	
+
+ }
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+
+
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+(* Surcharge de la fonction Prog.OnTest      *)
+:ResultatsTests ( ) void
+{
+	:i int ;
+	:Text string ;
+	:NbCSE int ;
+
+	NbCse := VarCSE[UGSCarteActive] ;
+		
+	i := 1 ;
+
+	(* Gestion de l'enregistrement des CSE par UGS *)	
+	while ( (i <= Test.SubIDentCount) && ( VarCSE[UGSCarteActive] = NbCse ) )
+	{
+		(* sauvegarde des valeurs de CSE *)
+		if ( Test.SubIdent[i] = "CSE" ) 
+		{
+			VarCSE[UGSCarteActive]  :=  VarCSE[UGSCarteActive] + 1 ;
+			Text := UgsAffecteResultat (2) ;
+			UgsLink ( @Text, @Buffer );
+		}
+
+		i := i + 1 ;		
+	}
+	
+	(* Enregistrement des capabilite *)
+	if ( EtatCapabilite = true )
+		resultat_capabilite( );	
+}
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+
+
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+:Suivit_defauts(type_produit string,cote_posage string) void
+{
+	:i,j int;
+	:PtrFic int;
+	
+	:code_barres string;
+	code_barres := UgsNipCode ;
+
+printf ( "%s\n", chemin_fichier_defauts+nom_fichier_defauts+date_France("pour le nom du fichier")+extension_fichier_defauts ) ;	
+	
+(*	if (chemin_fichier_defauts+nom_fichier_defauts+extension_fichier_defauts = findfile(nom_fichier_defauts+extension_fichier_defauts,chemin_fichier_defauts))
+*)	{
+                 PtrFic := fopen (chemin_fichier_defauts+nom_fichier_defauts+date_France("pour le nom du fichier")+extension_fichier_defauts,"a");
+
+	
+   		(* pour toutes les cartes du format @8 *)
+		for ( j:=1; j<=UgsNumCarteDsFormat ; j:=j+1 )
+		{
+			code_barres := UgsNipCodeFormat[j] ;
+			(* @12 *)
+ 			(*MN old modif cote_posage 
+				fprintf (PtrFic,"%s%s%s%s%s%s%s%s%s%s%s%s%s",type_testeur,separateur,type_produit,separateur,code_barres,separateur,date_France("pour interieur fichier"),separateur,cote_posage,separateur,code_operateur,separateur,Vers_Prg_test) 
+			*)
+   			fprintf (PtrFic,"%s%s%s%s%s%s%s%s%d%s%s%s%s",type_testeur,separateur,type_produit,separateur,code_barres,separateur,date_France("pour interieur fichier"),separateur,j,separateur,code_operateur,separateur,Vers_Prg_test) 
+   	
+   			(* if(Prog.Pass) @8 *)
+   			if ( UgsStatusFormat[j] = true )    
+				fprintf (PtrFic,"%s%s%s%s%s%s%s%s%s%s%s%s",separateur,"BON",separateur,code_barres,separateur,code_barres,separateur,code_barres,separateur,code_barres,separateur,code_barres) 
+			else  
+				fprintf (PtrFic,"%s%s%s%s%s%s%s%s%s%s%s%s",separateur,"MAUVAIS",separateur,code_barres,separateur,code_barres,separateur,code_barres,separateur,code_barres,separateur,code_barres) ;
+
+   			(* if(Prog.Pass) @8 *)
+   			if ( UgsStatusFormat[j] = true )
+   			{
+				(*enregistrement de 20 champs vide*)
+	 			for (i:=1; i<=nb_champs_enregistres; i:=i+1)
+	 			{
+		 			fprintf (PtrFic,"%s",separateur) ;
+		 		}
+			}
+			else
+			{
+				for (i:=1; i<= pas_de_test_defauts[j]; i:=i+1)
+	   			{
+					fprintf(PtrFic,"%s",ligne_data_defauts[i][j]);
+					ligne_data_defauts[i][j]:=""; (*effacement apres enregistrement*) 
+				}
+
+				(*enregistrement de 20 champs vide*)
+	 			for (i:=((pas_de_test_defauts[j]-1)*4); i<nb_champs_enregistres; i:=i+1) 
+	 			{
+		 			fprintf (PtrFic,"%s",separateur) ;
+		 		}
+			}
+
+			fprintf (PtrFic,"\n");
+		}
+		
+		
+		fclose(PtrFic);
+	}
+}
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+
+
+
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+(* Fonctions de haut niveau 														     	     *)
+(*	se sont les seules a etres appelees par le programme principal*)
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+
+(* Permet de stopper ou de reprendre l'enregistrement des capabilites *)
+:Bascule_Capabilite ( Etat boolean ) void
+{	
+	if ( Capabilite := true )
+		EtatCapabilite := Etat ;
+}
+
+
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)	
+:sauver_defauts(cote_posage string) int
+{
+		
+	:CodeRetour int ;
+	CodeRetour := 0 ;
+		
+	:Modele string ;
+	:SuiviTypeProduit string ;
+	
+	
+	(* Appel a la fonction de gestion UGS *)
+	CodeRetour := UGS ( UgsNipCode, UgsNomProgram, code_operateur) ;
+	
+	(* @3 Suivit Dpku *)
+	case (ModeSuivitDpku)
+	{
+		TYPEPRODUIT :	SuiviTypeProduit := UgsTypeProduit ;
+		
+		MODELEMID : 	{
+					Modele := UgsNipCode[1] + UgsNipCode[2] ;
+
+					if ( sizeof (UgsNipCode) > 8 )	Modele := Modele + UgsNipCode[3] ;
+
+					SuiviTypeProduit := Modele ;
+				}
+				
+		PROGRAM :	SuiviTypeProduit := UgsNomProgram ;
+		
+		else		SuiviTypeProduit := UgsTypeProduit ;
+	}
+
+	Suivit_defauts( SuiviTypeProduit , cote_posage ) ;
+		
+		
+	(* Enregistement fichier des capabilites *)
+	if ( EtatCapabilite ) 
+	{
+		sauver_capabilite( UgsNomProgram ) ;
+		EtatCapabilite := false ;
+	}
+	
+	return (CodeRetour) ;
+}
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+
+
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+:init_defauts( NipCode string ) void
+{
+	
+	:Text string ;
+	:i int ;
+
+	(* @3 Vérification des options (option par defaut si non definie ds le programme de test) *)
+	if ( UgsTypeProduit = "" ) 	UgsTypeProduit  := "" ;			(* defini le type ou famille de produit *)
+	if ( UgsTypeDirectory = "" )	UgsTypeDirectory:= "" ;
+	if ( UgsNomProgram = "" )  	UgsNomProgram   := "NOPRG" ;		(* defini le nom du programme *)
+	if ( ModeSuivitDpku = UNDEF )	ModeSuivitDpku  := PROGRAM ;		(* defini la valeur du champ 2 du fichier suivit Dpku *)
+	if ( Capabilite <> true ) 	
+		EtatCapabilite	:= false 
+	else
+		EtatCapabilite	:= true; 
+
+	UgsNipCode := NipCode ;
+
+	InitDll_UGS ( ) ;
+	(* @11 *)
+	if ( CAPABILITE_FICHIER_TXT = 0 ) InitDll_MDB () ;
+	
+		
+	(* Remise a zero le defauts de contactage *)
+	UgsDefContacts := "";
+
+	(* Mise à 1 du numero de la carte ds le format *)
+	UgsNumCarteDsFormat := 1 ;
+	UgsCarteActive := 1;
+	for ( i:=1; i<=nb_max_circuits_dans_format; i:=i+1 )
+	{
+		UgsNipCodeFormat[i]:= "NIPPASLU!" ;
+		UgsStatusFormat[i] := false ;
+		UgsNbDefCarteFormat[i] := NbMaxUgsDefault ;
+		(* mise a zero du nombre de CSE enregistre *)
+		VarCSE[i] := 0 ;
+		(* remise a 0 du nombre de defaut UGS *)
+		VarDef[i] := 0 ;
+	}
+	
+	(* Si pas d'erreur de lecture NIP  (Puisque l'appel a ini_defauts est fait juste aprés la verification du NIP) *)
+	if ( Prog.faults = 0 )
+	{	
+		(* Initialisation de UGSLink *)
+		Text := sprintf ( "%s", "INIT" ) ;
+		UgsLink ( @Text, @Buffer ) ;
+	
+		(* Sauvegarde de la date et heure de debut *)
+		Text := sprintf ( "%s", "SAVETIMESTART" ) ;
+		UgsLink ( @Text, @Buffer ) ;
+
+		Text := sprintf ( "%s", "ASKOPTIONS" ) ;
+		OptionUgs := UgsLink ( @Text, @Buffer ) ;
+
+		for ( i:=1; i<=nb_max_circuits_dans_format; i:=i+1 )
+		{
+			pas_de_test_defauts[i]:=1;
+		}
+		Prog.Onfault:=resultat_defauts;
+        
+        	(* Surcharge de la fonction Prog.OnTest pour la gestion des CSE *)
+		Prog.OnTest := ResultatsTests ;
+
+		if ( EtatCapabilite = true ) init_capabilite( ) ;
+
+		(* On demmande a UGS la Route *)
+		if ( OptionUgs = 10 || OptionUgs = 11 )	UsgAskRoute ( );
+	}
+	else
+	{
+		(* On force les options d'Ugs a 0 pour ne pas generer le fichier *)
+		OptionUgs := 0 ;
+	}
+
+}
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- *)
+
+(* ------------------------------------------------------------------------------------------------------------------------------------------------- 
+Voici les exemples d'utilisation
+
+(* Chargement de la librairie *)
+library "\\UGSLink\\Tracabilite.mtl", UGSLink ;
+
+(* Definition des options de tracabilite *)
+with UGSLink
+{
+	(*UgsTypeProduit	 := TypeProduit ;*)
+	UgsTypeProduit	 := "" ;
+	UgsTypeDirectory := "" ;
+	UgsNomProgram	 := Reference_du_produit ;
+	ModeSuivitDpku	 := TYPEPRODUIT ;
+	Capabilite	 := false ;
+}
+
+(* Initialisation *)
+UGSLink.Init_Defauts ( MID ) ;
+
+(* Envoi resultat des test a UGS *)
+UGSLink.sauver_defauts ( "simple" ) ;
+
+ ------------------------------------------------------------------------------------------------------------------------------------------------- *)

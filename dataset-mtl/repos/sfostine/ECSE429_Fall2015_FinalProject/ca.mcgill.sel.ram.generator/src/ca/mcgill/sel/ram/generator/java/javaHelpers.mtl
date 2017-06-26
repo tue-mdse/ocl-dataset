@@ -1,0 +1,128 @@
+[comment encoding = UTF-8 /]
+[module javaHelpers('http://cs.mcgill.ca/sel/ram/3.0')]
+
+[import ca::mcgill::sel::ram::generator::common::commonHelpers /]
+
+
+[**
+ * Get the Java type name depending on the given type.
+ */]
+[template public getTypeName(t : Type)     /]
+[template public getTypeName(t : RVoid)     ]void[/template]
+[template public getTypeName(t : RAny)      ]Object[/template]
+[template public getTypeName(t : RSet)      ]Set<[t.oclAsType(RSet).type.getTypeName()/]>[/template]
+[template public getTypeName(t : RSequence) ]List<[t.oclAsType(RSequence).type.getTypeName()/]>[/template]
+[template public getTypeName(t : ObjectType)][t.name/][/template]
+[template public getTypeName(t : Classifier)][t.name/][t.generateClassifierGenericTypes()/][/template]
+[template public getTypeName(t : REnum)     ][t.name/][/template]
+[template public getTypeName(t : RArray)    ][t.oclAsType(RArray).type.getTypeName()/]['[]'/][/template]
+[template public getTypeName(t : RLong)     ]long[/template]
+[template public getTypeName(t : RBoolean)  ]boolean[/template]
+[template public getTypeName(t : RInt)      ]int[/template]
+[template public getTypeName(t : RChar)     ]char[/template]
+[template public getTypeName(t : RString)   ]String[/template]
+[template public getTypeName(t : RDouble)   ]double[/template]
+[template public getTypeName(t : RFloat)    ]float[/template]
+
+
+[**
+ * Get the default value of a Java type.
+ */]
+[template public getDefaultTypeValue(t : Type)     /]
+[template public getDefaultTypeValue(t : RVoid)     ][/template]
+[template public getDefaultTypeValue(t : RAny)      ]null[/template]
+[template public getDefaultTypeValue(t : ObjectType)]null[/template]
+[template public getDefaultTypeValue(t : RLong)     ]0[/template]
+[template public getDefaultTypeValue(t : RBoolean)  ]false[/template]
+[template public getDefaultTypeValue(t : RInt)      ]0[/template]
+[template public getDefaultTypeValue(t : RChar)     ]0[/template]
+[template public getDefaultTypeValue(t : RString)   ]""[/template]
+[template public getDefaultTypeValue(t : RDouble)   ]0[/template]
+[template public getDefaultTypeValue(t : RFloat)    ]0[/template]
+
+
+[**
+ * Get the generic types of a classifier.
+ * @param cf The classifier
+ */]
+[template private generateClassifierGenericTypes(cf : Classifier) post(trim())]
+[if (not cf.typeParameters->isEmpty())]
+    <[for (tp : TypeParameter | cf.getDefinedTypeParameters()) separator(', ')
+    ][tp.genericType.getTypeName()/][/for]>
+[/if]
+[/template]
+
+
+[**
+ * Get the type name of a typed element.
+ * @param te The typed element
+ */]
+[template public getTypeNameOfTypedElement(te : TypedElement) post(trim())]
+[te.getType().getTypeName()/]
+[/template]
+
+
+[**
+ * Get the type name of an association end.
+ * @param ae The association end
+ */]
+[template public getTypeNameOfTypedElement(ae : AssociationEnd) post(trim())]
+[let name : String = ae.getType().getTypeName()]
+    [if (ae.isMultipleAssociation())]
+        List<[name/]>
+    [else]
+        [name/]
+    [/if]
+[/let]
+[/template]
+
+
+[**
+ * Get the package name (dot notation) of the given element (Class, Enum...).
+ * @param e The element
+ */]
+[query public getPackageName(e : NamedElement) : String =
+    e.eContainer(Aspect).name.toLowerCaseUnderscoreIdentifier()
+/]
+
+
+[**
+ * Get the full file name of the given element (Class, Enum...).
+ * @param e The element
+ */]
+[query public getFileName(e : NamedElement) : String =
+    './' + e.getPackageName().substituteAll('.', '/') + '/' + e.name + '.java'
+/]
+
+
+[**
+ * Get the Java visibility name of the given operation.
+ * @param o The operation
+ */]
+[query public getVisibilityName(op : Operation) : String =
+    if op.extendedVisibility.oclIsUndefined() then
+        'private'
+    else if op.extendedVisibility = RAMVisibilityType::private then
+        'private'
+    else if op.extendedVisibility = RAMVisibilityType::protected then
+        'protected'
+    else if op.extendedVisibility = RAMVisibilityType::public then
+        'public'
+    else
+        ''
+    endif endif endif endif
+/]
+
+
+[**
+ * Get the Java visibility name of the given operation with a trailing space if necessary.
+ * @param o The operation
+ */]
+[query public getVisibilityNameWithTrailingSpace(op : Operation) : String =
+    let name : String = op.getVisibilityName() in
+    if name <> '' then
+        name + ' '
+    else
+        ''
+    endif
+/]

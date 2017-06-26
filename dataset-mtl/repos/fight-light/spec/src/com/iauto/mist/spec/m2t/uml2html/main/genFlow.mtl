@@ -1,0 +1,70 @@
+[comment encoding = UTF-8 /]
+[module genFlow('http://com.iauto.mist.spec/2.0')]
+
+[template public genFlow(container : StateMachine)]
+[let AllStates : Sequence(State) = container.getAllStates4Container()]
+[for (stm : String | AllStates.umlStateMachine->asSet())]
+[let states : Sequence(State) = AllStates
+	->select(state : State | state.umlStateMachine = stm and state.incoming->exists(source<>null and source.umlStateMachine <> stm))]
+[let result : Sequence(String) = Sequence{}]
+[if (states->notEmpty())]
+	[states.name->sep(', ')/]
+[generateSvg(states, container, result, container.initial.umlStateMachine)/]
+[genFile(stm, result)/]
+[else]
+[generateSvg(container.initial.outgoing.target, container, result, container.initial.umlStateMachine)/]
+[genFile(stm, result)/]
+[/if]
+[/let]
+[/let]
+[/for]
+[/let]
+[/template]
+
+[template public genFile(stm : String, result: Sequence(String))]
+[file ('flowchart/' + stm + '.svg', false, 'UTF-8')]
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+[for (line : String | result)]
+[line/]
+[/for]
+</g>
+<script xlink:href="../lib/SVGPan.js"/>
+<script type="text/javascript">
+ <!['[CDATA['/]
+ var elements = ['[]'/];
+ function lightSameChoice(name) {
+    fillColor("#fff");
+ 	elements = document.getElementsByName(name);	
+ 	fillColor("#123");
+ }
+ 
+ function fillColor(color) {
+     for (var index in elements) {
+ 		if (typeof elements['[index]'/] === 'object') {
+ 			elements['[index]'/].style.fill = color;
+ 		}
+ 	}
+ }
+ ]]>
+ </script>
+</svg>
+[/file]
+[/template]
+
+[comment]get all choices for container[/comment]
+[query public getAllChoices4Container(container : Container) : Sequence(Choice) = 
+  container.choice->asSequence()->union(container.subContainer.getAllChoices4Container())
+/]
+
+[comment]get all states for container[/comment]
+[query public getAllStates4Container(container : Container) : Sequence(State) = 
+  container.state->asSequence()->union(container.subContainer.getAllStates4Container())
+/]
+
+[template public generateSvg(vertexs : Sequence(Vertex), container : StateMachine, result : Sequence(String), topStm : String)]
+[invoke('com.iauto.mist.spec.m2t.uml2html.util.GenerateSvg', 'generateSvg(java.util.List, spec.StateMachine, java.util.List, java.lang.String)', Sequence{vertexs, container, result, topStm})/]
+[/template]
+
+

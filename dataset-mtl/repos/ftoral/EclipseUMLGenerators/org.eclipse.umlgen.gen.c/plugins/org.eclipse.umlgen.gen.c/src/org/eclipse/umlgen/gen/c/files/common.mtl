@@ -1,0 +1,237 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2010, 2014 Obeo and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Mikael Barbero (Obeo) - initial API and implementation
+ *     Fabien Toral (CS Information Systems) - Circular dependencies and other corrections for PolarSys migration
+[/comment]
+[module common('http://www.eclipse.org/uml2/4.0.0/UML', 'http://www.eclipse.org/emf/2002/Ecore')/]
+
+[query public cFileName(e : NamedElement) : String = 
+	if (getProperty('UNITTEST') = 'true') 
+		then e.name.concat('.c')
+		else e.getRelativePath('C_FILENAME')
+	endif
+/]
+
+[query public hFileName(e : NamedElement) : String = 
+	if (getProperty('UNITTEST') = 'true') 
+		then e.name.concat('.h')
+		else e.getRelativePath('H_FILENAME')
+	endif
+/]
+
+[query public getGenericAnnotation(e : EModelElement, sourceP : String, keyP : String) : Sequence(String) = 
+	if (e.eAnnotations->notEmpty()) then
+		if (e.eAnnotations->select(source = 'http://www.eclipse.org/umlgen/annotation/c' + sourceP)->notEmpty()) then
+			if (e.eAnnotations->select(source = 'http://www.eclipse.org/umlgen/annotation/c' + sourceP).details->notEmpty()) then
+				if (e.eAnnotations->select(source = 'http://www.eclipse.org/umlgen/annotation/c' + sourceP).details->select(key = keyP)->notEmpty()) then
+					e.eAnnotations->select(source = 'http://www.eclipse.org/umlgen/annotation/c' + sourceP).details->select(key = keyP).value->asSequence()
+				else
+					Sequence{}
+				endif
+			else
+				Sequence{}
+			endif
+		else
+			Sequence{}
+		endif
+	else
+		Sequence{}
+	endif
+/]
+
+[query public getDocAnnotation(e : EModelElement, keyP : String) : Sequence(String) =
+	e.getGenericAnnotation('/documentation', keyP)
+/]
+
+[query public getAnnotation(e : EModelElement, keyP : String) : Sequence(String) =
+	e.getGenericAnnotation(null, keyP)
+/]
+
+[query public getReturnType(op : Operation) : Type = 
+op.ownedParameter->select(direction <> ParameterDirectionKind::return)->first().type 
+/]
+
+[comment]Generate the include directives[/comment]
+[template public genIncludes(c : Classifier, kind : String) post(trim())]
+[for (usage : Usage | c.getClientDependencies()->filter(Usage)->select(u : Usage | u.isSelectableForGen(kind)))]
+[if getComment().size() > 0]
+[getComment().format()/]
+[/if]
+[if isStdLibraryInclusion()]
+#include <[supplier->any(true).name/].h>
+[else]
+#include "[supplier->any(true).name/].h"
+[/if][/for]
+[/template]
+
+[comment]This query is only here in the goal to obtain an ordered collection of dependency (not possible directly in OCL)[/comment]
+[query public getClientDependencies(e : NamedElement) : Sequence(Dependency) =
+	invoke('org.eclipse.umlgen.gen.c.services.UML2Services', 'getClientDependencies(org.eclipse.uml2.uml.NamedElement)', Sequence{e})
+/]
+
+[query public getRelativePath(e : NamedElement, s : String) : String = 
+	invoke('org.eclipse.umlgen.c.common.util.AnnotationUtil', 'getRelativePath(org.eclipse.uml2.uml.NamedElement, java.lang.String)', Sequence{e,s})
+/]
+
+[query public format(s : String) : String =
+	invoke('org.eclipse.umlgen.c.common.util.CommentFormatter', 'wrap(java.lang.String)', Sequence{s})
+/]
+
+[query public formatInLine(s : String) : String =
+	invoke('org.eclipse.umlgen.c.common.util.CommentFormatter', 'wrapInLine(java.lang.String)', Sequence{s})
+/]
+
+[query public getSourcePackageName(e : NamedElement) : String = 
+	invoke('org.eclipse.umlgen.gen.c.services.UML2Services', 'getSourcePackageName(org.eclipse.uml2.uml.NamedElement)', Sequence{e}) 
+/]
+
+[query private isStdLibraryInclusion(e : Usage) : Boolean =
+	if (e.getAnnotation('STD_LIBRARY')->notEmpty())
+	  then e.getAnnotation('STD_LIBRARY')->any(true) = 'true'
+	  else false
+	endif
+/]
+
+[query private isSelectableForGen(e : Usage, kind : String) : Boolean =
+	(kind = 'C' and e.isPrivate()) or (kind = 'H' and e.isPublic())
+/]
+
+[query public IfNDefConditionAnnotation(e : Classifier) : Sequence(String) = 
+	e.getAnnotation('IFNDEF')
+/]
+
+[query public isRegister(e : NamedElement) : Boolean = 
+	if (e.getAnnotation('REGISTER')->notEmpty())
+		then e.getAnnotation('REGISTER')->any(true) = 'true'
+		else false
+	endif
+/]
+
+[query public isVolatile(e : NamedElement) : Boolean = 
+	if (e.getAnnotation('VOLATILE')->notEmpty())
+		then e.getAnnotation('VOLATILE')->any(true) = 'true'
+		else false
+	endif
+/]
+
+[query public isPointer(t : Type) : Boolean = 
+	if (not name.oclIsUndefined() and name.index('*') > 0)
+	then
+		true
+	else if (oclIsKindOf(DataType) and oclAsType(DataType).redefinedClassifier->size() > 0)
+  		then oclAsType(DataType).redefinedClassifier->asSequence()->first().name.index('*') > 0
+		else false
+		endif
+	endif
+/]
+
+[query public isPrivate(e : NamedElement) : Boolean = 
+	e.visibility = VisibilityKind::private
+/]
+
+[query public isPublic(e : NamedElement) : Boolean = 
+	e.visibility = VisibilityKind::public
+/]
+
+[comment === Common part for source code comments === /]
+
+[query private getCommentAfter(e : EModelElement) : String = 
+	if e.getDocAnnotation('C_INLINE_COMMENT_AFTER_DECLARATION')->notEmpty() then
+		e.getDocAnnotation('C_INLINE_COMMENT_AFTER_DECLARATION')->any(true)
+	else
+		if e.getDocAnnotation('H_INLINE_COMMENT_AFTER_DECLARATION')->notEmpty() then
+			e.getDocAnnotation('H_INLINE_COMMENT_AFTER_DECLARATION')->any(true)
+		else
+			''
+		endif
+	endif
+/]
+
+[query private getCommentBefore(e : EModelElement) : String = 
+	if e.getDocAnnotation('C_INLINE_COMMENT_BEFORE_DECLARATION')->notEmpty() then
+		e.getDocAnnotation('C_INLINE_COMMENT_BEFORE_DECLARATION')->any(true)
+	else
+		if e.getDocAnnotation('H_INLINE_COMMENT_BEFORE_DECLARATION')->notEmpty() then
+			e.getDocAnnotation('H_INLINE_COMMENT_BEFORE_DECLARATION')->any(true)
+		else
+			''
+		endif
+	endif
+/]
+
+[comment Check for comments for e, keep a compatibility for topcased users  /]
+[query public hasComment(e : EModelElement) : Boolean = 
+	if e.getDocAnnotation('documentation')->notEmpty() then
+		true
+	else
+		if e.getDocAnnotation('documentation')->notEmpty() then
+			true
+		else
+			false
+		endif
+	endif
+/]
+
+[comment get the comment for e, keep a compatibility for topcased users  /]
+[query public getComment(e : EModelElement) : String = 
+	if hasComment(e) then
+		e.getDocAnnotation('documentation')->any(true)
+	else
+		''
+	endif
+/]
+
+[template public genComment(elt : EModelElement)]
+[if (elt.hasComment())]
+[elt.getComment().format()/]
+[/if]
+[/template]
+
+[template public commentsAfterTrim(e : EModelElement) post (trim())]
+[let generatedComment : String = getCommentAfter()]
+[if (generatedComment.size() > 0)][generatedComment.formatInLine()/][/if]
+[/let]
+[/template]
+
+[template public commentsBeforeTrim(e : EModelElement) post (trim())]
+[let generatedComment : String = getCommentBefore()]
+[if (generatedComment.size() > 0)][generatedComment.formatInLine()/][/if]
+[/let]
+[/template]
+
+[comment]Do not set a post trim() operation otherwise withspaces will be lost[/comment]
+[comment]Find and add a comment for a EModelElement[/comment]
+[template public addComment(elt : EModelElement, generated : String)]
+[if (generated.trim().size() > 0)]
+[let generatedComment : String = elt.getComment()]
+[if (generatedComment.size() > 0)]
+[generatedComment.format()/]
+[/if]
+[/let]
+[generated/]
+[/if][/template]
+
+[comment]Find and add a comment for an Operation[/comment]
+[comment]If no documentation is directly attached to the operation, we should take a look to the attached behavior[/comment]
+[template public addComment(operation : Operation, generated : String)]
+[if (generated.trim().size() > 0)]
+[let generatedComment : String = operation.getComment()]
+[if (generatedComment.size() > 0)]
+[generatedComment.format()/]
+[elseif operation.method->any(b : Behavior | b.name = operation.name)->notEmpty()]
+[let generatedComment : String = operation.method->any(b : Behavior | b.name = operation.name).getComment()]
+[if (generatedComment.size() > 0)]
+[generatedComment.format()/]
+[/if]
+[/let]
+[/if]
+[/let]
+[generated/]
+[/if][/template]

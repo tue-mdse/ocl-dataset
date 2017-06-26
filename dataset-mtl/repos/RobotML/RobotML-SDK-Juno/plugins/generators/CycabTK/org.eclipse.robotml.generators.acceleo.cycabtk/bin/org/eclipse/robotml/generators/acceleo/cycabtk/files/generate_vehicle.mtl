@@ -1,0 +1,125 @@
+[comment encoding = UTF-8 /]
+[module generate_vehicle('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import org::eclipse::robotml::generators::acceleo::cycabtk::mmqueries::CycabTKQueries /]
+
+[import generate_vehicle_config /]
+[import generate_system/]
+
+[template public generateVehicle(aClass : Class, model : Model)]
+[comment encoding = UTF-8 /]
+[generateVehicleConfig(aClass, model)/]
+
+[file ('scripts/' + model.name + '/' + aClass.name + '.lua', false, 'UTF-8')]
+require "LuaCycabTK"
+require "LuaDynamicGroundVehicle"
+require "LuaDynamicDifferentialVehicle"
+require "LuaDynamicCar"
+[generateSystemCommonRequires(aClass, model)/]
+
+-- kind : [getAttributeValue(aClass, 'kind', 'Robot')/]
+-- ugvKind : [getAttributeValue(aClass, 'ugvKind', 'Robot')/]
+-- mass : [getAttributeValue(aClass, 'mass', 'Robot')/]
+
+[comment][if (hasStereotype(aClass, 'SimulatedSystem'))]
+	[for( val : String | getAttributeValues(aClass, 'mesh', 'SimulatedSystem'))]
+		mesh : [val/]
+	[/for]
+[comment]mesh : [getAttributeValue(aClass, 'mesh', 'SimulatedSystem')/][/comment]
+[/if][/comment]
+
+--Definition of class [aClass.name/]
+[let ugvKind : String = getAttributeValue(aClass, 'ugvKind', 'Robot', 'car')]
+[if(ugvKind.equalsIgnoreCase('car'))]
+class '[aClass.name/]' (cycabtk.DynamicCar)
+function [aClass.name/]:__init(name)
+	cycabtk.DynamicCar.__init(self, name)
+[elseif(ugvKind.equalsIgnoreCase('differential'))]
+class '[aClass.name/]' (cycabtk.DynamicDifferentialVehicle)
+function [aClass.name/]:__init(name)
+	cycabtk.DynamicDifferentialVehicle.__init(self, name)
+[else]
+class '[aClass.name/]' (cycabtk.DynamicCar)
+function [aClass.name/]:__init(name)
+	cycabtk.DynamicCar.__init(self, name)
+[/if]
+
+	self:SetVehicleConfiguration "[aClass.name + '_config.xml'/]"
+	
+[if (hasStereotype(aClass, 'SimulatedSystem'))]
+	---- initialize mesh actors ----
+	[let mesh_list : Sequence(String) = getAttributeValues(aClass, 'mesh', 'SimulatedSystem')]
+		[for (mesh : String | mesh_list)]	
+		[let counter : Integer = mesh_list->indexOf(mesh)]
+	self.meshActor[counter/] = mge.MeshActor( name..".meshActor[counter/]" )
+	self.meshActor[counter/]:SetMesh "[mesh/]"
+	self:AttachTo( name..".meshActor[counter/]" )
+	
+		[/let]
+		[/for]
+	[/let]
+	
+	self:SetPhysicMesh("[getAttributeValue(aClass, 'mesh', 'SimulatedSystem')/]", true);
+[/if]
+
+	[let wheel_list : Sequence(NamedElement) = getLevel1SubComponentsForComponentWithStereotype(aClass, 'WheelSystem')]
+	[if (wheel_list->size()>0)]
+	---- Initialize the wheels ----
+
+	[for (wheel: NamedElement | wheel_list)]
+		[let counter : Integer = wheel_list->indexOf(wheel) - 1]
+[comment]		Wheel typename : [wheel.oclAsType(Property).type.name/][/comment]
+		[let wheel_class : Class = findClassInModel(model, wheel.oclAsType(Property).type.name)]
+[comment]			Wheel class : [wheel_class.name/][/comment]
+		[if wheel_class.hasStereotype('SimulatedSystem')]
+	self.[wheel.name/]_MeshActor = mge.MeshActor(name.."['.' + wheel.name + '_MeshActor'/]")
+			[for( wheel_mesh : String | getAttributeValues(wheel_class, 'mesh', 'SimulatedSystem'))]
+	self.[wheel.name/]_MeshActor:SetMesh "[wheel_mesh/]"
+			[/for]
+	self:AttachToWheel([counter/], name.."['.' + wheel.name + '_MeshActor'/]")
+		[/if]
+		[/let]
+		[/let]
+
+	[/for]
+	[/if]
+	[/let]
+	
+ 	---- configure the controllers ----
+	self.SetManualDriving = true
+	self:SetJoyAcc(2.)
+	self:SetJoyBreak(10.0)
+	self:SetJoySteerSpeed(0.5)
+	self:SetJoyStopSteer(0.5)
+	self:SetJoyVCont("v_linear")
+	self:SetJoyPhiCont("phi_steering")
+	
+	[generateSystemCommon(aClass, model)/]
+	
+	---- add ROS connectors
+	[for(port : Port | getPortsWithType(aClass, 'VipalabOdometryMessage'))]
+		[if isAnOutputPort(port)]
+	require "LuaVipalabOdometryRosInterface"
+	self.[port.name/] = cycabtk.VipalabOdometryRosInterface( name.."['.' +port.name/]")
+	self:AddPostProcessing( name.."['.' +port.name/]" )
+		[/if]
+	[/for]
+	[for(port : Port | getPortsWithType(aClass, 'VipalabCommandMessage'))]
+		[if isAnOutputPort(port)]
+	require "LuaInputVipalabControllerRosInterface"
+	self.[port.name/] = cycabtk.InputVipalabControllerRosInterface( name.."['.' +port.name/]")
+	self:AddPreProcessing( name.."['.' +port.name/]" )
+		[/if]
+	[/for]
+
+	---- start the Simulated Actors ----
+	self:Start()
+end
+
+[/let]
+
+[/file]
+	
+[/template]

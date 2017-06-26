@@ -1,0 +1,95 @@
+[module sqlconstraints('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /] 
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::sql::services::sqltypeservices /]
+
+[template public generateSqlServer2005Constraints(model:Model)]
+[comment This template is called by the main module file /]
+[file (model.pathToMainResources().concat('/').concat(model.projectName()).concat('-contraints.sql'), false))]
+
+[for (class:Class|model.allOwnedElements()->filter(Class))]
+	[if (class.isEntity())]
+-- Constraints for table [class.name.toSqlNotation()/]
+		[for (prop:Property|class.getOppositeAttributes())]
+[comment  n---n /]
+			[if (prop.opposite = null)]
+[comment  |n|-->n /]
+				[if (prop.upper = 1)]
+[comment  |n|-->1 /]
+	[prop.genForeignConstraint(i)/]
+				[/if]
+			[elseif (prop.isMainEndPoint())]
+[comment  |n|<-->n /]
+				[if (prop.upper = 1)]
+[comment  |n|<-->1 /]*
+	[prop.genForeignConstraint(i)/]
+				[/if]
+			[/if]
+			[if (prop.upper <> 1 and prop.oppositeAttribute().upper <> 1)]
+[comment  *---* /]
+				[if (prop.isMainEndPoint())]
+IF  EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'['['/]dbo[']'/].['['/]CST_FK_JOIN_[prop.type.name.toSqlNotation()/]_[prop.name.toSqlNotation()/]_[i/];[']'/]'))                        
+ALTER TABLE JOIN_[prop.type.name.toSqlNotation()/]_[prop.class.name.toSqlNotation()/]
+    DROP CONSTRAINT CST_FK_JOIN_[prop.type.name.toSqlNotation()/]_[prop.type.name.toSqlNotation()/]_[prop.name.toSqlNotation()/]_[i/]; 
+
+ALTER TABLE JOIN_[prop.type.name.toSqlNotation()/]_[prop.class.name.toSqlNotation()/]
+ ADD CONSTRAINT CST_FK_JOIN_[prop.type.name.toSqlNotation()/]_[prop.type.name.toSqlNotation()/]_[prop.name.toSqlNotation()/]_[i/]
+ FOREIGN KEY (REF_[prop.type.name.toSqlNotation()/]_[prop.name.toSqlNotation()/]_ID)
+ REFERENCES [prop.type.name.toSqlNotation()/] (ID);
+				[/if]
+			[/if]
+		[/for]
+        
+		[if (class.superClass->notEmpty())]
+IF  EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'['['/]dbo[']'/].['['/]CST_FK_INHERITS_[superClass.name.toSqlNotation()/]_[name.toSqlNotation()/]_[i/];[']'/]'))        
+ALTER TABLE [class.name.toSqlNotation()/]
+DROP CONSTRAINT CST_FK_INHERITS_[class.superClass.name.toSqlNotation()/]_ID;    
+
+ALTER TABLE [class.name.toSqlNotation()/]
+ ADD CONSTRAINT CST_FK_INHERITS_[class.superClass.name.toSqlNotation()/]_ID
+ FOREIGN KEY (REF_INHERITS_[class.superClass.name.toSqlNotation()/]_ID)
+ REFERENCES [class.superClass.name.toSqlNotation()/] (ID);
+
+		[/if]
+        
+	[/if]
+[/for]
+
+[/file]
+[/template]
+
+
+[template public genForeignConstraint(property:Property, i:Integer)]
+IF  EXISTS (SELECT * FROM sys.foreign_keys WHERE object_id = OBJECT_ID(N'['['/]dbo[']'/].['['/]CST_FK_[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_[i/];[']'/]'))
+ALTER TABLE [property.oppositeAttribute().type.name.toSqlNotation()/]
+    DROP CONSTRAINT CST_FK_[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_[i/]; 
+
+ALTER TABLE [property.oppositeAttribute().type.name.toSqlNotation()/]
+ ADD CONSTRAINT CST_FK_[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_[i/]
+ FOREIGN KEY (REF_[type.name.toSqlNotation()/]_[name.toSqlNotation()/]_ID)
+ REFERENCES [type.name.toSqlNotation()/] (ID);
+
+[/template]
+
+
+[query public isMainEndPoint(property:Property) : Boolean = 
+if (property.aggregation = 'composite' or 
+(property.oppositeAttribute().aggregation <> 'composite' and 
+(compare(class.name, type.name) > 0 or 
+(property.class = property.type and 
+property.class = property.type and 
+compare(property.name, property.opposite.name) > 0)))) then 
+	true 
+else 
+	false 
+endif
+
+
+/]
+
+
+

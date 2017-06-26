@@ -1,0 +1,91 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generateRobot.
+ */]
+[module generateRobot('http://www.eclipse.org/uml2/4.0.0/UML', 'http://Papyrus/RobotML/1')]
+
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::morse::files::generateCameraSystem /]
+[import org::eclipse::robotml::generators::acceleo::morse::files::generateGPSSystem /]
+[import org::eclipse::robotml::generators::acceleo::morse::files::generateLidarSystem /]
+
+[**
+ * The documentation of the template generateRobot.
+ * @param aClass
+ * @param aModel
+ */]
+
+[template public generateRobot(aRobotClass : Class, aModel : Model)]
+[file (aRobotClass.name + '.py', false, 'UTF-8')]
+from morse.builder import *
+
+#Import sensors & actuators of this robot
+[for (elt: NamedElement | getElementsWithInheritedStereotype(aModel, 'RoboticSystem'))]
+[let aClass : Class = elt.oclAsType(Class)]
+import [aClass.name/]
+[/let]
+[/for]
+
+[comment Is the component a native MORSE component ? /]
+[if (getAttributeValue(aRobotClass, 'native', 'Robot', 'none') = 'false')]
+robot[aRobotClass.name/] = Robot('[getAttributeValue(aRobotClass, 'libraryPath', 'Robot', 'missing path')/]')
+[else]
+robot[aRobotClass.name/] = Robot('[aRobotClass.name/]')
+[/if]
+
+#Generate & use each sensors and actuators of this robot
+[for (elt: NamedElement | getElementsWithInheritedStereotype(aModel, 'RoboticSystem'))]
+[let aClass : Class = elt.oclAsType(Class)]
+[if (hasStereotype(aClass, 'LidarSystem'))]
+[generateLidarSystem(aClass, aModel)/]
+[aClass.name/].[aClass.name/]([aRobotClass.name/])
+		[elseif (hasStereotype(aClass, 'CameraSystem'))]
+[generateCameraSystem(aClass, aModel)/]
+[aClass.name/].[aClass.name/]([aRobotClass.name/])
+		[elseif (hasStereotype(aClass, 'GPSSystem'))]
+[generateGPS(aClass, aModel)/]
+[aClass.name/].[aClass.name/]([aRobotClass.name/])
+		[elseif (hasStereotype(aClass, 'Servoings'))]
+[generateServoing(aClass, aModel)/]
+[aClass.name/].[aClass.name/]([aRobotClass.name/])
+		[elseif (hasStereotype(aClass, 'Odometer'))]
+[generateOdometry(aClass, aModel)/]
+[aClass.name/].[aClass.name/]([aRobotClass.name/])
+		[elseif (hasStereotype(aClass, 'IMU'))]
+[generateIMU(aClass, aModel)/]
+[aClass.name/].[aClass.name/]([aRobotClass.name/])
+		[elseif (hasStereotype(aClass, 'ActuatorSystem'))]
+[generateGenericActuator(aClass, aModel)/]
+#[aClass.name/].[aClass.name/]([aRobotClass.name/])
+		[/if]
+		[/let]
+	[/for]
+[/file]
+[/template]
+
+[template public generateGenericActuator(aClass : Class, model : Model)]
+#TBD: at the moment, we have no way in the meta-model to know what is the type of Actuator used
+#generic_actuator = Actuator('[aClass.name/]')
+#generic_actuator.add_stream('ros')
+#robot.append(generic_actuator)
+[/template]
+
+[template public generateServoing(aClass : Class, model : Model)]
+motion = MotionVW()
+motion.add_stream('ros')
+robot.append(motion)
+[/template]
+
+[template public generateIMU(aClass : Class, model : Model)]
+imu = IMU()
+imu.frequency([getAttributeValue(aClass, 'frequency', 'IMU', '10.')/])
+imu.add_stream('ros')
+robot.append(imu)
+[/template]
+
+[template public generateOdometry(aClass : Class, model : Model)]
+odom = Pose()
+odom.frequency([getAttributeValue(aClass, 'frequency', 'Odometer', '10.')/])
+odom.add_stream('ros')
+robot.append(odom)
+[/template]

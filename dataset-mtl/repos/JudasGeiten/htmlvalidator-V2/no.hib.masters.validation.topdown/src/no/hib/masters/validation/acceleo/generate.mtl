@@ -1,0 +1,62 @@
+[comment encoding = UTF-8 /]
+[module generate('http://www.eclipse.org/emf/2002/Ecore')]
+
+[template public generateElement(anEPackage : EPackage)]
+[comment @main/]
+[file (anEPackage.name.concat('Rules.xq'), false, 'UTF-8')]
+
+
+declare namespace difiFunctions = "www.example.org";
+declare variable $doc external;
+declare function difiFunctions:is-value-in-sequence
+  ( $value as xs:anyAtomicType? ,
+    $seq as xs:anyAtomicType* )  as xs:boolean {
+
+   $value = $seq
+ };
+
+declare function difiFunctions:to-result-format
+($value as node(), $msg as xs:string) as node() {
+	<result>
+		<element>{$value}</element>
+		<errorMessage>{$msg}</errorMessage>
+	</result>
+};
+
+(: ****** PROTECTED SECTION ****** :)
+<results>{
+		[for (class : EClass | anEPackage.eClassifiers)]
+			[if(class.name = 'label') or (class.name = 'img') or (class.name = 'input')]
+			[for (reference : EReference | class.eAllReferences)]				
+				[if(reference.lowerBound > 0)]
+				(: [class.name/] -> [reference.eType.name/] :)
+
+					for $[class.name/] in $doc//[class.name/]
+					let $[class.name/][reference.eType.name/] := $[class.name/]/@[reference.name/]
+					where not(difiFunctions:is-value-in-sequence($[class.name/][reference.eType.name/], $doc//[reference.eType.name/]/@id))
+					return difiFunctions:to-result-format($[class.name/], "Violates lowerbound constraint"),
+				[if(not reference.eOpposite.oclIsUndefined())]
+					(: [class.name/] <- [reference.eType.name/] :)
+					for $[reference.eType.name/] in $doc//[reference.eType.name/]
+					let $[reference.eType.name/]Id := $[reference.eType.name/]/@id
+					where not(difiFunctions:is-value-in-sequence($[reference.eType.name/]Id, $doc//[class.name/]/@[reference.name/]))
+					return difiFunctions:to-result-format($[reference.eType.name/], "Violates lowerbound constraint"),
+				[/if]
+				[/if]
+			[/for]
+			[for (attr : EAttribute | class.eAllAttributes)]
+				[if(attr.lowerBound > 0)]
+				(: [class.name/] must contain [attr.name/] :)
+
+					for $[class.name/] in $doc//[class.name/]
+					where empty($[class.name/]/@[attr.name/])
+					return difiFunctions:to-result-format($[class.name/], "[class.name/] must contain the attribute [attr.name/]"),
+
+				[/if]
+			[/for]
+		[/if]
+		[/for]
+}</results>
+(: ****** END OF PROTECTED SECTION ****** :)
+[/file]
+[/template]

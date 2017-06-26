@@ -1,0 +1,451 @@
+  ;; MAK Technologies RTI default RID file.
+
+  ;; The MAK RTI defaults to the unlicensed (two federate max) version
+  ;; configuration when no license is detected. Setting the
+  ;; RTI_forceUnlicensedForTwo switch to ON (1) will speed up startup by
+  ;; skipping the license check; however, the RTI will be forced into the
+  ;; unlicensed version configuration (two federates only). Setting the
+  ;; RTI_disableUnlicensedForTwo to ON(1) will prevent federates from starting
+  ;; in unlicensed mode when all licenses are checked out; set this if a the
+  ;; federate should ONLY run if a valid license is available.
+(setqb RTI_forceUnlicensedForTwo 0)
+(setqb RTI_disableUnlicensedForTwo 0)
+
+
+  ;; By default the RTI determines the connection settings to use through the
+  ;; configuration in the GUI. If you would prefer to specify connection
+  ;; settings in the RID file, set RTI_configureConnectionWithRid to 1.
+  ;; When this parameter is set to 0, the following RID settings are overridden:
+  ;; RTI_forceFullCompliance, RTI_useRtiExec, RTI_udpPort, RTI_destAddrString,
+  ;; RTI_tcpForwarderAddr, RTI_distributedForwarderPort, RTI_networkInterfaceAddr,
+  ;; RTI_internalMsgReliableWhenUsingRtiexec (always 1),
+  ;; RTI_fomDataReliableWhenUsingRtiexec (always 1),
+  ;; RTI_forceFomDataReliable (always 0),
+  ;; RTI_forwarderRoutesFile (always ignored),
+  ;; and RTI_mcastDiscoveryEnabled (always 0).
+(setqb RTI_configureConnectionWithRid 0)
+
+  ;;;;;;;;;;;;;;;;;;;;;;;; Start connection parameters ;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; All settings for the parameters in this section will be overridden unless
+  ;; RTI_configureConnectionWithRid is set to 1.
+
+  ;; Some of the MAK RTI's RID parameters are switches that must be turned on in
+  ;; order to achieve strict compliance with all of the requirements of the HLA
+  ;; Interface Specification.  However, some of these switches are turned off by
+  ;; default, in order to maximize performance and ease of use.  The following
+  ;; parameter, RTI_forceFullCompliance, can be used as a master switch, to
+  ;; automatically turn on all of the RID switches necessary for strict
+  ;; compliance.  I.e. setting RTI_forceFullCompliance to 1 will force the
+  ;; switches at the end of this file to be turned on. Any previous assignment
+  ;; of those switches to off will be overridden.
+  ;; The following parameters will be overridden with the indicated values:
+  ;; RTI_useRtiExec 1)
+  ;; RTI_internalMsgReliableWhenUsingRtiexec 1)
+  ;; RTI_fomDataReliableWhenUsingRtiexec 1)
+  ;; RTI_timeMgmt 1)
+  ;; RTI_dataDistMgmt 1)
+  ;; RTI_momServiceAvailable 1)
+  ;; RTI_momFederateUpdateInterval 0)
+  ;; RTI_strictFomChecking 1)
+  ;; RTI_checkFlag 1)
+  ;; RTI_enableHlaObjectNamePrefix 1)
+  ;; RTI_sendDiscoveredClass 1)
+  ;; RTI_extend13and1516interop 0)
+  ;; RTI_processUnknownUpdatesForDiscovery 0)
+  ;; RTI_strictNameReservation 1)
+  ;; RTI_enableNameReservation 1)
+  ;; RTI_enableSaveRestoreWhenUsingRtiexec 1)
+(setqb RTI_forceFullCompliance 0)
+
+  ;; Communications Configuration
+  ;; Enable the rtiexec to support reliable transport and services requiring
+  ;; centralized control (e.g., sync points, save/restore, ownership management,
+  ;; and time management).  Enabling reliable transport requires enabling for
+  ;; specific message types (internal and/or FOM, see parameters below).
+(setqb RTI_useRtiExec 0)
+(setqb RTI_udpPort 4000)
+(setqb RTI_destAddrString "229.7.7.7")
+(setqb RTI_tcpForwarderAddr "127.0.0.1")
+
+  ;; TCP Forwarder Configuration
+(setqb RTI_distributedForwarderPort 5000)
+;; (setqb RTI_forwarderRoutesFile "routes.mtl")
+
+  ;; Enable reliable transport for internal and/or FOM (e.g., update, reflect,
+  ;; delete, and interactions) messages. Requires the rtiexec process.
+  ;; These parameters will be ignored if RTI_useRtiExec is not set to 1.
+  ;; All FOM data is sent best effort when FOM reliable is disabled
+(setqb RTI_internalMsgReliableWhenUsingRtiexec 1)
+(setqb RTI_fomDataReliableWhenUsingRtiexec 1)
+
+  ;; Ignore the transport specified by the FED and send all messages reliably.
+  ;; Requires the rtiexec process; forces FOM data reliable
+(setqb RTI_forceFomDataReliable 0)
+
+  ;; Enables multicast discovery (see description below)
+(setqb RTI_mcastDiscoveryEnabled 0)
+
+  ;; Sets the address of the network device to be used for multicast traffic.
+(setqb RTI_networkInterfaceAddr "0.0.0.0")
+
+  ;;;;;;;;;;;;;;;;;;;;;;;; End connection parameters ;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  ;; Multicast Discovery Configuration
+  ;; If mcastDiscoveryEnabled is enabled, then the federate will attempt to
+  ;; locate the local TCP Forwarder automatically and it is not necessary to
+  ;; set RTI_tcpForwarderAddr manually.  Discovery works for TCP Forwarders
+  ;; located on the same LAN as the federate.  Remote federates must specify
+  ;; the address of the TCP Forwarder via the tcpForwarderAddr as usual
+  ;; The mcastDiscoveryAddrString specifies the multicast channel for discovery,
+  ;; it should be set to an unused multicast address, if possible.  Setting it
+  ;; to the destAddrString will have a serious performance impact.
+  ;; Similarly, unless all operating systems used in the federation perform
+  ;; filtering based on multicast group in the UDP stack, the
+  ;; mcastDiscoveryPort should be set to a different port than the RTI_udpPort.
+(setqb RTI_mcastDiscoveryPort 6001)
+(setqb RTI_mcastDiscoveryAddrString "229.7.7.8")
+(setqb RTI_lrcMcastDiscoveryDelay 3.0)
+(setqb RTI_execMcastDiscoveryDelay 1.0)
+(setqb RTI_mcastDiscoveryTries 3)
+
+
+  ;; Set the Synchronous/Asynchronous IO operating mode.
+  ;; 0 == Synchronous mode
+  ;; 1 == Asynchronous IO, default.
+  ;;; Perform network reads and writes in an asynchronous thread (reduces
+  ;;; dependency on tick rate to avoid msg drops)
+  ;; 2 == Asynchronous Message Processing
+  ;;; In addition to performing network reads, the asynchronous thread will
+  ;;; process messages. However, it will not perform any asynchronous federate
+  ;;; ambassador callbacks. The callbacks will be cached and delivered when the
+  ;;; federate calls tick or evokeCallbacks.
+  ;; 3 == Asynchronous Callbacks
+  ;;;; Process messages and invoke callbacks in a asynchronous thread
+  ;;; Note: for Async. Callbacks (not Async. I/O) the Federate must be able to
+  ;;; receive Federate Ambassador callbacks asynchronously (in a threadsafe way)
+(setqb RTI_processingModel 1)
+
+  ;; Shared Memory Configuration
+  ;; Enable the RTI to use shared memory for communication between co-located
+  ;; federates as well as other components that interface via the RTI
+  ;; (e.g. rtiexec).
+  ;; Valid settings are:
+  ;;   0 - disables shared memory,
+  ;;   1 - enables shared memory only (no network I/O),
+  ;;   2 - enable shared memory manager with network I/O.
+
+  ;; All co-located federates (i.e federates running on the same host)
+  ;; must have the same shared memory name in order for them to access the same
+  ;; shared memory region.
+(setqb RTI_sharedMemoryMode 0)
+(setqb RTI_sharedMemoryName "DtRtiSharedMessages")
+(setqb RTI_sharedMemoryQueueLength 1000)
+(setqb RTI_sharedMemoryMgrMaxWait 0.1)
+;; (setqb RTI_sharedMemExecLogFileName "shmExec.log")
+
+  ;; Optional Services
+  ;; As the operation of these services can introduce overhead, it is suggested
+  ;; that they are enabled only as required by the federation
+(setqb RTI_momServiceAvailable 0)
+(setqb RTI_timeMgmt 0)
+(setqb RTI_dataDistMgmt 0)
+(setqb RTI_throwExceptionForDisabledService 1)
+
+  ;; RTI implementation extends interoperability between 1.3 and 1516
+  ;; (e.g., handling DDM dimensions)
+(setqb RTI_extend13and1516interop 0)
+
+  ;; Advisory Configuration
+(setqb RTI_enableInteractionAdvisory 1)
+(setqb RTI_enableClassAdvisory 1)
+(setqb RTI_enableAttributeAdvisory 0)
+(setqb RTI_enableAttributeScopeAdvisory 0)
+
+  ;; Diagnostic Configuration
+(setqb RTI_notifyLevel 2)
+;; (setqb RTI_logFileName "makRti.log")
+;; (setqb RTI_rtiExecLogFileName "rtiExec.log")
+;; (setqb RTI_rtiForwarderLogFileName "rtiForwarder.log")
+(setqb RTI_reuseLogFile 1)
+(setqb RTI_dumpFed 0)
+(setqb RTI_dumpRid 0)
+(setqb RTI_detachNotifyLevelFromStdOut 5)
+
+
+  ;;RIDConsistencyChecking
+  ;;0 = NONE
+  ;;1 = My parameters are overridden by rtiexec if there is a mismatch.
+  ;;    Print a message to the console indicating which parameters have been
+  ;;    overridden.
+  ;;2 = Don't override, but throw an exception if there is a mismatch.
+  ;;    Print a message to the console indicating which parameters don't match.
+(setqb RTI_ridConsistencyChecking 0)
+
+
+  ;; RTIspy Configuration
+(setqb RTI_enableNetworkMonitoring 1)
+(setqb RTI_enableNetworkTesting 1)
+(setqb RTI_logNetworkMonitorStatistics 0)
+(setqb RTI_pluginDirectory "../plugins")
+;; (RTI-addPluginName "printer.dll")
+
+  ;; RTIspy Web Services Configuration
+(setqb RTI_enableRtiexecWebservice 0)
+(setqb RTI_enableLrcWebservice 0)
+
+(setqb RTI_enableLrcWebserviceEventLog 0)
+(setqb RTI_webserviceHttpPort 8008)
+(setqb RTI_webserviceRtiPort 6002)
+(setqb RTI_webserviceAddr "127.0.0.1")
+(setqb RTI_webserviceEnableServerAutoStart 1)
+(setqb RTI_webserviceEnableForwarding 1)
+(setqb RTI_webserviceNotifyLevel 1)
+  ;; Interval between tests for bad connections to web server
+(setqb RTI_connectionTestInterval 3.0)
+
+  ;; Service Implementation Configuration
+(setqb RTI_responseInterval 3.0)
+(setqb RTI_useRandomNumberForFedHandle 0)
+(setqb RTI_singleCallbackPerTick 0)
+(setqb RTI_checkFlag 1)
+(setqb RTI_enableHlaObjectNamePrefix 0)
+(setqb RTI_processUnknownUpdatesForDiscovery 1)
+(setqb RTI_sendDiscoveredClass 0)
+(setqb RTI_defaultFedFile "")
+(setqb RTI_catchFedAmbExceptions 1)
+(setqb RTI_strictFomChecking 0)
+(setqb RTI_defaultTimeImplementation "")
+(setqb RTI_flushTimeoutInterval 3.0)
+(setqb RTI_enableFomBackwardsCompatibility 0)
+(setqb RTI_variableLengthDataUsesNull 0)
+(setqb RTI_reuseReleasedObjectHandles 0)
+
+  ;; Fedex distributes FED file during join versus federates reading from disk
+(setqb RTI_distributeFedFile 0)
+
+  ;; Enable Fom Module Merging
+;; (setqb RTI_fomModuleMerging 0)
+
+  ;;Additional Fom modules can be specified for use the preHLA-Evolved APIs
+;; (RTI-addCreateFomModule "creationFomModule.xml")
+;; (RTI-addJoinFomModule "JoinFomModule.xml")
+  ;;  The optional MOM Extension
+;; (setqb RTI_momModuleExtensionFileName "momExtension.xml")
+
+  ;; Prefer local files with the same name over files distributed from the exec
+;; (setqb RTI_preferLocalFomModules 0)
+
+  ;; If Distribute Fed File is disabled, enabling crcCheckFedFile will require
+  ;; that joining federates have identical FED files as the creator.
+  ;; (requires rtiExec)
+(setqb RTI_crcCheckFedFile 0)
+
+  ;; Enable the name reservation service in 1516
+(setqb RTI_enableNameReservation 1)
+  ;; Force strict Name Reservation.  In 1516, disabling strict name reservation
+  ;; will allow a name to be reused by a federate after the object is deleted
+  ;; and reused by other federates once the reserving federate has resigned
+  ;; (and object is deleted).
+(setqb RTI_strictNameReservation 0)
+
+  ;; Fault Tolerance
+(setqb RTI_deleteOrphans 1)
+
+  ;; The Federate Heartbeating service is enabled by setting
+  ;; the RID parameter RTI_enableFederateHeartbeat to 1.
+  ;; The frequency that heartbeats are sent at a
+(setqb RTI_enableFederateHeartbeat 0)
+(setqb RTI_federateHeartbeatInterval 10.0)
+  ;; Time out is usually 2.5*heartbeat
+(setqb RTI_federateTimeoutInterval 25.0)
+
+(setqb RTI_reconnectEnabled 0)
+(setqb RTI_federateReconnectPause 5)
+(setqb RTI_rtiExecReconnectPause  4)
+
+  ;; Advanced Network Configuration
+(setqb RTI_mcastTtl 2)
+(setqb RTI_tcpNoDelay 1)
+(setqb RTI_tcpBufferSize 50000)
+(setqb RTI_socketReceiveBufferSize 50000)
+(setqb RTI_socketSendBufferSize 50000)
+(setqb RTI_maxUdpPacketSize 15000)
+(setqb RTI_use32BitsForValueSize 0)
+
+(setqb RTI_enableBestEffortSendRetry 0)
+(setqb RTI_bestEffortSendRetries 3)
+(setqb RTI_bestEffortSendRetryWaitUsec 100)
+  ;; Busy wait should not be used with asynchronous IO
+(setqb RTI_useBusyWaitForTickMinMax 0)
+
+  ;; Enable/set network compression level. Amount of compression achieved
+  ;; increases with level, as does potential latency. Also higher levels of
+  ;; compression require greater CPU resources. Valid levels are 1 - 9 (10 with
+  ;; bundling enabled) and are described as follows:
+  ;;  1 - minimal compression (fastest)
+  ;;    ...
+  ;;  6 - recommended
+  ;;    ...
+  ;;  9 - max compression (no packet bundling)
+  ;; 10 - max compression (with packet bundling)
+(setqb RTI_enableTcpCompression 0)
+(setqb RTI_tcpCompressionLevel 1)
+(setqb RTI_enableUdpCompression 0)
+(setqb RTI_udpCompressionLevel 1)
+
+  ;; Enable packet bundling and set max. bundled packet size to value
+  ;; Note: recommended max. size for UDP packets is 1400 for WAN traffic
+  ;; (or the MTU of the local network if LAN only)
+(setqb RTI_enablePacketBundling 0)
+
+  ;; Delay retransmission of internal LRC state (e.g., subscribe, publish,
+  ;; register) to condense responses also delays request attribute value to
+  ;; condense requests
+(setqb RTI_enableMessageThrottling 0)
+;; (setqb RTI_transmitDelay 0.0)
+  ;; When sending delayed messages, send them at this rate (msg/sec) where
+  ;; the minimum sent will be one per tick
+;; (setqb RTI_transmitRate 0.0)
+  ;; Delay autoprovide requests to condense requests from multiple federates
+;; (setqb RTI_autoProvideDelay -1.0)
+
+  ;; DM Class Multicast Filtering
+  ;; If uncommented, these settings would use separate multicast addresses to
+  ;; transmit/receive object and interaction data
+  ;; NOTE: Values shown are examples of how to specify the addresses.
+  ;; They are not default values!!
+;; (RTI-addDMObjectMulticastAddr "ObjectRoot" "224.0.0.1" "inclusive"  "0.0.0.0")
+;; (RTI-addDMInteractionMulticastAddr "InteractionRoot" "224.0.0.2" "inclusive" "0.0.0.0")
+
+  ;; Implicit DDM configuration
+  ;; Load the implicitDdm plugin to enable this feature.
+  ;; Replace with appropriate release/debug/platform shared lib
+;; (RTI-addPluginName "implicitDdm.dll")
+  ;; The plugin will attempt to open the file implicitDdmParams.mtl in the
+  ;; working directory and then in the directory specified by the environment
+  ;; variable RTI_CONFIG.
+  ;; A different filename or filename with path can be specified below
+  ;; (relative path names will be searched in working dir then RTI_CONFIG dir).
+;; (setqb RTI_implicitDdmParamsFile "implicitDdmParams.mtl")
+
+  ;; Update reduction
+  ;; A preview of HLA Evolved update reduction, these parameters modify the
+  ;; federate's subscriptions to indicate the maximum rate that updates will
+  ;; be received per object of the specified classes. The RTI automatically
+  ;; filters updates that occur faster than the specified rate.
+;; (setqb RTI_enableUpdateRateReduction 0)
+;; (RTI-addUpdateRate "low" 0.1)
+;; (RTI-addUpdateRate "med" 1.0)
+;; (RTI-addUpdateRate "high" 10.0)
+;; (RTI-addUpdateRateSubscription "BaseEntity" "low" "inclusive")
+;; (RTI-addUpdateRateSubscription "BaseEntity.Ground" "med" "exclusive")
+;; (RTI-addUpdateRateSubscription "BaseEntity.Aircraft" "high" "exclusive")
+
+  ;; A race condition between a best effort DDM interaction and
+  ;; its region information (sent reliably) is alleviated by transmitting
+  ;; the region information via best effort the first time.
+  ;; Enable this feature to send the DDM interaction region information
+  ;; both best effort and reliably the first time.
+(setqb RTI_dualTransmitFirstInteractionRegions 0)
+
+  ;; Forwarder Group Configuration
+  ;; If RTI Forwarder LAN traffic load balancing is employed the IP address or
+  ;; hostname of each forwarder in the local group must be listed below.
+  ;; Note: The list of Forwarder Group addresses must not be included in RID
+  ;; consistency checks. It will, of necessity, be different for different
+  ;; Forwarder Groups
+  ;; example: (RTI-addForwarderGroupAddrString "192.168.0.100")
+
+  ;; Distributed Forwarder UDP Forwarding Configuration
+  ;;   0: disabled
+  ;;   1: legacy mode (routing configured using RTI-addDestAddrString)
+  ;;   2: combined mode (routing configured in Forwarder Routes file)  
+(setqb RTI_distributedUdpForwarderMode 0)
+
+  ;; Add this entry for each remote destination (e.g. UDP forwarder across a
+  ;; WAN) when using standalone UDP Forwarders or when the Distributed
+  ;; Forwarders are configured for UDP Forwarder 'legacy' mode (mode 1 above)
+;; (RTI-addDestAddrString "0.0.0.0")
+
+  ;; Smart Forwarding Levels:
+  ;;   0: no smart forwarding (disable)
+  ;;   1: enable subscription based routing
+  ;;   2: enable subscription based routing, and sender-side message filtering
+  ;; If smart forwarding is enabled, maxNumFederates indicates maximum
+  ;; number of simultaneous federates allowed per federation
+(setqb RTI_smartForwardingLevel 0)
+(setqb RTI_maxNumFederates 100)
+
+  ;; When publication changes affect forwarding, routing filters are ignored for
+  ;; the specified interval to allow updates to remote subscription information.
+(setqb RTI_forwardingDelay 3.0)
+
+  ;; Consider fedex specific messages when filtering message destinations?
+(setqb RTI_enableFedexMsgRouting 1)
+
+  ;; Asynchronous IO Configuration
+(setqb RTI_IOPeriod 0.01)
+(setqb RTI_tickFavorsNetwork 1)
+(setqb RTI_maxIOQueue 20000)
+(setqb RTI_maxIOCount 1000)
+(setqb RTI_IOLockQueue 500)
+
+  ;; DDM Configuration
+(setqb RTI_minChannelAddr "224.0.0.1")
+(setqb RTI_maxChannelAddr "239.255.255.255")
+(setqb RTI_addressDelay 1.0)
+(setqb RTI_conveyRegions 0)
+(setqb RTI_conveyOnlyAvailableDimensions 0)
+;; (setqb RTI_ddmFixedGrid 0)
+;; (setqb RTI_ddmFixedGridFilename "ddmFixedGridExample.mtl")
+
+  ;; MOM Configuration
+(setqb RTI_momExceptionReports 0)
+(setqb RTI_momExceptionLogging 0)
+(setqb RTI_momFederateUpdateInterval 0)
+(setqb RTI_momServiceReporting 0)
+
+  ;; Save/Restore Configuration
+(setqb RTI_enableSaveRestoreWhenUsingRtiexec 1)
+(setqb RTI_saveRestoreTimeout 120)
+(setqb RTI_saveRestoreDirectory ".")
+  ;; Transient messages during a save operation are droped
+  ;; or stored and delivered when the save is restored.
+(setqb RTI_saveTransientMessages 0)
+
+  ;; Rtiexec can be configured to perform licensing. Must set
+  ;; RTI_internalMsgReliableWhenUsingRtiexec to 1 as well.
+(setqb RTI_rtiExecPerformsLicensing 0)
+
+
+  ;; By default, the following parameters are checked for consistency:
+  ;;  "RTI_destAddrString" "RTI_fomDataReliableWhenUsingRtiexec"
+  ;;  "RTI_forceFomDataReliable" "RTI_mcastDiscoveryEnabled"
+  ;;  "RTI_mcastDiscoveryPort" "RTI_mcastDiscoveryAddrString"
+  ;;  "RTI_execMcastDiscoveryDelay" "RTI_lrcMcastDiscoveryDelay"
+  ;;  "RTI_mcastDiscoveryTries" "RTI_momServiceAvailable" "RTI_timeMgmt"
+  ;;  "RTI_dataDistMgmt" "RTI_fomModuleMerging" "RTI_extend13and1516interop"
+  ;;  "RTI_responseInterval" "RTI_enableHlaObjectNamePrefix"
+  ;;  "RTI_processUnknownUpdatesForDiscovery" "RTI_sendDiscoveredClass"
+  ;;  "RTI_strictFomChecking" "RTI_defaultTimeImplementation"
+  ;;  "RTI_enableFomBackwardsCompatibility" "RTI_variableLengthDataUsesNull"
+  ;;  "RTI_reuseReleasedObjectHandles" "RTI_distributeFedFile"
+  ;;  "RTI_enableNetworkTesting" "RTI_enableNameReservation"
+  ;;  "RTI_strictNameReservation" "RTI_enableFederateHeartbeat"
+  ;;  "RTI_deleteOrphans" "RTI_federateHeartbeatInterval"
+  ;;  "RTI_federateTimeoutInterval " "RTI_reconnectEnabled"
+  ;;  "RTI_federateReconnectPause" "RTI_rtiExecReconnectPause" "RTI_mcastTtl"
+  ;;  "RTI_tcpNoDelay" "RTI_maxUdpPacketSize" "RTI_enableTcpCompression"
+  ;;  "RTI_enableUdpCompression" "RTI_enablePacketBundling"
+  ;;  "RTI_smartForwardingLevel" "RTI_maxNumFederates" "RTI_forwardingDelay"
+  ;;  "RTI_addressDelay" "RTI_conveyRegions" "RTI_crcCheckFedFile"
+  ;;  "RTI_conveyOnlyAvailableDimensions" "RTI_ddmFixedGrid"
+  ;;  "RTI_momFederateUpdateInterval" "RTI_saveRestoreTimeout"
+  ;;  "RTI_saveTransientMessages" "RTI_enableTcpCompression"
+  ;;  "RTI_enableUdpCompression" "RTI_distributedUdpForwarderMode"
+  ;;  "RTI_use32BitsForValueSize"
+  ;; Use the following constructs to add and remove elements to this set
+  ;; This list is processed only by the rtiexec...
+;; (RTI-addRidParametersToOverride (list "x" "y" "z") )
+;; (RTI-removeRidParametersToOverride (list "x" "y" "z") )
+

@@ -1,0 +1,213 @@
+[comment encoding = UTF-8 /]
+[module layout('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::ios::common::xisMobileUtils /]
+
+[template public generateViews(m : Model)]
+[let spaces : OrderedSet(Class) = m.getAllXisInteractionSpaces()]
+[let entities : OrderedSet(Class) = m.getAllXisEntities()]
+[for (c : Class | spaces)] 
+	[if (c.isMainScreen())]
+		[comment generate MainViewController.h file/]
+		[file (c.name.toUpperFirst()+'Controller.h', false, 'UTF-8')]
+
+#import <UIKit/UIKit.h>
+		[for (c : Class | spaces)]
+			[if (c.isMainScreen()._not())] 
+#import "[c.name/]Controller.h"
+			[/if]
+		[/for]
+		[for (e : Class | entities)] 
+#import "[e.name/].h"
+		[/for]
+		
+@interface [c.name.toUpperFirst()/]Controller : UIViewController <UITableViewDataSource, UITableViewDelegate>
+
+@property (nonatomic, retain) UITableView *tableView;
+@property (nonatomic, retain) NSMutableArray *attractionsArray;
+		[for (e : Class | entities)] 
+@property (nonatomic, retain) [e.name.toUpperFirst()/] *[e.name.toLowerFirst()/];
+		[/for]
+
+@end
+	[/file]
+	[/if]
+[/for]
+[for (c : Class | spaces)] 
+	[if (c.isMainScreen())]	
+		[comment generate MainViewController.m file/]
+		[file (c.name.toUpperFirst()+'Controller.m', false, 'UTF-8')]
+		
+#import "[c.name.toUpperFirst()/]Controller.h"
+
+@interface [c.name.toUpperFirst()/]Controller ()
+
+@end
+
+@implementation [c.name.toUpperFirst()/]Controller
+
+- (void)viewDidLoad
+{
+    ['['/]super viewDidLoad[']'/];
+	// Do any additional setup after loading the view.
+    //Init objects
+    self.attractionsArray = ['['/]['['/]NSMutableArray alloc[']'/] init[']'/];
+    
+    self.attraction = ['['/]['['/]Attraction alloc[']'/] init[']'/];
+    self.attraction.name = @"Vicentine";
+    self.attraction.description = @"The beach is easily reached by using the toll road west of Faro. Vicentine beach is a protected natural park where the high cliffs eroded by the Atlantic into a fantastic shape and sweep to the long sandy strand. Vila Nova de Milfontes is the most attractive resort there, despite the village Almograve and Zambujeira Mar has other best beaches.";
+    self.attraction.image = ['['/]UIImage imageNamed:@"1.png"[']'/];
+    ['['/]self.attractionsArray addObject:self.attraction[']'/];
+    
+	self.attraction = ['['/]['['/]Attraction alloc[']'/] init[']'/];
+    self.attraction.name = @"Algarve";
+    self.attraction.description = @"Resort in Carvoeiro Algarve is a popular tourist attraction in Portugal.";
+    self.attraction.image = ['['/]UIImage imageNamed:@"2.png"[']'/];
+    ['['/]self.attractionsArray addObject:self.attraction[']'/];
+    
+    self.attraction = ['['/]['['/]Attraction alloc[']'/] init[']'/];
+    self.attraction.name = @"Faro";
+    self.attraction.description = @"Tavira is located at east of Faro commonly visited by British tourists. Convento da Graca, a 16th-century Pousada which has been renovated very popular because it offers excellent service. You can take the train along the coast as far to the west of Lagos and Vila Real de Santo Antonio on the Spanish border. Sitting beside a long sandy beach cabanas to the opening menu for the departure of a boat trip through the Formosa Ria nature reserve.";
+    self.attraction.image = ['['/]UIImage imageNamed:@"3.png"[']'/];
+    ['['/]self.attractionsArray addObject:self.attraction[']'/];
+    
+    self.attraction = ['['/]['['/]Attraction alloc[']'/] init[']'/];
+    self.attraction.name = @"Sintra";
+    self.attraction.description = @"A romantic attraction of the 19th century who became a favorite tourist. There are a beautiful palace in Sintra Hotels in this area has been renovated to provide modern comfort behind the old world elegance. Here you can enjoy a wonderful trip, with panoramic views, through the wooded hills.";
+    self.attraction.image = ['['/]UIImage imageNamed:@"4.png"[']'/];
+    ['['/]self.attractionsArray addObject:self.attraction[']'/];
+    
+    self.attraction = ['['/]['['/]Attraction alloc[']'/] init[']'/];
+    self.attraction.name = @"Porto";
+    self.attraction.description = @"Porto is a great city, a combination of quaint shops that sell a lot of corsets, pastry cream, and clodhopping shoes, and a striking modern design, especially Serralves Museum of Contemporary Art and the home of the famous acoustic House of Music.";
+    self.attraction.image = ['['/]UIImage imageNamed:@"5.png"[']'/];
+    ['['/]self.attractionsArray addObject:self.attraction[']'/];
+    
+    self.tableView = ['['/]['['/]UITableView alloc[']'/] initWithFrame:CGRectMake(0, 0, 320, 460) style:UITableViewStylePlain[']'/];
+    
+    self.tableView.rowHeight = 50;
+    self.tableView.delegate = self;
+    self.tableView.dataSource = self;
+    ['['/]self.view addSubview:self.tableView[']'/];
+    self.title = @"Attractions";   
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{
+    return 1;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    return ['['/]self.attractionsArray count[']'/];
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    static NSString *CellIdentifier = @"Cell";
+    UITableViewCell *cell = ['['/]self.tableView dequeueReusableCellWithIdentifier:CellIdentifier[']'/];
+    if (cell == nil){
+        cell = ['['/]['['/]UITableViewCell alloc[']'/] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier[']'/];
+    }
+    self.attraction = ['['/]self.attractionsArray objectAtIndex:indexPath.row[']'/];
+    cell.textLabel.text = self.attraction.name;
+    cell.imageView.image = self.attraction.image;
+    return cell;
+}
+
+- (void) tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    ['['/]self.tableView deselectRowAtIndexPath:indexPath animated:YES[']'/];
+    [for (c : Class | spaces)]
+	[if c.isMainScreen()._not()]
+    [c.name.toUpperFirst()/]Controller *[c.name.toLowerFirst()/]Controller = ['['/]['['/][c.name.toUpperFirst()/]Controller alloc[']'/] init[']'/];
+    [c.name.toLowerFirst()/]Controller.attraction = ['['/]self.attractionsArray objectAtIndex:indexPath.row[']'/];
+    ['['/]self.navigationController pushViewController:[c.name.toLowerFirst()/]Controller animated:YES[']'/];
+	[/if]
+	[/for]
+}
+
+- (void)didReceiveMemoryWarning
+{
+    ['['/]super didReceiveMemoryWarning[']'/];
+    // Dispose of any resources that can be recreated.
+}
+
+@end
+		[/file]
+	[/if]
+[/for]	
+[for (c : Class | spaces)] 
+	[if (c.isMainScreen()._not())]
+		[comment generate ViewController.h file/]
+		[file (c.name.toUpperFirst()+'Controller.h', false, 'UTF-8')]
+		
+#import <UIKit/UIKit.h>
+		[for (e : Class | entities)] 
+#import "[e.name.toUpperFirst()/].h"
+		[/for]
+		
+@interface [c.name.toUpperFirst()/]Controller : UIViewController
+		
+@property (nonatomic, retain) IBOutlet UIImageView *imageView;
+@property (nonatomic, retain) IBOutlet UITextView *textView;
+		[for (e : Class | entities)] 
+@property (nonatomic, retain) [e.name.toUpperFirst()/] *[e.name.toLowerFirst()/];
+		[/for]
+		
+@end
+		[/file]
+	[/if]
+[/for]
+[for (c : Class | spaces)] 
+	[if (c.isMainScreen()._not())]
+		[comment generate DetailViewController.m file/]
+		[file (c.name.toUpperFirst()+'Controller.m', false, 'UTF-8')]
+#import "[c.name.toUpperFirst()/]Controller.h"
+#import "QuartzCore/QuartzCore.h"
+
+@interface [c.name.toUpperFirst()/]Controller ()
+
+@end
+
+@implementation [c.name.toUpperFirst()/]Controller
+
+- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+{
+    self = ['['/]super initWithNibName:nibNameOrNil bundle:nibBundleOrNil[']'/];
+    if (self) {
+        // Custom initialization
+    }
+    return self;
+}
+
+- (void)viewDidLoad {
+    ['['/]super viewDidLoad[']'/];
+	// Do any additional setup after loading the view.
+    self.title = self.attraction.name;
+    
+    self.imageView = ['['/]['['/]UIImageView alloc[']'/] initWithImage:self.attraction.image[']'/];
+    self.imageView.frame = CGRectMake(30, 80, 250, 150);
+    ['['/]self.view addSubview:self.imageView[']'/];
+    
+    self.imageView.layer.cornerRadius = 5.0;
+    self.imageView.layer.masksToBounds = YES;
+    self.imageView.layer.borderColor = ['['/]UIColor lightGrayColor[']'/].CGColor;
+    self.imageView.layer.borderWidth = 1.0;
+    
+    self.textView = ['['/]['['/]UITextView alloc[']'/] initWithFrame:CGRectMake(30, 250, 260, 200)[']'/];
+    self.textView.text = self.attraction.description;
+    ['['/]self.view addSubview:self.textView[']'/];
+   
+    self.textView.editable = NO;
+    self.textView.scrollEnabled = YES;
+    self.textView.font = ['['/]UIFont fontWithName:@"Helvetica" size:14[']'/];
+}
+@end
+		[/file]
+	[/if]
+[/for]
+
+[/let]
+[/let]
+
+[/template]
+
+
+

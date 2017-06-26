@@ -1,0 +1,32 @@
+[comment encoding = UTF-8 /]
+[module generateCCSLLibraries('http://org.gemoc.moccml/1.0',
+	'http://fr.inria.aoste.timemodel',
+	'http://org.gemoc.moccml.fsmmodel/1.0')]
+
+[import org::gemoc::mocc::transformations::ecl2mtl::services::javaservices /]  
+[import org::gemoc::mocc::transformations::ecl2mtl::services::stringQueries /]
+
+[template public generateCCSLLibraries(aLibrary : Library)]
+ccsllibs:= #[aLibrary.name/] -> {
+[for (rl : RelationLibrary | aLibrary.oclAsType(Library).relationLibraries)]
+	[for (rd : RelationDefinition | rl.relationDefinitions)]
+		[if (rd.oclIsTypeOf(StateMachineRelationDefinition)=false)]
+		#[rd.oclAsType(NamedElement).name/] -> [rd.lSquareBracket()/]:s [rd.oclAsType(RelationDefinition).getVariablestoString()/] [rd.oclAsType(RelationDefinition).declaration.getConstants()/] [rd.oclAsType(RelationDefinition).declaration.getClocks()/]|
+	
+		Sequence -- Affectation
+		Expression -- InternalClock ?
+		Integer -- Affectation
+
+		Expression: FilterBy (FilterByClock,FilterBySeq)
+		Relation: Coincides (Clock2,Clock1)
+		Expression: DelayFor (DelayForClockToDelay,DelayForClockForCounting,DelayForDelay)
+		if: IntInf (leftValue, RightValue)
+		if: IntSup (leftValue, RightValue)
+		Relation: Precedes (LeftClock,RightClock)
+		Relation: Causes (LeftClock,RightClock)
+		[rd.rSquareBracket()/]. "end #[rd.oclAsType(NamedElement).name/]"
+[/if]
+	[/for]
+[/for]
+}.
+[/template]

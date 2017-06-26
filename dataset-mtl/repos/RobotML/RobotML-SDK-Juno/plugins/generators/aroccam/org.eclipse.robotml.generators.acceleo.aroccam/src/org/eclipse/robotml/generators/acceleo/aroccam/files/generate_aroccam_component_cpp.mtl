@@ -1,0 +1,169 @@
+[comment encoding = UTF-8 /]
+[module generate_aroccam_component_cpp('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DataTypeQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::FSMQueries /]
+
+[template public generateAroccamComponentCpp(c : Class, model : Model)]
+[file ('src/' + model.name + 'Application/' + c.getStereotype() + '/' + c.name + '/' + c.name + '.cpp', false, 'UTF-8')]
+#include "[c.name/].hpp"
+
+//boost
+#include <boost/bind.hpp>
+
+[comment]Generate Cpp sub-component[/comment]
+[if c.isMacroComponent()][for (prop: Property | getLevel1SubComponentsForComponent(c))][generateAroccamComponentCpp(prop.type.oclAsType(Class),model)/][/for][/if]
+
+[comment]Constructor[/comment]
+[c.name/]::[c.name/]()
+{
+
+[comment]Ouput ports connexions[/comment]
+[if c.isMacroComponent()]
+	[for (port : Port | getOutputPortsForElement(c.oclAsType(Element))) before('\t//macrocomponent output ports initializations\n')]
+		[for (conn: Connector | getExternalOutputConnectors(c))]
+			[if (conn.getDestPortName().contains(port.name))]
+	[port.name/] = [conn.getSourceComponentForConnector().name/].[conn.getSourcePortName()/];
+			[/if]
+		[/for]
+	[/for]
+[else]
+	[for (port : Port | getOutputPortsForElement(c.oclAsType(Element))) before('\t//ports initializations\n')]
+	[port.name/] = new effitools::TaskBuffer<[port.type.name/]>();
+	//to push data on output port [port.name/], just call this method where you want
+	//in this source file: [port.name/]->push(a_[port.type.name/]_object_);
+	[/for]
+[/if]
+
+[comment]Input ports connexions[/comment]
+[for (conn : Connector | getInternalConnectors(c)) before('\t//inner components connexions\n')]
+	[conn.getSourceComponentInstanceNameForConnector()/].[conn.getSourcePortName()/]->addFunctionToExecute(boost::bind(&[conn.getDestComponentForConnector().type.name/]::[conn.getDestPortName()/], &[conn.getDestComponentForConnector().name/], _1));
+[/for]
+
+[comment]FSM Initialization[/comment]
+[for (sm: StateMachine | c.getStateMachines()) before('\t//initialize FSM state\n')]
+	[comment]recherche de l'etat initial (on suppose qu'il y en a qu'un sinon pas de sens)[/comment]
+	[for (s: Vertex | sm.getStates())]
+		[if s.oclIsTypeOf(Pseudostate)]
+	currentStateIn[sm.name/] = [s.name/];
+		[/if]
+	[/for] 
+[/for]
+}
+
+[let elt : Element = c.oclAsType(Element)]
+[comment]Input port implementation[/comment]
+	[for (port : Port | getInputPortsForElement(elt))]
+void [c.name/]::[port.name/]([port.type.name/] const& data)
+{
+	// [protected ('Process new data ' + c.name + '_' + port.name + '_' + port.type.name)]
+
+	lock(); //lock for thread safety
+
+	lastData[port.name/] = data;
+
+	//PROCESSING
+	[for (sm: StateMachine | c.getStateMachines())]
+	//for each [sm.name/] States
+	switch(currentStateIn[sm.name/])
+	{
+		[for (state: Vertex | getStates(sm))]
+	case [state.name/]:
+			[for (op: Operation | c.ownedOperation)]
+				[if (op.name = state.generateOperationStateString())]
+		[op.name/]([for( param: Parameter | op.ownedParameter) separator(',')][if (param.hasValue(param.getAppliedStereotype('RobotML::OnPort'), 'port'))]lastData[param.getValue(param.getAppliedStereotype('RobotML::OnPort'), 'port').eCrossReferences().eGet('name')/][/if][/for]);
+				[/if]
+			[/for]
+	break;
+		[/for]
+	}
+	[/for]
+
+		[for (conn: Connector | getExternalInputConnectors(c)) before('\t//external input connexions\n') after('\n')]
+			[if (conn.getSourcePortName().contains(port.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](data);
+			[/if]
+		[/for]
+		[for (sm: StateMachine | c.getStateMachines())]
+	evaluateFSM[sm.name/]Transitions();
+		[/for]
+
+	unlock(); //do not forget to unlock !
+
+	// [/protected]
+}
+	[/for]
+[/let]
+
+[comment]Operations implementation[/comment]
+[for (op : Operation | c.ownedOperation) before('//operations\n')]
+bool [c.name/]::[op.name/]([for( param: Parameter | op.ownedParameter) separator(',')][if (param.direction.toString() = 'in')][param.type.name/] const& [param.name/][/if][/for])
+{
+	// [protected (': Method content' + c.name + '_' + op.name)]
+
+	[if (op.method->size() > 0)]
+		[for (be : Behavior | op.method) before ('\treturn ') separator(' && ') after(';\n') ]
+[be.name/][for( param: Parameter | op.ownedParameter) before('(') separator(',') after(')') ][param.name/][/for][/for]
+	[else]
+	return false;
+	[/if]
+	// [/protected]
+}
+[/for]
+
+[comment]Behaviours implementation[/comment]
+[for (be : Behavior | c.ownedBehavior) before('//behaviors\n')]
+	[if (be.oclIsTypeOf(OpaqueBehavior))]
+bool [c.name/]::[be.name/]([for( param: Parameter | be.specification.ownedParameter) separator(',')][if (param.direction.toString() = 'in')][param.type.name/] const& [param.name/][/if][/for])
+{
+	// [protected (': Method content' + c.name + '_' + be.name)]
+	/*[be.oclAsType(OpaqueBehavior)._body/]*/
+	return false;
+	// [/protected]
+}
+	[/if]
+[/for]
+
+[comment]for each FSM, write transition evaluation function[/comment]
+[for (sm: StateMachine | c.getStateMachines())]
+void [c.name/]::evaluateFSM[sm.name/]Transitions()
+{
+	//for each [sm.name/] States
+	switch(currentStateIn[sm.name/])
+	{
+		[for (state: Vertex | getStates(sm))]
+	case [state.name/]:
+			[for (transition : RobotML::Transition | sm.getTransitions())]
+				[if(	(transition.guard = null) =(false) and
+						transition.base_Transition.source.name = state.name)]
+					[for (op: Operation | c.ownedOperation)]
+						[if (op.name = transition.guard.base_Operation.name)]
+		//[transition.base_Transition.name/]
+		if([op.name/]([for( param: Parameter | op.ownedParameter) separator(',')][if (param.hasValue(param.getAppliedStereotype('RobotML::OnPort'), 'port'))]lastData[param.getValue(param.getAppliedStereotype('RobotML::OnPort'), 'port').eCrossReferences().eGet('name')/][/if][/for])) //guard test
+		{
+							[if((transition.effect = null) =(false))]
+			//execute "effect"
+								[for (op: Operation | c.ownedOperation)]
+									[if (op.name = transition.effect.base_Operation.name)]
+			[op.name/]([for( param: Parameter | op.ownedParameter) separator(',')][if (param.hasValue(param.getAppliedStereotype('RobotML::OnPort'), 'port'))]lastData[param.getValue(param.getAppliedStereotype('RobotML::OnPort'), 'port').eCrossReferences().eGet('name')/][/if][/for]);
+									[/if]
+								[/for]
+							[/if]
+			//change state
+			currentStateIn[sm.name/] = [transition.base_Transition.target.name/];
+			return;
+		}
+						[/if]
+					[/for]
+				[/if]
+			[/for]
+	break;
+		[/for]
+	};
+}
+[/for]
+
+[/file]
+[/template]

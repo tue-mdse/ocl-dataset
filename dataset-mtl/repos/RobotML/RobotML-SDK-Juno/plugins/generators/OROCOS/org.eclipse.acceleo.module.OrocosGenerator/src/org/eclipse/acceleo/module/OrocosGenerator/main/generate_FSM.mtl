@@ -1,0 +1,68 @@
+[comment encoding = UTF-8 /]
+[module generate_FSM('http://www.eclipse.org/uml2/3.0.0/UML')]
+[import org::eclipse::acceleo::module::OrocosGenerator::mmqueries::OrocosQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::FSMQueries /]
+[template public generateFSM(m: Model, c: Class,fsm: StateMachine)]
+[file ('/'+fsm.name+'.lua', false, 'UTF-8')]
+-----create variables-----
+[let elt : Element = c.oclAsType(Element)]
+[generateVariables(elt)/]
+[/let]
+-----FSM states-----------
+
+	return rfsm.csta {
+		
+		[for (state: State | getStates(fsm))]
+			[state.name/] = rfsm.sista {
+				[if (state.hasEntry())]
+					entry=function()
+						[state.getEntry()/]
+					end,
+				[/if]
+				[if (state.hasExit())]
+					exit=function()
+						[state.getExit()/]
+					end,	
+				[/if]
+				[if (state.hasRun())]
+					doo=function(fsm)
+						[state.getRun()/]
+					end
+				[/if]
+	  		},
+		[/for]
+	[let transitions : Sequence(RobotML::Transition) = getTransitions(fsm)]
+		[for(transition : RobotML::Transition | transitions)]
+		    rfsm.transition {src="[transition.base_Transition.source.name/]", tgt="[transition.base_Transition.target.name/]" 
+			[if(hasTriggers(transition.base_Transition))], events={[for (trig: Trigger| transition.base_Transition.trigger)]'[trig.name/]'[/for]}  
+			[/if]
+			[if(transition.guard <> null)]
+			[let guard : RobotML::Algorithm = transition.guard]
+			,guard=function()				
+			[let op : Operation = getAssociatedOperation(guard.base_Operation)]
+				[for(o : OpaqueBehavior | getOperationMethod(op))]
+					  [o._body/]
+				[/for]
+			[/let]
+			end
+			[/let]
+			[/if]
+			[if(transition.effect <> null)]
+			[let effect : RobotML::Algorithm = transition.effect]
+			,effect=function()
+			[let op : Operation = getAssociatedOperation(effect.base_Operation)]				
+					[for(o : OpaqueBehavior | getOperationMethod(op))]
+					  [o._body/]
+					[/for]
+				[/let]
+			end
+			[/let]
+			[/if]
+			},
+		[/for]
+	[/let]
+	}
+	[/file]		
+
+
+[/template]

@@ -1,0 +1,106 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2012, 2014 CNES and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Cedric Notot (Obeo) - initial API and implementation
+[/comment]
+
+[**
+ * The documentation of the module validator.
+ * @author Stephane Begaudeau - Obeo
+ */]
+[module validator('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::umlgen::gen::autojava::validation::request /]
+
+[**
+ * The documentation of the template validate.
+ * @param aModel The model.
+ */]
+[template public validate(aModel : Model)]
+[aModel.checkInheritance()/]
+[aModel.checkAbstractOperation()/]
+[aModel.checkDefaultValue()/]
+[aModel.checkDuplicateName()/]
+[/template]
+
+[**
+ * Formats an error message.
+ * @param aNamedElement The named element.
+ * @param message The message.
+ */]
+[template public error(aNamedElement : NamedElement, message : String)]
+Error: [message/] for [aNamedElement.eClass().name/] element [aNamedElement.name/].
+[/template]
+
+[**
+ * Formats a warning message.
+ * @param aNamedElement The named element.
+ * @param message The message.
+ */]
+[template public warning(aNamedElement : NamedElement, message : String)]
+Warning: [message/] for [aNamedElement.eClass().name/] element [aNamedElement.name/].
+[/template]
+
+[**
+ * Formats a information message.
+ * @param aNamedElement The named element.
+ * @param message The message.
+ */]
+[template public information(aNamedElement : NamedElement, message : String)]
+Info: [message/] for [aNamedElement.eClass().name/] element [aNamedElement.name/].
+[/template]
+
+[**
+ * Checks the inheritance of the classes in the given model.
+ * @param aModel The model.
+ */]
+[template protected checkInheritance(aModel : Model)]
+[for (aClass : Class | aModel.eAllContentsQuery()->filter(Class)->select(c : Class | c.generalization->size() > 1))]
+[aModel.warning('Multiple inheritance')/]
+[aClass.generalization->asSequence()->first().general.name/] will be taken as parent for the current element.
+[/for]
+[/template]
+
+[**
+ * Checks that abstract operations are contained in abstract classes in the given model.
+ * @param aModel The model.
+ */]
+[template protected checkAbstractOperation(aModel : Model)]
+[for (anOperation : Operation | aModel.eAllContentsQuery()->filter(Operation)->select(o : Operation | o.isAbstract and not o.class.oclIsUndefined() and not o.class.isAbstract))]
+[anOperation.error('Abstract operation in non abstract class')/]
+[/for]
+[/template]
+
+[**
+ * Checks the default values.
+ * @param aModel The model.
+ */]
+[template protected checkDefaultValue(aModel : Model)]
+[for (aProperty : Property | aModel.eAllContentsQuery()->filter(Property)->select(p : Property | not p.default.oclIsUndefined() and not (p.upper = 1)))]
+[aProperty.error('Can\'t affect default value to multiple attribute')/]
+[/for]
+[/template]
+
+[**
+ * Checks attributes with similar names in the classifiers of the given model.
+ * @param aModel The model.
+ */]
+[template protected checkDuplicateName(aModel : Model)]
+[for (aProperty : Property | aModel.eAllContentsQuery()->filter(Property)->select(p : Property | p.association = null and p.isDuplicateProperty()))]
+[aProperty.error('Duplicate attribute')/]	
+[/for]
+[/template]
+
+[**
+ * Indicates if a property is duplicated.
+ * @param aProperty The property.
+ */]
+[query protected isDuplicateProperty(aProperty : Property) : Boolean = 
+	aProperty.ancestors()->last().eAllContents(Property)->select(p : Property | p.qualifiedName = aProperty.name)->size() > 1
+/]

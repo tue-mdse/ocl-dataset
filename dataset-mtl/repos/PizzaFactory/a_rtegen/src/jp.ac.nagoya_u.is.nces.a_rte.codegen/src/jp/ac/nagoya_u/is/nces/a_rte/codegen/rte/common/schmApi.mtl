@@ -1,0 +1,169 @@
+[comment]
+/*
+ *  TOPPERS/A-RTEGEN
+ *      Automotive Runtime Environment Generator
+ *
+ *  Copyright (C) 2013-2016 by Eiwa System Management, Inc., JAPAN
+ *
+ *  上記著作権者は，以下の(1)〜(4)の条件を満たす場合に限り，本ソフトウェ
+ *  ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
+ *  変・再配布（以下，利用と呼ぶ）することを無償で許諾する．
+ *  (1) 本ソフトウェアをソースコードの形で利用する場合には，上記の著作
+ *      権表示，この利用条件および下記の無保証規定が，そのままの形でソー
+ *      スコード中に含まれていること．
+ *  (2) 本ソフトウェアを，ライブラリ形式など，他のソフトウェア開発に使
+ *      用できる形で再配布する場合には，再配布に伴うドキュメント（利用
+ *      者マニュアルなど）に，上記の著作権表示，この利用条件および下記
+ *      の無保証規定を掲載すること．
+ *  (3) 本ソフトウェアを，機器に組み込むなど，他のソフトウェア開発に使
+ *      用できない形で再配布する場合には，次のいずれかの条件を満たすこ
+ *      と．
+ *    (a) 再配布に伴うドキュメント（利用者マニュアルなど）に，上記の著
+ *        作権表示，この利用条件および下記の無保証規定を掲載すること．
+ *    (b) 再配布の形態を，別に定める方法によって，TOPPERSプロジェクトに
+ *        報告すること．
+ *  (4) 本ソフトウェアの利用により直接的または間接的に生じるいかなる損
+ *      害からも，上記著作権者およびTOPPERSプロジェクトを免責すること．
+ *      また，本ソフトウェアのユーザまたはエンドユーザからのいかなる理
+ *      由に基づく請求からも，上記著作権者およびTOPPERSプロジェクトを
+ *      免責すること．
+ *
+ *  本ソフトウェアは，AUTOSAR（AUTomotive Open System ARchitecture）仕
+ *  様に基づいている．上記の許諾は，AUTOSARの知的財産権を許諾するもので
+ *  はない．AUTOSARは，AUTOSAR仕様に基づいたソフトウェアを商用目的で利
+ *  用する者に対して，AUTOSARパートナーになることを求めている．
+ *
+ *  本ソフトウェアは，無保証で提供されているものである．上記著作権者お
+ *  よびTOPPERSプロジェクトは，本ソフトウェアに関して，特定の使用目的
+ *  に対する適合性も含めて，いかなる保証も行わない．また，本ソフトウェ
+ *  アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
+ *  の責任を負わない．
+ * 
+ *  $Id: header.mtl 13333 2015-02-24 03:45:52Z tmori $
+ */
+[/comment]
+[comment encoding = UTF-8 /]
+[module schmApi('http://nces.is.nagoya-u.ac.jp/a-rte/rte/module')]
+
+[import jp::ac::nagoya_u::is::nces::a_rte::codegen::rte::common::fileUtil /]
+[import jp::ac::nagoya_u::is::nces::a_rte::codegen::rte::common::symbolUtil /]
+[import jp::ac::nagoya_u::is::nces::a_rte::codegen::rte::common::operationUtil /]
+[import jp::ac::nagoya_u::is::nces::a_rte::codegen::rte::common::initializeOperation /]
+[import jp::ac::nagoya_u::is::nces::a_rte::codegen::rte::common::entityOperation /]
+[import jp::ac::nagoya_u::is::nces::a_rte::codegen::rte::common::excludeOperation /]
+
+[template public genSchmApi(aSchmApi : SchmApi) /]
+
+[template public genSchmApi(aSchmApi : SchmEnterApi) ]
+[aSchmApi.returnType.symbolName/]
+[aSchmApi.symbolName/]([aSchmApi.genFunctionParams()/])
+{
+	[aSchmApi.operation.genExcludeOperationEnter()/]
+}
+[/template]
+
+[template public genSchmApi(aSchmApi : SchmExitApi) ]
+[aSchmApi.returnType.symbolName/]
+[aSchmApi.symbolName/]([aSchmApi.genFunctionParams()/])
+{
+	[aSchmApi.operation.genExcludeOperationExit()/]
+}
+[/template]
+
+[template public genSchmApi(aSchmApi : SchmModeApi) ]
+[aSchmApi.returnType.symbolName/]
+[aSchmApi.symbolName/]([aSchmApi.genFunctionParams()/])
+{
+	[if (not aSchmApi.modeMachineInstance.oclIsUndefined()) ]
+		[aSchmApi.returnType.symbolName/] return_mode;
+
+		Rte_Call_Bsw_SuspendAllInterrupts();
+		if ([aSchmApi.modeMachineInstance.currentModeVariable.symbolName/] != [aSchmApi.modeMachineInstance.nextModeVariable.symbolName/]) {
+			return_mode = [aSchmApi.modeDeclarationGroup.modeTransitionStatusConstant.symbolName/];
+		} else {
+			return_mode = [aSchmApi.modeMachineInstance.currentModeVariable.symbolName/];
+		}
+		Rte_Call_Bsw_ResumeAllInterrupts();
+		return return_mode;
+	[else]
+		return [aSchmApi.modeDeclarationGroup.initModeConstant.symbolName/];
+	[/if]
+}
+[/template]
+
+[template public genSchmApi(aSchmApi : SchmSwitchApi) ]
+[aSchmApi.returnType.symbolName/]
+[aSchmApi.symbolName/]([aSchmApi.genFunctionParams()/])
+{
+	uint32 queueing_num;
+	[aSchmApi.returnType.symbolName/] ercd;
+	ercd = SCHM_E_OK;
+
+	Rte_Call_Bsw_SuspendAllInterrupts();
+	queueing_num = SchM_Queue_Count([aSchmApi.modeMachineInstance.requestModeQueue.symbolName/]);
+	SchM_SwitchMode_Enqueue([aSchmApi.modeMachineInstance.requestModeQueue.symbolName/], [aSchmApi.param->at(1).symbolName/], [aSchmApi.modeMachineInstance.requestModeQueue.queueType.maxLengthConstant.symbolName /], ercd);
+	if (queueing_num == 0U) {
+		[aSchmApi.modeMachineInstance.nextModeVariable.symbolName/] = [aSchmApi.param->at(1).symbolName/];
+		Rte_Call_Bsw_ResumeAllInterrupts();
+		do {
+			[for (aExecutableStartOperation : ModeSwitchTriggeringExecutableStartOperation | aSchmApi.executableStartOperation) ]
+				[if (not aExecutableStartOperation.disabledInMode->isEmpty())]
+					Rte_Call_Bsw_SuspendAllInterrupts();
+				[/if]
+				if ([aExecutableStartOperation.genStartCheckModeIf(aSchmApi) /]){
+					[if (not aExecutableStartOperation.disabledInMode->isEmpty())]
+						Rte_Call_Bsw_ResumeAllInterrupts();
+					[/if]
+					[aExecutableStartOperation.genDoExecutableStartOperation() /]
+				} else {
+					[if (not aExecutableStartOperation.disabledInMode->isEmpty())]
+						Rte_Call_Bsw_ResumeAllInterrupts();
+					[else]
+						/* Nothing to do */
+					[/if]
+				}
+			[/for]
+
+			[for (aOsTaskEventByMode : OsTaskEventsTriggeredByMode | aSchmApi.osTaskEventTriggeredByMode ) ]
+				if ([aOsTaskEventByMode.genStartCheckModeIf(aSchmApi) /]){
+					[for (aOsTaskEvent : OsTaskEvent | aOsTaskEventByMode.osTaskEvent ) ]
+						[if (aOsTaskEvent.osEventId->isEmpty()) ]
+							if (Rte_Call_Bsw_ActivateTask([aOsTaskEvent.osTaskId /]) != E_OK) {
+								ercd = SCHM_E_DEV_DEFECT;
+							}
+						[else]
+							if (Rte_Call_Bsw_SetEvent([aOsTaskEvent.osTaskId /], [aOsTaskEvent.osEventId->sep('|') /]) != E_OK) {
+								ercd = SCHM_E_DEV_DEFECT;
+							}
+						[/if]
+					[/for]
+				} else {
+					/* Nothing to do */
+				}
+			[/for]
+
+			Rte_Call_Bsw_SuspendAllInterrupts();
+			[aSchmApi.modeMachineInstance.currentModeVariable.symbolName/] = [aSchmApi.modeMachineInstance.nextModeVariable.symbolName/];
+			SchM_SwitchMode_Dequeue([aSchmApi.modeMachineInstance.requestModeQueue.symbolName/], [aSchmApi.modeMachineInstance.nextModeVariable.symbolName/]);
+			queueing_num = SchM_Queue_Count([aSchmApi.modeMachineInstance.requestModeQueue.symbolName/]);
+			Rte_Call_Bsw_ResumeAllInterrupts();
+		} while (queueing_num > 0U);
+	} else {
+		Rte_Call_Bsw_ResumeAllInterrupts();
+	}
+	return ercd;
+}
+[/template]
+
+[template public genStartCheckModeIf(aExecutableStartOperation : ModeSwitchTriggeringExecutableStartOperation, aSchmSwitchApi : SchmSwitchApi) ]
+	[for (aStartMode : Constant | aExecutableStartOperation.startMode) ]
+		[if (aStartMode <> aExecutableStartOperation.startMode->first())]|| [/if]RTE_MODE_IS_START([aStartMode.symbolName/], [aSchmSwitchApi.modeMachineInstance.nextModeVariable.symbolName/])
+	[/for]
+	[for (aDisabledInMode : DisabledInMode | aExecutableStartOperation.disabledInMode) ]
+		&& RTE_MODE_IS_NOT_DISABLED([aDisabledInMode.disabledMode.symbolName/], [aDisabledInMode.modeMachineInstance.currentModeVariable.genValueAccess()/], [aDisabledInMode.modeMachineInstance.nextModeVariable.genValueAccess()/])
+	[/for]
+[/template]
+
+[template public genStartCheckModeIf(aOsTaskEvent : OsTaskEventsTriggeredByMode, aSchmSwitchApi : SchmSwitchApi) ]
+	RTE_MODE_IS_START([aOsTaskEvent.startMode.symbolName/], [aSchmSwitchApi.modeMachineInstance.nextModeVariable.symbolName/])
+[/template]

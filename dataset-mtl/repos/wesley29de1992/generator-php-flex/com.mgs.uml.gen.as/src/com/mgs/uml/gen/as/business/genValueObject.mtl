@@ -1,0 +1,102 @@
+[comment encoding = UTF-8 /]
+[module genValueObject('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::gen::as::common::asUtils /]
+[import com::mgs::uml::common::umlUtils /]
+[import com::mgs::uml::common::services /]
+[import com::mgs::uml::common::profileUtils /]
+
+[template public genValueObject(c : Class) ? (profile_isValueObject())]
+
+[comment @main /]
+
+[file (c.genFolderVO() + '/' + c.genFilenameVO(), false, 'UTF-8')]
+package [c.genPackageVO()/]
+{
+
+	[c.generateClass()/]
+
+}
+[/file]
+[/template]
+
+[template private generateClass(c : Class) post (trim())]
+
+[c.genImport()/]
+
+['['/]RemoteClass(alias="[c.genPackage()/].[c.genNameVO()/]")[']'/]
+public class [c.genNameVO()/] [c.genExtend()/]
+{
+	[generateBody(c)/]
+}
+[/template]
+
+[template public genImport(c : Class) post (trim())]
+[if (not c.hasBaseClass())]
+import [genVOCommonPackage()/].AbstractVO;
+[/if]
+[for (linkedClass : Class | c.getAllImportedClass())]
+import [linkedClass.genPackageVO()/].[linkedClass.genNameVO()/];
+[/for]
+[/template]
+
+[template public genTypeVO(p : Property) post (trim())]
+[if (type.oclIsTypeOf(Class) and upper = 1)]
+	[type->filter(Class).genNameVO()/]
+[else]
+	[genType()/]
+[/if]
+[/template]
+
+[template public genTypeVO(p : Parameter) post (trim())]
+[if (type.oclIsTypeOf(Class) and upper = 1)]
+	[type->filter(Class).genNameVO()/]
+[else]
+	[genType()/]
+[/if]
+[/template]
+
+[template public genTypeVO(e : Operation) post (trim())]
+[if (type.oclIsTypeOf(Class) and e.upper = 1)]
+	[type->filter(Class).genNameVO()/]
+[else]
+	[genType()/]
+[/if]
+[/template]
+
+[template private generateBody(c : Class) post (trim())]
+
+[for (att : Property | c.profile_propertiesVO())]
+public var [att.genName()/]:[att.genTypeVO()/];
+[/for]
+
+public function [c.genNameVO()/](){
+	super();
+}
+
+[/template]
+
+[template public genExtend(c : Class) post (trim())]
+[if (c.hasBaseClass())] 
+extends [c.baseClass().genNameVO()/]
+[else]
+extends AbstractVO
+[/if]
+[/template]
+
+[template public genVOCommonPackage() post (trim())]
+	vo
+[/template]
+
+[template public genPackageVO(c : Class) post (trim())]
+	[genVOCommonPackage()/].[c.genPackage()/]
+[/template]
+
+[template public genFolderVO(c : Class) post (trim())]
+	[genVOCommonPackage()/]/[c.genFolder()/]
+[/template]
+
+[template public genFilenameVO(c : Class) post (trim())]
+	[c.genNameVO()/].as
+[/template]
+
+

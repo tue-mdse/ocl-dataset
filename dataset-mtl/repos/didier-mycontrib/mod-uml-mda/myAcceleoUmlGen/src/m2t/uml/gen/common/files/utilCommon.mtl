@@ -1,0 +1,83 @@
+[comment encoding = UTF-8 /]
+[module utilCommon('http://www.eclipse.org/uml2/5.0.0/UML', 'http://www.eclipse.org/uml2/5.0.0/Types')/]
+
+[query public queryAsAtLeastOneOperation(c : Classifier) : Boolean =
+   c.getAllOperations()->size() > 0 /]
+
+[query public queryAsAtLeastOneProperty(c : Classifier) : Boolean =
+   c.getAllAttributes()->size() > 0 /]
+
+[query public queryAsNoStereotype(e : Element) : Boolean = 
+   e.getAppliedStereotypes()->size() < 1 /]
+
+[query public queryIsBasicAttr(p: Property) : Boolean = 
+   p.aggregation <> AggregationKind::composite and p.aggregation <> AggregationKind::shared and p.association = null /]
+
+
+[query public queryBasicAttributes(c : Classifier) : Set(Property) = 
+   c.getAllAttributes()->select(aggregation <> AggregationKind::composite and aggregation <> AggregationKind::shared and association = null) /]
+
+[query public isNotWithGeneric(c : Classifier) : Boolean = c.name.contains('<')._not() /]
+
+[query public isNotInPrivatePackage(e : Element) : Boolean =   e.ancestors(Package)->first().visibility <> VisibilityKind::private /]
+
+[query public queryRootPackage(e : Element) : Package = 
+   e.ancestors(Package)->last()/]
+ 
+
+[query public queryAsStereotype(e : Element, sName : String) : Boolean = 
+   e.getAppliedStereotypes()->exists( s | s.qualifiedName = sName )/]
+   
+[query public queryWithEnumProperty(c : Classifier) : Boolean =
+   c.getAllAttributes()->exists(a | a.type.oclIsTypeOf(Enumeration)) /]
+   
+[query public queryClassifierOperationWithEnumParam(c : Classifier) : Boolean =
+   c.getAllOperations()->exists(o | o.queryOperationWithEnumParam()) /]
+   
+[query public queryOperationWithEnumParam(o : Operation) : Boolean =
+   o.ownedParameter->exists(p | p.type.oclIsTypeOf(Enumeration)) /]
+   
+
+[query public queryGetOppositeAssociationEnd(a : Association, c : Class) : Property = 
+   a.memberEnd->select(type.name <> c.name)->asOrderedSet()->first()/]
+   
+[query public queryGetThisSideAssociationEnd(a : Association, c : Class) : Property = 
+   a.memberEnd->select(type.name = c.name)->asOrderedSet()->first()/]
+
+
+[query public queryGetOperations(c : Classifier) : Set(Operation) = 
+   c.oclAsType(Class).ownedOperation /]
+   
+[query public queryGetFirstPkProperty( c : Class) : Property = 
+   c.attribute->select(getAppliedStereotypes()->exists( s | s.qualifiedName = 'n-tiers::id' ))
+                     ->asOrderedSet()->first()/]  
+                     
+[template public default(s : String,defaultValue :String) post(trim())]
+[if (s <> null and s <> '')][s/][else][defaultValue/][/if]
+[/template]                     
+                      
+
+[template public recursiveQualifiedName(n : Namespace) post(trim())]
+	[if (n.namespace <>null) and (n.namespace.name <> null) and (n.namespace.name <> 'LogicalView') and (n.namespace.name <> 'Model') and (n.namespace.visibility <> VisibilityKind::private)][n.namespace.recursiveQualifiedName()/].[/if][n.name/]
+[/template]
+
+
+[template public packagePrefixFromUml(c : Classifier) post(trim())]
+[getProperty('domain.name').default('org.xy')/].[getProperty('app.name').default('app')/]
+[/template]
+
+
+[template public packageNameFromUml(c : Classifier) post(trim())]
+[c.packagePrefixFromUml()/].[c.namespace.recursiveQualifiedName()/]
+[/template]
+
+[template public fullNameFromUml(c : Classifier) post(trim())]
+[c.packageNameFromUml()/].[c.name/]
+[/template]
+
+[template public fileNameFromUml(c : Classifier) post(trim())]
+[c.fullNameFromUml().replaceAll('\\.','/')/]
+[/template]
+
+
+

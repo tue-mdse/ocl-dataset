@@ -1,0 +1,635 @@
+[comment encoding = Cp1252 /]
+[**
+ * The documentation of the module.
+ */]
+[module generateJuegoDesktopModule('Eugenia_ArcadeTongame/model/ArcadeTongame_editor.ecore')/]
+
+[**
+ * The documentation of the template.
+ * @param aGame
+ */]
+[template public generateJuegoDesktopModule(aGame : Game)]
+	
+	[comment @main /]
+	[file ('JuegoDesktop.java', false, 'Cp1252')]
+package org.pl2.dslvideojuegos;
+
+import com.badlogic.gdx.backends.jogl.JoglApplication;
+
+public class JuegoDesktop {
+	public static void main (String['['/][']'/] argv) {
+	[if (aGame.width = 0.0)]
+		int width = 800;
+	[else]				
+		int width = (int)[aGame.width/];
+	[/if]
+	[if (aGame.height = 0.0)]
+		int height = 480;
+	[else]				
+		int height = (int)[aGame.height/];
+	[/if]
+		new JoglApplication(new MyGame(), "Arcade Tongame", width, height, false);
+	}
+}	[/file]
+
+	[file ('MyGame.java', false, 'Cp1252')]
+package org.pl2.dslvideojuegos;
+
+import com.badlogic.gdx.ApplicationListener;
+import com.badlogic.gdx.Game;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.graphics.GL10;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.math.collision.BoundingBox;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.actors.Image;
+import java.util.Vector;
+
+
+public class MyGame extends Game implements ApplicationListener{
+ 	[if (aGame.width = 0.0)]
+		static final float WORLD_WIDTH = 800;
+	[else]				
+		static final float WORLD_WIDTH = (int)[aGame.width/];
+	[/if]
+	[if (aGame.height = 0.0)]
+		static final float WORLD_HEIGHT = 480;
+	[else]				
+		static final float WORLD_HEIGHT = (int)[aGame.height/];
+	[/if]
+	
+	Vector3 touchPoint = new Vector3();
+	
+	Vector stages = new Vector();
+	Player prota;
+	
+	@Override
+	public void create() {
+		//referencia a OpenGL 1.0
+		GL10 gl = Gdx.graphics.getGL10(); 
+	    //creacion del protagonista
+	    prota = new Player();
+	    //creacion del vector de fases
+		[for(s: Stage | aGame.stages)]
+			stages.add(new StageScreen(this));
+		[/for]
+	    setScreen((StageScreen)stages.get(0));
+	}
+}	[/file]
+
+[file ('MySound.java', false, 'Cp1252')]
+package org.pl2.dslvideojuegos;
+
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.scenes.scene2d.actors.Image;
+
+public class MySound {
+	
+	Image imagen;
+	Music sonido;
+	
+	public MySound(Image i, Music m){
+		imagen = i;
+		sonido = m;
+	}
+	
+	public MySound(MySound ms){
+		imagen = ms.imagen;
+		sonido = ms.sonido;
+	}
+}	[/file]
+
+[file ('MyText.java', false, 'Cp1252')]
+package org.pl2.dslvideojuegos;
+
+import java.util.Iterator;
+import java.util.Vector;
+
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+
+public class MyText {
+
+	static float DEFAULT_W = (float)1.6;
+	static float DEFAULT_H = (float)1.6;
+	String texto;
+	float x = 1;
+	float y = 1;
+	float w = DEFAULT_W;
+	float h = DEFAULT_H;
+	BitmapFont font;
+	SpriteBatch spriteBatch;
+	MyOut out = null;
+	
+	public MyText(String t, float width, float height, float posX, float posY){
+		texto = "- " + t;
+		x = posX;
+		y = posY;
+		w = width;
+		h = height;
+		font = new BitmapFont();
+		font.setColor(0, 220, 255, 0);
+		font.setScale(w, h);
+		spriteBatch  = new SpriteBatch();
+	}
+	
+	public void establecerSalida(String nameOut, Vector salidas){
+		for(Iterator<MyOut> it = salidas.iterator(); it.hasNext();){
+            MyOut mo = (MyOut)it.next();
+            if(mo.name.equals(nameOut)){
+            	out = mo;
+            }
+		}				
+	}
+	
+	public void textoPisado(float positionX, float positionY){
+		if(positionX >= x - texto.length()*w && positionX <= x + texto.length()*w && positionY >= y - h + 5 && positionY <= y + h + 5){
+			if(out!=null){
+				out.openOut();
+			}
+        }
+	}
+}	[/file]
+
+[file ('MyIn.java', false, 'Cp1252')]
+package org.pl2.dslvideojuegos;
+
+public class MyIn {
+
+	float x = 0;
+	float y = 0;
+	boolean isStart = false;
+	
+	public MyIn(float x, float y, boolean i){
+		this.x = x;
+		this.y = y;
+		isStart = i;
+	}
+}	[/file]
+
+
+[file ('MyOut.java', false, 'Cp1252')]
+package org.pl2.dslvideojuegos;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.actors.Image;
+
+public class MyOut {
+	
+	Image imagen;
+	boolean open = false;
+	String name = "";
+	
+	public MyOut(float x, float y, float w, float h, boolean o, String s){
+		TextureRegion texOutOpen = new TextureRegion(new Texture(
+				Gdx.files.internal("data/abierta.png")), 0, 0, 256, 256);
+		TextureRegion texOutClose = new TextureRegion(new Texture(
+				Gdx.files.internal("data/cerrada.png")), 0, 0, 256, 256);
+		
+		if(o){
+			imagen = new Image("outOpen", texOutOpen);
+		}
+		else{
+			imagen = new Image("outClose", texOutClose);
+		}		
+		imagen.x = x;
+		imagen.y = y;
+		imagen.width = w;
+		imagen.height = h;
+		open = o;
+		name = s;
+	}
+
+	public MyOut(MyOut mo){
+		imagen = mo.imagen;
+		open = mo.open;
+		name = mo.name;
+	}
+	
+	public void openOut(){
+		TextureRegion texOutOpen = new TextureRegion(new Texture(
+				Gdx.files.internal("data/abierta.png")), 0, 0, 256, 256);
+		open = true;		
+		float x = imagen.x;
+		float y = imagen.y;
+		float w = imagen.width;
+		float h = imagen.height;
+		//Reconstruimos la imagen con otra textura
+		imagen = new Image("outOpen", texOutOpen);
+		imagen.x = x;
+		imagen.y = y;
+		imagen.width = w;
+		imagen.height = h;
+	}	
+}	[/file]
+
+[file ('Player.java', false, 'Cp1252')]
+package org.pl2.dslvideojuegos;
+
+import java.util.Iterator;
+import java.util.Vector;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.GL10;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.scenes.scene2d.actors.Image;
+
+public class Player {
+	private static final int FRAME_COLS = 6;
+	private static final int FRAME_ROWS = 5;
+	Animation walkAnimation;
+	Animation walkAnimationInv;
+	Texture walkSheet;
+	Texture walkSheetInv;
+	TextureRegion['['/][']'/] walkFrames;
+	TextureRegion['['/][']'/] walkFramesInv;
+	TextureRegion currentFrame;
+	SpriteBatch spriteBatch;
+	float positionX=1;
+	float positionY=1;
+	float positionX_anterior=1;
+	float positionY_anterior=1;
+	float stateTime;
+	float anchura;
+	float altura;
+	// Indica si el protagonista va hacia la derecha(1) o hacia la izquierda(-1)
+	int posicion = 1;
+	
+	public Player(){
+		walkSheet = new Texture(Gdx.files.internal("data/personaje.png"));
+		walkSheetInv = new Texture(Gdx.files.internal("data/personajeInv.png"));
+		anchura = walkSheet.getWidth() / FRAME_COLS;
+		altura = walkSheet.getHeight() / FRAME_ROWS;
+		TextureRegion['['/][']'/]['['/][']'/] tmp = TextureRegion.split(walkSheet,
+				walkSheet.getWidth() / FRAME_COLS, walkSheet.getHeight() / FRAME_ROWS);
+		TextureRegion['['/][']'/]['['/][']'/] tmpInv = TextureRegion.split(walkSheetInv,
+				walkSheetInv.getWidth() / FRAME_COLS, walkSheetInv.getHeight() / FRAME_ROWS);
+		walkFrames = new TextureRegion['['/]FRAME_COLS * FRAME_ROWS];
+		walkFramesInv = new TextureRegion['['/]FRAME_COLS * FRAME_ROWS];
+		int index = 0;
+		for (int i = 0; i < FRAME_ROWS; i++) {
+			for (int j = 0; j < FRAME_COLS; j++) {
+				walkFrames['['/]index] = tmp['['/]i]['['/]j];
+				walkFramesInv['['/]index] = tmpInv['['/]i]['['/]FRAME_COLS-j-1];
+				index++;
+			}
+		}
+		walkAnimation = new Animation(0.025f, walkFrames);
+		walkAnimationInv = new Animation(0.025f, walkFramesInv);
+		spriteBatch = new SpriteBatch();
+		stateTime = 0f;
+	}
+	
+	public void render(float delta, OrthographicCamera guiCam, StageScreen stage_screen) {
+		int posicion_anterior = posicion;
+
+		if(Gdx.input.isTouched()) {
+		    Vector3 touchPos = new Vector3();
+		    touchPos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
+		    guiCam.unproject(touchPos);
+		    //Si se pincha a la derecha del objeto
+		    if(touchPos.x > positionX){
+			    positionX += 500 * Gdx.graphics.getDeltaTime();
+			    stateTime += Gdx.graphics.getDeltaTime();
+				posicion = 1;
+		    }
+		    //Si se pincha a la izquierda del objeto
+		    else if(touchPos.x < positionX){
+			   	positionX -= 500 * Gdx.graphics.getDeltaTime();
+			   	stateTime += Gdx.graphics.getDeltaTime();
+				posicion = -1;
+		    }
+		    //Si se pincha arriba del objeto
+		    if(touchPos.y > positionY){
+			    positionY += 500 * Gdx.graphics.getDeltaTime();
+			    stateTime += Gdx.graphics.getDeltaTime();
+		    }
+		    //Si se pincha abajo del objeto
+		    else if(touchPos.y < positionY){
+		    	positionY -= 500 * Gdx.graphics.getDeltaTime();
+		    	stateTime += Gdx.graphics.getDeltaTime();
+		    }
+ 	    }
+
+		if (posicion!=posicion_anterior){
+			stateTime = 0f;
+		}
+		
+		//Se evalua hacia donde debe mirar el personaje
+		if(posicion == 1){
+			currentFrame = walkAnimation.getKeyFrame(stateTime, true); // #16
+		}
+		else{
+			currentFrame = walkAnimationInv.getKeyFrame(stateTime, true); // #16
+		}
+
+		//Para que no pase por encima de un muro
+	    for(Iterator<Image> it = stage_screen.muros.iterator(); it.hasNext();){
+			Image wall = (Image)it.next();
+			if(positionX >= wall.x - (float)(wall.width*0.92) && 
+            		positionX <= wall.x + wall.width &&
+            		positionY >= wall.y - wall.height && 
+            		positionY <= wall.y + wall.height){
+            	
+				positionX = positionX_anterior;
+				positionY = positionY_anterior;
+            }
+		}
+		
+		//Para que no se salga de la pantalla
+	    if(positionX < 0 || positionX > MyGame.WORLD_WIDTH - anchura){
+	    	positionX = positionX_anterior;
+	    }
+	    if(positionY < 0 || positionY > MyGame.WORLD_HEIGHT - altura){
+	    	positionY = positionY_anterior;
+	    }
+	    
+		//Para ver si ha activado una salida al pisar un texto
+	    for(Iterator<MyText> it = stage_screen.textos.iterator(); it.hasNext();){
+			((MyText)it.next()).textoPisado(positionX, positionY);
+	    }
+
+		spriteBatch.begin();
+	    spriteBatch.draw(currentFrame, positionX, positionY);
+		spriteBatch.end();
+		//update(delta);
+		positionX_anterior = positionX;
+		positionY_anterior = positionY;
+	}
+	
+	public void update(float delta){
+		positionX+=0.1f;
+		positionY+=0.1f;
+	}
+}	[/file]
+
+[file ('StageScreen.java', false, 'Cp1252')]
+package org.pl2.dslvideojuegos;
+
+import com.badlogic.gdx.Files.FileType;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.graphics.GL10;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.math.collision.BoundingBox;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.actors.Image;
+
+import java.util.Iterator;
+import java.util.Vector;
+
+
+public class StageScreen implements Screen {
+ 
+    MyGame game;
+    Stage stage;
+  	Texture fondo;
+  	// Se utiliza para dibujar y optimizar las imagenes en el renderizado de la pantalla
+  	SpriteBatch batcher;
+  	// gui cam
+  	OrthographicCamera guiCam;
+	// Vector de sonidos
+	Vector sonidos = new Vector();
+	// Vector de textos
+  	Vector textos = new Vector();
+	// Vector de muros
+  	Vector muros = new Vector();
+	// Vector de entradas
+	Vector entradas = new Vector();
+	// Vector de salidas
+	Vector salidas = new Vector();
+	// Para saber si se deben mostrar los textos
+	boolean mostrar_textos = false;
+
+  	Vector3 touchPoint = new Vector3();
+  	BoundingBox rightArrowsBounds;
+
+    public StageScreen(MyGame game){
+        this.game = game;
+        //definicion de nuestra propia medida del juego
+	    guiCam = new OrthographicCamera();
+	    guiCam.setToOrtho(false, MyGame.WORLD_WIDTH, MyGame.WORLD_HEIGHT);
+
+		//crear solamente un batcher por pantalla y eliminarlo cuando no se use	
+		batcher = new SpriteBatch();
+		
+		stage = new Stage(MyGame.WORLD_WIDTH, MyGame.WORLD_HEIGHT, true);	
+		fondo = new Texture(Gdx.files.internal("data/background.png"));
+		
+		float e_width;
+		float e_height;
+
+		// Creamos los sonidos
+		TextureRegion texIpod = new TextureRegion(new Texture(
+				Gdx.files.internal("data/ipod.png")), 0, 0, 64, 64);        		       		
+		Image im;
+		Music mu;
+
+		[for(e: Element | aGame.stages.elements)]
+			[if(e.oclIsTypeOf(Sound))]
+				im = new Image("ipod", texIpod);
+        		im.x = (float)[e.position_x/];
+        		im.y = (float)[e.position_y/];
+				[if (e.size_x = 0.0)]
+					im.width = 64;
+				[else]				
+					im.width = (float)[e.size_x/];
+				[/if]
+				[if (e.size_y = 0.0)]
+					im.height = 64;
+				[else]				
+					im.height = (float)[e.size_y/];
+				[/if]
+				mu = Gdx.audio.newMusic(Gdx.files.getFileHandle("data/[e.oclAsType(Sound).filename/]", FileType.Internal));
+        		//se añade al vector
+        		sonidos.add(new MySound(im,mu));
+			[/if]
+		[/for]
+
+		//Creamos los muros
+		Image w;
+		TextureRegion texWall = new TextureRegion(new Texture(
+				Gdx.files.internal("data/Wall.png")), 0, 0, 64, 64);
+		[for(e: Element | aGame.stages.elements)]
+			[if(e.oclIsTypeOf(Wall))]
+				w = new Image("Wall", texWall);
+				[if (e.size_x = 0.0)]
+					w.width = 64;
+				[else]				
+					w.width = (float)[e.size_x/];
+				[/if]
+				[if (e.size_y = 0.0)]
+					w.height = 64;
+				[else]				
+					w.height = (float)[e.size_y/];
+				[/if]
+				
+        		w.x = (float)[e.position_x/];
+        		w.y = (float)[e.position_y/];
+        		//se añade al vector y a la stage
+        		muros.add(w);
+				stage.addActor(w);
+			[/if]
+		[/for]
+
+		//Creamos las entradas
+		MyIn mi;
+		[for(e: Element | aGame.stages.elements)]
+			[if(e.oclIsTypeOf(In))]
+				mi = new MyIn((float)[e.position_x/], (float)[e.position_y/], [e.oclAsType(In).isStart/]);
+				entradas.add(mi);
+			[/if]
+		[/for]
+
+		// Creamos las salidas
+        MyOut mo;
+        [for(e: Element | aGame.stages.elements)]
+			[if(e.oclIsTypeOf(Out))]
+				[if (e.size_x = 0.0)]
+					e_width = 256;
+				[else]				
+					e_width = (float)[e.size_x/];
+				[/if]
+				[if (e.size_y = 0.0)]
+					e_height = 256;
+				[else]				
+					e_height = (float)[e.size_y/];
+				[/if]				
+        		mo = new MyOut((float)[e.position_x/], (float)[e.position_y/], e_width, e_height, [e.oclAsType(Out).isOpen/], "[e.name/]");
+				salidas.add(mo);
+			[/if]
+		[/for]
+
+		// Creamos los textos
+		MyText mytext;
+		[for(e: Element | aGame.stages.elements)]
+			[if(e.oclIsTypeOf(Text))]
+				[if (e.size_x = 0.0)]
+					e_width = MyText.DEFAULT_W;
+				[else]				
+					e_width = (float)[e.size_x/];
+				[/if]
+				[if (e.size_y = 0.0)]
+					e_height = MyText.DEFAULT_H;
+				[else]				
+					e_height = (float)[e.size_y/];
+				[/if]				
+				mytext = new MyText("[e.oclAsType(Text).text/]", e_width, e_height, (float)[e.position_x/], (float)[e.position_y/]);
+        		//se añade al vector
+        		textos.add(mytext);
+				[if not(e.oclAsType(Text).opens.oclIsUndefined())]
+					mytext.establecerSalida("[e.oclAsType(Text).opens.name/]", salidas);
+				[/if]
+			[/if]
+		[/for]
+		
+    }
+   
+   
+    @Override
+	public void render(float delta) {
+		guiCam.update();		
+		batcher.setProjectionMatrix(guiCam.combined);
+		//Dibujando el fondo, se elimina graficamente la transparencia ya que es un fondo
+		//batcher.disableBlending();
+		batcher.begin();
+		batcher.draw(fondo, 0, 0, MyGame.WORLD_WIDTH, MyGame.WORLD_HEIGHT);
+
+		//Recorremos los sonidos
+		for(Iterator<MySound> it = sonidos.iterator(); it.hasNext();){
+            MySound aux = (MySound)it.next();
+            batcher.draw(aux.imagen.region, aux.imagen.x, aux.imagen.y, aux.imagen.width, aux.imagen.height);
+            //Se comprueba si el prota ha pasado por encima
+            if(game.prota.positionX >= aux.imagen.x - aux.imagen.width*0.8 && 
+            		game.prota.positionX <= aux.imagen.x + aux.imagen.width*0.8 &&
+            		game.prota.positionY >= aux.imagen.y - aux.imagen.height*0.8 && 
+            		game.prota.positionY <= aux.imagen.y + aux.imagen.height*0.8){
+            	aux.sonido.play();
+				mostrar_textos = true;
+            }
+		}
+
+		//Mostramos las salidas
+		for(Iterator<MyOut> it = salidas.iterator(); it.hasNext();){
+            MyOut mo = (MyOut)it.next();
+            batcher.draw(mo.imagen.region, mo.imagen.x, mo.imagen.y, mo.imagen.width, mo.imagen.height);
+		}
+		
+		batcher.end();
+
+		//Si se ha pasado por algún archivo de sonido mostramos los textos en pantalla
+    	if(mostrar_textos){
+	    	for(Iterator<MyText> it = textos.iterator(); it.hasNext();) {
+				MyText mt = (MyText)it.next();
+				mt.spriteBatch.begin();
+				mt.font.draw(mt.spriteBatch, mt.texto, mt.x, mt.y);
+				mt.spriteBatch.end();
+			}
+		}
+		
+		game.prota.render(0,guiCam,this);
+		
+		stage.act(Gdx.graphics.getDeltaTime());
+		stage.draw();
+	} 
+
+    @Override
+    public void resize(int width, int height) {
+    	// stage.setViewport(width, height, true);
+    }
+ 
+
+    @Override
+    public void show() {
+        // called when this screen is set as the screen with game.setScreen();
+	  	for(Iterator<MyIn> it = entradas.iterator(); it.hasNext();){
+	  		MyIn mi = (MyIn)it.next();
+	  		if(mi.isStart){
+	  			game.prota.positionX = mi.x;
+	  			game.prota.positionY = mi.y;
+	  		}
+		} 
+    }
+ 
+
+    @Override
+    public void hide() {
+        // called when current screen changes from this to a different screen
+    }
+ 
+
+    @Override
+    public void pause() {
+    }
+ 
+
+    @Override
+    public void resume() {
+    }
+ 
+
+    @Override
+    public void dispose() {
+    	// never called automatically
+    }
+}	[/file]
+
+[/template]

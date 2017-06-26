@@ -1,0 +1,150 @@
+[comment encoding = UTF-8 /]
+[module generateOwnViewObject('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import beuth::se::ue4::profile::common::packageDeclaration /]
+[import beuth::se::ue4::profile::common::util /]
+
+[template public generateOwnViewObject(model : Model)]
+[for (p : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]
+[for(class:Class | p.ownedElement->select(oclIsTypeOf(Class)))]
+[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('OwnViewObject'))]
+[file (generatePackage(class, model.name, 'client.view.ownviewobjects') + class.name + '.java', false)]
+package [generatePackageDeclaration(class, model.name, 'client.view.ownviewobjects')/];
+[generateClass(class)/]
+[/file]
+[/if]
+[/for]	
+[/for]
+
+[for(class:Class | model.ownedElement->select(oclIsTypeOf(Class)))]
+[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('OwnViewObject'))]
+[file (generatePackage(class, model.name, 'client.view.ownviewobjects') + class.name + '.java', false)]
+package [generatePackageDeclaration(class, model.name, 'client.view.ownviewobjects')/];
+[generateClass(class)/]
+[/file]
+[/if]
+[/for]
+
+[/template]
+
+[template public generateClass(class : Class)]
+[comment]	[if (not ((class.name) = ''))]								[Nur wenn die Klasse einen Namen hat, wird eine Datei erstellt/][/comment]
+				[comment: Erstellen einer Java-Datei/]
+	
+			[comment: Inhalt der Java-Datei/]
+public class [class.name/] extends Widget{
+	// You must adding your upper/outers objects to this Panel
+	private FlowPanel [class.name.toLowerFirst()+'Panel'/] = new FlowPanel();
+
+		[for (p:Property | class.attribute)]
+				[comment ToDo: Visibility/]
+			[attribute(p)/] [comment ToDo: Default/]
+		[/for]
+
+	[generateProtectetRegion(class.name)/]
+	[for (o:Operation | class.getOperations())]
+	[operation(o)/]
+	[/for]
+   @Override
+   public Widget asWidget() {
+      // TODO Auto-generated method stub
+      return [class.name.toLowerFirst()+'Panel'/];
+   }
+
+} 
+[/template]
+
+[template public attribute (property : Property) ]
+		[if(property.getAppliedStereotypes()->notEmpty())]
+
+		[newPanel(property)/]
+		[newDatePicker(property)/]
+		[newPopup(property)/]
+		[newMenu(property)/]
+		[newTree(property)/]
+		[newGrid(property)/]
+		[newButton(property)/]
+		[newCheckBox(property)/]
+		[newRadioButton(property)/]	
+		[newTextField(property)/]
+		[newLabel(property)/]					
+		[/if]
+[/template]
+
+[template public newGrid (property : Property) ]
+[if (isValueExists(property, 'type', 'TABLE') or isValueExists(property, 'type', 'LIST'))]
+	private Grid [property.name/];
+[/if]
+[/template]
+[template public newPanel (property : Property) ]
+[if (isValueExists(property, 'type', 'PANEL'))]
+	private FlowPanel [property.name/];
+[/if]
+[/template]
+[template public newPopup (property : Property) ]
+[if (isValueExists(property, 'type', 'POPUP'))]
+	private Popup [property.name/];
+[/if]
+[/template]
+[template public newDatePicker (property : Property) ]
+[if (isValueExists(property, 'type', 'DATEPICKER'))]
+	private DatePicker [property.name/];
+[/if]
+[/template]
+[template public newRadioButton (property : Property) ]
+[if (isValueExists(property, 'type', 'RADIOBUTTON'))]
+	private RadoButton [property.name/]; //[property.getValue(property.getAppliedStereotypes()->asOrderedSet()->first(), 'label')/]" text="[property.getValue(property.getAppliedStereotypes()->asOrderedSet()->first(), 'value')/]" />
+[/if]
+[/template]
+
+[template public newCheckBox (property : Property) ]
+[if (isValueExists(property, 'type', 'CHECKBOX'))]
+	private CheckBox [property.name/]; //[property.getValue(property.getAppliedStereotypes()->asOrderedSet()->first(), 'value')/]</g:CheckBox>
+[/if]
+[/template]
+
+[template public newTree (property : Property) ]
+[if (isValueExists(property, 'type', 'TREE'))]
+	private Tree [property.name/];
+	[newTreeItems(property, 'viewNavigationObject')/]
+[/if]	
+[/template]
+
+[template public newMenu (property : Property) ]
+[if (isValueExists(property, 'type', 'MENU'))]
+	private MenuBar [property.name/];
+[if(property.getValue(property.getAppliedStereotypes()->asOrderedSet()->first(), 'viewNavigationObject')->notEmpty())]
+	[for (prop : Property | property.getTaggedValue('ViewObject','viewNavigationObject', false).oclAsSet().oclAsType(Property))]
+	private MenuItem [prop.name/]; //[prop.getValue(prop.getAppliedStereotypes()->asOrderedSet()->first(), 'value')/]"/>
+	[/for]
+[/if]
+[/if]
+[/template]
+
+[template public newTextField (property : Property) ]
+[if (isValueExists(property, 'type', 'TEXTFIELD'))]
+	private TextArea [property.name/]; //text="[property.getValue(property.getAppliedStereotypes()->asOrderedSet()->first(), 'value')/]"/>			
+[/if]
+[/template]
+
+[template public newLabel (prop : Property) ]
+[if (isValueExists(prop, 'type', 'LABEL'))]
+	private Label [prop.name/]; //[prop.getValue(prop.getAppliedStereotypes()->asOrderedSet()->first(), 'value')/]"/>
+[/if]
+[/template]
+
+[template public newButton (property : Property) ]
+[if (isValueExists(property, 'type', 'BUTTON'))]
+	private Button [property.name/]; //[property.getValue(property.getAppliedStereotypes()->asOrderedSet()->first(), 'value')/]"/>
+[/if]
+[/template]
+
+[template public newTreeItems (property : Property, viewObjectString: String) ]
+[if(property.getValue(property.getAppliedStereotypes()->asOrderedSet()->first(), viewObjectString)->notEmpty())]
+	[for (prop : Property | property.getTaggedValue('ViewObject',viewObjectString, false).oclAsSet().oclAsType(Property))]
+	private TreeItem [prop.name/]; //[prop.getValue(prop.getAppliedStereotypes()->asOrderedSet()->first(), 'value')/]">
+		[if (prop.getValue(prop.getAppliedStereotypes()->asOrderedSet()->first(), 'viewNavigationObject')->notEmpty())]
+			[newTreeItems (prop, 'viewNavigationObject')/]
+		[/if]
+	[/for]
+[/if]
+[/template]

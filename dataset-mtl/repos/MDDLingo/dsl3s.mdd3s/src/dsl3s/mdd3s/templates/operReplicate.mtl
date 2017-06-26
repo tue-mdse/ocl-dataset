@@ -1,0 +1,76 @@
+[comment encoding = UTF-8 /]
+[module operReplicate('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import dsl3s::mdd3s::templates::services/]
+
+[comment
+Date: 16-08-2012    Author: Luís de Sousa
+Generates the Replicate function to be included in the Animat class.
+It can generate some code replication, in case both the upper and lower 
+thresholds of the Replicate stereotype are declared, but the code should be
+also correct in that case.
+
+Issues:
+. It doesn't use the inheritance property yet;
+/]
+
+[template public operReplicate(c : Class) ? (c.hasStereotype('Animat'))]
+ [comment Get Simulation name /]
+  [for (assS:Association | c.getAssociations())]
+   [for (e:Element | assS.relatedElement) ]
+	[let sim: Class = e.oclAsType(Class)]
+	 [if (sim.isNotNull())]
+	  [if (sim.hasStereotype('Simulation'))]
+	public void replicate([sim.name/] sim) 
+	{
+	  [/if]
+	 [/if]
+    [/let]
+   [/for]
+  [/for]
+	
+[comment Iterate through linked Attributes /]
+[for (ass:Association | c.getAssociations())]
+  [for (s:Element | ass.relatedElement) ]
+  [let sClass: Class = s.oclAsType(Class)]
+   [if (sClass.isNotNull())]
+    [if (sClass.hasStereotype('Attribute'))]
+	[comment Iterate through linked Replicate /]
+     [for (assR:Association | sClass.getAssociations())]
+      [for (r:Element | assR.relatedElement) ]
+	  [let rClass: Class = r.oclAsType(Class)]
+       [if (rClass.isNotNull())]
+        [if (rClass.hasStereotype('Replicate'))]
+		 [if rClass.getTaggedValue(rClass, 'Replicate', 'upperThreshold').isNotNull()]
+		if (attribute[sClass.name/].getValue() > upperThresh[rClass.name/]) 
+		{
+			[c.name/] new[c.name/] = sim.create[c.name/](location.x, location.y);
+           [if rClass.getTaggedValue(rClass, 'Replicate', 'inheritance').isNotNull()]
+			new[c.name/].attribute[sClass.name/].setValue(inheritance[rClass.name/]);
+           [/if]
+			attribute[sClass.name/].subtract(toll[rClass.name/]);
+		}
+		 [/if]
+
+		[if rClass.getTaggedValue(rClass, 'Replicate', 'lowerThreshold').isNotNull()]
+		if (attribute[sClass.name/].getValue() < lowerThresh[rClass.name/]) 
+		{
+			[c.name/] new[c.name/] = sim.create[c.name/](location.x, location.y);
+		 [if rClass.getTaggedValue(rClass, 'Replicate', 'inheritance').isNotNull()]
+			new[c.name/].attribute[sClass.name/].setValue(inheritance[rClass.name/]);
+         [/if]
+			attribute[sClass.name/].subtract(toll[rClass.name/]);
+		}
+		[/if]
+       [/if]
+      [/if]
+     [/let]
+     [/for]	 
+    [/for] [comment Replicate/]
+   [/if]
+  [/if]
+  [/let]
+ [/for]	 
+[/for] [comment Attributes/]
+	}
+
+[/template]

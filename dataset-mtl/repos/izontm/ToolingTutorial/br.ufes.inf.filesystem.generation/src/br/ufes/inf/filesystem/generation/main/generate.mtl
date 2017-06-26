@@ -1,0 +1,82 @@
+[comment encoding = UTF-8 /]
+
+[module generate('http://www.example.org/filesystem')]
+
+[comment Superfolders of a node /]
+[query public superfolders(n : Node) : Sequence(Folder) = 
+    if not n.oclIsUndefined() then
+		if not n.eContainer().oclIsUndefined() then
+			if (n.eContainer().oclIsTypeOf(Folder)) then
+				Sequence(Folder){n.eContainer()}->union(superfolders(n.eContainer(Folder)))
+			else
+				OrderedSet(Folder){}
+			endif
+		else
+			OrderedSet(Folder){}
+		endif
+	else
+		OrderedSet(Folder){}
+	endif
+/]
+
+[comment Diff of two paths /]
+[query public excludingAll(to : Sequence(Folder), from:Sequence(Folder)) : Sequence(Folder) =
+	from->iterate(
+		f:Folder;
+		acc: Sequence(Folder) = to
+		| acc->excluding(f)
+	)
+/]
+
+[comment Generate the "sh" script /]
+[template public generateElement(f : Filesystem)]
+[comment @main/]
+[file ('script/create_files.sh', false, 'UTF-8')]
+#!/bin/bash
+	[for (n : Node | nodes)]
+[node(n)/]
+	[/for]
+[/file]
+[/template]
+
+[comment Node representation /]
+[template public node(n : Node)post (trim())]
+	[if (n.oclIsTypeOf(File))]
+touch [n.name/]
+	[/if]
+	[if (n.oclIsTypeOf(Link))]
+		[let l : Link = n.oclAsType(Link)]
+ln -snf [l.relative()/][l.node.name/] [l.name/]
+		[/let]
+	[/if]
+	[if (n.oclIsTypeOf(Folder))]
+mkdir [n.name/]
+cd [n.name/]
+		[for (sn : Node | n.oclAsType(Folder).nodes)]
+	[node(sn)/]
+		[/for]
+cd ..
+	[/if]
+[/template]
+
+[comment Relative path between a link and the target node /]
+[template public relative(l : Link)]
+[back_path(l)/][go_path(l)/]
+[/template]
+
+[comment Root path between a link and the target node /]
+[template public back_path(l : Link) post (trim())]
+	[let folders : Sequence(Folder) = l.superfolders()->excludingAll(l.node.superfolders())]
+		[if (folders->size()>0)]
+			[for (f : Folder |  folders ) separator ('/')]..[/for]/
+		[else]
+			./
+		[/if]
+	[/let]
+[/template]
+
+[comment Relative path from the root path (between a link and the target node) to the target node folder /]
+[template public go_path(l : Link) post (trim())]
+	[for (f : Folder |  l.node.superfolders()->excludingAll(l.superfolders()) )][f.name/]/[/for]
+[/template]
+

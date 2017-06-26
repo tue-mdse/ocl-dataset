@@ -1,0 +1,88 @@
+[comment encoding = UTF-8 /]
+[module generate_ops_file('http://www.eclipse.org/uml2/3.0.0/UML','http://Papyrus/RobotML/1')]
+[import org::eclipse::acceleo::module::OrocosGenerator::mmqueries::OrocosQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+
+[template public generateOpsFile(model : Model)]
+[file ('/connect.ops', false, 'UTF-8')]
+//-----import package-----
+import ("rtt_sensor_msgs")
+import ("rtt_nav_msgs")
+import ("rtt_geometry_msgs")
+import ("rtt_std_msgs")
+
+//-----load components-----
+[for (elt: NamedElement | getComponentModels(model))] 
+	[let c : Class = elt.oclAsType(Class)]
+		[if (not isActuator(c) and not isSensor(c))]
+		[if (elt.getAllPorts() -> isEmpty() = false)]
+		[if (hasStateMachine(c))]
+loadComponent("[c.name/]","OCL::LuaComponent")
+//-----load lua scripts in Lua components
+[c.name/].exec_file("src/[c.name/].lua")
+		[else]
+loadComponent("[c.name/]","[c.qualifiedName/]")
+		[/if]
+		[/if]
+		[/if]
+	[/let]
+[/for]	
+
+//-----set components activities-----
+var double period = 1.0; //in seconds, period of the activity (0.0 if non periodic)
+var int priority = LowestPriority; //LowestPriority = 1, HighestPriority = 99
+var int scheduler = ORO_SCHED_OTHER; // ORO_SCHED_OTHER = 0, ORO_SCHED_RT = 1
+	[for (elt: NamedElement | getComponentModels(model))] 
+		[let c : Class = elt.oclAsType(Class)]
+[if (isActuator(c) = false and  isSensor(c) = false)]
+		[if (elt.getAllPorts() -> isEmpty() = false)]
+setActivity("[c.name/]", period, priority, scheduler)
+		[/if]
+[/if]
+		[/let]
+	[/for]
+
+
+[comment]
+
+[if (elt.getAllPorts() -> isEmpty() = false)]
+[for (port  : Port | getAllPorts(elt))]						
+[if (getOppositePort(port) <> null )]
+
+var ConnPolicy cp_[c.name/]_[port.name/];
+cp_[c.name/]_[port.name/].type = DATA; //DATA = 0, BUFFER = 1
+cp_[c.name/]_[port.name/].size = 1; //size of the buffer
+cp_[c.name/]_[port.name/].lock_policy = LOCK_FREE; //UNSYNC = 0, LOCKED = 1, LOCK_FREE = 2
+cp_[c.name/]_[port.name/].transport = 3; //ROS = 3
+cp_[c.name/]_[port.name/].name_id = "[getOppositePort(port).class.name/]";
+stream("[c.name/].[port.name/]",cp_[c.name/]_[port.name/])							
+[/if]
+[/for]
+[/if]
+
+[/comment]
+
+
+//-----set connections between components-----
+
+[for (elt: NamedElement | getComponentModels(model))] 
+[let c : Class = elt.oclAsType(Class)]
+	
+[for(p : Port | getOutputPortsForElement(c))]
+[for(s : Connector | getConnectionsFromPort(p))]
+
+[if (isActuator(c) or isSensor(c) or isActuator(getDestComponentForConnector(s).class) or isSensor(getDestComponentForConnector(s).class))]
+ stream([c.name/], [getDestComponentForConnector(s).type.name/])
+[else]
+ connectPeers([c.name/], [getDestComponentForConnector(s).type.name/])
+[/if]
+
+[/for]
+[/for]
+
+[/let]
+[/for]
+
+
+[/file]
+[/template]

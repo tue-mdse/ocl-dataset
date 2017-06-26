@@ -1,0 +1,110 @@
+[comment encoding = UTF-8 /]
+[module section(
+	'http://cs.manchester.ac.uk/mdsd/ObjectRelationalMapping',
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::translation/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::files/]
+
+
+[template public sectionsTranslations(model : WafModel)]
+[for (page : Page | model.pages->select(p | p.parentPage.oclIsUndefined()))]
+[page.sectionTranslations()/]
+[/for]
+[/template]
+
+[template private sectionTranslations(page : Page) post(trim())]
+[file (page.transDirectory().concat('/').concat(page.translationDomain()).concat('.en').concat(page.xlfExtension()), false)]
+<?xml version="1.0"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+ <file source-language="en" datatype="plaintext" original="file.ext">
+  <body>
+   [page.translations()/]
+  </body>
+ </file>
+</xliff>
+[/file]
+[/template]
+
+[template private translations(page : Page) post(trim())]
+<trans-unit id="label.[page.id()/]">
+ <source>label.[page.id()/]</source>
+ <target>[page.displayLabel.validXML()/]</target>
+</trans-unit>
+[for (unit : ContentUnit | page.units)]
+[unit.translations(page)/]
+[/for]
+[for (child : Page | page.childPages)]
+[child.translations()/]
+[/for]
+[/template]
+
+[query public entityLabel(field : UnitField) : String
+	= if field.oclIsTypeOf(UnitAttribute) then
+			field.oclAsType(UnitAttribute).attribute.displayLabel
+		else if field.oclIsTypeOf(UnitAssociation) then
+			field.oclAsType(UnitAssociation).association.displayLabel
+		else
+			field.displayLabel
+		endif endif
+/]
+[template private translations(unit : ContentUnit, page : Page) post(trim())]
+[if (not unit.omitCaption)]
+<trans-unit id="[unit.id()/]">
+ <source>[unit.id()/]</source>
+ <target>[unit.displayLabel.validXML()/]</target>
+</trans-unit>
+[/if]
+[if (unit.oclIsKindOf(DynamicUnit))]
+[unit.oclAsType(DynamicUnit).fieldTranslations(page)/]
+[/if]
+[/template]
+
+[template private fieldTranslations(unit : DynamicUnit, page : Page)
+	? (unit.oclIsKindOf(EditUnit)) post (trim())]
+[let editUnit : EditUnit = unit.oclAsType(EditUnit)]
+[for (field : UnitField | editUnit.displayFields)]
+	[if (field.hasUnitTranslation())]
+<trans-unit id="[editUnit.containedId()/].labels.[field.id()/]">
+ <source>[editUnit.containedId()/].labels.[field.id()/]</source>
+ <target>[field.displayLabel.validXML()/]</target>
+</trans-unit>
+		[if (field.hasPlaceholder())]
+<trans-unit id="[editUnit.containedId()/].placeholders.[field.id()/]">
+ <source>[editUnit.containedId()/].placeholders.[field.id()/]</source>
+ <target>[field.placeholder().validXML()/]</target>
+</trans-unit>
+		[/if]
+		[if (field.hasTitle())]
+<trans-unit id="[editUnit.containedId()/].titles.[field.id()/]">
+ <source>[editUnit.containedId()/].titles.[field.id()/]</source>
+ <target>[field.title.validXML()/]</target>
+</trans-unit>
+		[/if]
+[/if]
+[/for]
+[/let]
+[/template]
+
+[template private fieldTranslations(unit : DynamicUnit, page : Page)
+	? (unit.oclIsKindOf(DataUnit)) post (trim())]
+[for (field : UnitField | unit.oclAsType(DynamicUnit).displayFields)]
+	[if (field.hasCustomisedLabel())]
+<trans-unit id="[unit.containedId()/].labels.[field.id()/]">
+ <source>[unit.containedId()/].labels.[field.id()/]</source>
+ <target>[field.displayLabel.validXML()/]</target>
+</trans-unit>
+	[/if]
+	[if (field.oclIsTypeOf(UnitAssociation))]
+	[let association : UnitAssociation = field.oclAsType(UnitAssociation)]
+		[if (association.units->notEmpty())]
+[association.translations(page)/]
+		[/if]
+	[/let]
+	[/if]
+[/for]
+[/template]
+
+[template private translations(association : UnitAssociation, page : Page) post(trim())]
+[association.units->first().translations(page)/]
+[/template]

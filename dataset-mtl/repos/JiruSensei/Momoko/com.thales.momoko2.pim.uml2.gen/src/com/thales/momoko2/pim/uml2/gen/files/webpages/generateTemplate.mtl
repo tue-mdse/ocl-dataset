@@ -1,0 +1,152 @@
+[comment encoding = UTF-8 /]
+[module generateTemplate('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::menuQueries /]
+
+[template public generateTemplate(aModel : Model)]
+[file ('WebContent/template.xhtml', false, 'UTF-8')]
+<?xml version='1.0' encoding='UTF-8' ?> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:ui="http://java.sun.com/jsf/facelets"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:p="http://primefaces.org/ui">
+
+    <h:head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <link href="./resources/css/default.css" rel="stylesheet" type="text/css" />
+        <link href="./resources/css/cssLayout.css" rel="stylesheet" type="text/css" />
+        <h:outputStylesheet name="css/jsfcrud.css"/>
+        <h:outputStylesheet name="css/custom.css"/>
+ 		<style>
+	  		.ui-layout-north {
+            	z-index:20 !important;
+            	overflow:visible !important;;
+        	}
+
+        	.ui-layout-north .ui-layout-unit-content {
+            	overflow:visible !important;
+        	}
+        	
+        	.ui-layout-west {
+            	z-index:19 !important;
+            	overflow:visible !important;;
+        	}
+
+        	.ui-layout-west .ui-layout-unit-content {
+            	overflow:visible !important;
+        	}
+ 		</style>
+    </h:head>
+
+    <h:body >
+        <p:layout fullPage="true">
+            <p:layoutUnit position="north" size="60" resizable="true" closable="true" collapsible="true"> 
+               <ui:insert name="top">
+                    <h:form id="topForm">
+                    	<p:menubar>  
+                        	<p:menuitem value="#{bundle.HomeLink}" icon="ui-icon-home" action="/index"/>
+                            <p:menuitem value="#{bundle.ContactLink}" icon="ui-icon-contact" action="/contact"/>
+							<p:submenu label="#{bundle.ImportExportLink}" icon="ui-icon-document">  
+								<p:menuitem value="#{bundle.ImportXMLLink}" icon="ui-icon-document" onclick="dlgImportXML.show();" />
+								<p:menuitem value="#{bundle.ExportXMLLink}" icon="ui-icon-document" onclick="dlgExportXML.show();" />
+							</p:submenu>
+							<p:submenu label="Test Date">
+                            [for (aClass : Class | aModel.eAllContents(Class)->asOrderedSet()->sortedBy(name)) ? (isFeatureClass(aClass))]
+								<p:menuitem value="#{bundle.[aClass.name/]LeftLink}" immediate="true" ajax="false" action="#{[aClass.name.toLowerFirst()/]Controller.create[aClass.name/]}" icon="ui-icon-extlink"  />
+							[/for]                          
+                            </p:submenu>
+                        </p:menubar>  
+                    </h:form>
+                </ui:insert>
+            </p:layoutUnit>
+
+            <p:layoutUnit id="layoutUnitLinks" position="west" size="210" resizable="true" closable="true" collapsible="true">  
+                <ui:insert name="left" >
+                    <h:form id="leftForm">  
+                  		[generateMenu(aModel)/]
+                    </h:form>  
+                </ui:insert>
+            </p:layoutUnit>
+            <p:layoutUnit position="center"  styleClass="nestedUnit">  
+                <ui:insert name="content" >
+                    <p:layout>
+                        <h:form id="contentForm">
+                            <p:layoutUnit position="center" styleClass="nestedUnit" >
+                                <ui:insert name="body" />
+                            </p:layoutUnit>
+                            
+                            <p:layoutUnit position="south" size="30%" resizable="true"  styleClass="nestedUnit" >
+                                <ui:insert name="buttons" />
+                            </p:layoutUnit>
+                        </h:form>
+						<ui:insert name="dialogs"/>
+                   		<ui:insert name="messages" >
+                        	<p:growl id="growl" showDetail="true" sticky="true"  autoUpdate="true"/> 
+                    	</ui:insert>
+                    </p:layout>                   
+                </ui:insert>
+            </p:layoutUnit>
+        </p:layout>
+		<p:dialog id="dialogImportXML" header="#{bundle.ImportXMLLink}" widgetVar="dlgImportXML" modal="true">  
+    		<h:form enctype="multipart/form-data">   
+  				<p:fileUpload value="#{ExchangeController.importXmlFile}"  mode="simple"/> 
+  				<p:commandButton value="Submit" ajax="false"/>
+ 			</h:form>  
+		</p:dialog>
+		<p:dialog id="dialogExportXML" header="#{bundle.ExportXMLLink}" widgetVar="dlgExportXML" modal="true">
+			<h:form id="formExportXML">  
+		    		<p:commandButton id="downloadLink" value="Download XML File" ajax="false" icon="ui-icon-arrowthichk-s">  
+	    			<p:fileDownload value="#{ExchangeController.exportXmlFile}" />
+				</p:commandButton>
+			</h:form>
+		</p:dialog>   
+
+    </h:body>
+</html>
+[/file]
+[/template]
+
+[template public generateMenu(aModel:Model)]
+	[generateFlatMenu(aModel)/]	
+[/template]
+
+[template public generateFlatMenu(aModel:Model)]
+	<p:menu style="width:190px;" >  
+		<p:submenu label="#{bundle.ShowLink}"  >  
+	[for (aClass : Class | aModel.eAllContents(Class)->asOrderedSet()->sortedBy(name)) ? (isFeatureClass(aClass))]
+			<p:menuitem value="#{bundle.[aClass.name/]LeftLink}" immediate="true" ajax="false" action="#{[aClass.name.toLowerFirst()/]Controller.prepareList}" icon="ui-icon-extlink"  />
+	[/for]
+		</p:submenu>  
+	</p:menu>
+[/template]
+
+[template public generateTreeMenu(aModel: Model)]
+	<h3>#{bundle.ShowLink}</h3>
+	<p:tree value="#{treeMenuBean.root}" var="node" id="tree" style="width:100%;" cache="true" dynamic="true">
+		<p:treeNode id="treeNode"> 
+	    	<p:commandLink   immediate="true" ajax="false" disabled="#{!treeMenuBean.isFeatureNode(node)}"  action="#{treeMenuBean.linkToFeatureList(node)}">  
+	        	<h:outputText style="color:#045491;font-weight: bold;" value="#{node}"/>
+			</p:commandLink>
+		</p:treeNode>
+	</p:tree>
+[/template]
+
+[template public generateTieredMenu(aModel : Model)]
+	<h3>#{bundle.ShowLink}</h3>
+	<p:tieredMenu style="width:190px;">
+	[generateTieredMenuItems(getRootPackage(aModel))/]	
+	</p:tieredMenu>
+[/template]
+
+[template public generateTieredMenuItems(aPackage : Package)]
+	[for(item : Package | getPackagesDirectChildren(aPackage))]
+	<p:submenu label="[item.name/]">
+		[generateTieredMenuItems(item)/]	
+	</p:submenu>
+	[/for]
+	[for(aClass : Class | getFeaturesDirectChildren(aPackage))]
+		<p:menuitem value="#{bundle.[aClass.name/]LeftLink}" immediate="true" ajax="false" action="#{[aClass.name.toLowerFirst()/]Controller.prepareList}" icon="ui-icon-extlink"  />
+	[/for]
+[/template]
+

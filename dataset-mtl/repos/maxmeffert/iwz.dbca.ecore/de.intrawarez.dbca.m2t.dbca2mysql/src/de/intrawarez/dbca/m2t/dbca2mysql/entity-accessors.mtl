@@ -1,0 +1,145 @@
+[comment encoding = UTF-8 /]
+[module entity-accessors('http://www.intrawarez.de/dbca')]
+
+[import de::intrawarez::dbca::m2t::common::database/]
+[import de::intrawarez::dbca::m2t::common::attributes/]
+[import de::intrawarez::dbca::m2t::common::entities/]
+[import de::intrawarez::dbca::m2t::common::relationships/]
+[import de::intrawarez::dbca::m2t::common::accessors/]
+
+[import de::intrawarez::dbca::m2t::dbca2mysql::types/]
+[import de::intrawarez::dbca::m2t::dbca2mysql::names/]
+
+
+[template private generateProcedureSelectAll(e : Entity)]
+-- ================================================================================
+-- accessor for Entity [e.name/]
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [e.accessorNameSelectAll()/];
+CREATE PROCEDURE [e.accessorNameSelectAll()/] () 
+BEGIN
+
+	SELECT * FROM [e.mysqlName()/];
+
+END$$
+-- ================================================================================
+[/template]
+
+
+[template private generateProcedureSelectOne(e : Entity)]
+-- ================================================================================
+-- accessor for Entity [e.name/]
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [e.accessorNameSelectOne()/];
+CREATE PROCEDURE [e.accessorNameSelectOne()/] (
+[for (a : Attribute | e.selectPrimaryProperties()) separator(',')]
+	[a.mysqlParameterName()/] [a.mysqlType()/]
+[/for]
+) 
+BEGIN
+
+	SELECT * 
+	FROM [e.mysqlName()/]
+	WHERE 
+	[for (a : Attribute | e.selectPrimaryProperties()) separator(' AND ')]
+		[e.mysqlName()/].[a.mysqlName()/]=[a.mysqlParameterName()/]
+	[/for];
+
+END$$
+-- ================================================================================
+[/template]
+
+
+[template private generateProcedureInsert(e : Entity)]
+-- ================================================================================
+-- accessor for Entity [e.name/]
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [e.accessorNameInsert()/];
+CREATE PROCEDURE [e.accessorNameInsert()/] (
+[for (a : Attribute | e.selectAttributes()) separator(',')]
+	[a.mysqlParameterName()/] [a.mysqlType()/]
+[/for]
+) 
+BEGIN
+
+	[for (a : Attribute | e.selectPrimaryProperties())]
+	[if (a.isGUID())]
+	IF [a.mysqlParameterName()/] IS NULL THEN
+		SET [a.mysqlParameterName()/]=UUID();
+	END IF;
+	[/if]
+	[/for]
+	
+	INSERT INTO [e.mysqlName()/] ([e.selectAttributes().mysqlName()->sep(',')/])
+	VALUES ([e.selectAttributes().mysqlParameterName()->sep(',')/]);
+	
+	SELECT
+	[for (a : Attribute | e.selectAttributes()) separator(',')]
+		[a.mysqlParameterName()/] AS [a.mysqlName()/]
+	[/for];
+
+END$$
+-- ================================================================================
+[/template]
+
+
+[template private generateProcedureUpdate(e : Entity)]
+-- ================================================================================
+-- accessor for Entity [e.name/]
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [e.accessorNameUpdate()/];
+CREATE PROCEDURE [e.accessorNameUpdate()/] (
+[for (a : Attribute | e.selectAttributes()) separator(',')]
+	[a.mysqlParameterName()/] [a.mysqlType()/]
+[/for]
+) 
+BEGIN
+
+	UPDATE [e.mysqlName()/] SET
+	[for (a : Attribute | e.selectProperties()) separator(',')]
+		[a.mysqlName()/]=[a.mysqlParameterName()/]
+	[/for]
+	WHERE [for (a : Attribute | e.selectPrimaryProperties()) separator(' AND ')][a.mysqlName()/]=[a.mysqlParameterName()/][/for];
+
+END$$
+-- ================================================================================
+[/template]
+
+
+[template private generateProcedureDelete(e : Entity)]
+-- ================================================================================
+-- accessor for Entity [e.name/]
+-- ================================================================================
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [e.accessorNameDelete()/];
+CREATE PROCEDURE [e.accessorNameDelete()/] (
+[for (a : Attribute | e.selectPrimaryProperties()) separator(',')]
+	[a.mysqlParameterName()/] [a.mysqlType()/]
+[/for]
+) 
+BEGIN
+
+	DELETE FROM [e.mysqlName()/] WHERE 
+	[for (a : Attribute | e.selectPrimaryProperties()) separator(' AND ')][a.mysqlName()/]=[a.mysqlParameterName()/][/for];
+
+END$$
+-- ================================================================================
+[/template]
+
+
+[template public generateAccessors(e : Entity)]
+[e.generateProcedureSelectAll()/]
+[e.generateProcedureSelectOne()/]
+[e.generateProcedureInsert()/]
+[e.generateProcedureUpdate()/]
+[e.generateProcedureDelete()/]
+[/template]

@@ -1,0 +1,119 @@
+[module gwtserviceimpl('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template public fullFilePath(class : Class)]
+[if (class.isService() and class.ownedOperation->select(isRemote())->notEmpty())]
+[class.pathToMainJava()/]/[class.serviceImplPackage().toPath()/]/Gwt[class.name/]Impl.java
+[/if]
+
+[/template][/comment]
+
+
+[template public generateGwtServiceImpl(class : Class)? (class.isService() and class.ownedOperation->select(isRemote())->notEmpty())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(), class.serviceImplPackage().toPath(), 'Gwt'.concat(class.name).concat('Impl.java')), false))]
+package [class.serviceImplPackage()/];
+
+// [protected ('import')] 
+// for import
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import org.sharengo.exceptions.TechnicalException;
+
+import [class.servicePackage()/].I[class.name/];
+
+[if (ownedOperation->select(isRemote())->notEmpty())]
+import [servicePackage()/].IGwt[name/];
+[/if]
+
+[genCollectionImports()/]
+
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().isService())]
+import [class.superClass.serviceImplPackage()/].[class.superClass.name/]Impl;
+[/if]
+
+[for (oper:Operation|class.ownedOperation)]
+	[for (type:Type|oper.raisedException)]
+import [type.getCompleteName()/];
+	[/for]
+[/for]
+
+[for (classifier:Classifier|class.operationsParametersTypes())]
+	[if (classifier.isEntity())]
+import [classifier.entityPackage()/].[classifier.name/];
+	[else]
+import [classifier.getCompleteName()/];	
+	[/if]
+[/for]
+
+// [/protected] for import
+
+/**
+ * @see [class.servicePackage()/].I[class.name/]
+ */ 
+public class Gwt[class.name/]Impl[class.extensions()/] {
+
+	/**
+	 * class dedicated logger
+ 	 */
+	private static Log log = LogFactory.getLog([class.name/]Impl.class.getName()); 
+
+	I[class.name/] [class.name.toLowerFirst()/] = null;
+		
+	public void set[class.name.toUpperFirst()/](I[class.name/] [class.name.toLowerFirst()/]) {
+		this.[class.name.toLowerFirst()/] = [class.name.toLowerFirst()/];
+	}	
+
+[for (oper:Operation|class.ownedOperation)]
+	/**
+	 * @see [class.servicePackage()/].I[class.name/]#[name/]
+ 	 */
+	public [oper.generateReturn()/] [oper.name/]([oper.generateRawParameters()/]) throws TechnicalException[oper.genExceptions()/] {
+		[if (oper.returnResult() <> null)]return [/if][class.name.toLowerFirst()/].[oper.name/]([oper.genParameters()/]);	
+	}
+        
+[/for]
+		
+	// [protected ('private methods')] 
+	// private methods
+	// [/protected] 
+		
+}
+[/file]
+[/template]
+
+
+[template public genParameters(operation : Operation)]
+[if (operation.getRealParameters()->notEmpty())][operation.getRealParameters().name.toLowerFirst()->sep(', ')/][/if]
+[/template]
+
+
+[template public extensions(class : Class)]
+[class.inheritances()/][class.implements()/]
+[/template]
+
+
+[template public inheritances(class : Class)]
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().isService())] extends Gwt[class.superClass.name/]Impl[/if]
+[/template]
+
+
+[template public implements(class : Class)]
+ implements IGwt[class.name/]
+[/template]
+

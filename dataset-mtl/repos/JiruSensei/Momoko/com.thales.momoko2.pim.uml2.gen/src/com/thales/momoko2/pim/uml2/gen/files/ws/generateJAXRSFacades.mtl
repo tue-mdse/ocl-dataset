@@ -1,0 +1,200 @@
+[comment encoding = UTF-8 /]
+[module generateJAXRSFacades('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::common::attributes::getterSetterAttributes /]
+[import com::thales::momoko2::pim::uml2::gen::common::imports::classImports /]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::name::fileNameQueries /]
+
+[**
+ * This template generates the resource representation of a given class
+ * @param aClass
+ */]
+[template public generateJAXRSFacades(aClass : Class)
+? ((isFeatureClass(aClass) or isObjectClass(aClass)) and isAbstract._not())]
+[file (getResourceFileName(aClass), false, 'UTF-8')]
+package [aClass.getModel().name.toLower()/].ws;
+
+[generateModelElementImport(aClass)/]
+[for (aProperty : Property | aClass.attribute->asSequence()->sortedBy(name)) 
+	? (aProperty.isAssociationAttribute() and aProperty.getAssociation().name.size() > 0)]
+import [getModelPackageName(aProperty.class)/].[aProperty.getAssociation().name/];
+[/for]
+import [aClass.getModel().name.toLower()/].ws.tools.Utils;
+import [aClass.getModel().name.toLower()/].ws.config.Configurator;
+import [aClass.getModel().name.toLower()/].persistence.hubs.[aClass.name/]HubFacade;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import javax.ejb.Stateless;
+import javax.inject.Inject;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.GenericEntity;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
+
+@Stateless
+@Path("[aClass.name.toLowerFirst()/]s/")
+public class [aClass.name/]FacadeREST implements Serializable {
+
+	@Inject
+    private [aClass.name.toUpperFirst()/]HubFacade [aClass.name.toLowerFirst()/]HubFacade;
+
+    @Context
+    private UriInfo uri;
+
+    public [aClass.name/]FacadeREST() {
+    }
+
+	@PUT
+    @Consumes({"application/xml", "application/json"})
+    @Produces({"application/xml", "application/json"})
+    public [aClass.name/] create([aClass.name/] entity) {
+        return [aClass.name.toLowerFirst()/]HubFacade.create(entity);
+    }
+
+	@POST
+    @Path("{id : \\d+}")
+    @Consumes({"application/xml", "application/json"})
+    @Produces({"application/xml", "application/json"})
+    public [aClass.name/] edit(@PathParam("id") Long id, [aClass.name/] entity) {
+        return [aClass.name.toLowerFirst()/]HubFacade.edit(entity);
+    }
+
+    @DELETE
+    @Path("{id : \\d+}")
+    public void remove(@PathParam("id") Long id) {
+        [aClass.name.toLowerFirst()/]HubFacade.remove([aClass.name.toLowerFirst()/]HubFacade.find(id));
+    }
+
+    @GET
+    @Path("{id : \\d+}")
+    @Produces({"application/xml", "application/json"})
+    public [aClass.name/] find(@PathParam("id") Long id) {
+        return [aClass.name.toLowerFirst()/]HubFacade.find(id);
+    }
+
+	@GET
+    @Produces({"application/xml", "application/json"})
+    public Response findRange(
+            @QueryParam("offset") Integer offset,
+            @QueryParam("size") Integer size,
+            @QueryParam("projection") String attributes,
+            @QueryParam("condition") String condition,
+            @QueryParam("orderBy") String orderBy) {
+
+        offset = offset == null ? 0 : offset;
+        size = size == null ? Configurator.getInstance().getPageSize() : size;
+
+        int	['[]'/] range = {offset, offset + size};
+        Configurator.getInstance().setPageSize(range['[1]'/] - range['[0]'/]);
+
+        List<[aClass.name/]> [aClass.name.toLowerFirst()/]s = [aClass.name.toLowerFirst()/]HubFacade.searchRange(range,
+                Utils.stringToList(attributes, Configurator.getInstance().getParamSeparator()),
+                Utils.stringToMap(condition, Configurator.getInstance().getParamSeparator()),
+                Utils.stringToMap(orderBy, Configurator.getInstance().getParamSeparator()));
+
+        int prevRange = Math.max(offset - size, 0);
+        int nextRange = offset + size;
+        int pageSize = size;
+
+        String linkCondition = "";
+        if (condition != null && !condition.isEmpty()) {
+            linkCondition = "&condition=" + condition;
+        }
+
+		return Response.ok(
+			new GenericEntity<List<[aClass.name/]>>(new ArrayList([aClass.name.toLowerFirst()/]s)) {}
+			).link(uri.getAbsolutePath() + "?offset=" + prevRange + "&size=" + pageSize + linkCondition, Configurator.getInstance().getLinkPreviousName())
+             .link(uri.getAbsolutePath() + "?offset=" + nextRange + "&size=" + pageSize + linkCondition, Configurator.getInstance().getLinkNextName())
+             .build();
+    }
+
+	[for (aProperty : Property | aClass.attribute->asSequence()->sortedBy(name)) 
+	? (aProperty.isAssociationAttribute() and aProperty.getAssociation().name.size() > 0)]
+    @GET
+    @Path("{id_[aClass.name.toLower()/] : \\d+}/[aProperty.getAssociation().name.toLower()/]s")
+    @Produces({"application/xml", "application/json"})
+    public Response get[aClass.name/][aProperty.getAssociation().name/]sRange(
+            @PathParam("id_[aClass.name.toLower()/]") Long id_[aClass.name.toLower()/],
+            @QueryParam("offset") Integer offset,
+            @QueryParam("size") Integer size,
+            @QueryParam("condition") String condition,
+            @QueryParam("orderBy") String orderBy) {
+
+        offset = offset == null ? 0 : offset;
+        size = size == null ? Configurator.getInstance().getPageSize() : size;
+
+        int['[]'/] range = {offset, offset + size};
+        Configurator.getInstance().setPageSize(range['[1]'/] - range['[0]'/]);
+
+        int prevRange = Math.max(offset - size, 0);
+        int nextRange = offset + size;
+        int pageSize = size;
+
+        List<[aProperty.getAssociation().name/]> [aProperty.getAssociation().name.toLower()/]s = [aClass.name.toLowerFirst()/]HubFacade.search[aClass.name/][aProperty.getAssociation().name/]sRange(range,
+                id_[aClass.name.toLower()/],
+                Utils.stringToMap(condition, Configurator.getInstance().getParamSeparator()),
+                Utils.stringToMap(orderBy, Configurator.getInstance().getParamSeparator()));
+
+        String linkCondition = "";
+        if (condition != null && !condition.isEmpty()) {
+            linkCondition = "&condition=" + condition;
+        }
+
+        return Response.ok(
+                new GenericEntity<List<[aProperty.getAssociation().name/]>>(new ArrayList([aProperty.getAssociation().name.toLower()/]s)) {
+        })
+                .link(uri.getAbsolutePath() + "?offset=" + prevRange + "&size=" + (int) (prevRange + pageSize) + linkCondition, Configurator.getInstance().getLinkPreviousName())
+                .link(uri.getAbsolutePath() + "?offset=" + nextRange + "&size=" + (int) (nextRange + pageSize) + linkCondition, Configurator.getInstance().getLinkNextName())
+                .build();
+    }
+
+
+    @GET
+    @Path("{id_[aClass.name.toLower()/] : \\d+}/[aProperty.getAssociation().name.toLower()/]s/count")
+    @Produces("text/plain")
+    public Long countUserProjects(@PathParam("id_[aClass.name.toLower()/]") Long id_[aClass.name.toLower()/], @QueryParam("condition") String condition) {
+        return [aClass.name.toLowerFirst()/]HubFacade.count[aClass.name/][aProperty.getAssociation().name/]s(
+                id_[aClass.name.toLower()/],
+                Utils.stringToMap(condition, Configurator.getInstance().getParamSeparator()));
+    }
+	[/for]
+}
+[/file]
+[/template]
+
+[template public generateAllAssociatedObjectGetterSetter(aClass : Class)]
+[generateAssociatedObjectGetterSetter(aClass)/]
+[for (aProperty : Property | aClass.getOneAssociationObjectProperties())]
+[generateAllAssociatedObjectGetterSetter(getDestinationClass(aProperty, aProperty.getAssociation()))/]
+[/for]
+[/template]
+
+[template private generateAssociatedObjectGetterSetter (aClass : Class)]
+[for (aProperty : Property | aClass.getManyAssociationObjectProperties())]
+[generateGetterSetterOperation(getDestinationClass(aProperty, aProperty.association).name.toLowerFirst(), getDestinationClass(aProperty, aProperty.association).name.concat('Controller'))/] ;
+[/for]
+[/template]
+
+[template private generateAllAssociatedObjectImport(aClass : Class)]
+[generateAssociatedObjectImport(aClass)/]
+[for (aProperty : Property | aClass.getOneAssociationObjectProperties())]
+[generateAllAssociatedObjectImport(getDestinationClass(aProperty, aProperty.getAssociation()))/]
+[/for]
+[/template]
+
+[template private generateAssociatedObjectImport(aClass : Class)]
+[for (aProperty : Property | getManyAssociationObjectProperties(aClass))]
+[generateModelElementImport(getDestinationClass(aProperty, aProperty.association))/]
+[/for]
+[/template]

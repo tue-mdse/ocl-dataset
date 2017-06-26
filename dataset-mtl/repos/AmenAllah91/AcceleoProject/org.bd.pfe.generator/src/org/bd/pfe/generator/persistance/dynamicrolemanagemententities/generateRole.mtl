@@ -1,0 +1,203 @@
+[comment encoding = UTF-8 /]
+[module generateRole('http://www.businessdecision.fr/Generator')]
+[import org::bd::pfe::generator::persistance::packagePath /]
+[import org::bd::pfe::generator::persistance::dynamicrolemanagemententities::generatePermission/]
+[import org::bd::pfe::generator::persistance::dynamicrolemanagemententities::generatePrivilege/]
+[template public generateRole(persistence :PersistanceObject){packageName : String = persistence.eContainer(Application)._package;}]
+
+[file(persistence.eContainer(Application).name.concat('-domaine/src/main/java/').concat(packageName.convertPackageToPath() .concat('/persistance/')).concat('Role.java'),false,'UTF-8')]
+package [packageName.concat('.persistance')/];
+
+
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.*;
+import javax.persistence.*;
+
+/**
+ * The Class Role .
+ *
+ * @author Business & Decision
+ *
+ */
+
+@Entity
+public class Role implements Serializable {
+
+/** The Constant serialVersionUID. */
+     private static final long serialVersionUID = 1L;
+
+     private Long id;
+     private String role;
+     private List<[persistence.name.toUpperFirst()/]>  [persistence.name.toLowerFirst()/]s;
+	 private Set<Privilege> privileges;
+
+
+/**
+	 * Instantiates a new Privilege.
+**/
+
+        public Role() {
+		      super();
+	    }   
+/**
+	 * Sets the id.
+	 *
+	 * @param id
+	 *            the new id
+	 */
+    public void setId(Long id){
+    this.id= id ;
+    }
+	
+/**
+	 * Gets the id.
+	 *
+	 * @return the  id
+	 */
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    public  Long getId(){
+        return id;
+    }
+
+/**
+	 * Gets the role.
+	 *
+	 * @return the  role
+	 */
+    public String getRole() {
+		return this.role;
+	}
+/**
+	 * Sets the role.
+	 *
+	 * @param role
+	 *            the new role
+	 */
+	public void setRole(String role) {
+		this.role = role;
+	}
+
+/**
+	 * Gets the[persistence.name.toLowerFirst()/]s.
+	 *
+	 * @return the [persistence.name.toLowerFirst()/]s
+	 */
+	@OneToMany
+    public List<[persistence.name.toUpperFirst()/]> get[persistence.name.toUpperFirst()/]s(){
+        return [persistence.name.toLowerFirst()/]s;
+	}
+/**
+	 * Sets the [persistence.name.toLowerFirst()/]s.
+	 *
+	 * @param [persistence.name.toLowerFirst()/]s
+	 *            the new [persistence.name.toLowerFirst()/]s
+	 */
+    public void set[persistence.name.toUpperFirst()/]s(List<[persistence.name.toUpperFirst()/]> [persistence.name.toLowerFirst()/]s){
+        this.[persistence.name.toLowerFirst()/]s=[persistence.name.toLowerFirst()/]s;
+	}
+
+/**
+	 * Gets the  privileges.
+	 *
+	 * @return the   privileges
+	 */
+	@ManyToMany(mappedBy="roles" , fetch = FetchType.EAGER)
+	public Set<Privilege> getPrivileges(){
+         return privileges;
+	}
+/**
+	 * Sets the privileges.
+	 *
+	 * @param privileges
+	 *            the new privileges
+	 */
+    public void setPrivileges(Set<Privilege> privileges){
+         this.privileges=privileges;
+	}
+
+
+    public Role(String role, Set<Privilege> privileges) {
+		super();
+		this.role = role;
+		this.privileges = privileges;
+	}
+
+/**
+*
+* hashCode() returns a hash code value for the object.
+* This method is supported for the benefit of hash tables such as those provided by HashMap.
+*
+*/
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((id == null) ? 0 : id.hashCode());
+		return result;
+	}
+
+
+/**
+*
+* This methode indicates whether some other object is "equal to" this one.
+*
+*/
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Role other = (Role) obj;
+		if (id == null) {
+			if (other.id != null)
+				return false;
+		} else if (!id.equals(other.id))
+			return false;
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "Role['['/]id=" + id + ", role=" + role + ", [persistence.name.toLowerFirst()/]s=" + [persistence.name.toLowerFirst()/]s
+				+ ", privileges=" + privileges + "[']'/]";
+	}
+
+  
+	public  Set <Privilege> privilegesFils ()
+	{
+		 
+		Set <Privilege> privilegesFils=new HashSet<Privilege> ();
+		for(Privilege p : privileges)
+		{
+			if(p.getPrivilegeSup()!=null)
+			{
+				privilegesFils.add(p) ;
+			}
+		}
+		return privilegesFils ;
+	}
+
+
+
+
+
+
+
+ } 
+
+[/file]
+[/template]
+[template public generateRolePerPriv(persistance :PersistanceObject)]
+[if (persistance.isAuthentification)]
+[persistance.generatePermission()/]
+[persistance.generatePermissionPK()/]
+[persistance.generatePrivilege()/]
+[persistance.generateRole()/]
+[/if]
+[/template]

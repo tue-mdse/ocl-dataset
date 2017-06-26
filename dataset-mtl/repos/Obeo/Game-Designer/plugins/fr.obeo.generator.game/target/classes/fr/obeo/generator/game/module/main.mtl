@@ -1,0 +1,621 @@
+[comment encoding = UTF-8 /]
+[module main('http://www.obeo.fr/game')/]
+
+[import fr::obeo::generator::game::service::services /]
+
+[**
+ * Generates the html index and the js file of the game.
+ * 
+ * @param game the Game
+ */]
+[template public main(game : Game)]
+	[comment @main /]
+	
+	[file (game.name + '/index.html', false, 'UTF-8')]
+	[game.indexHtml()/]	
+	[/file]
+	
+	[file (game.name + '/' + game.jsFileName(), false, 'UTF-8')]
+	[game.jsFileContent()/]	
+	[/file]
+	
+[/template]
+
+[**
+ * Gets the js file name.
+ * 
+ * @param game 
+ */]
+[query public jsFileName(game : Game) : String = game.name.concat('.js') /]
+
+[**
+ * Generate the html index content.
+ * 
+ * @param game the Game
+ */]
+[template public indexHtml (game : Game) ]
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0"/>
+<title>Full-featured platformer example</title>
+<script src='lib/quintus.js'></script>
+<script src='lib/quintus_sprites.js'></script>
+<script src='lib/quintus_scenes.js'></script>
+<script src='lib/quintus_input.js'></script>
+<script src='lib/quintus_anim.js'></script>
+<script src='lib/quintus_2d.js'></script>
+<script src='lib/quintus_touch.js'></script>
+<script src='lib/quintus_ui.js'></script>
+<script src='lib/quintus_tmx.js'></script>
+<script src='lib/quintus_audio.js'></script>
+
+<script src='[game.jsFileName()/]'></script>
+<link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <div id='loading'>
+    <div id='loading_container'>
+      <div id='loading_progress'><span>loading [game.name/]...</span></div>
+    </div>
+  </div>
+</body>
+</html>
+[/template]
+
+[**
+ * Generates the js file content.
+ * 
+ * @param game the Game
+ */]
+[template public jsFileContent (game : Game) ]
+window.addEventListener("load",function() {
+
+// Set up an instance of the Quintus engine  and include
+// the Sprites, Scenes, Input and 2D module. The 2D module
+// includes the `TileLayer` class as well as the `2d` componet.
+var Q = window.Q = Quintus({audioSupported: ['['/] 'wav','mp3','ogg' ]})
+        .include("Sprites, Scenes, Input, 2D, Anim, Touch, UI, TMX, Audio")
+        // Maximize this game to whatever the size of the browser is
+        .setup({ maximize: true })
+        // And turn on default input controls and touch input (for UI)
+        .controls(true).touch()
+        // Enable sounds.
+        .enableSound();
+
+// Load and init audio files.
+
+[for (sprite : Sprite | game.sprites)]
+	[sprite.declareMask()/]
+[/for]
+
+[for (sprite : Sprite | game.getDeclareOrderedSprites())]
+	[sprite.declare()/]
+[/for]
+
+[game.scenes.declareScene()->sep('\n')/]
+
+[game.load()/]
+
+});
+[/template]
+
+[**
+ * Declares the Sprite collision mask.
+ * 
+ * @param sprite the Sprite 
+ */]
+[template public declareMask (sprite : Sprite) ]
+Q.SPRITE_[sprite.getMaskName().toUpperCase()/] = [sprite.getMask()/];
+[/template]
+
+[**
+ * Loads TMX and resources of the game.
+ * 
+ * @param game the Game
+ */]
+[template public load (game : Game) ]
+Q.loadTMX("[game.scenes->filter(TMX)->collect(name + '.tmx')->addAll(game.scenes->filter(TMX).sprites.sheet->collect(name + '.png'))->addAll(game.scenes->filter(TMX).sprites.sheet->collect(name + '.json'))->addAll(game.scenes->filter(TMX).getSounds()->collect(name + '.mp3'))->asSet()->sep(', ')/]", function() {
+    [for (sheet : Sheet | game.scenes->filter(TMX).sprites.sheet->asSet())]
+    	Q.compileSheets("[sheet.name/].png", "[sheet.name/].json");
+    [/for]
+
+    [for (sprite : Sprite | game.scenes->filter(TMX).sprites)]
+    	[sprite.loadAnimation()/]
+    [/for]
+    [for (scene : Scene | game.stage)]
+    	[scene.stageScene()/]
+    [/for]
+}, {
+  progressCallback: function(loaded,total) {
+    var element = document.getElementById("loading_progress");
+    element.style.width = Math.floor(loaded/total*100) + "%";
+    if (loaded == total) {
+      document.getElementById("loading").remove();
+    }
+  }
+});
+[/template]
+
+[**
+ * Gets used Sound for a given TMX.
+ * @param tmx the TMX
+ */]
+[query public getSounds (tmx : TMX) : Set(Sound) = tmx.sprites.getSounds()->asSet() /]
+
+[**
+ * Gets used Sound for a given Sprite.
+ * 
+ * @param sprite the Sprite
+ */]
+[query public getSounds (sprite : Sprite) : Set(Sound) = (sprite.states.actions->filter(Play).sound->union(sprite.events.actions->filter(Play).sound))->asSet() /]
+
+[**
+ * Gets used Animation for a given Sprite.
+ * 
+ * @param sprite the Sprite
+ */]
+[query public getAnimations (sprite : Sprite) : Set(Animation) = (sprite.states.actions->filter(Animate).animation->union(sprite.events.actions->filter(Animate).animation))->asSet() /]
+
+[**
+ * Loads Animation for a given Sprite.
+ * 
+ * @param sprite the Sprite 
+ */]
+[template public loadAnimation (sprite : Sprite)? (sprite.getAnimations()->size() > 0) ]
+    Q.animations("[sprite.name/]", {
+      [sprite.getAnimations()->collect(name + ': ' + value)->sep(',\n')/]
+    });
+[/template]
+
+[**
+ * Generate the js equivalent of the given Axis.
+ * 
+ * @param axis the Axis
+ */]
+[query public toJs (axis : Axis) : String =
+if axis = Axis::NONE then
+  'false'
+else
+  if axis = Axis::X then
+    '"x"'
+  else
+    '"y"'
+  endif
+endif
+
+ /]
+
+[**
+ * Declares the given Scene.
+ * 
+ * @param scene the Scene
+ */]
+[template public declareScene (scene : Scene) ]
+// TODO declare scene [scene.eClass().name/]
+[/template]
+
+[**
+ * Declares the given TMX scene.
+ * 
+ * @param scene the TMX
+ */]
+[template public declareScene (scene : TMX) ]
+Q.scene("[scene.name/]",function(stage) {
+  Q.stageTMX("[scene.name/].tmx",stage);
+
+[if (not scene.follow.oclIsUndefined())]
+  stage.add("viewport").follow(Q("[scene.follow.name.toUpperFirst()/]").first());
+[/if]
+});
+[/template]
+
+[**
+ * Declares the given UI scene.
+ * 
+ * @param scene the UI
+ */]
+[template public declareScene (scene : UI) ]
+Q.scene('[scene.name/]',function(stage) {
+[for (widget : Widget | scene.widgets)]
+	[widget.declareWidget()/]
+[/for]
+});
+[/template]
+
+[**
+ * Stages the given Scene.
+ * 
+ * @param scene the Scene 
+ */]
+[template public stageScene (scene : Scene) ]
+// TODO stage scene [scene.eClass().name/]
+[/template]
+
+[**
+ * Stages the given TMX Scene.
+ * 
+ * @param scene the TMX 
+ */]
+[template public stageScene (scene : TMX) ]
+Q.stageScene("[scene.name/]");
+[/template]
+
+[**
+ * Stages the given UI Scene.
+ * 
+ * @param scene the UI 
+ */]
+[template public stageScene (scene : UI) ]
+Q.stageScene('[scene.name/]', [scene.eContainer(Game).stage->indexOf(scene)/][if (scene.eAllContents(Text)->select(not property.oclIsUndefined())->size() > 0)], [scene.stageSceneParameter()/][/if]);
+[/template]
+
+[**
+ * Declares scene parameters for staging UI scene.
+ * 
+ * @param scene the UI
+ */]
+[template public stageSceneParameter (scene : UI) post (trim())]
+{ [scene.eAllContents(Text)->select(not property.oclIsUndefined()).property.eContainer(Sprite)->asSet()->collect(name + ': Q("' + className + '").first().p')->asSet()->sep(', ')/] }
+[/template]
+
+[**
+ * Declares the given Sprite.
+ * 
+ * @param sprite the Sprite 
+ */]
+[template public declare (sprite : Sprite) ]
+Q.[if (sprite.parent.oclIsUndefined())]Sprite[else][sprite.parent.className/][/if].extend("[sprite.className/]", {
+  init: function(p) {
+    this._super(p,{
+      [if (not sprite.name.oclIsUndefined() and not (sprite.name = ''))]
+      sheet: "[sprite.name/]",
+      sprite: "[sprite.name/]",
+      [/if]
+      [if (sprite.parent.oclIsUndefined())]
+      	type: Q.SPRITE_[sprite.getMaskName().toUpperCase()/],
+        collisionMask: Q.SPRITE_DEFAULT [if (sprite.events->filter(Collision)->size() > 0)] | [sprite.events->filter(Collision)->collect('Q.SPRITE_' + source.getMaskName().toUpperCase())->asSet()->sep(' | ')/][/if],
+        [stateVariable()/]: [sprite.defaultState.getIndex()/]
+      [/if]
+    });
+
+  [if (sprite.move = Move::INPUT)]
+  	this.add('2d');
+  	this.add('platformerControls');
+  [/if]
+  [if (sprite.move = Move::BOUNCE)]
+  	this.add('2d');
+  	this.add('aiBounce');
+  [/if]
+  [if (sprite.getAnimations()->size() > 0)]
+  	this.add('animation');
+  	this.add('tween');
+  [/if]
+  [for (eventName : String | sprite.events->filter(Collision).getEventName())]
+    [if (sprite.events->filter(Collision)->select(getEventName() = eventName)->size() > 0)]
+      this.on("[eventName/]",function(collision) {
+        switch(this.p.[sprite.stateVariable()/]) {
+        [for (state : State | sprite.states->select(events->filter(Collision)->select(getEventName() = eventName)->size() > 0))]
+          [state.collisionCase(eventName)/]
+        [/for]
+        }
+      });
+    [/if]
+  [/for]
+  [for (eventName : String | sprite.events->filter(KeyEvent).getEventName())]
+    [if (sprite.events->filter(KeyEvent)->select(getEventName() = eventName)->size() > 0)]
+      Q.input.on("[eventName/]", this, function() {
+        switch(this.p.[sprite.stateVariable()/]) {
+        [for (state : State | sprite.states->select(events->filter(KeyEvent)->select(getEventName() = eventName)->size() > 0))]
+          [state.eventCase(eventName)/]
+        [/for]
+        }
+      });
+    [/if]
+  [/for]
+  [for (eventName : String | sprite.events->select(not oclIsKindOf(Collision) and not oclIsKindOf(KeyEvent)).getEventName())]
+    [if (sprite.events->select(not oclIsKindOf(Collision) and not oclIsKindOf(KeyEvent))->select(getEventName() = eventName)->size() > 0)]
+      this.on("[eventName/]",function(collision) {
+        switch(this.p.[sprite.stateVariable()/]) {
+        [for (state : State | sprite.states->select(events->select(not oclIsKindOf(Collision) and not oclIsKindOf(KeyEvent))->select(getEventName() = eventName)->size() > 0))]
+          [state.eventCase(eventName)/]
+        [/for]
+        }
+      });
+    [/if]
+  [/for]
+  },
+  [(declareStep()->addAll(sprite.states.declareEnterState()))->sep(',\n')/]
+});
+[/template]
+
+[**
+ * Generates the name of the enter stage method for the give State.
+ * 
+ * @param state the State
+ */]
+[query public enterStateMethodName (state : State) : String = 'enterState' +state.getIndex() /]
+
+[**
+ * The state variable name for the given Sprite.
+ * 
+ * @param sprite the Sprite
+ */]
+[query public stateVariable (sprite : Sprite) : String = 'internalSpriteState' /]
+
+[**
+ * Gets the index of the given State
+ * 
+ * @param state the State
+ */]
+[query public getIndex (state : State) : Integer = state.eContainer(Sprite).states->indexOf(state) /]
+
+[**
+ * Generates the statements to run the given Action.
+ * 
+ * @param action the Action
+ */]
+[template public run (action : Action) ]
+// TODO create run template for [action.eClass().name/]
+[/template]
+
+[**
+ * Generates the statements to run the given Play action.
+ * 
+ * @param action the Play action
+ */]
+[template public run (action : Play) ]
+Q.audio.play('[action.sound.name/].mp3');
+[/template]
+
+[**
+ * Generates the statements to run the given Destroy action.
+ * 
+ * @param action the Destroy action
+ */]
+[template public run (action : Destroy) ]
+this.destroy();
+[/template]
+
+[**
+ * Generates the statements to run the given Animate action.
+ * 
+ * @param action the Animate action
+ */]
+[template public run (action : Animate) ]
+this.play("[action.animation.name/]");
+[/template]
+
+[**
+ * Generates the statements to run the given ChangeProperty action.
+ * 
+ * @param action the ChangeProperty action
+ */]
+[template public run (action : ChangeProperty) post (trim()) ]
+[if (action.operation = Operation::SET)]
+	collision.obj.p.[action.property.name/] = this.p.[action.value.name/];
+[else]
+  [if (action.operation = Operation::DECREMENT)]
+	collision.obj.p.[action.property.name/] -= this.p.[action.value.name/];
+  [else]
+	collision.obj.p.[action.property.name/] += this.p.[action.value.name/];
+  [/if]
+[/if]
+[action.property.display.eContainer(UI).stageScene()->sep('\n')/]
+[/template]
+
+[**
+ * Generates the case part of the automaton code for the given State.
+ * 
+ * @param state the State
+ * @param eventName the name of the Colliosion event
+ */]
+[template public collisionCase (state : State, eventName : String) ]
+case [state.getIndex()/]:
+  [for (event : Collision | events->filter(Collision)->select(getEventName() = eventName))]
+    if (collision.obj.isA("[event.source.className/]")) {
+      [for (action : Action | event.actions)]
+        [action.run()/]
+      [/for]
+      [if (not event.changeTo.oclIsUndefined())]
+      	this.[event.changeTo.enterStateMethodName()/]();
+      [/if]
+    }
+  [/for]
+break;
+[/template]
+
+[**
+ * Generates the case part of the automaton code for the given State.
+ * 
+ * @param state the State
+ * @param eventName the name of the event
+ */]
+[template public eventCase (state : State, eventName : String) ]
+case [state.getIndex()/]:
+  [for (event : Event | events->filter(Event)->select(getEventName() = eventName))]
+    [for (action : Action | event.actions)]
+      [action.run()/]
+    [/for]
+    [if (not event.changeTo.oclIsUndefined())]
+      this.[event.changeTo.enterStateMethodName()/]();
+    [/if]
+  [/for]
+break;
+[/template]
+
+[**
+ * Declares the enter state function.
+ * 
+ * @param state the State
+ */]
+[template public declareEnterState (state : State) ]
+[state.enterStateMethodName()/]: function() {
+  [state.enterStateMethodStatements()/]
+}
+[/template]
+
+[**
+ * Statements of the enter state method.
+ * 
+ * @param state the State
+ */]
+[template public enterStateMethodStatements (state : State) ]
+this.p.[state.eContainer(Sprite).stateVariable()/] = [state.getIndex()/];
+[if (not state.hitbox.oclIsUndefined())]
+  this.p.points = JSON.parse(this.p.[state.hitbox.name/]);
+[/if]
+[for (action : Action | state.actions)]
+  [action.run()/]
+[/for]
+[/template]
+
+
+
+[template public getEventName (event : Event)  post (trim())]
+TODO event name [event.eClass().name/]
+[/template]
+
+[template public getEventName (event : Collision) ]
+bump.[event.orientation.toString().toLowerCase()/]
+[/template]
+
+[template public getEventName (event : ArrowKey) post (trim())]
+[if (event.orientation = Orientation::TOP)]up[else][if (event.orientation = Orientation::BOTTOM)]down[else][event.orientation.toString().toLowerCase()/][/if][/if][if (not event.keyDown)]Up[/if]
+[/template]
+
+[template public getEventName (event : FireKey) post (trim())]
+fire
+[/template]
+
+[template public getEventName (event : ActionKey) post (trim())]
+action
+[/template]
+
+[template public getEventName (event : ConfirmKey) post (trim())]
+confirm
+[/template]
+
+[template public getEventName (event : EscapeKey) post (trim())]
+esc
+[/template]
+
+[template public getEventName (event : PauseKey) post (trim())]
+P
+[/template]
+
+[template public getEventName (event : SaveKey) post (trim())]
+S
+[/template]
+
+[template public getEventName (event : Jump) post (trim())]
+jump
+[/template]
+
+[template public getEventName (event : Jumped) post (trim())]
+jumped
+[/template]
+
+[template public getEventName (event : MoveDown) post (trim())]
+move.down
+[/template]
+
+[template public getEventName (event : MoveUp) post (trim())]
+move.up
+[/template]
+
+[template public getEventName (event : MoveStopVerticaly) post (trim())]
+move.stop.verticaly
+[/template]
+
+[template public getEventName (event : MoveLeft) post (trim())]
+move.left
+[/template]
+
+[template public getEventName (event : MoveRight) post (trim())]
+move.right
+[/template]
+
+[template public getEventName (event : MoveStopHorizontaly) post (trim())]
+move.stop.horizontaly
+[/template]
+
+[template public declareWidget (widget : Widget) ]
+// TODO declare widget [widget.eClass().name/]
+[/template]
+
+[template public declareWidget (widget : Container) ]
+var [widget.variableName()/] = [if (widget.eContainer().oclIsKindOf(Widget))][widget.eContainer(Widget).variableName()/][else]stage[/if].insert(
+  new Q.UI.Container({ border: [widget.border/], radius: [widget.radius/], stroke: [widget.stroke/], width: [widget.width/], height: [widget.height/], x: [widget.x/], y: [widget.y/], fill: [widget.fill/], shadow: [widget.shadow/], shadowColor: "[widget.shadowColor/]" }));
+[for (child : Widget | widget.widgets)]
+	[child.declareWidget()/]
+[/for]
+[/template]
+
+[template public declareWidget (widget : Text) ]
+var [widget.variableName()/] = [if (widget.eContainer().oclIsKindOf(Widget))][widget.eContainer(Widget).variableName()/][else]stage[/if].insert(
+  new Q.UI.Text({label: "[widget.label/]"[if (not widget.property.oclIsUndefined())] + stage.options.[widget.property.eContainer(Sprite).name/].[widget.property.name/][/if], weight: [widget.weight/], size: [widget.size/], align: "[widget.align/]", family: "[widget.family/]", color: "[widget.color/]", outline: "[widget.outline/]", outlineWidth: [widget.outlineWidth/], x: [widget.x/], y: [widget.y/] }));
+[/template]
+
+[template public variableName (widget : Widget) post (trim()) ]
+[widget.eClass().name.toLowerCase()/][widget.eContainer(UI).eAllContents(Widget)->indexOf(widget)/]
+[/template]
+
+[**
+ * Declares the step function for the given Sprite.
+ * 
+ * @param sprite the Sprite
+ */]
+[template public declareStep (sprite : Sprite) ]
+step: function(dt) {
+[if (sprite.events->filter(MoveEvent)->size() > 0)]
+  var xDelta = this.p.oldX - this.p.x;
+  var yDelta = this.p.oldY - this.p.y;
+  
+  if(this.p.oldXdelta == 0 && xDelta != 0) {
+    if (xDelta > 0) {
+      this.trigger('move.left', this.entity);
+    } else {
+      this.trigger('move.right', this.entity);
+	}
+  } else if (this.p.oldXdelta > 0 && xDelta <= 0) {
+    if (xDelta == 0) {
+      this.trigger('move.stop.horizontaly', this.entity);
+    } else {
+      this.trigger('move.right', this.entity);
+	}
+  } else if (this.p.oldXdelta < 0 && xDelta >= 0) {
+    if (xDelta == 0) {
+      this.trigger('move.stop.horizontaly', this.entity);
+    } else {
+      this.trigger('move.left', this.entity);
+	}
+  }
+  if(this.p.oldYdelta == 0 && yDelta != 0) {
+    if (yDelta > 0) {
+      this.trigger('move.up', this.entity);
+    } else {
+      this.trigger('move.down', this.entity);
+	}
+  } else if (this.p.oldYdelta > 0 && yDelta <= 0) {
+    if (yDelta == 0) {
+      this.trigger('move.stop.verticaly', this.entity);
+    } else {
+      this.trigger('move.down', this.entity);
+	}
+  } else if (this.p.oldYdelta < 0 && yDelta >= 0) {
+    if (yDelta == 0) {
+      this.trigger('move.stop.verticaly', this.entity);
+    } else {
+      this.trigger('move.up', this.entity);
+	}
+  }
+  this.p.oldX = this.p.x;
+  this.p.oldY = this.p.y;
+  this.p.oldXdelta = xDelta;
+  this.p.oldYdelta = yDelta;
+[/if]
+}
+[/template]

@@ -1,0 +1,199 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2012, 2014 CNES and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Cedric Notot (Obeo) - initial API and implementation
+[/comment]
+
+[module common('http://www.eclipse.org/uml2/5.0.0/UML','http://www.eclipse.org/umlgen/dsl/eth','http://www.eclipse.org/umlgen/dsl/asl')]
+
+[import org::eclipse::umlgen::gen::autojava::requests::port /]
+[import org::eclipse::umlgen::gen::autojava::requests::ethernet /]
+[import org::eclipse::umlgen::gen::autojava::requests::common /]
+
+[template public genPackageDeclaration(aPath : String) post(trim())]
+[if (aPath.size() > 0)]
+	package [aPath/];
+[/if]
+[/template]
+
+[template public genFullPathFile(aPath : String, aFileName : String) post(trim())]
+[aPath.substituteAll('.', '/').concat('/').concat(aFileName).concat('.java')/]
+[/template]
+
+[template public genRootClassName(aContainer : Container) ]
+Appli[aContainer.name.toUpperFirst()/]
+[/template]
+
+[template public genDecoratorPackagePath(anObj : Type)]
+[anObj.genPackagePath()/]
+[/template]
+
+[template public genDecoratorPackagePath(aProperty : Property) post(trim())]
+[if (aProperty.eInverse(Decoration)->notEmpty())][aProperty.eInverse(Decoration)->any(true).genBasePackageName()/][/if][aProperty.genPackagePath()/]
+[/template]
+
+[template public genDecoratorPackagePath(aContainer : Container)]
+[aContainer.name/]
+[/template]
+
+[template public genBufferType(aType : Type) post(trim())]
+[if (aType.isJavaPrimitive())]
+	[getProperty('java.bufferconversion.'.concat(name))/]
+[elseif(aType.oclIsKindOf(Enumeration))]
+	Integer
+[else]
+	Object
+[/if]
+[/template]
+
+[template public genClassPath(aProp : Property, aSuffix : String) post(trim())]
+[if (aProp.genDecoratorPackagePath().size() > 0)][aProp.genDecoratorPackagePath()/].[/if][aSuffix/]
+[/template]
+
+[template public genClassPath(aType : Type, aSuffix : String) post(trim())]
+[if (aType.genPackagePath().size() > 0)][aType.genPackagePath()/].[/if][aSuffix/]
+[/template]
+
+
+[template public genFilePath(aClass : Type) post(trim())]
+[let properties : OrderedSet(Property) = aClass.eInverse(Property)->select(p : Property | not p.eContainer(Class).oclIsUndefined() and p.eContainer(Class).isRoot())]
+	[if ((properties->size() = 0) or ((properties->size() > 1) and (properties.isEthernetComponentForImport()->includes(false))))]
+		[aClass.genPackagePath()/]
+	[else]
+		[properties->first().genDecoratorPackagePath()/]
+	[/if]
+[/let]
+[/template]
+
+[template public genFilePath(aPort : Port) post(trim())]
+[let properties : OrderedSet(Property) = aPort.eContainer(Class).eInverse(Property)->select(p : Property | not p.eContainer(Class).oclIsUndefined() and p.eContainer(Class).isRoot())]
+	[if (properties->size() <> 1)]
+		[aPort.genDelegateFilePath()/]
+	[else]
+		[properties->first().genDelegateFilePath(aPort)/]
+	[/if]
+[/let]
+[/template]
+
+[template public genName(aNamedElement : NamedElement) post(trim())]
+[if (not name.oclIsUndefined() and name.equalsIgnoreCase('return'))]
+	ret
+[else]
+	[aNamedElement.name/]
+[/if]
+[/template]
+
+[query public isPropertyExist(arg : OclAny, key : String) : Boolean = not getProperty(key).oclIsUndefined() and getProperty(key).size() > 0 /]
+
+[comment it comes from /org.eclipse.umlgen.gen.java/src/org/eclipse/umlgen/gen/java/common/path.mtl /]
+[template public genPackagePath(aType : Type)]
+[aType.packagePath().normalizeName()->reverse()->sep('.')/]
+[/template]
+
+[comment it comes from /org.eclipse.umlgen.gen.java/src/org/eclipse/umlgen/gen/java/common/path.mtl /]
+[template public normalizeName(anElement : NamedElement) post(trim())]
+[if ((anElement.name = 'package') or (anElement.name = 'interface') or (anElement.name = 'class'))]
+[anElement.name.concat('_')/]
+[else]
+[anElement.name/]
+[/if]
+[/template]
+
+[comment it comes from /org.eclipse.umlgen.gen.java/src/org/eclipse/umlgen/gen/java/common/declaration.mtl /]
+[template public genVisibility(aNamedElement : NamedElement)]
+[if (not (aNamedElement.visibility = VisibilityKind::_package))][aNamedElement.visibility/] [else]/*package*/ [/if]
+[/template]
+
+[comment it comes from /org.eclipse.umlgen.gen.java/src/org/eclipse/umlgen/gen/java/common/declaration.mtl /]
+[template public genAbstract(aClass : Class)]
+[if (aClass.isAbstract)]abstract [/if]
+[/template]
+
+[comment it comes from /org.eclipse.umlgen.gen.java/src/org/eclipse/umlgen/gen/java/common/declaration.mtl /]
+[template public genAbstract(anOperation : Operation)]
+[if (anOperation.isAbstract)]abstract [/if]
+[/template]
+
+[template public genAbstract(aSignal : Signal)]
+[if (aSignal.isAbstract)]abstract [/if]
+[/template]
+
+[comment it comes from /org.eclipse.umlgen.gen.java/src/org/eclipse/umlgen/gen/java/common/declaration.mtl /]
+[template public genFinal(aRedefinableElement : RedefinableElement)]
+[if (aRedefinableElement.isLeaf)]final [/if]
+[/template]
+
+[comment it comes from /org.eclipse.umlgen.gen.java/src/org/eclipse/umlgen/gen/java/common/declaration.mtl /]
+[template public genInheritance(aClassifier : Classifier)]
+[if (aClassifier.general->size() > 0)] extends [for (extendedClassifier : Classifier | aClassifier.general)][extendedClassifier.genName()/][/for][/if]
+[/template]
+
+[comment it comes from /org.eclipse.umlgen.gen.java/src/org/eclipse/umlgen/gen/java/common/declaration.mtl /]
+[template public genStatic(aFeature : Feature)]
+[if (aFeature.isStatic)]static [/if]
+[/template]
+
+[comment inspired from /org.eclipse.umlgen.gen.java/src/org/eclipse/umlgen/gen/java/files/classifierJavaFile.mtl#classifierJavaFilePath(Classifier) /]
+[template public genFullPathFile(aClassifier : Classifier)]
+[if (not aClassifier.getNearestPackage().oclIsUndefined())]
+[aClassifier.genPackagePath().substituteAll('.', '/').concat('/').concat(aClassifier.name).concat('.java')/]
+[else]
+[aClassifier.name.concat('.java')/]
+[/if]
+[/template]
+
+[template protected genBasePackageName(aDecoration : Decoration)]
+[/template]
+
+[template protected genBasePackageName(aDecoration : Container) post(trim())]
+[if (aDecoration.genDecoratorPackagePath().trim().size() > 0)]
+	[aDecoration.genDecoratorPackagePath()/].
+[/if]
+[/template]
+
+[template protected genPackagePath(aProperty : Property)]
+[aProperty.type.genPackagePath()/]
+[/template]
+
+[template protected genDelegateFilePath(aProp : Property, aPort : Port)]
+[if (aPort.isProviderSync())]
+	[aProp.genClassPath('sync.providers')/]
+[elseif (aPort.isUserSync())]
+	[aProp.genClassPath('sync.users')/]
+[elseif (aPort.isProviderASync())]
+	[aProp.genClassPath('async.providers')/]
+[elseif (aPort.isUserASync())]
+	[aProp.genClassPath('async.users')/]
+[elseif (aPort.isEmitter())]
+	[aProp.genClassPath('eventdata.emitter')/]
+[elseif (aPort.isReceiver())]
+	[aProp.genClassPath('eventdata.receiver')/]
+[/if]
+[/template]
+
+[template protected genDelegateFilePath(aPort : Port)]
+[if (aPort.isProviderSync())]
+	[aPort.eContainer(Class).genClassPath('sync.providers')/]
+[elseif (aPort.isUserSync())]
+	[aPort.eContainer(Class).genClassPath('sync.users')/]
+[elseif (aPort.isProviderASync())]
+	[aPort.eContainer(Class).genClassPath('async.providers')/]
+[elseif (aPort.isUserASync())]
+	[aPort.eContainer(Class).genClassPath('async.users')/]
+[elseif (aPort.isEmitter())]
+	[aPort.eContainer(Class).genClassPath('eventdata.emitter')/]
+[elseif (aPort.isReceiver())]
+	[aPort.eContainer(Class).genClassPath('eventdata.receiver')/]
+[/if]
+[/template]
+
+[comment it comes from /org.eclipse.umlgen.gen.java/src/org/eclipse/umlgen/gen/java/common/path.mtl /]
+[query protected packagePath(aType : Type) : Sequence(Package) = 
+	Sequence{aType.getNearestPackage()}->union(aType.getNearestPackage().ancestors()->filter(Package))->select(pack : Package | pack.oclIsTypeOf(Package))
+/]

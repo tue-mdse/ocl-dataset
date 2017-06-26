@@ -1,0 +1,41 @@
+[comment encoding = UTF-8 /]
+[module Model2Text('https://oplmetamodel.com')/]
+
+[query public isDecFloatType(aDataDeclaration : DataDeclaration) : Boolean = aDataDeclaration.type.eClass().name.equalsIgnoreCase('FloatType')/]
+[query public isDecIntegerType(aDataDeclaration : DataDeclaration) : Boolean = aDataDeclaration.type.eClass().name.equalsIgnoreCase('IntegerType')/]
+[query public isDecFloatRangeType(aDataDeclaration : DataDeclaration) : Boolean = aDataDeclaration.type.eClass().name.equalsIgnoreCase('FloatRangeType')/]
+[query public isDecIntegerRangeType(aDataDeclaration : DataDeclaration) : Boolean = aDataDeclaration.type.eClass().name.equalsIgnoreCase('IntegerRangeType')/]
+[query public isDecNotInit(aDataDeclaration : DataDeclaration) : Boolean = aDataDeclaration.value->filter(DataObject)._body->asOrderedSet()->first().equalsIgnoreCase('')/]
+
+
+[template public Model2Text(aModel : Model)]
+[comment @main /]
+[file (aModel.id.concat('.mod'), false, 'UTF-8')]		[comment]Create a file with the 'id' of the model as the name[/comment]
+[if (aModel.isConstraintProblem)]						[comment]Constraint Programming[/comment]
+using CP;
+
+[for (aDataDeclaration : DataDeclaration | aModel.data->sortedBy(order))]  	[comment]Parse through data declarations by order[/comment]
+[if (aDataDeclaration.isDecisionVar)]dvar [elseif (aDataDeclaration.isDecisionExpr)]dexpr [else][/if][if (isDecFloatType(aDataDeclaration))]float [elseif(isDecIntegerType(aDataDeclaration))]int [elseif(isDecFloatRangeType(aDataDeclaration))]float [elseif(isDecIntegerRangeType(aDataDeclaration))]int [else]float [/if][aDataDeclaration.variable.name/][for (aDataObject : DataObject | aDataDeclaration.value->filter(DataObject))][if (isDecFloatRangeType(aDataDeclaration) or isDecIntegerRangeType(aDataDeclaration))] in [elseif (isDecFloatType(aDataDeclaration) or isDecIntegerType(aDataDeclaration))] = [else] = [/if][aDataObject._body/][/for];
+[/for]
+[else]													[comment]Mathematical Programming[/comment]
+[for (aDataDeclaration : DataDeclaration | aModel.data->sortedBy(order))]  	[comment]Parse through data declarations by order[/comment]
+[if (aDataDeclaration.isDecisionVar)]dvar [elseif (aDataDeclaration.isDecisionExpr)]dexpr [else][/if][if (isDecFloatType(aDataDeclaration))]float [elseif(isDecIntegerType(aDataDeclaration))]int [else]float [/if][aDataDeclaration.variable.name/][for (aDataObject : DataObject | aDataDeclaration.value->filter(DataObject))] = [aDataObject._body/][/for];
+[/for]
+[/if]
+
+[if(aModel.instruction->size() <> 0)]										[comment]Checks if there's an objective[/comment]
+[for (aObjective : Objective | aModel.instruction->sortedBy(order))]		[comment]Parse through objectives by order[/comment]
+minimize [aObjective.expression.oclAsType(DataRef).name/];
+[/for]
+
+[if (aModel.constraints->size() <> 0)]										[comment]Checks if there's at least one constraint[/comment]
+subject to
+{
+[for (aConstraint : Constraint | aModel.constraints->sortedBy(order))]		[comment]Parse through constraints by order[/comment]
+	[if(aConstraint.name.equalsIgnoreCase(''))][else][aConstraint.name/]: [/if][aConstraint.exp.oclAsType(RelationalExpression).lhs.oclAsType(DataRef).name/] [if (aConstraint.exp.oclAsType(RelationalExpression).redefinedOp = RelationalOp::lessThan)]<[elseif(aConstraint.exp.oclAsType(RelationalExpression).redefinedOp = RelationalOp::lessThanOrEqualTo)]<=[elseif(aConstraint.exp.oclAsType(RelationalExpression).redefinedOp = RelationalOp::greaterThan)]>[elseif(aConstraint.exp.oclAsType(RelationalExpression).redefinedOp = RelationalOp::greaterThanOrEqualTo)]>=[elseif(aConstraint.exp.oclAsType(RelationalExpression).redefinedOp = RelationalOp::equalTo)]==[elseif(aConstraint.exp.oclAsType(RelationalExpression).redefinedOp = RelationalOp::notEqualTo)]!=[else][/if] [aConstraint.exp.oclAsType(RelationalExpression).rhs.oclAsType(FloatExpression)._body/]; 
+[/for]
+}
+[/if]
+[/if]
+[/file]
+[/template]

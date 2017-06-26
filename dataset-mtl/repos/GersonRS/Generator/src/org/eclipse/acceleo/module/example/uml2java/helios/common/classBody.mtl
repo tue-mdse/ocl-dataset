@@ -1,0 +1,95 @@
+[comment]
+  Copyright 2015
+[/comment]
+[module classBody('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import common/]
+
+[template public generateClassBody(c : Class)]
+public[if (c.isAbstract)] abstract[/if] class [c.name.toUpperFirst()/][for (superC : Class | c.superClass) before(' extends ') separator(',')] [superC.name/][/for][for (interf : Interface | c.getImplementedInterfaces()) before(' implements ') separator(',')] [interf.name/][/for] {
+[for (p : Property | c.getAllAttributes())]
+[if (p.upper = -1 or p.upper > 1)]
+    /**
+     * the [p.name/] attribute.
+     */
+    private List<[p.type.name/]> [p.name/];
+[else]
+    /**
+     * the [p.name/] attribute.
+     */
+    private [p.type.name/] [p.name/][if (not p.default.oclIsUndefined())] = [p.default/][/if];
+[/if]
+[/for]
+[for (p : Property | c.getAllAttributes())]
+    /**
+     * the [p.name/] getter.
+     * @return the [p.name/].
+     */
+    public [if (p.upper = -1 or p.upper > 1)]List<[p.type.name/]>[else][p.type.name/][/if] get[p.name.toUpperFirst()/]() {
+        return this.[p.name/];
+    }
+
+    /**
+     * the [p.name/] setter.
+     * @param p_[p.name/] the [p.name/] to set.
+     */
+    public void set[p.name.toUpperFirst()/]([if (p.upper = -1 or p.upper > 1)]List<[p.type.name/]>[else][p.type.name/][/if] p_[p.name/]) {
+        this.[p.name/] = p_[p.name/];
+    }
+[/for]
+[for (p : Property | c.getAssociations().memberEnd)]
+[if (p.upper = -1 or p.upper > 1)]
+    /**
+     * the [p.name/] attribute.
+     */
+    private List<[p.type.name/]> [p.name/];
+[else]
+    /**
+     * the [p.name/] attribute.
+     */
+    private [p.type.name/] [p.name/];
+[/if]
+[/for]
+[for (o : Operation | c.getOperations())]
+[o.setIsUnique(false)/]
+[o.operationBody()/]
+[/for]
+
+[if (not c.isAbstract)]
+[for (superC : Class | c.superClass)]
+	[for (s : Class | superC.superClass)]
+		[for (o : Operation | s.ownedOperation)]
+			[if (o.isAbstract)]
+				[o.setIsUnique(true)/]
+[o.operationBody()/]
+			[/if]
+		[/for]
+		[for (i : Interface | s.getImplementedInterfaces())]
+			[for (sI: Interface | i.general)]
+				[for (o : Operation | sI.ownedOperation)]
+[o.operationBody()/]
+				[/for]
+			[/for]
+		[/for]
+	[/for]
+	[for (o : Operation | superC.ownedOperation)]
+		[if (o.isAbstract)]
+			[o.setIsUnique(true)/]
+[o.operationBody()/]
+		[/if]
+	[/for]
+	[for (i : Interface | superC.getImplementedInterfaces())]
+		[for (superI: Interface | i.general)]
+			[for (o : Operation | superI.ownedOperation)]
+[o.operationBody()/]
+			[/for]
+		[/for]
+	[/for]
+[/for]
+[/if]
+[for (interf : Interface | c.getImplementedInterfaces())]
+[for (o : Operation | interf.ownedOperation)]
+[o.operationBody()/]
+[/for]
+[/for]
+}
+[/template]

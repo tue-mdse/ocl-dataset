@@ -1,0 +1,49 @@
+[comment encoding = UTF-8 /]
+[module generate_aroccam_userdefined_datatype_hpp('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DataTypeQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::FSMQueries /]
+
+[template public generateAroccamUserDefinedDataTypeHpp(elt : NamedElement, root_model : Model)]
+[file ('src/' + root_model.name + 'Application/Datatypes/' + elt.name + '.hpp', false, 'UTF-8')]
+#ifndef __EFFIBOX_Datatype_[elt.name/]_HPP__
+#define __EFFIBOX_Datatype_[elt.name/]_HPP__
+
+//stl
+#include <vector>
+
+//local includes
+#include "DataType.hpp"
+
+//other datatypes dependencies
+[for (elem: Element | elt.allOwnedElements())]
+	[comment] find elem into global user-defined Datatype list. If found then add #include[/comment]
+	[for (listDatatype: NamedElement | getElementsDataType(root_model)) ]
+		[if elem.oclIsTypeOf(Property)]
+			[if listDatatype.toString() = elem.oclAsType(Property).type.toString()]
+#include "Datatypes/[elem.oclAsType(Property).type.name/].hpp"
+			[/if]
+		[/if]
+	[/for]
+[/for]
+
+struct [elt.name/]
+{
+	[for (elem: Element | elt.allOwnedElements())]
+		[if elem.oclIsTypeOf(Property)]
+			[let s: String = elem.oclAsType(Property).getInstanceMultiplicity()]
+				[if s.equalsIgnoreCase('')] 
+	[elem.oclAsType(Property).type.name/] [elem.oclAsType(Property).name/];
+				[else]
+	std::vector<[elem.oclAsType(Property).type.name/]> [elem.oclAsType(Property).name/];
+				[/if]
+			[/let]
+		[/if]
+	[/for]
+};
+
+#endif
+[/file]
+[/template]

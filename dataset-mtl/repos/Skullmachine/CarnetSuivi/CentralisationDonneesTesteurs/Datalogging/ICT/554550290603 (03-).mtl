@@ -1,0 +1,5519 @@
+(* 
+   Carte                             Designation:                                                                                                                 Reference  :     00061904  
+                                     Fonction   :   
+                                         code   :    
+                                         
+   Programme 	                   Nom          :   554550290603.mtl 
+                                Date de creation:   18/02/2014  
+                      Date derniere modification:
+
+   Societe creatrice                         Nom:   AEROFLEX  
+                                     Programmeur:   CH.DILE 
+
+   Testeur                                  Type:     4215
+                                Version logiciel:     MTL 3.4
+                        Bibliotheque utilisateur:     Lib.mtl
+
+   Modifications
+
+
+   Composants inaccessibles       R22
+                                  LD19 LD20 LD21 LD22 LD23 LD24 LD25 LD26 LD27 LD28
+                                  LD29 LD30 LD31 LD32 LD33 LD34 LD35 LD36 
+
+   Composants non testes            C1 C7 C11 C12 C25 C30 C31 C32 C33 C34 C35 C36 C54  
+                                    U2 U3 U4 U5 U6 nombreuses pattes non accessibles 
+
+   Composants testes partiellement  LD19 ..........LD36 
+
+   Composants testes hors tolerance    
+                                      
+ 
+                                     
+   Procedures specifiques
+   
+
+   Difficultes mise au point       
+
+   Temps de test      3 secondes
+*)
+
+(* MTL libraries required by tests *)
+
+library "APPS", APPS
+library "incfunc",SYS80;
+library "initbarcode.mtl", initbarcode;           
+library "lib.mtl",lib;
+library "dualuut",DUALUUT;
+library "enregistrement_defauts.mtl", enregistrement_defauts;
+library "Ticket_Faute_Standard_03.mtl", Ticket_Faute;
+
+(* Attente mise a jour du poste de thermocollage (il doit supprimer les fichiers) *)
+:TRACA_THERMO boolean;
+TRACA_THERMO := false ;
+
+:capabilite,capabilite_fonctionnel   boolean;
+
+capabilite:=false; 
+capabilite_fonctionnel:=false;
+
+:posage string;
+
+
+(* debut declaration des variables pour CAN *)
+
+
+(******************)
+(* variables Aplus*)
+(******************)
+%NUM_SERIE_CAB_DROIT  = 3 ;
+%NUM_SERIE_CAB_GAUCHE = 5 ;
+(*%NUM_SERIE_CAB_GAUCHE = 2 ;*)
+
+:Reference_du_produit string;
+:mid string;
+:__MID__ string;
+:codebarremidbase36 string;
+:octetprocess string;
+:octetprocessff string;
+:configcombi string;
+:chksumsoft string;
+:versionsoft string;
+:typesoft string;
+:afficheur int;
+:__MID_FSM__ string;
+:__VAL_MID_FSM__ float;
+:Nip_ecrit string 
+:Nip_lu string 
+:Nip_ascii string
+:j int;
+
+(*********************************)
+(* definition des variables Aplus*)
+(*********************************)
+__MID__:="03-";
+Reference_du_produit:="554550290603 ind 01";
+codebarremidbase36:="0000000000000000";
+octetprocess:="fe";
+octetprocessff:="ff";
+configcombi:="8a";
+chksumsoft:="dd8c";
+versionsoft:="1201";
+typesoft:="abcd";		(*typesoft : detrompage entre flash et mask, si flash valeur attendu abcd sinon ffff*)
+afficheur:=0;
+__MID_FSM__:="03-0I316S";			
+
+__VAL_MID_FSM__:=62.502170;	
+
+
+(*******************************)
+(* variables calibration Aplus *)
+(*******************************)
+:correction_hex string;
+:frequence,Freq,freq_theo,ecart_freq,correction, ration    float;	(* variable frequence du quartz *)
+:Freq1,Freq2,Freq3,Freq4, deltafreq1_2,deltafreq1_3,deltafreq2_3		float;
+freq_theo:=2000000;
+ration:=32000;
+
+:LB_Coef_Correction, LH_Coef_Correction float;
+LB_Coef_Correction:=-10;
+LH_Coef_Correction:=50;
+
+
+
+(***************************)
+(*  variables trames Aplus *)
+(***************************)
+:trameAplus_initialisation_communication string;
+:trameAplus_declaration_identificateurs string;
+:trameAplus_BSI_mode_standart string;
+:trameAplus_passage_mode_diag string;
+:trameAplus_status_passage_mode_diag string;
+
+:trameAplus_lecture_cle_verrouillage string;
+:trameAplus_status_lecture_cle_verrouillage string;
+:trameAplus_ecriture_cle_verrouillage string;
+:trameAplus_status_ecriture_cle_verrouillage string;
+:trameAplus_status_lecture_cle_verrouillage_1 string;
+
+:trameAplus_sortie_logiques_0 string;
+:trameAplus_sortie_logiques_1 string;
+:trameAplus_sortie_logiques_2 string;
+:trameAplus_sortie_logiques_3 string;
+:trameAplus_status_sortie_logiques string;
+
+:trameAplus_ecriture_tracabilite string;
+:trameAplus_status_ecriture_tracabilite string;
+:trameAplus_lecture_tracabilite string;
+:trameAplus_status_lecture_tracabilite string;
+
+:trameAplus_ecriture_octetprocess string;
+:trameAplus_status_ecriture_octetprocess string;
+:trameAplus_lecture_octetprocess string;
+:trameAplus_status_lecture_octetprocess string;
+
+:trameAplus_lecture_checksum string;
+:trameAplus_status_lecture_checksum string;
+
+:trameAplus_lecture_version_soft string;
+:trameAplus_status_lecture_version_soft string;
+
+:trameAplus_ecriture_correction_montre string;
+:trameAplus_status_ecriture_correction_montre string;
+:trameAplus_lecture_correction_montre string;
+:trameAplus_status_lecture_correction_montre string;
+
+:trameAplus_reset_micro string;
+
+:trameAplus_arret_communication_can string;
+:trameAplus_ack string;
+:trameAplus_numPSA string;
+:trameAplus_codefournisseur string;
+:trameAplus_indicesoft string;
+
+:trameAplus_eclairage_05 string;
+:trameAplus_status_eclairage_05 string;
+
+:trameAplus_lecture_typesoft string;
+:trameAplus_status_typesoft string;
+
+:trameAplus_ligne_paire string;
+:trameAplus_ligne_impaire string;
+:trameAplus_ligne_Stop string;
+
+:trameAplus_com_paire string;
+:trameAplus_com_impaire string;
+:trameAplus_com_Stop string;
+
+:trameAplus_Configuration_fonctions string;
+
+:TrameReception string;
+
+:trameAplus_ecriture_Nip_ecrit string;
+:trameAplus_status_ecriture_Nip_ecrit string;
+:trameAplus_lecture_Nip_lu string;
+:trameAplus_status_lecture_Nip_lu string;
+
+
+
+
+(*******************************)
+(* definition des trames Aplus *)
+(*******************************)
+trameAplus_initialisation_communication:="0801110101e848";
+trameAplus_declaration_identificateurs:="14021103076501000006650200000036040064";
+trameAplus_BSI_mode_standart:="1203110036080000000000280100000000";
+trameAplus_passage_mode_diag:="0e2611076506651000000210fa";
+trameAplus_status_passage_mode_diag:="50fa";
+
+
+trameAplus_sortie_logiques_0:="102611076506651000000430912000";
+trameAplus_sortie_logiques_1:="102611076506651000000430912011";
+trameAplus_sortie_logiques_2:="102611076506651000000430912044";
+trameAplus_sortie_logiques_3:="1026110765066510000004309120aa";
+trameAplus_status_sortie_logiques:="709101";
+
+trameAplus_ecriture_tracabilite:="172611076506651000000b3b97"+"00"+codebarremidbase36;
+trameAplus_status_ecriture_tracabilite:="7b97";
+trameAplus_lecture_tracabilite:="0e261107650665100000022181";
+trameAplus_status_lecture_tracabilite:="6181";
+
+trameAplus_ecriture_octetprocess:="1e261107650665100000123b93"+trameAplus_status_lecture_octetprocess[9..32]+octetprocess+trameAplus_status_lecture_octetprocess[35..40];
+trameAplus_status_ecriture_octetprocess:="7b93";
+
+trameAplus_lecture_octetprocess:="0e261107650665100000022193";
+trameAplus_status_lecture_octetprocess:="6193";
+
+trameAplus_lecture_checksum:="0e261107650665100000022195";
+trameAplus_status_lecture_checksum:="6195";
+
+trameAplus_lecture_version_soft:="0e261107650665100000022180";
+trameAplus_status_lecture_version_soft:="6180";
+
+trameAplus_ecriture_correction_montre:="0f261107650665100000033b94"+correction_hex;
+trameAplus_status_ecriture_correction_montre:="7b94";
+trameAplus_lecture_correction_montre:="0e261107650665100000022194";
+trameAplus_status_lecture_correction_montre:="6194";
+
+
+trameAplus_reset_micro:="0f26110765066510000003309220";
+
+trameAplus_arret_communication_can:="040811";
+trameAplus_ack:="0309000c";
+trameAplus_numPSA:="1486628080";
+trameAplus_codefournisseur:="0002";
+trameAplus_indicesoft:="0500";
+
+trameAplus_eclairage_05:="112611076506651000000530902000FF";
+trameAplus_status_eclairage_05:="709001";
+
+trameAplus_lecture_typesoft:="11261107650665100000052302C2A002";
+trameAplus_status_typesoft:="63" + typesoft;
+
+
+trameAplus_ligne_paire  :="4226110765066510000036308a20f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0";
+trameAplus_ligne_impaire:="4226110765066510000036308a200f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f";
+trameAplus_ligne_Stop:="0f26110765066510000003308a11";
+
+
+trameAplus_com_paire:="102611076506651000000430912044";
+trameAplus_com_impaire:="102611076506651000000430912011";
+trameAplus_com_Stop:="0f26110765066510000003309111";
+
+trameAplus_Configuration_fonctions:="11261107650665100000053bb3000000"; (* Trame Nouvelle de config produit A58 *)
+
+trameAplus_ecriture_Nip_ecrit:="1A2611076506651000000E3D0400F409";
+trameAplus_status_ecriture_Nip_ecrit:="7d";
+
+trameAplus_lecture_Nip_lu:="1126110765066510000005230400F409";
+trameAplus_status_lecture_Nip_lu:="63";
+
+
+
+(****************)
+
+(*  Variables   *)
+
+(****************)
+
+%nb_chaine = 500;
+
+:trame[nb_chaine] uchar;
+
+:reponse[nb_chaine] uchar;
+
+:longueur[nb_chaine] uchar;
+
+:trace boolean;
+
+:ilong int;
+
+:time_out_int int;
+
+:index int;
+
+:compteur int;
+
+:checksum int;
+
+:checksum_verif int;
+
+:nb_octet int;
+
+:limite int;
+
+:message string;
+
+:trame_recue string;
+
+:checksum_recu string;
+
+
+
+(************************* MAINTENANCE AUTO ************************)
+(* Pointeur sur la DLL *)
+:TMPposage string;
+:Ptr_DLL_Fic_MNT DLL.Handle;
+
+(* Definition des fonctions de la DLL *)
+:Init_Maintenance_Auto##'@DLL'(param1 @string, param2 @string) int;
+:Inc_Maintenance_Auto##'@DLL' (param1 @string) int;
+(*******************************************************************)
+
+
+
+(*************************)
+
+(*  Definition DLL RS232 *)
+
+(*************************)
+
+:rsinitExA##'@DLL'(param1 string, param2 int, param3 int, param4 int,param5 int, param6 boolean, param7 int) int;
+
+:rsdone##'@DLL'(param1 int) int;
+
+:rswrt##'@DLL'(param1 int, param2 @[nb_chaine]uchar, param3 int) int;
+
+:rsrd##'@DLL'(param1 int, param2 @[nb_chaine]uchar, param3 int) int;
+
+
+
+:RS232 DLL.Handle;
+
+:hFile int;
+
+
+
+(* parite *)
+
+%NOPARITY = 0
+
+%ODDPARITY = 1
+
+%EVENPARITY = 2
+
+%MARKPARITY = 3
+
+%SPACEPARITY = 4
+
+
+
+(* nombre de bits de stop *)
+
+%ONESTOPBIT = 0
+
+%ONE5STOPBITS = 1
+
+%TWOSTOPBITS = 2
+
+
+
+
+
+(*************************************************************)
+
+(* parametres affichage pour suivi et time out liaison serie *)
+
+(*************************************************************)
+
+time_out_int := 2000;	(* pour DLL : en mS imperativement *)
+
+trace := true;
+
+(*trace := false;*)
+(* fin declaration des variables pour CAN *)
+
+
+
+(* Declaration  des  variables *)
+:sortieduprogramme boolean;
+
+:bon float;
+:mauvais float;
+:cote string;
+:circuit_ref boolean;
+:debug,ticketcustom boolean;
+:fdf int;
+:fdc int;
+:touche value;
+:trace1,trace2 boolean;
+:s string;
+
+bon:=-1;
+mauvais:=-1;
+circuit_ref:=true;
+debug:= (*true;*) false;
+trace1:=false;
+trace2:=false;
+ticketcustom:=true;
+:pas_de_test_capabilite int;
+
+%nb_mesure=200;
+
+:ligne_data[1..nb_mesure] string;
+:pas_de_test int;
+:code string;
+:modele string;
+
+(* Global Families *)
+&GREFA TP.Family {
+        DRH := 4.900 DRL := 0.200
+        MNH := 2.400 MNL := 0.800
+}
+
+
+(* IO Module
+ *                                    
+ * Warning.   	Do not change this module. It is called by other modules 
+ * -------  	which may object if any changes are made. The IO functions are
+ *		used extensively.
+ *)
+
+:IO Module
+{
+    :PrintString	(* Print to Sys.Print.Channel if it is active *)
+    {
+	:_assign(S String) void
+	{
+	    if (Sys.Print.Mode <> Off)
+	        fputs(S, Sys.Print.Channel);
+	}
+    }
+
+    :Progress		(* Display program progess *)
+    {
+	:_assign(S string) void
+	{
+	    VT.Message := S + "\n";
+	}
+    }
+
+    :GetString(Prompt String) String
+    {
+	:s string
+
+	printf("%s : ", Prompt);
+	gets(@s, ECHO | DELETE);
+	putchar('\n');
+	return(s);
+    }
+
+    :GetAnyKey(Prompt String) int
+    {
+	:Key int
+
+	printf("%s ...", Prompt);
+	putchar(Key := GetChar());
+	putchar('\n');
+	return(Key);
+    }
+
+    :GetYesNo(Prompt String) Boolean
+    {
+	:Key int
+	
+	printf("%s [y/n]? ", Prompt);
+	putchar(Key := GetChar());
+	putchar('\n');
+	case (Key) {
+	K_YES, 'Y', 'y':
+	    return(TRUE);
+	else
+	    return(FALSE);
+	}
+    }
+
+(*
+ * GetBarCode()
+ * 
+ * Read Bar Code from serial RS232 line bcr.  If a Bar Code reader is
+ * not found, the operator is prompted to enter the serial number from
+ * the keyboard.
+ *
+ * To read the Bar Code, some assumptions are made. 
+ *
+ *  +	The output from the Bar Code reader is terminated by a carriage return.
+ *  +	bcr line is correctly set for the Bar Code reader i.e. Baud rate,
+ *	parity, handshake etc.
+ *  +   Additional command string(s) may need to be sent before the Bar Code
+ *      is returned.
+ *  N.B.
+ * 	A Bar Code reader has not yet been tested with this skeleton file.
+ *	Consult the Bar Code Reader Manual for programming instructions.
+ *)
+:GETBARCODE(Prompt String) String
+    {
+	:code string; (* variable code a barres *)
+	:i int; 
+	:c[1] char;
+	%no_bytes=8;
+	:tempsout,temps0,temps1 int;
+	:trame[1] uchar;
+
+	code :="";
+	tempsout := 10; (* timeout de 10 seconde *)
+	temps0:=time.elapsed;
+
+	Serial.Channel := open("/bcr",O_RDWR|O_SERIAL|O_BINARY); (* ouverture du port serie *)
+	Serial.Baud 	:= 9600 ;
+	Serial.Bit 	:= 7 ;
+	Serial.Parity 	:= Even ;
+
+	delay(50ms);
+
+	vt.cursor := 1,25;
+	printf("%s", prompt);
+	fflush(stdout);
+
+	while((select(Serial.Channel)<10) && (temps1 < tempsout)) (* 8 octets + 1 retour chariot + 1 line feed*)
+	{
+		temps1:=time.elapsed-temps0;
+
+		(* vidage NOREAD *)
+		while(select(Serial.Channel)>0) (* vidage *)
+		{
+			read(Serial.Channel,1,@c);
+		}
+
+		(* NOUVEAU TRIG *)
+		trame[1]:=0x3C; (* < *)
+		write(Serial.Channel,1,@trame);
+		delay(50ms);
+
+		trame[1]:=0x4C; (* L  pour trigger*)
+		write(Serial.Channel,1,@trame);
+		delay(50ms);
+
+		trame[1]:=0x3E; (* > *)
+		write(Serial.Channel,1,@trame);
+		delay(500ms);
+	}
+
+	 
+	if(select(Serial.Channel)>9)
+	{
+		for(i:= 0;i<no_bytes;i:=i+1)	(* lecture du code a barres *)
+		{
+			read(Serial.Channel,1,@c);
+
+			c[1]:=c[1]&0x7f;
+
+			code := code + SYS80.chr(c[1]);
+		}
+
+		while(select(Serial.Channel)>0) (* vidage *)
+		{
+			read(Serial.Channel,1,@c);
+		}
+	}
+	else
+	{
+		code := "pas de code";
+	}
+	
+	while(select(Serial.Channel)>0)	(* vidage *)
+	{
+		read(Serial.Channel,1,@c);
+	}
+
+	close(Serial.Channel); (* fermeture du port serie *)
+
+	printf(" = %s \n",code);
+	fflush(stdout);
+
+	return(code);
+}
+
+}
+
+
+
+
+
+(*
+ * Options Module
+ *
+ * Changes may be made, if required, in order to customise operation.
+ *
+ *)
+
+:Options Module
+{
+    :AbortOnCalExpire   Boolean;
+    :AbortOnTrackFail	Boolean;
+    :AbortOnLinkFail	Boolean;
+    :ContactMode	bits {NoRetry=0, ManualRetry, AutoRetry,
+			      EjectOnFail, AbortOnFail}
+    :ContactRetries	int;
+
+    :Default() void
+    {
+	ContactMode := AutoRetry;
+	ContactRetries := 1;
+
+	AbortOnCalExpire   := false;
+	AbortOnTrackFail   := false;
+	AbortOnLinkFail    := false;
+
+        if (debug)
+        {
+	With Sys {
+	    Stop := Off;
+	   (* Cycle := Onfault;*)
+	    print.channel := stdout;
+	   (* Print.Mode := OnFault;*)
+	    Print.Stop := OnFault;
+	    Print.Cycle := Off;
+	   (* Display.Mode := (*OnTest*)off;*)
+	    Display.Stop := OnTest;
+	    Display.Cycle := ontest;
+	    Log.Mode := Off;
+            Log.Stop := Off;
+            Log.Cycle := Off;
+	    }
+        }
+        else
+        {
+        With Sys {
+            Stop := Off;
+            Cycle := Off;
+            Print.Mode := OnFault;
+            Print.Stop := OnFault;
+            Print.Cycle := Off;
+            Print.channel:= ticketprinter;
+	    Display.Mode := OnFault;
+            Display.Stop := OnTest;
+            Display.Cycle := Ontest;
+                 Log.Mode := Off;
+                 Log.Stop := Off;
+                 Log.Cycle := Off;
+                 }
+        }
+
+	BugProbe.Mode := Off;
+    }
+}
+
+
+(************************************************************************)
+(* ces fonctions peuvent etre sorties du programme principal et appelees*)
+(* soit par un library soit par un include				*)
+(************************************************************************)
+
+(*****************************************************************************)
+(*****************************************************************************)
+(*****************************************************************************)
+
+(*************************************************************************************)
+:InitDll_MNT ( Numero_Posage string ) void
+{
+
+	:Text_MNT string;
+	:Buffer string;
+	
+	(* !! C'est MTL qui reserve la mémoire pour la variable et non la DLL !! *)
+	Buffer :=  "                                                           .                                                                                 .                                                                   ." ;
+	Text_MNT := Buffer ;
+	
+	sys.print.channel:=ticketprinter;
+			
+	(* Initialisation du pointeur sur la DLL *)
+	if ( Ptr_DLL_Fic_MNT <> 0 )
+	{
+		DLL.FreeLibrary(Ptr_DLL_Fic_MNT);
+	}
+
+	Ptr_DLL_Fic_MNT := DLL.LoadLibrary("Fic_MNT.dll");
+	
+	(* Initialisation des fonctions de la DLL*)
+	DLL.BindProc(Ptr_DLL_Fic_MNT,"Init_Maintenance_Auto", Init_Maintenance_Auto);
+
+	DLL.BindProc(Ptr_DLL_Fic_MNT,"Inc_Maintenance_Auto", Inc_Maintenance_Auto);
+
+	Init_Maintenance_Auto (@Numero_Posage , @Text_MNT) ;
+
+	if ( Text_MNT <> Buffer )
+	{
+		fprintf(sys.print.channel, Text_MNT );
+		fprintf(sys.print.channel, "\nMERCI DE FAIRE PARVENIR CE TICKET\n A VOTRE TECHNICIEN DE TEST\n\n\n\n\n\n\n\n" );
+		fflush(sys.print.channel);
+	}
+}
+
+:FreeDll_MNT () void
+{
+	DLL.FreeLibrary(Ptr_DLL_Fic_MNT);
+}
+(*************************************************************************************)
+
+:init_capabilite() void
+{
+        pas_de_test_capabilite:=1;
+
+}
+
+
+
+:resultat_capabilite() void
+
+ {
+
+if ( ( (Test.type = _DIODE) || (Test.type = _TRAN) || (Test.type = _LED) ||
+	(Test.type = _FET) )
+     && (Test.mode = OFF) ) return;
+
+if ( (Test.Type = _DISCHARGE) || (Test.type= _LINK) || (Test.type = _CONTACT) 
+|| (Test.type = _TRACK) || (Test.type = _TESTMODULE) )return;
+
+(*   fprintf (fdc,"%-6.6s %-8v %-8v %-10v\n",Test.Ident, Result.Lolimit, Result.
+Hilimit, Result.Measured) ;
+*)
+
+
+        if ((result.inrange = 1) || (test.fail))
+        {
+   ligne_data[pas_de_test_capabilite]:=sprintf ("%-10.10s %-8v %-8v %-10v\n",
+           Test.Ident, Result.Lolimit, Result.Hilimit, Result.Measured) ;
+        }
+        else
+        if ((result.outofrangehi = 1) && (test.pass))
+        {
+   ligne_data[pas_de_test_capabilite]:=sprintf ("%-10.10s %-8v %-8v %-10v\n",
+           Test.Ident, Result.Lolimit, Result.Hilimit, Result.hilimit) ;
+        }
+        else
+        if ((result.outofrangelo = 1)  && (test.pass))
+        {
+   ligne_data[pas_de_test_capabilite]:=sprintf ("%-10.10s %-8v %-8v %-10v\n",
+        Test.Ident, Result.Lolimit, Result.Hilimit, Result.lolimit) ;
+        }
+
+pas_de_test_capabilite:=pas_de_test_capabilite+1;
+
+ }
+
+
+
+:sauver_capabilite(nom_fichier string) void
+{
+:i int;
+        prog.ontest:=void;
+
+	if (prog.faults=0)
+	{
+   fdc := fopen (nom_fichier,"a");
+   for (i:=1; i<= pas_de_test_capabilite; i:=i+1)
+        {
+        fprintf(fdc,"%s",ligne_data[i]);
+        }
+   fclose(fdc);
+	}
+
+}
+
+
+:Display_Count() void {
+
+: pour float;
+
+  if (((bon=-1)&&(mauvais=0))|| ((bon=0)&&(mauvais=-1)))
+
+ { bon:=0 ; mauvais:=0  ; }
+
+  if ((bon=-1)&&(mauvais=-1))
+
+   { VT.cursor := 1,1,off;
+     VT.clearscreen();
+     VT.cursor := 1,3,off;
+     Printf(" PASSAGE DE LA CARTE DE REFERENCE")
+   }
+      if ((bon!=-1)&&(mauvais!=-1))
+   {
+     VT.Attributes := Bold ;
+     VT.CharSet := Normal ;
+     VT.Flush() ;
+     
+
+     VT.cursor := 1,3,off;
+     VT.clearscreen();
+     
+    (*  VT.cursor := 4,2,off;
+       printf("version : %d",version);*)
+
+
+     VT.cursor := 4,4,off ;
+     printf("produits bons : %d",bon);
+
+     VT.cursor := 4,6,off;
+       printf("produits mauvais : %d",mauvais);
+
+    
+     VT.cursor := 4,8,off;
+      if((bon=0)&&(mauvais=0)) pour:=0;
+
+           if((bon>0)||(mauvais>0))
+
+     pour:=(mauvais*100)/(bon+mauvais);
+     printf("pourcentage de mauvais : %.1f",pour);
+
+        
+    VT.Attributes := Bold;
+    VT.Flush();
+     }
+
+ }
+
+
+:Search_Tp() void {
+
+       Prog.ProbePin := #o127 ;
+
+    While(1) {
+        Sys.Reset(nofixt) ;
+        Search.Init() ;
+        Search.type :=Scan;
+        Search.mode :=Once;
+      (*Search.Mode := Continuous ;*)
+        Search.Prepass.Threshold := 20R ;
+        Search.Prepass := Off ;
+        Search.Channel := stdout;
+
+(*      Probe.Wait();
+ *)
+        Search.Execute() ;
+        Delay(100ms) ;
+    }
+}
+
+:Pin2Tp ( PinTest Pin ) string
+{
+	:Tp string;
+	:CodeError int ;
+	:i int;
+	
+	CodeError := 0 ;
+	Tp := "" ;
+	Dbase.ErrorMode := ErrorReturn;
+	Dbase.TestPin := PinTest ;
+	CodeError := Dbase.ErrorCode ;
+	if ( CodeError = 0 )
+	{
+		for ( i:= 1 ; i<Dbase.DeviceCount; i:=i+1 )
+		{
+			if ( Dbase.DeviceIdent[i][1..2] = "TP" )
+			{
+				Tp := sprintf ( "%s",  Dbase.DeviceIdent[i] ) ;
+				i := Dbase.DeviceCount + 1 ;
+			}
+		}
+	}	
+	return (Tp) ;
+}
+
+(*
+:ticket() void
+{
+	:unite string;
+	
+	if (test.fail)
+	{
+     		case(Test.type)
+		{
+			_RES:unite := "ohms";
+			_CAP:unite := "farads";
+			_IND:unite := "henrys";
+                        _TRANSF:unite := " ";
+			_DCV,_ACV,_ZENER,_OPTO: unite:="volts";
+			_DCI: unite:="amperes";
+			_DIODE,_TRAN,_LED:
+			      case(test.mode)
+				{
+				OFF: unite := "amperes";
+				ON: unite := "volts";
+				else unite := "None" ;
+				}
+                       _FET:
+                              case(test.mode)
+                                {
+                                OFF: unite := "volts";
+                                ON: unite := "volts";
+                                RDS: unite := "ohms";
+                                else unite := "None" ;
+                                }
+		       _PULSE:
+                              case(test.mode)
+                                {
+                                TIME,PERIOD: unite := "secondes";
+                                FREQ: unite := "hertzs";
+                                else unite := "None" ;
+                                }
+                
+			else
+				unite:=" "
+		}
+	(*
+		fprintf(sys.print.channel,"^[4%s\nMini: %v%s",Test.Ident,Result.lolimit,unite);
+
+	*)
+		fprintf(sys.print.channel,"%s\nMini: %v%s\n",Test.ident,Result.lolimit,unite);
+
+		fprintf(sys.print.channel,"Maxi: %v%s\n",Result.hilimit,unite);
+
+		if (result.inrange = 1)
+			fprintf(sys.print.channel,"Mesure: %v%s\n",result.Measured,unite);
+
+		if (result.outofrangehi = 1)
+			fprintf(sys.print.channel,"Mesure: infiniment grande\n");
+
+		if (result.outofrangelo = 1)
+			fprintf(sys.print.channel,"Mesure: infiniment petite\n");
+ 
+	     (* sortie des canaux testeurs *)
+		case (test.type)
+		{
+			_RES,_CAP,_IND,_DCV,_DCI,_ACV:
+			{
+				fprintf(sys.print.channel,"Live: %p(%s)\nRef:  %p(%s)\n\n",pins.live,Pin2Tp(pins.live),pins.ref,Pin2Tp(pins.ref));
+			}
+			
+			_TRANSF:
+			{
+				fprintf(sys.print.channel,"Prim1: %p(%s)\nPrim2:  %p(%s)\nSecond1: %p(%s)\nSecond2: %p(%s)\n",pins.primary1,Pin2Tp(pins.primary1),pins.primary2,Pin2Tp(pins.primary2)
+														,pins.secondary1,Pin2Tp(pins.secondary1),pins.secondary2,Pin2Tp(pins.secondary2) );
+			}
+
+	       		_DIODE,_ZENER,_LED:
+			{
+				fprintf(sys.print.channel,"Anode: %p(%s)\nCathode: %p(%s)\n\n",pins.anode,Pin2Tp(pins.anode),pins.cathode,Pin2Tp(pins.cathode) );
+			}
+				
+			_TRAN:
+			{
+				fprintf(sys.print.channel,"emetteur: %p(%s)\nbase: %p(%s)\ncollecteur: %p(%s)\n\n",pins.emitter,Pin2Tp(pins.emitter)
+														,pins.base,Pin2Tp(pins.base)
+														,pins.collector,Pin2Tp(pins.collector) );
+			}
+
+			_FET:
+				fprintf(sys.print.channel,"source: %p(%s)\ngate:  %p(%s)\ndrain%p(%s)\n\n",pins.source,Pin2Tp(pins.source),pins.gate,Pin2Tp(pins.gate),pins.drain,Pin2Tp(pins.drain) );
+
+			_OPTO:
+			{
+				fprintf(sys.print.channel,"Anode: %p(%s)\nCathode: %p(%s)\n\n",pins.anode,Pin2Tp(pins.anode),pins.cathode,Pin2Tp(pins.cathode) );
+				fprintf(sys.print.channel,"emetteur: %p(%s)\ncollecteur: %p(%s)\n\n",pins.emitter,Pin2Tp(pins.emitter),pins.collector,Pin2Tp(pins.collector) );
+			}
+
+			_PULSE:
+	           		fprintf(sys.print.channel,"live: %p(%s)\n\n",pins.live,Pin2Tp(pins.live) );
+
+			_TRACK,_LINK,_CONTACT:	
+                       		fprintf(sys.print.channel,"Defaut CC ou contact");
+                       		
+			else  
+				printf("%s\n",Test.Ident);
+		}
+		
+		fflush(sys.print.channel);
+	
+	}
+
+}
+*)
+
+
+(*************   affiche fail sur l'ecran   ***************)
+:Display_Fail() void {
+
+	:x int
+	:y int
+
+ if (!circuit_ref)
+	{
+	  mauvais:=mauvais+1
+	  Display_count();
+	}
+
+
+    VT.Attributes := Bold ;
+    VT.CharSet := Special ;
+    VT.Flush() ;
+
+    VT.Cursor := 13+x, 29+y, Off ;
+    printf("lqqqqqqqqqk  lqqqqqqqqqk  lqqqqqqqqqk  lqk        ");
+    VT.Cursor := 13+x, 30+y, Off ;
+    printf("x lqqqqqqqj  x lqqqqqk x  mqqqk lqqqj  x x        ");
+    VT.Cursor := 13+x, 31+y, Off ;
+    printf("x x          x x     x x      x x      x x        ");
+    VT.Cursor := 13+x, 32+Y, Off ;
+    printf("x mqqqqqqqk  x mqqqqqj x      x x      x x        ");
+    VT.Cursor := 13+x, 33+Y, Off ;
+    printf("x lqqqqqqqj  x lqqqqqk x      x x      x x        ");
+    VT.Cursor := 13+x, 34+y, Off ;
+    printf("x x          x x     x x      x x      x x        ");
+    VT.Cursor := 13+x, 35+y, Off ;
+    printf("x x          x x     x x  lqqqj mqqqk  x mqqqqqqqk");
+    VT.Cursor := 13+x, 36+Y, Off ;
+    printf("mqj          mqj     mqj  mqqqqqqqqqj  mqqqqqqqqqj");
+
+    VT.CharSet := Normal ;
+    VT.Attributes := Bold ;
+    VT.Flush() ;
+    VT.Message := sprintf ("COTE : %s ->    C A R T E  M A U V A I S E    <- Tps Test : %vs", posage,Time.elapsed);
+    VT.Attributes := None ;
+    VT.Flush() ;
+
+}
+
+(*************   affiche Pass sur l'ecran   ***************)
+:Display_Pass(x int,y int) void {
+
+  if (!circuit_ref)
+        {
+	    bon:=bon+1;
+	    display_count();
+	}
+
+    VT.Attributes := Bold ;
+    VT.CharSet := Special ;
+    VT.Flush() ;
+
+    VT.Cursor  := 13+x, 29+y, Off ;
+    printf("lqqqqqqqqqk  lqqqqqqqqqk  lqqqqqqqqqk  lqqqqqqqqqk");
+    VT.Cursor  := 13+x, 30+y, Off ;
+    printf("x lqqqqqk x  x lqqqqqk x  x lqqqqqqqj  x lqqqqqqqj");
+    VT.Cursor  := 13+x, 31+y, Off ;
+    printf("x x     x x  x x     x x  x x          x x        ");
+    VT.Cursor  := 13+x, 32+Y, Off ;
+    printf("x mqqqqqj x  x mqqqqqj x  x mqqqqqqqk  x mqqqqqqqk");
+    VT.Cursor  := 13+x, 33+y, Off ;
+    printf("x lqqqqqqqj  x lqqqqqk x  mqqqqqqqk x  mqqqqqqqk x");
+    VT.Cursor  := 13+x, 34+y, Off ;
+    printf("x x          x x     x x          x x          x x");
+    VT.Cursor  := 13+x, 35+y, Off ;
+    printf("x x          x x     x x  lqqqqqqqj x  lqqqqqqqj x");
+    VT.Cursor  := 13+x, 36+y, Off ;
+    printf("mqj          mqj     mqj  mqqqqqqqqqj  mqqqqqqqqqj");
+
+    VT.CharSet := Normal ;
+    VT.Attributes := Bold ;
+    VT.Flush() ;
+    VT.Message := sprintf ("COTE : %s ->     C A R T E  B O N N E     <- Tps Test : %v", posage,Time.elapsed);
+    VT.Attributes := None ;
+    VT.Flush() ;
+
+}
+
+
+:fenetre(x int,y int,x1 int,y1 int) void
+(************************************************************************)
+(* Routine d'affichage d'une fenetre sur l'ecran                        *)
+(************************************************************************)
+{
+        :z,w int;
+        z := 1; w := 1;
+
+        VT.Cursor := 1, 1, Off ;
+        VT.Attributes := Bold ;
+        VT.CharSet := Special ;
+        VT.Flush() ;
+        VT.Cursor := x, y, Off ;
+
+        printf("l");
+        WHILE (z <= x1 + 1)
+        {
+                printf ("q")
+                z := z+1
+        };
+        z := 0;
+        printf("k");
+
+        WHILE (w <= y1)
+        {
+                VT.Cursor := x, (y+w), Off ;
+                printf("x");
+                WHILE (z <= x1)
+                {
+                        printf (" ")
+                        z := z+1
+                };
+                z := 0;
+                printf("x");
+                w := w+1
+        }
+
+        VT.Cursor := x, (y+y1+1), Off ;
+        printf("m");
+        WHILE (z <= x1)
+        {
+                printf ("q")
+                z := z+1
+        };
+        z := 0;
+        printf("j");
+        VT.CharSet := Normal ;
+        VT.Attributes := Bold ;
+        VT.Flush() ;
+        VT.Attributes := None ;
+ }
+
+
+
+:Board Module
+{
+     :Name	String		(* The board type identification string *)
+     :Operator	String		(* The operator name for logging 	*)
+     :RefNo      String         (* Fixture Reference Number             *)
+     :FixtureDelay value	(* Time to wait on board Engage/Release *)
+
+     :PowerDown() void			(* Board power-down sequence *)
+     {
+     	
+         PSU[3].State := off;
+        
+         PSU[3].Output := off;
+        fixture.control[1]:= Off;  
+
+     }
+
+     :CleanUp() void			(* Called on exit/abort/quit *)
+     {
+ 	PowerDown();
+     }
+ 
+     :Release() void			(* Release board from fixture *)
+     {
+
+ 	if (Fixture.Vacuum <> Off) 
+ 	    	(*Fixture.Vacuum := Off;*)
+		dualuut.state:=none;
+     }
+ 
+     :Abort(Message String) void	(* Function to abort test program *)
+     {
+(*
+     	IO.Progress := "Abandon: " + Message;
+     	IO.PrintString := "Abandon: " + Message;
+ 	CleanUp();
+ 	Release();
+     	Prog.Abort();
+*)
+     }
+ 
+     :Engage() void			(* Engage board on fixture *)
+     {
+	if (Fixture.Type = Vacuum) {
+ 	    if (Fixture.State <> Engaged)
+ 	        Abort("Interface non engagee");
+ 	    if (Fixture.Vacuum = Off) 
+ 	        Fixture.Vacuum := On, FixtureDelay;
+	    if (Fixture.Uutdown = FALSE) 
+ 		Abort("Carte non engagee");
+	}
+	
+	if ( posage="droit" ) {dualuut.state:=right};
+
+	if ( posage="gauche") {dualuut.state:=left };
+     }
+
+     :PowerUp() void	(* Board power-up sequence *)
+     {
+	(* Initialise flag to indicate failure *)
+        :_powerup int;
+        _powerup := 0;
+        
+     	Fixture.control[1] :=on;
+     	(*Fixture.control[4] :=on; (* commande +5V SW *)*)
+     	delay(100ms);
+ 
+        (* Set up UUT 13.5V Supply *)
+        if((PSU[3].Type & V_SWProg) && (PSU[3].Type & A_SWProg)) 
+	  {
+		PSU[3].Voltage := 13.5V;
+		PSU[3].Current := 500mA;
+        }
+        PSU[3].Output  := on;
+        
+        if(_powerup = 0) 
+	  { 
+        	PSU[3].State := on;
+		delay(50ms);
+		DCV "13.5V" 13.5V,%10 (L=#PS3,R=#PS7)
+		if(Test.Fail) _powerup := 3;
+        }
+            
+	DCV "VBAT_MES" 3V,%15 (L=#q85,R=#PS7) (* avant 2.5V, pour PRS2 JR5 remplacé par une résistance de 10K *)
+	DCV "+5V_volts" 5V,%4 (L=#q92,R=#PS7)
+	DCV "+PER_PROT" 13V,%10 (L=#q126,R=#PS7)
+	DCV "+5V_SW_OFF" <3mV (L=#q93,R=#PS7)	(* produit en veille *)
+	DCV "reg_c" 2.5V,%10 (L=#q74,R=#PS7)
+     }
+
+     :PowerUp1() void			(* Board power-up sequence *)
+     {
+	              (* Initialise flag to indicate failure *)
+        :_powerup int;
+        _powerup := 0;
+        
+     	Fixture.control[1]:=on;
+     	Fixture.control[4] :=on; (* commande +5V SW *)
+     	delay(100ms);
+ 
+        (* Set up UUT 13.5V Supply *)
+        if((PSU[3].Type & V_SWProg) && (PSU[3].Type & A_SWProg)) {
+            PSU[3].Voltage := 5.4V;
+            PSU[3].Current := 500mA;
+        }
+
+        PSU[3].Output  := on;
+        
+        if(_powerup = 0) 
+	{ 
+            PSU[3].State := on;
+	    delay(50ms);
+            DCV "5.4V" 5.4V,%10 (L=#PS3,R=#PS7)
+            if(Test.Fail) _powerup := 3;
+        }
+            DCV "RESET_1" 5V,%10 (L=#q25,R=#PS7)
+            DCV "U12 pin7_1" 3V,%10 (L=#q62,R=#PS7)
+            
+     }
+
+     :PowerUp2() void			(* Board power-up sequence *)
+     {
+	              (* Initialise flag to indicate failure *)
+        :_powerup int;
+        _powerup := 0;
+(*        
+     Fixture.control[1]:=on;
+     Fixture.control[4] :=on; (* commande +5V SW *)
+     delay(100ms);
+*) 
+        (* Set up UUT 13.5V Supply *)
+        if((PSU[3].Type & V_SWProg) && (PSU[3].Type & A_SWProg)) {
+            PSU[3].Voltage := 5V;
+            PSU[3].Current := 500mA;
+        }
+        PSU[3].Output  := on;
+        
+        if(_powerup = 0) { 
+            PSU[3].State := on;
+	    delay(50ms);
+            DCV "5V" 5V,%10 (L=#PS3,R=#PS7)
+            if(Test.Fail) _powerup := 3;
+        }
+		delay(2s);
+
+             DCV "RESET_2" <1V (L=#q25,R=#PS7)
+            DCV "U12 pin7_2" <1V (L=#q62,R=#PS7)
+           
+     }
+   
+
+
+
+     :SerialNo			(* BUT Serial number/Entry routines	*)
+     {
+ 	%_type	String
+ 	:_value String
+ 	:_resolve() String	  { return(_value) }
+ 	:_assign(n String) String { return(_value := n) }
+ 
+ 	:EntryType enum {Manual, AutoIncrement, BarCode, BarcodeIncrement, None}
+ 	:Entry() String
+ 	{
+
+	EntryType:= BarCode;
+
+ 	    case (EntryType) {
+ 	      Manual:
+ 		{
+ 		    _value := IO.GetString("Entrer le Numero de la carte");
+
+ 		}
+ 	      AutoIncrement:	(* Only for pure decimal digit strings *)
+ 		{
+ 		    _value := sprintf("%d", atoi(_value) + 1);
+ 		}
+ 	      BarcodeIncrement:
+ 		{
+		    (* Assumes characters at end of serial number are numeric *)
+		    (* Also assumes (unlike AutoIncrement above) that the length *)
+		    (* of the serial number will not change in a barcode *)
+		    :len, i int;
+		    :last char;
+		    :s string;
+		    :err Boolean;
+
+		    len := sizeof(_value);
+		    s := "";
+		    err := False;
+		    while (len > 0) {
+			last := ExtractChar(_value, len);
+			len := len - 1;
+			if (last = '9') {
+			    (* Increment and overflow back to previous char *)
+			    s := s + "0";
+			    if (len = 0)
+				err := True;
+			}
+			else if ((last >= '0') && (last < '9')) {
+			    (* A digit to be incremented and finished *)
+			    last := last + 1;
+			    s := sprintf("%c", last) + s;
+			    break;
+			}
+			else {
+			    (* Non-numeric - treat as an error *)
+			    err := True;
+			}
+		    }
+		    if (err)
+			Abort("Barcode serial number overflow on automatic increment")
+		    else {
+		    	(* Concatenate remaining s/n with trailing 0's *)
+			_value := sprintf("%s%s", _value[1 .. len], s);
+		    }
+ 		}
+ 	      BarCode:
+ 		{
+(* 		    _value := IO.GetBarCode("Lecture code barre du numero de serie de la carte");
+*)
+		    _value := initbarcode.lecturecodebarres(0); 
+		
+		    mid:=_value;
+
+ 		}
+ 	      None:
+ 		{
+ 		   _value := "";
+ 		}	
+ 	    }
+(*
+ if((_value[1..2] != "1A")  || (sizeof(_value)!=8))
+
+    {
+    fprintf(sys.print.channel,"\ncode a barre = %s",_value);
+    
+    Prog.Faults := Prog.Faults+1;
+    }
+
+*)
+ 	    return(_value)
+ 	}
+     }
+
+     :DefSysPins() void			(* ProbePin & SysPin definitions *)
+     {
+(*	prog.probepin := #q127
+ Prog.SysPins[2] := #o1;
+ Prog.SysPins[3] := #m33;
+ Prog.SysPins[4] := #m34;
+ Prog.SysPins[5] := #c0;
+ Prog.SysPins[6] := #c1;
+ Prog.SysPins[7] := #o2;
+ Prog.SysPins[8] := #o3;
+ Prog.SysPins[9] := #m35;
+ Prog.SysPins[10] := #m36;
+ Prog.SysPins[11] := #c2;
+ Prog.SysPins[12] := #c3;
+ Prog.SysPins[13] := #o4;
+ Prog.SysPins[14] := #o5;
+ Prog.SysPins[15] := #o6;
+ Prog.SysPins[16] := #o7;
+ 
+ *)
+     }
+
+     :CheckCal() void
+     {
+	(*if(!Cal.Valid) {
+	    if(Options.AbortOnCalExpire) {
+		Abort("Calibration systeme expiree");
+	    }
+	    else {
+		IO.GetAnyKey(
+		    "Calibration systeme expiree");
+	    }
+	}*)
+     }
+
+     :Define( ) void
+     {
+	Board.SerialNo.EntryType := Barcode; (*manual;*)
+	Board.RefNo := "4542";       (* Insert Board Reference Number *)
+	Board.FixtureDelay := 1s;
+     }
+ 
+     :Begin() void			(* Called to start test program *)
+     {
+		fprintf(panel,"^L                          ");
+		fprintf(panel,"^M                          ");
+		:bmofile	string
+		:mdbfile	string
+
+
+ 		IO.Progress := "Debut du test";
+		Define();
+	      CheckCal();
+	 	Prog.Begin();
+	 	Prog.OnExit := CleanUp;
+	 	Name := "";
+
+		(* Check correct fixture *)
+	 	if (Board.RefNo <> sprintf("%.4x", Fixture.Ident))
+ 		    Abort("Mauvaise interface");
+
+		(* Backdrive monitor control *)
+      	BackDrive.Mode := on
+		if(BackDrive.Mode = on)
+		{
+		    bmofile := FindFile("4542.bmo")
+		    if(bmofile = "")
+			Abort("Impossible de trouver le fichier BackDrive 4542.bmo")
+		    BackDrive.DataFile(bmofile)
+		}
+
+		(* load Dbase file *)
+		mdbfile := FindFile("4542.mdb")
+		if(mdbfile = "")
+			Abort("Impossible de trouver le fichier datatbase 4542.mdb")
+		Dbase.Open(mdbfile);
+
+		(* define prog.probepin & prog.syspins *)
+	 	DefSysPins();
+
+		(* Engage uut *)
+	 	(*SerialNo.Entry();*)
+
+	 	if (Sys.Log.Mode <> Off) 
+		{
+ 			if (Board.Operator = "")
+	 		Board.Operator := IO.GetString("Entrez le nom d'operateur");
+ 		    	With Log 
+			{
+ 				BoardType := Name;
+		 		SerialNumber := SerialNo;
+	 			FixtureNumber();
+	 			Operator := Board.Operator;
+ 		    	}
+ 		}
+     }
+ 
+     :End() void				(* Called to end test program *)
+     {
+		IO.Progress := "Board End" ;
+	 	if (Prog.Fail)
+		{
+	 		IO.PrintString :=
+			sprintf("Ref Produit : A PLUS  \n%s\n", Time.Ascii(Time.Current));
+			IO.PrintString := sprintf("Code MID... : %s\nCote ...... : %s\n\n\n\n\n",mid,posage);
+			Display_fail();
+			IO.Getanykey("\n\n\1\1\1CARTE MAUVAISE....APPUYER SUR LA BARRE D'ESPACE");
+		}
+	 	else
+ 		{
+			Display_Pass(1,4);
+		}
+
+		fflush(ticketprinter);
+ 		CleanUp();
+	 	Release();
+ 		Prog.End(cont);
+	 	Dbase.Close();
+     }
+ 
+   
+}
+
+
+:Discharges1() void
+{
+    
+    (* WARNING: The capacitor discharge routine generated by
+     *          CAPG is for all nets on which capacitors >= 1uF
+     *          are connected, and where suitable testpins were
+     *          found. Check the CAPG error files for nets that
+     *          could not be included. Note that the discharge
+     *          order can be changed if required (sometimes
+     *          necessary for high voltage boards).
+     *
+     * WARNING: Testing should be discontinued if DISCHARGE
+     *          fails; add code to do this if not already present.
+     *)
+
+       fixture.relay[8]:= A; (* connexion PSTP0 a PSTP7 *)
+      
+       delay(100ms);
+  
+        DISCHARGE "Cap discharge" (#q74,#q92,#q122,#q124)
+        
+      fixture.relay[8]:= off; 
+     
+  
+}
+
+
+:NewTest(type enum {debut,pasdebut}, Category enum {Passive, SemiCond, Active, ActiveCont},  Title String) void
+{
+    (* Initialise Board/Fixture/System to a state appropriate
+     * for performing the specified category of test *)
+
+    if (debug)
+    {
+    	VT.Cursor := 1,15;
+        VT.Mode := absolute;
+	fprintf(sys.print.channel,"VOUS  ETES EN MODE DEBUG\n");
+    }
+
+    IO.Progress := Title;
+
+    if ((debug) || (type = debut)) 
+	{
+	    Board.Engage();
+	    Sys.Reset(NOPSU);
+
+	    case (Category) {
+
+	        Passive:
+		{
+		    Board.PowerDown();
+		    if(debug) Discharges1();
+		}
+	        SemiCond:
+		{
+		    Board.PowerDown();
+		    if(debug) Discharges1();
+		}
+	        Active:
+		{
+		    Board.PowerUp();
+		}
+	        ActiveCont:
+		{
+
+			(* on ne change rien *)
+		}
+	    }
+	}
+}
+
+
+:Discharges() Void
+{
+    sys.reset();
+
+    NewTest(debut,Passive, "DECHARGE des condensateurs");
+
+    (* WARNING: The capacitor discharge routine generated by
+     *          CAPG is for all nets on which capacitors >= 1uF
+     *          are connected, and where suitable testpins were
+     *          found. Check the CAPG error files for nets that
+     *          could not be included. Note that the discharge
+     *          order can be changed if required (sometimes
+     *          necessary for high voltage boards).
+     *
+     * WARNING: Testing should be discontinued if DISCHARGE
+     *          fails; add code to do this if not already present.
+    *)
+	
+	Fixture.relay[8]:=A; (* connexion PSTP0 a PSTP7 *)
+	delay(100ms);
+
+	(*    DISCHARGE "Cap discharge" (#q74,#q92,#q122,#q124,#q91,#q72,#q125)	*)
+	DISCHARGE "Cap discharge" (#q74,#q92,#q122,#q124)
+	fixture.relay[8]:= off; 
+    
+}
+
+
+:Contacts() boolean
+{
+	:Retries	int
+
+	NewTest(pasdebut,Passive, "Contacts");
+
+	if (options.contactretries=0)
+		Result.Netlist := 5        (* Turn on Netlist output *)
+	else
+		Result.Netlist := 0;        (* Turn off Netlist output *)
+
+	With Options 
+	{
+		Retries := 0;
+		while (1) 
+		{
+
+			
+     		CONTACT "contact"
+		(INC  #PS7,#PS3,#c24..31,#c56..63,#c81..127,#q24..31, #q56..95,#q114..126)
+		(EXC #q72,#q86,#q91 ) (* Pompes pneumatiques *)
+		(EXC #c24,#q60)       (* points en l'air *)
+		(EXC #c81..86)        (* points P1 en l'air *)
+		(EXC #q80..81,#c97)   (* suppression des pompes sur le eeprom *)
+		(EXC #q74 )           (* essai perturbation *)
+		(EXC #q62)            (* Passage en PRS2 *)
+    		(EXC #q94) 
+		(EXC #q122)	      (* Passage en PRS6*)
+   
+		if (Test.Pass || Retries >= ContactRetries)
+			break;
+
+		if (ContactMode & ManualRetry) 
+		{
+			if (!IO.GetYesNo("Recommencer CONTACT "))
+		    		break;
+			if (ContactMode & EjectOnFail) 
+			{
+			    Board.Release();
+			    IO.GetAnyKey("Appuyer une touche pour engager");
+			    Board.Engage();
+	      	}
+		} 
+  		else
+		{ 
+			if (ContactMode & AutoRetry) 
+			{
+				Board.Release();
+                		delay(1s);
+				Board.Engage();
+			} 
+			else
+				break;
+		}
+
+		Retries := Retries + 1;
+	      if (retries=options.contactretries) 
+		{
+			(* Turn on Netlist output *)
+		    	Result.Netlist := 5; 
+		}
+
+		Prog.Faults := Prog.Faults - 1;
+
+	    } (* du while *)
+    }
+    
+    Result.Netlist := 0;        (* Turn off Netlist output *)
+    return(test.fail);
+}
+
+
+
+:Tracks() boolean
+{
+	NewTest(pasdebut,Passive, "Court-circuits");
+
+    	Result.Netlist := 0;        (* Turn on Netlist output *)
+
+	
+	TRACK "shorts"
+	(INC  #PS7,#PS3,#c24..31,#c56..63,#c81..127,#q16,#q24..31,#q56..95,#q114..126)
+	(EXC #q94)
+	(EXC #c95)
+	(EXC #q74)
+	(EXC #q28) (* JR4 *)
+	(EXC #q30) (* JR5 *)
+	(EXC #q122) (* JR3 *)
+	(EXC #q80..81,#c97)       (* suppression des pompes sur le eeprom *)
+	(EXC #q72,#q86,#q91 )     (* Pompes pneumatiques *)
+	{ 
+		test.trackdelay := 50ms 
+	}	
+
+    	if (Test.Fail)
+      	IO.PrintString:= "Court-circuits \n";
+    
+	Result.Netlist := 0;        (* Turn off Netlist output *)
+	return(Test.Fail);	
+}
+
+
+:Test_Connecteur() void
+{
+
+      NewTest(pasdebut,Passive, "Test_Connecteur");
+
+(*  	LINK "P1_1 Presence" (#c32,#c0)
+    	LINK "P1_3 Presence" (#q94,#PS7)
+    	LINK "P1_6 Presence" (#c24,#c1)
+	LINK "P1_7 Presence" (#q26,#c2)
+	LINK "P1_9 Presence" (#q27,#c3)
+	LINK "P1_12 Presence" (#q60,#c4)
+*)
+     	RES DC "P1.1_CC_P1.2" >1M (L=#c0,R=#c84)
+     	RES DC "P1.1_CC_P1.7" >1M (L=#c0,R=#c2)
+	RES DC "P1.2_CC_P1.3" >1M (L=#c84,R=#q94)
+     	RES DC "P1.2_CC_P1.8" >1M (L=#c84,R=#c81)
+	RES DC "P1.3_CC_P1.4" >1M (L=#q94,R=#c83)
+     	RES DC "P1.3_CC_P1.9" >1M (L=#c94,R=#c3)
+	RES DC "P1.4_CC_P1.5" >1M (L=#c83,R=#c82)
+     	RES DC "P1.4_CC_P1.10" >1M (L=#c83,R=#c86)
+	RES DC "P1.5_CC_P1.6" >1M (L=#c82,R=#c1)
+     	RES DC "P1.5_CC_P1.11" >1M (L=#c82,R=#c85)
+	RES DC "P1.6_CC_P1.12" >1M (L=#c1,R=#c4)
+	RES DC "P1.7_CC_P1.8" >1M (L=#c2,R=#c81)
+	RES DC "P1.8_CC_P1.9" >1M (L=#c81,R=#c3)
+	RES DC "P1.9_CC_P1.10" >1M (L=#c3,R=#c86)
+	RES DC "P1.10_CC_P1.11" >1M (L=#c86,R=#c85)
+	RES DC "P1.11_CC_P1.12" >1M (L=#c85,R=#c4)
+
+}
+
+:Links() boolean
+{
+	:FaultCount int;
+
+	NewTest(pasdebut,Passive, "Continuites");
+	FaultCount := Prog.Faults
+	Result.Netlist := 5;
+  
+	(* Turn on Netlist output *)
+	Result.Netlist := 0;        (* Turn off Netlist output *)
+
+	if (Prog.Faults != FaultCount) 
+	{
+		IO.PrintString := "Coupures \n";
+		return(true);
+	}
+    
+	return(false);
+}
+
+
+:TrackLinks () boolean
+{
+	:TrackTest boolean;                      (* Tracks() pass/fail flag *)
+	:LinkTest  boolean;                      (* Links()  pass/fail flag *)
+
+	TrackTest := Tracks();
+	LinkTest := Links();
+
+	if ((TrackTest && Options.AbortOnTrackFail) || (LinkTest  && Options.AbortOnLinkFail))
+		Board.End(); 
+
+	if ((TrackTest ) || (LinkTest  ))
+	{
+		return(true);
+	}
+	else
+	{
+		return(false);
+	}
+}
+
+:Fuses() void 
+{
+	NewTest(pasdebut,Passive, "Continuites");
+	(********** Modif PRS6 SUPPRIMÉ
+	LINK "JR3" "_2D6_D3" (#q124,#q122)   
+	LINK "JR4" "_4C3_B5" (#q71,#q28)
+	(* LINK "JR6" "_4C3_B4" (#$a,#q57)  pas d'acces physique *)  
+	(*LINK "JR7" "_4C3_B4" (#$a,#q116)  pas d'acces physique *)
+   	***********)
+
+	(********** Modif PRS2
+	LINK "JR5" "_2A2_F8" (#q30,#q85)   
+	***********)
+	
+	(*    LINK "Presence_P1" (#c5,#c6) pompe switch HS pin connecteur testé *)
+   
+	TRACK "VPB1" (INC #PS7,#q78)
+    	TRACK "VPB2" (INC #PS7,#q77)
+	TRACK "VPB3" (INC #PS7,#q76)
+
+}
+
+:presence_cadre() void
+{
+	NewTest(pasdebut,Passive, "cadre");
+	:s string;
+       
+	With Sys 
+	{ 
+		Print.Mode := Off; 
+	}     
+
+	LINK "presence_cadre" (#c11,#c12)
+      if (test.fail = TRUE)
+      { 
+		s:="absent";
+		printf("      cadre %s\n",s);
+		prog.faults := prog.faults -1 ;
+	}
+	else
+      { 
+		s:="present";
+          	printf("      cadre %s\n",s);
+	}
+          
+  	With Sys 
+	{ 
+		Print.Mode := Onfault; 
+	}        
+}	
+
+
+:presence_afficheur() void
+{
+	NewTest(pasdebut,Passive, "afficheur");
+	:s string;
+       
+	With Sys 
+	{ 
+		Print.Mode := Off;
+	}
+
+	LINK "presence_LCD" (#c7,#c8) 
+	if (test.fail = TRUE)
+	{ 
+		s:="absent";
+		printf("      afficheur %s\n",s);
+		prog.faults := prog.faults -1; 
+		afficheur:=1;
+	}
+	else
+	{ 
+		s:="present";
+		printf("      afficheur %s\n",s);
+		afficheur:=0;
+	}
+         
+	With Sys 
+	{ 
+  		Print.Mode := Onfault; 
+	}       
+}	
+
+
+(*@rc*)
+:mesure_par_pneumatique() void
+{
+	:Num_Ctrl int;
+
+    	NewTest(pasdebut,Passive, "Resistances et condensateurs quartz");
+	Sys.Print.Mode := Off;
+
+	if (posage="droit") 
+	{
+		Num_Ctrl := 2 ;
+	}
+	else
+	{
+		if( posage="gauche") 
+		{
+			Num_Ctrl := 3 ;
+		}
+	}
+
+
+	Fixture.control[Num_Ctrl] := on; (* pointes pneumatiques *)
+     	delay(200ms);
+	discharges();
+	fixture.control[Num_Ctrl] := off
+	delay(200ms);
+	fixture.control[Num_Ctrl] := on;
+	delay(200ms);
+	fixture.control[Num_Ctrl] := off
+	delay(200ms);
+	fixture.control[Num_Ctrl] := on;
+	delay(200ms);
+
+	(*RES DC "R89" "_3D4_C8" 1k,%10 (L=#q89,R=#q126)	*)
+	(*RES "R22" "_4B6_D8" 470, %20 (l=#q91, r=#q72, gd=#PS7,#q86) skipper par MNle 14/12/06*)
+	  
+	(*  RES "R20" "_4B6_D8" 1M, %10 (l=#q86, r=#q91, gd=#PS7) 
+      {
+		Test.Polarity := Both
+      }  *)
+ 
+	CAP "C26" "_4B6_D8" 70p, %20 (l=#PS7, r=#q86, gd=#q91,#q72)   
+	CAP "C27" "_4B6_D8" 65p, %20 (l=#PS7, r=#q91, gd=#q86,#q72)
+	
+	Sys.Print.Mode := Onfault;
+
+	if (prog.faults != 0)
+	{	
+		prog.faults:=prog.faults-1;
+
+		fixture.control[Num_Ctrl] := off
+		delay(200ms);
+		fixture.control[Num_Ctrl] := on;
+		delay(200ms);
+		fixture.control[Num_Ctrl] := off
+		delay(200ms);
+		fixture.control[Num_Ctrl] := on;
+		delay(200ms);
+
+		(*RES "R22" "_4B6_D8" 470, %20 (l=#q91, r=#q72, gd=#PS7,#q86) skipper par MN le 14/12/06*)
+		RES "R20" "_4B6_D8" 1M, %10 (l=#q86, r=#q91, gd=#PS7) 
+     		{
+			Test.Polarity := Both
+	     	}  
+ 
+		CAP "C26" "_4B6_D8" 70p, %20 (l=#PS7, r=#q86, gd=#q91,#q72)   
+		CAP "C27" "_4B6_D8" 63p, %20 (l=#PS7, r=#q91, gd=#q86,#q72)
+	}
+   
+	(*CAP "C56" "_2A6_F3" 100p, %20 (l=#PS7, r=#q30)*)
+
+	Sys.Print.Mode := Onfault;
+
+      Fixture.control[Num_Ctrl] := off; (* pointes pneumatiques *)
+delay(200ms);
+Fixture.control[Num_Ctrl] := off; (* pointes pneumatiques *)
+}
+
+
+:Resistors() void
+{
+    
+    NewTest(pasdebut,Passive, "Resistances");
+    
+     
+
+    RES DC "R1" "_3C4_B8" 560,%20 (L=#q26,R=#q56)
+    RES DC "R2" "_3C4_B8" 560,%20 (L=#q27,R=#q117)
+    RES "R3" "_2A3_F2" 475k, %3 (l=#q124, r=#q30, gd=#PS7) 
+    {
+	Test.Dwell := 100ms
+    }  
+    RES DC "R4" "_2A3_F8" 150k,%3 (L=#PS7,R=#q30,gd=#q124)
+    RES DC "R5" "_4A5_C3" 1k,%10 (L=#q92,R=#q25)
+    RES DC "R6" "_3D6_C4" 100k,%3 (L=#q123,R=#q118)
+    RES "R7" "_3D4_C7" 10k, %10 (l=#q89, r=#q119) 
+    RES DC "R8" "_7D6_C4" 200,%10 (L=#q61,R=#q126)
+    RES "R9" "_7B5_E8" 1k, %10 (l=#q125, r=#q75) 
+    RES DC "R10" "_7D5_C6" 200,%10 (L=#q29,R=#q126)
+    RES DC "R11" "_7B5_D2" 10k,%10 (L=#PS7,R=#q125)
+    RES DC "R12" "_7D5_D6" 200,%10 (L=#q63,R=#q126)
+    RES DC "R13" "_7D4_C4" 200,%10 (L=#q120,R=#q126)
+    RES DC "R14" "_7D4_D6" 200,%10 (L=#q88,R=#q126)
+    RES DC "R15" "_7D3_D6" 200,%10 (L=#q121,R=#q126)
+    RES "R16" "_6B7_C2" 10k, %10 (l=#q92, r=#q82) 
+    RES DC "R19" "_4A5_F8" 10k,%10 (L=#PS7,R=#q73)
+    RES "R24" "_2B3_D4" 10k, %10 (l=#q31, r=#q90,gd=#PS7)  
+    
+    RES "R89" "_3D4_C8" 1k, %10 (l=#q124, r=#q89)  (*#q126*)
+   
+    RES "R23" "_2A2_F8" 10k, %20 (l=#q85, r=#q30)          
+
+}
+
+:ResPacks() void
+{
+    
+    NewTest(pasdebut,Passive, "Reseaux de resistances");
+    RES "AR1_A" "_4D7_C5" 4.7k, %10 (l=#PS7, r=#q59, gd=#q93) 
+      {
+	Test.Filter := 10kHz
+	Test.Dwell := 20ms
+      }  
+    RES "AR1_B" "_4D7_C5" 4.7k, %10 (l=#q93, r=#q59, gd=#PS7) 
+    RES "AR1_C" "_4D7_C5" 4.7k, %10 (l=#q93, r=#q58, gd=#PS7) 
+    RES DC "AR1_D" "_4C7_C5" 4.7k,%10 (R=#q58,L=#PS7,GD=#q93)
+    
+    RES DC "AR2_A" "_4B7_D5" 4.7k,%10 (R=#q24,L=#PS7,GD=#q93)
+    RES "AR2_B" "_4C7_D5" 4.7k, %10 (l=#q93, r=#q24,gd=#PS7) 
+    RES "AR2_C" "_4B7_D5" 4.7k, %10 (l=#q93, r=#q87, gd=#PS7)   
+    RES DC "AR2_D" "_4A7_D5" 4.7k,%10 (R=#q87,L=#PS7,GD=#q93)
+    
+    RES "AR3_A" "_6D4_D2" 4.7k, %10 (l=#q92, r=#q78) 
+    RES "AR3_B" "_6C4_D2" 4.7k, %10 (l=#q92, r=#q77,gd=#PS7)  
+   (* RES DC "AR3_C" "_6C4_D2" 4.7k,%10 (L=$live1,R=#$ref1) non connecte *)
+    RES "AR3_D" "_6C4_D2" 4.7k, %10 (l=#q92, r=#q76) 
+    
+}
+
+:Capacitors() void
+{
+    NewTest(pasdebut,Passive, "Condensateurs");
+
+
+
+
+    	
+	(* C1 Part of parallel test combination C11 *)
+    	CAP AC "C2" "_3D5_C7" 10n,%20 (L=#PS7,R=#q89)
+    	(* Parallel test combination - C35, C7, C6 *)
+    	CAP DC "C6//C7//C35" "_2C6_D3" 100u,%35 (L=#q124,R=#PS7)
+    	(* C7 Part of parallel test combination C6 *)
+    	(* Parallel test combination - C1, C12, C11, C25, C30, C32, C34, C33
+    	, C31, C36 *)
+    	CAP DC "C11" "_2C4_E2" 47u,%35 (L=#q92,R=#PS7,gd=#q74)
+    	(* C12 Part of parallel test combination C11 *)
+    	CAP AC "C13" "_2A2_F7" 100n,%20 (L=#PS7,R=#q85)
+    	CAP AC "C14" "_4A6_F8" 10n,%20 (L=#PS7,R=#q76)
+    	CAP AC "C15" "_4A6_F8" 10n,%20 (L=#PS7,R=#q77)
+    	CAP AC "C16" "_4A7_F8" 10n,%20 (L=#PS7,R=#q78)
+    	(* Parallel test combination - C17, C18, C19, C21, C20 *)
+    	CAP AC "C17" "_4D3_D5" 500n,%20 (R=#q93,L=#PS7)
+    	(* C18 Part of parallel test combination C17 *)
+    	(* C19 Part of parallel test combination C17 *)
+    	(* C20 Part of parallel test combination C17 *)
+    	(* C21 Part of parallel test combination C17 *)
+    	(* C25 Part of parallel test combination C11 *)
+
+(* Testé en fin de programme
+    	CAP "C26" "_4B6_D8" 72p, %20 (l=#PS7, r=#q86, gd=#q91)   
+    	CAP "C27" "_4B6_D8" 72p, %20 (l=#PS7, r=#q91, gd=#q86)  
+*)
+
+            
+	CAP AC "C29" "_4C5_E8" 10n,%20 (L=#PS7,R=#q25)
+    	(* C30 Part of parallel test combination C11 *)
+    	(* C31 Part of parallel test combination C11 *)
+    	(* C32 Part of parallel test combination C11 *)
+    	(* C33 Part of parallel test combination C11 *)
+    	(* C34 Part of parallel test combination C11 *)
+    	(* C35 Part of parallel test combination C6 *)
+    	(* C36 Part of parallel test combination C11 *)
+    	CAP AC "C41" "_3C3_C4" 290p,%20 (L=#PS7,R=#q83)
+(* suppression TP sur l'eeprom // control visuel
+    	CAP AC "C44" "_6A6_B2" 140p,%20 (L=#PS7,R=#q81)
+    	CAP AC "C45" "_6A4_C2" 140p,%20 (L=#PS7,R=#q80)
+*)
+    	CAP "C46" "_4C6_B3" 300p, %20 (l=#PS7, r=#q84) 
+
+(********** Modif PRS2
+   	 CAP AC "C48" "_2C5_F3" 100n,%20 (L=#PS7,R=#q62)
+***********)
+
+
+
+
+(********** Modif PRS6 ***********)
+	
+	CAP "C9" "_3C6_c7" 160p, %20 (l=#q92, r=#q26, gd=#q27,#q56)       
+	CAP "C10" "_3C6_c7" 160p, %20 (r=#q92, l=#q27, gd=#q26,#q56,#q117)      
+
+
+	CAP "C49" "_1C7_D9" 160p, %20 (l=#q27, r=#PS7, gd=#q26,#q117)   
+	CAP "C50" "_1C6_D9" 160p, %20 (l=#q26, r=#PS7, gd=#q27,#q56,#q117)       
+
+
+
+(********** FIN Modif PRS6 ***********)
+
+
+
+
+    	CAP "C52" "_3A5_C7" 290p, %20 (l=#PS7, r=#q79)  (* 282p *)
+
+(********** Modif PRS2
+    	CAP "C54" "_2D5_F3" 100p, %20 (l=#q92, r=#q122, gd=#PS7,#q30)non testable du fait de l'environnement          
+***********)
+    	CAP "C56" "_2A6_F3" 200p, %20 (l=#PS7, r=#q30)
+    
+    Discharges();
+	
+	CAP "C28" "_4C6_E9" 7.5u, %35 (r=#PS7, l=#q74, gd=#q92,#q73,#q25) 
+	  {
+	    Test.IntegTC := 20ms
+	  }       
+
+}
+
+:Inductors() void
+{
+    NewTest(pasdebut,Passive, "Inductances");
+        
+}
+
+
+:Diodes() void
+{
+    
+    NewTest(pasdebut,SemiCond, "Diodes");
+    DIODE ON "D1on" "_2D7_D3" 600m,900m(A=#PS3,C=#q124)
+    { test.diodei := 14mA }
+(*    DIODE OFF "D1off" "_2D7_D3"  (A=#PS3,C=#q124)*)
+    
+    DIODE ON "D2on" "_2D6_D3" 600m,900m (A=#PS3,C=#q126)
+    { test.diodei := 14mA }
+    DIODE OFF "D2off" "_2D6_D3"  (A=#PS3,C=#q126)
+    
+ 
+}
+
+:DiodePacks() void
+{
+    NewTest(pasdebut,SemiCond, "Reseaux de Diodes");
+  
+}
+
+:Leds() void
+{
+    
+    NewTest(pasdebut,SemiCond, "LEDs");
+   (* DIODE ON "LD19" "_"  (A=#$anode1,C=#q61)
+    DIODE OFF "LD19" "_"  (A=#$anode1,C=#q61) pas d'acces physique *)
+    
+   (* DIODE ON "LD20" "_"  (A=#$anode1,C=#$cathode)
+    DIODE OFF "LD20" "_"  (A=#$anode1,C=#$cathode) pas d'acces physique *)
+    
+   (* DIODE ON "LD21" "_"  (A=#q95,C=#$cathode)
+    DIODE OFF "LD21" "_"  (A=#q95,C=#$cathode) pas d'acces physique *)
+    
+   (* DIODE ON "LD22" "_"  (A=#$anode1,C=#q29)
+    DIODE OFF "LD22" "_"  (A=#$anode1,C=#q29) pas d'acces physique *)
+    
+    (*DIODE ON "LD23" "_"  (A=#$anode1,C=#$cathode)
+    DIODE OFF "LD23" "_"  (A=#$anode1,C=#$cathode) pas d'acces physique *)
+    
+    (*DIODE ON "LD24" "_"  (A=#q95,C=#$cathode)
+    DIODE OFF "LD24" "_"  (A=#q95,C=#$cathode) pas d'acces physique *)
+    
+   (* DIODE ON "LD25" "_"  (A=#$anode1,C=#q63)
+    DIODE OFF "LD25" "_"  (A=#$anode1,C=#q63) pas d'acces physique *)
+    
+   (* DIODE ON "LD26" "_"  (A=#$anode1,C=#$cathode)
+    DIODE OFF "LD26" "_"  (A=#$anode1,C=#$cathode) pas d'acces physique *)
+    
+   (* DIODE ON "LD27" "_"  (A=#q95,C=#$cathode)
+    DIODE OFF "LD27" "_"  (A=#q95,C=#$cathode) pas d'acces physique *)
+    
+    (*DIODE ON "LD28" "_"  (A=#$anode1,C=#q120)
+    DIODE OFF "LD28" "_"  (A=#$anode1,C=#q120) pas d'acces physique *)
+    
+   (* DIODE ON "LD29" "_"  (A=#$anode1,C=#$cathode)
+    DIODE OFF "LD29" "_"  (A=#$anode1,C=#$cathode) pas d'acces physique *)
+    
+   (* DIODE ON "LD30" "_"  (A=#q95,C=#$cathode)
+    DIODE OFF "LD30" "_"  (A=#q95,C=#$cathode) pas d'acces physique *)
+    
+   (* DIODE ON "LD31" "_"  (A=#$anode1,C=#q88)
+    DIODE OFF "LD31" "_"  (A=#$anode1,C=#q88) pas d'acces physique *)
+    
+   (* DIODE ON "LD32" "_"  (A=#$anode1,C=#$cathode)
+    DIODE OFF "LD32" "_"  (A=#$anode1,C=#$cathode) pas d'acces physique *)
+    
+   (* DIODE ON "LD33" "_"  (A=#q95,C=#$cathode)
+    DIODE OFF "LD33" "_"  (A=#q95,C=#$cathode) pas d'acces physique *)
+    
+   (* DIODE ON "LD34" "_"  (A=#$anode1,C=#q121)
+    DIODE OFF "LD34" "_"  (A=#$anode1,C=#q121) pas d'acces physique *)
+    
+   (* DIODE ON "LD35" "_"  (A=#$anode1,C=#$cathode)
+    DIODE OFF "LD35" "_"  (A=#$anode1,C=#$cathode) pas d'acces physique *)
+    
+   (* DIODE ON "LD36" "_"  (A=#q95,C=#$cathode)
+    DIODE OFF "LD36" "_"  (A=#q95,C=#$cathode) pas d'acces physique *)
+    
+    
+}
+
+
+:Presence_leds () void
+{
+	NewTest(pasdebut,SemiCond, "Presence LEDS");
+	LED ON "LD19a21" 5.4, 7.2 (a=#q61, c=#q95) 
+	  {
+	    Test.DiodeVlimit := 10.2V
+	  }
+	LED ON "LD22a24" 5.5, 7.2 (a=#q29, c=#q95) 
+	  {
+	    Test.DiodeVlimit := 10.2V
+	  }
+	LED ON "LD25a27" 5.4, 7.2 (a=#q63, c=#q95) 
+	  {
+	    Test.DiodeVlimit := 10.2V
+	  }
+	LED ON "LD28-30" 5.4, 7.2 (a=#q120, c=#q95) 
+	  {
+	    Test.DiodeVlimit := 10.2V
+	  }
+	LED ON "LD31-33" 5.4, 7.2 (a=#q88, c=#q95) 
+	  {
+	    Test.DiodeVlimit := 10.2V
+	  }
+	LED ON "LD34-36" 5.4, 7.2 (a=#q121, c=#q95) 
+	  {
+	    Test.DiodeVlimit := 10.2V
+	  }
+	
+}	
+
+:Zeners() void
+{
+    
+    NewTest(pasdebut,SemiCond, "Diodes Zener");
+   
+    
+ if (debug) discharges();
+
+}
+
+       
+
+
+
+:Diodes_clamping() void
+{
+       NewTest(pasdebut,SemiCond, "Diodes Clamping");
+ 
+       DIODE ON "U1_2" "_3C4" 600m,900m(A=#PS7,C=#q83)
+       { test.diodei := 5mA }
+       DIODE ON "U1_3" "_3C4" 600m,900m(A=#PS7,C=#q84)
+       { test.diodei := 5mA }
+       DIODE ON "4" "_3C4" 600m,900m(A=#PS7,C=#c99)
+       { test.diodei := 5mA }
+       DIODE ON "U1_5" "_3C4" 600m,900m(A=#PS7,C=#c98)
+       { test.diodei := 5mA }
+       DIODE ON "U1_6" "_3C4" 600m,900m(A=#PS7,C=#q79)
+       { test.diodei := 5mA }
+     
+       
+       
+       
+       DIODE ON "U9_1" "_6A6" 600m,900m(A=#PS7,C=#q82)
+       { test.diodei := 5mA }
+(* suppression des TP 21, 23, 24 pour l'eeprom
+	 DIODE ON "U9_2" "_6A6" 600m,900m(A=#PS7,C=#q80)
+       { test.diodei := 5mA }
+       DIODE ON "U9_5" "_6A6" 600m,900m(A=#PS7,C=#c97)
+       { test.diodei := 5mA }
+       DIODE ON "U9_6" "_6A6" 600m,900m(A=#PS7,C=#q81)
+       { test.diodei := 5mA }
+*)       
+       
+       
+      
+       DIODE ON "U7_3" "_4A4" 600m,900m(A=#PS7,C=#q78)
+       { test.diodei := 5mA }
+       DIODE ON "U7_4" "_4A4" 600m,900m(A=#PS7,C=#q77)
+       { test.diodei := 5mA }
+       DIODE ON "U7_6" "_4A4" 600m,900m(A=#PS7,C=#q75)
+       { test.diodei := 5mA }
+       DIODE ON "U7_7" "_4A4" 600m,900m(A=#PS7,C=#q76)
+       { test.diodei := 5mA }
+       DIODE ON "U7_8" "_4A4" 600m,900m(A=#PS7,C=#q73)
+       { test.diodei := 5mA }
+        DIODE ON "U7_14" "_4A4" 600m,900m(A=#PS7,C=#q25)
+       { test.diodei := 5mA }
+       DIODE ON "U7_16" "_4A4" 600m,900m(A=#PS7,C=#c96)
+       { test.diodei := 5mA }
+       DIODE ON "U7_17" "_4A4" 600m,900m(A=#PS7,C=#q82)
+       { test.diodei := 5mA }
+       DIODE ON "U7_19" "_4A4" 600m,900m(A=#PS7,C=#c102)
+       { test.diodei := 5mA }
+       DIODE ON "U7_21" "_4A4" 600m,900m(A=#PS7,C=#c103)
+       { test.diodei := 5mA }
+(* suppression des TP21, 23, 24 pour l'eeprom
+        DIODE ON "U7_22" "_4A4" 600m,900m(A=#PS7,C=#q80)
+       { test.diodei := 5mA }
+       DIODE ON "U7_23" "_4A4" 600m,900m(A=#PS7,C=#c97)
+       { test.diodei := 5mA }
+       DIODE ON "U7_24" "_4A4" 600m,900m(A=#PS7,C=#q81)
+       { test.diodei := 5mA }
+*)
+       DIODE ON "U7_25" "_4A4" 600m,900m(A=#PS7,C=#q79)
+       { test.diodei := 5mA }
+       DIODE ON "U7_26" "_4A4" 600m,900m(A=#PS7,C=#c99)
+       { test.diodei := 5mA }
+        DIODE ON "U7_27" "_4A4" 600m,900m(A=#PS7,C=#c98)
+       { test.diodei := 5mA }
+       DIODE ON "U7_28" "_4A4" 600m,900m(A=#PS7,C=#q83)
+       { test.diodei := 5mA }
+       DIODE ON "U7_29" "_4A4" 600m,900m(A=#PS7,C=#q84)
+       { test.diodei := 5mA }
+       DIODE ON "U7_30" "_4A4" 600m,900m(A=#PS7,C=#c104)
+       { test.diodei := 5mA }
+       DIODE ON "U7_32" "_4A4" 600m,900m(A=#PS7,C=#c105)
+       { test.diodei := 5mA }
+       DIODE ON "U7_35" "_4A4" 600m,900m(A=#PS7,C=#c106)
+       { test.diodei := 5mA }
+       DIODE ON "U7_36" "_4A4" 600m,900m(A=#PS7,C=#c107)
+       { test.diodei := 5mA }
+       DIODE ON "U7_38" "_4A4" 600m,900m(A=#PS7,C=#c108)
+       { test.diodei := 5mA }
+        DIODE ON "U7_40" "_4A4" 600m,900m(A=#PS7,C=#c109)
+       { test.diodei := 5mA }
+       DIODE ON "U7_42" "_4A4" 600m,900m(A=#PS7,C=#c111)
+       { test.diodei := 5mA }
+       DIODE ON "U7_44" "_4A4" 600m,900m(A=#PS7,C=#c112)
+       { test.diodei := 5mA }
+       DIODE ON "U7_46" "_4A4" 600m,900m(A=#PS7,C=#c113)
+       { test.diodei := 5mA }
+       DIODE ON "U7_48" "_4A4" 600m,900m(A=#PS7,C=#c114)
+       { test.diodei := 5mA }
+        DIODE ON "U7_50" "_4A4" 600m,900m(A=#PS7,C=#c115)
+       { test.diodei := 5mA }
+       DIODE ON "U7_52" "_4A4" 600m,900m(A=#PS7,C=#q71)
+       { test.diodei := 5mA }
+       DIODE ON "U7_53" "_4A4" 600m,900m(A=#PS7,C=#q70)
+       { test.diodei := 5mA }
+       DIODE ON "U7_55" "_4A4" 600m,900m(A=#PS7,C=#q87)
+       { test.diodei := 5mA }
+       DIODE ON "U7_56" "_4A4" 600m,900m(A=#PS7,C=#q24)
+       { test.diodei := 5mA }
+        DIODE ON "U7_57" "_4A4" 600m,900m(A=#PS7,C=#q58)
+       { test.diodei := 5mA }
+       DIODE ON "U7_58" "_4A4" 600m,900m(A=#PS7,C=#q59)
+       { test.diodei := 5mA }
+       DIODE ON "U7_60" "_4A4" 600m,900m(A=#PS7,C=#c116)
+       { test.diodei := 5mA }
+       DIODE ON "U7_62" "_4A4" 600m,900m(A=#PS7,C=#c117)
+       { test.diodei := 5mA }
+       DIODE ON "U7_64" "_4A4" 600m,900m(A=#PS7,C=#c118)
+       { test.diodei := 5mA }
+        DIODE ON "U7_66" "_4A4" 600m,900m(A=#PS7,C=#c119)
+       { test.diodei := 5mA }
+       DIODE ON "U7_68" "_4A4" 600m,900m(A=#PS7,C=#c120)
+       { test.diodei := 5mA }
+       DIODE ON "U7_71" "_4A4" 600m,900m(A=#PS7,C=#c122)
+       { test.diodei := 5mA }
+        DIODE ON "U7_73" "_4A4" 600m,900m(A=#PS7,C=#c123)
+       { test.diodei := 5mA }
+       DIODE ON "U7_75" "_4A4" 600m,900m(A=#PS7,C=#c124)
+       { test.diodei := 5mA }
+       DIODE ON "U7_76" "_4A4" 600m,900m(A=#PS7,C=#c125)
+       { test.diodei := 5mA }
+       DIODE ON "U7_77" "_4A4" 600m,900m(A=#PS7,C=#c126)
+       { test.diodei := 5mA }
+       DIODE ON "U7_79" "_4A4" 600m,900m(A=#PS7,C=#c127)
+       { test.diodei := 5mA }
+        DIODE ON "U7_81" "_4A4" 600m,900m(A=#PS7,C=#q64)
+       { test.diodei := 5mA }
+       DIODE ON "U7_83" "_4A4" 600m,900m(A=#PS7,C=#q65)
+       { test.diodei := 5mA }
+       DIODE ON "U7_85" "_4A4" 600m,900m(A=#PS7,C=#q66)
+       { test.diodei := 5mA }
+       DIODE ON "U7_87" "_4A4" 600m,900m(A=#PS7,C=#q67)
+       { test.diodei := 5mA }
+       DIODE ON "U7_89" "_4A4" 600m,900m(A=#PS7,C=#q68)
+       { test.diodei := 5mA }
+        DIODE ON "U7_91" "_4A4" 600m,900m(A=#PS7,C=#c100)
+       { test.diodei := 5mA }
+       DIODE ON "U7_93" "_4A4" 600m,900m(A=#PS7,C=#c101)
+       { test.diodei := 5mA }
+       DIODE ON "U7_95" "_4A4" 600m,900m(A=#PS7,C=#c110)
+       { test.diodei := 5mA }
+       DIODE ON "U7_97" "_4A4" 600m,900m(A=#PS7,C=#c121)
+       { test.diodei := 5mA }
+       DIODE ON "U7_99" "_4A4" 600m,900m(A=#PS7,C=#q69)
+       { test.diodei := 5mA }
+       DIODE ON "U7_100" "_4A4" 600m,900m(A=#PS7,C=#q85)
+       { test.diodei := 5mA }
+       
+}
+
+
+
+
+:Transistors() void
+{
+    
+    NewTest(pasdebut,SemiCond, "Transistors");
+    
+    TRAN ON NPN "Q2S" "_7B5_D2" <500m (C=#q95,B=#q125,E=#PS7)
+    { test.dwell:=50ms test.progR :=100 }
+    TRAN OFF NPN "Q2B" "_7B5_D2"  (C=#q95,B=#q125,E=#PS7)
+    
+    
+    
+}
+
+
+:Reseaux_Transistors() void
+{
+    
+    NewTest(pasdebut,SemiCond, "Transistors");
+    TRAN ON NPN "Q1AS" "_2B4_D4" <500m (C=#q90,B=#q123,E=#PS7)
+    TRAN OFF NPN "Q1AB" "_2B4_D4"  (C=#q90,B=#q123,E=#PS7)
+    
+    TRAN ON PNP "Q1BS" "_2B4_D4" <500m (C=#q93,B=#q31,E=#q92)
+    TRAN OFF PNP "Q1BB" "_2B4_D4"  (C=#q93,B=#q31,E=#q92)
+    
+}
+
+
+
+
+
+
+
+:Fets() void
+{      
+    NewTest(pasdebut,SemiCond, "Transistors FET");
+   
+}
+
+
+
+    
+   
+   
+:U2() void {
+	delay(500ms);
+    NewTest(pasdebut,SemiCond, "U2");
+
+    TESTMODULE "U2" "74HCT594" {
+        with MTC {
+            PhasePeriod     := 200ns
+            (* period 1600ns *)
+            CyclePattern[0] := "-------M"
+            ForceTime       := 400us
+            Force           := On
+            StopMode        := Fault
+            DnblOnPause     := OFF
+            Outputs         := on
+            TrigCount       := 0
+        }
+        BackDrive.mode:=off;
+        TESTPINS {
+            GREFA (q1=#c94:1,q3=#c93:3,q5=#c92:5)
+            GREFA (q7=#c91:7,shr=#q70:10)
+            GREFA (shcp=#q28:11,stcp=#o57:12,ds=#q116:14,q0=#c95:15,reset=#q25:14)
+            
+        }
+        TESTBLOCK {
+            ##- DNBL CYCLE (0)
+            ##   
+            ##- STOP 0
+        }
+    }
+}
+
+:U3() void {
+    NewTest(pasdebut,SemiCond, "U3");
+
+    TESTMODULE "U3" "74HCT594" {
+        with MTC {
+            PhasePeriod     := 200ns
+            (* period 1600ns *)
+            CyclePattern[0] := "-------M"
+            ForceTime       := 400us
+            Force           := On
+            StopMode        := Fault
+            DnblOnPause     := OFF
+            Outputs         := on
+            TrigCount       := 0
+        }
+        BackDrive.mode:=off
+        TESTPINS {
+            GREFA (q1=#c89:1,q3=#c88:3,q5=#c63:5)
+            GREFA (q7=#c62:7,shr=#q70:10)
+            GREFA (shcp=#q28:11,stcp=#o57:12,q0=#c90:15,reset=#q25:14)
+           
+        }
+        TESTBLOCK {
+            ##- DNBL CYCLE (0)
+            ##- 
+            ##-  
+            ##- STOP 0
+        }
+    }
+}
+
+:U4() void {
+    NewTest(pasdebut,SemiCond, "U4");
+
+   TESTMODULE "U4" "74HCT594" {
+        with MTC {
+            PhasePeriod     := 200ns
+            (* period 1600ns *)
+            CyclePattern[0] := "-------M"
+            ForceTime       := 400us
+            Force           := On
+            StopMode        := Fault
+            DnblOnPause     := OFF
+            Outputs         := on
+            TrigCount       := 0
+        }
+        BackDrive.mode:=off
+        TESTPINS {
+            GREFA (q1=#c30:1,q3=#c61:3,q5=#c60:5)
+            GREFA (q7=#c59:7,shr=#q70:10)
+            GREFA (shcp=#q28:11,stcp=#o57:12,q0=#c31:15,reset=#q25:14)
+           
+        }
+        TESTBLOCK {
+            ##- DNBL CYCLE (0)
+            ##- 
+            ##-
+            ##- STOP 0
+        }
+    }
+}
+
+:U5() void {
+    NewTest(pasdebut,SemiCond, "U5");
+
+    TESTMODULE "U5" "74HCT594" {
+        with MTC {
+            PhasePeriod     := 200ns
+            (* period 1600ns *)
+            CyclePattern[0] := "-------M"
+            ForceTime       := 400us
+            Force           := On
+            StopMode        := Fault
+            DnblOnPause     := OFF
+            Outputs         := on
+            TrigCount       := 0
+        }
+        BackDrive.mode:=off
+        TESTPINS {
+            GREFA (q1=#c28:1,q3=#c27:3,q5=#c58:5)
+            GREFA (q7=#c57:7,shr=#q70:10)
+            GREFA (shcp=#q28:11,stcp=#o57:12,q0=#c29:15,reset=#q25:14)
+          
+        }
+        TESTBLOCK {
+            ##- DNBL CYCLE (0)
+            ##- 
+            ##-  
+            ##- STOP 0
+        }
+    }
+}
+
+:U6() void {
+    NewTest(pasdebut,SemiCond, "U6");
+
+    TESTMODULE "U6" "74HCT594" {
+        with MTC {
+            PhasePeriod     := 200ns
+            (* period 1600ns *)
+            CyclePattern[0] := "-------M"
+            ForceTime       := 400us
+            Force           := On
+            StopMode        := Fault
+            DnblOnPause     := OFF
+            Outputs         := on
+            TrigCount       := 0
+        }
+        BackDrive.mode:=off
+        TESTPINS {
+            GREFA (q1=#c25:1,q3=#c56:3,q5=#q115:5)
+            GREFA (q7=#q114:7,shr=#q70:10)
+            GREFA (shcp=#q28:11,stcp=#o57:12,q0=#c26:15,reset=#q25:14)
+            GREFA (a16=#q93:16)
+        }
+        TESTBLOCK {
+            ##- DNBL CYCLE (0)
+            ##- 
+            ##- 
+            ##- STOP 0
+        }
+    }
+}   
+   
+:U7_reset() void
+{
+
+  Backdrive.mode:=Off;
+
+
+   TESTMODULE "U7_reset" "micro" {
+
+   &LREFA GREFA {DRH:=5 DRL:=0 MNH:= 0.8 MNL := 4 Term := HiZ HiZ:=3.0}
+
+          with MTC {
+            PhasePeriod     := 200ns;
+            CyclePattern[0] := "---------M";
+            Force           := On,20mS;
+            stopMode        := none;
+            DnblOnstop      := Hold;
+        }
+
+        TESTPINS { 
+    	LREFA (sdata=#c97)
+	    }
+
+         TESTBLOCK {
+
+            ##- DNBL CYCLE(0)
+            ##-
+            ## delay 2000uS
+            ## MNZ(sdata)
+            ##- STOP 0
+           }
+	}
+}
+
+
+:Digitals() void
+{
+    
+   (* NewTest(pasdebut,active, "Digital Device Tests");ne mettre que pour le debug *)
+ 
+     U2();    
+     U3();    
+     U4();    
+     U5();    
+     U6();    
+     U7_reset();
+         
+}
+
+:Pin7_U1() void
+{
+(********** Demande O.PERRIN ***********
+	fixture.control[4]:=off; 	(* mise à la masse de la Pin 7 *)
+	delay(500ms);
+
+	DCV "V_U1pin1_off" 3.3V,%1(L=#q123,R=#PS7)
+	DCV "V_U1pin7_off" 3.3V,%1(L=#q119,R=#PS7)
+	DCV "V_U1pin6_off" 3.3V,%1(L=#q79,R=#PS7)
+	DCV "V_U1pin5_off" 3.3V,%1(L=#c98,R=#PS7)
+
+
+	fixture.control[4]:=on; 	(* mise à la masse de la Pin 7 *)
+	delay(10ms);
+
+	DCV "V_U1pin1_on" 3.3V,%3 (L=#q123,R=#PS7)
+	DCV "V_U1pin7_off" 3.3V,%1(L=#q119,R=#PS7)
+	DCV "V_U1pin6_on" 3.3V,%1(L=#q79,R=#PS7)
+	DCV "V_U1pin5_off" 3.3V,%1(L=#c98,R=#PS7)
+
+	fixture.control[4]:=off;
+*)
+}
+
+
+:VerifMID() boolean
+{
+	(* conversion en minuscule *)
+	board.serialno._value := StrTranslate("A-Z", "a-z", board.serialno._value);
+
+
+	(* a modifier pour autre valeur de code MID autorise *)
+	if((	board.serialno._value[1..2] <> "63")
+		&&(board.serialno._value[1..2] <> "2c")
+		&&(board.serialno._value[1..2] <> "xp")
+		&&(board.serialno._value[1..2] <> "sy")
+		&&(board.serialno._value[1..2] <> "df")
+		&&(board.serialno._value[1..2] <> "-m")) return(false);
+
+	if(sizeof(board.serialno._value) <> 9) return(false);
+
+	return(true);
+}
+
+
+
+
+:attente_plateau(fonction int,chaine string,attente boolean) void
+{
+
+
+
+        if (fonction = 0)
+        {
+                (* attente FERMETURE DU PLATEAU *)
+                lib.fenetre(5,10,70,6);
+                VT.cursor:=25,13,on;
+                printf("%s",chaine);
+		fflush(stdout);
+
+                        repeat
+                        { }
+                        until (fixture.sense[2]=off)
+
+                if (attente)
+                {
+                     (*   VT.cursor:=25,15,Off;
+                        io.getanykey("appuyez sur une touche");
+                        fflush(stdout);
+		     *)	
+                }
+
+
+       }
+        else
+        {
+                (* attente OUVERTURE DU PLATEAU *)
+                lib.fenetre(5,10,70,6);
+                VT.cursor:=25,13,on;
+                printf("%s",chaine);
+		fflush(stdout);
+
+                        repeat
+                        { }
+                        until (fixture.sense[2]=on)
+
+                if (attente)
+                {
+                      (*  VT.cursor:=25,15,Off;
+                        io.getanykey("appuyez sur une touche");
+                        fflush(stdout);
+		       *)
+                }
+
+
+        }
+
+ 
+}
+
+:attente_plateau_BC(fonction int,chaine string,attente boolean) void
+{
+
+
+
+        if (fonction = 0)
+        {
+                (* attente FERMETURE DU PLATEAU *)
+                lib.fenetre(5,10,70,6);
+                VT.cursor:=25,13,on;
+                printf("%s",chaine);
+		fflush(stdout);
+
+                        repeat
+                        { }
+                        until (fixture.sense[2]=off)
+
+                if (attente)
+                {
+                     (*   VT.cursor:=25,15,Off;
+                        io.getanykey("appuyez sur une touche");
+                        fflush(stdout);
+		     *)	
+                }
+
+
+       }
+        else
+        {
+                (* attente OUVERTURE DU PLATEAU *)
+                lib.fenetre(5,10,70,6);
+                VT.cursor:=25,13,on;
+                printf("%s",chaine);
+		fflush(stdout);
+
+                        repeat
+                        { }
+                        until (fixture.sense[2]=on)
+
+                if (attente)
+                {
+                        VT.cursor:=25,15,Off;
+                        io.getanykey("appuyez sur une touche");
+                        fflush(stdout);
+		       
+                }
+
+
+        }
+
+ 
+}
+
+:attente_plateau_sortieduprogramme(fonction int,chaine1 string,chaine2 string,attente boolean) void
+{
+
+        if (fonction = 0)
+        {
+                (* attente FERMETURE DU PLATEAU *)
+                lib.fenetre(5,10,70,6);
+                VT.cursor:=25,13,on;
+                printf("%s",chaine1);
+		fflush(stdout);
+                VT.cursor:=25,14,on;
+                printf("%s",chaine2);
+		fflush(stdout);
+
+                        repeat
+                        {
+		    delay(200ms);
+		    if(GetChar(nowait)=142){sortieduprogramme:=true}else{sortieduprogramme:=false}
+
+			 }
+                        until ((fixture.sense[1]=off)|| sortieduprogramme)
+
+                if (attente)
+                {
+                     (*   VT.cursor:=25,15,Off;
+                        io.getanykey("appuyez sur une touche");
+                        fflush(stdout);
+		     *)	
+                }
+
+
+       }
+        else
+        {
+                (* attente OUVERTURE DU PLATEAU *)
+                lib.fenetre(5,10,70,6);
+                VT.cursor:=25,13,on;
+                printf("%s",chaine1);
+		fflush(stdout);
+
+                        repeat
+                        { }
+                        until (fixture.sense[1]=on)
+
+                if (attente)
+                {
+                      (*  VT.cursor:=25,15,Off;
+                        io.getanykey("appuyez sur une touche");
+                        fflush(stdout);
+		       *)
+                }
+
+
+        }
+
+ 
+}
+
+
+
+:passe_circuit_ref() void
+{
+	vt.cursor:=1,1,off;
+	vt.clearscreen()
+	vt.cursor:=1,25,off;
+
+	vt.attributes:=blink;
+	printf("\n\n\n PASSAGE DU CIRCUIT DE REFERENCE     \n\n\n");
+
+	vt.attributes:=none;
+	fflush(ticketprinter);
+	circuit_ref:=false;
+}
+
+(* debut fonctions utilisees pour communication van *) 
+
+
+
+:ReportFault(chaine string) void
+{                         
+
+	(****************************************************)
+
+	(* Fonction d'impression du ticket de faute et      *)
+
+	(* d'incrementation du compteur d'erreur            *)
+
+	(****************************************************)
+
+	Prog.Faults := Prog.Faults + 1;
+
+
+
+	if(sys.print.mode = onfault)
+	{
+		fprintf(sys.print.channel, chaine);
+
+		fflush(sys.print.channel);
+	}
+
+}
+
+
+
+
+
+:PrintMessage(chaine string) void
+
+{
+
+	(****************************************************)
+
+	(* Fonction d'impression du ticket de faute et      *)
+
+	(****************************************************)
+
+	if(sys.print.mode = onfault)
+
+	{
+
+		fprintf(sys.print.channel, chaine);
+
+		fflush(sys.print.channel);
+
+	}
+
+}
+
+
+
+
+
+:initDll () void
+
+{
+
+	(*****************************)
+
+	(*  Initialisation DLL RS232 *)
+
+	(*****************************)
+
+	RS232 := DLL.LoadLibrary("rsdrv32.dll");
+
+
+
+	if(trace)
+
+	{
+
+		printf ("\n\nNUMERO DE HANDLE DLL = %d \n\n",RS232);
+
+	}
+
+
+
+	(************************)
+
+	(* Profiles de fonction *)
+
+	(************************)
+
+	DLL.BindProc(RS232,"rsinitExA", rsinitExA)  (* initialisation *)
+
+	DLL.BindProc(RS232,"rsdone", rsdone)	  (* fermeture port serie *)
+
+	DLL.BindProc(RS232,"rswrt", rswrt)	  (* envoi trame binaire *)
+
+	DLL.BindProc(RS232,"rsrd", rsrd)	  (* reception trame binaire *)
+
+}
+
+
+
+
+
+:freeDll () void
+
+{
+
+	(*************************)
+
+	(*  Liberation DLL RS232 *)
+
+	(*************************)
+
+	DLL.FreeLibrary(RS232);
+
+}
+
+
+
+
+
+:Open_com() void 
+
+{
+
+	(****************************************************)
+
+	(* Ouverture Port Serie pour communication BDM      *)
+
+	(*    COM2 utilise ==> a supprimer dans MTLDEVICES  *)
+
+	(****************************************************)
+
+	:Port string;
+
+	:Baud int;
+
+	:Parity int;
+
+	:ByteSize int;
+
+	:StopBits int;
+
+	:Xmodem boolean;
+
+	(* time_out_int deja declare et affecte en debut de fichier *)
+
+
+
+	Port := "COM4";
+
+	Baud := 57600;
+
+	Parity := NOPARITY;
+
+	ByteSize := 8;
+
+	StopBits := ONESTOPBIT;
+
+	Xmodem := false;	(* controle de flux *)
+
+
+
+	hFile := rsinitExA(Port, Baud, Parity, ByteSize, StopBits, Xmodem, Time_Out_int);
+
+
+
+	if(trace)
+
+	{
+
+		printf("Numero de handle port serie = %v\n", hFile);
+
+		fflush(stdout);
+
+	}
+
+}
+
+
+
+
+
+:Close_com() void 
+
+{
+
+	(****************************************************)
+
+	(* Fermeture Port Serie pour communication BDM      *)
+
+	(****************************************************)
+
+	:r int;
+
+
+
+	r := rsdone(hFile);
+
+
+
+	if(trace)
+
+	{
+
+		if(r=0)
+
+		{
+
+			message := "Port serie ferme correctement\n";
+
+			PrintMessage(message);
+
+		}
+
+		else
+
+		{
+
+			message := "ATTENTION : Port serie NON ferme !!!!!\n";
+
+			PrintMessage(message);
+
+		}
+
+	}
+
+}
+
+
+
+:Verif_Checksum() void
+
+{
+
+	(****************************************************)
+
+	(*     Verification du checksum de la trame         *)
+
+	(****************************************************)
+
+
+
+	(*** exclure le checksum de la trame recue pour verification ***)
+
+	limite := sizeof(trame_recue);
+
+
+
+	if(trace)
+
+	{
+
+		printf("\ntaille trame  = %v\n", limite/2);
+
+		printf("debut trame recue[1..8] = %s\n", trame_recue[1..8]);
+
+	}
+
+
+
+	(*** extraire le checksum recu ***)
+
+	checksum_recu := trame_recue[(sizeof(trame_recue)-3)..sizeof(trame_recue)];
+
+
+
+	(*** calcul du checksum de la trame ***)
+
+	checksum_verif := 0;
+
+	for(index:=1;index<=(limite-4);index:=index+2)
+
+	{
+
+		checksum_verif := checksum_verif + atoi("0x"+trame_recue[index..index+1]);
+
+		if(trace)
+
+		{
+
+(* TROP DE PLACE A L ECRAN 
+
+			printf("#%s", trame_recue[index..index+1]);
+
+			printf("=%04x\n", checksum_verif);
+
+			fflush(stdout);
+
+*)
+
+		}
+
+	}
+
+
+
+	if(trace)
+
+	{
+
+		printf("checksum_recu  = %s\n", checksum_recu);
+
+		printf("checksum_verif = %04x\n", checksum_verif);
+
+	}
+
+
+
+	if(checksum_recu<>sprintf("%04x", checksum_verif))
+
+	{
+
+		message := "checksum_recu = " + sprintf("%s", checksum_recu) + "  checksum_verif = " + sprintf("%04x\n", checksum_verif);
+
+		ReportFault("Erreur de checksum\n");
+
+		PrintMessage(message);
+
+	}
+
+}
+
+
+
+
+
+:Lecture_longueur() void
+
+{
+
+	(**********************************************)
+
+	(* Recuperation du premier octet de la trame  *)
+
+	(* pour determiner la lomgueur des datas      *)
+
+	(* a suivre....                               *)
+
+	(**********************************************)
+
+	if (rsrd(hFile, @longueur, 1) <> -1)
+
+	{
+
+		(* recuperation de la longueur de la trame *)
+
+		if(trace)
+
+		{
+
+			printf("Longueur reponse en hexa = %02x\n", longueur[1]);
+
+			fflush(stdout);
+
+		}
+
+	}
+
+	else
+
+	{
+
+		ReportFault("Time out / probleme liaison serie\n");
+
+	}
+
+}
+
+
+
+
+
+:Lecture_Port() void
+
+{
+
+	(**************************************)
+
+	(* Recuperation des datas de la trame *)
+
+	(**************************************)
+
+	:ix int;
+
+
+
+	ilong := longueur[1];
+
+
+
+	(*** recuperation des octets recus ***)
+
+	rsrd(hFile, @reponse, ilong);
+
+
+
+	if(trace)
+
+	{
+
+		printf("%02x ", ilong)
+
+	}
+
+
+
+	for(ix:=1;ix<=ilong;ix:=ix+1)
+
+	{
+
+		if(trace)
+
+		{
+
+			printf("%02x ", reponse[ix]);
+
+			if((ix \ 20) = 0)
+
+			{
+
+				printf("\n");
+
+			}
+
+		}
+
+	}
+
+	if(trace) printf("\n");
+
+
+
+	(*** recuperation trame complete dans trame_recue ***)
+
+	(*** d'abord la longueur ***)
+
+	trame_recue := "";
+
+	trame_recue := trame_recue + sprintf("%02x", ilong);
+
+
+
+	(*** ensuite les datas ***)
+
+	for(ix:=1;ix<=ilong;ix:=ix+1)
+
+	{
+
+		trame_recue := trame_recue + sprintf("%02x", reponse[ix]);
+
+	}
+
+}
+
+
+
+
+
+:Gestion_reponse() void
+
+{
+
+	(****************************************************)
+
+	(* Gestion de la reponse du PC BDM                  *)
+
+	(*       si erreur : incrementation compteur erreur *)
+
+	(*                   impression ticket de faute     *)
+
+	(****************************************************)
+
+
+
+	(*** RAZ valeurs ***)
+
+	trame_recue := "";
+
+	for (index:=1;index<=500;index:=index+1)
+
+	{
+
+		reponse[index] := 0;
+
+	}
+
+
+
+	(*** attente du caractere de longueur ***)
+
+	Lecture_longueur();
+
+
+
+	(*** attente des datas ***)
+
+	Lecture_Port();
+
+
+
+	(*** Verification du checksum de la trame recue ***)
+
+	Verif_Checksum( );
+
+}
+
+
+
+
+
+:Emission(data string, mode enum{Ack, Reponse, Rien}) void
+
+{
+
+	(****************************************************)
+
+	(*          Fonction d'emission d'une trame         *)
+
+	(****************************************************)
+
+
+
+	(*** verification du nombre d'octet a emettre ***)
+
+	if ((sizeof(data)\2) <> 0)
+
+	{
+
+		ReportFault("Trame a emettre non valide\n");
+
+		return;		(* STOP *)
+
+	}
+
+
+
+	(*** nombre d'octets a emettre *)
+
+	nb_octet := sizeof(data) / 2;
+
+	if(trace)
+
+	{
+
+		printf("nb_octet = %v\n", nb_octet);
+
+		fflush(stdout);
+
+	}
+
+
+
+	(*** Conversion de la trame a emettre de type string en type uchar ***)
+
+	(*** Calcul du checksum de trame ***)
+
+	compteur := checksum := 0;
+
+	for(index:=1;index<=(sizeof(data));index:=index+2)
+
+	{
+
+		compteur := compteur + 1;
+
+		trame[compteur] := atoi("0x" + sprintf("%s", data[index..(index+1)]));
+
+		checksum := checksum + trame[compteur];
+
+		if(trace)
+
+		{
+
+			printf("trame[ %v] = %02x\n",compteur,trame[compteur]);
+
+			fflush(stdout);
+
+		}
+
+	}
+
+
+
+	(*** masquage du checksum - masquage sur 2 octets ***)
+
+	checksum := checksum & 0xffff;
+
+	if(trace)
+
+	{
+
+		printf("checksum data = %04x\n", checksum);
+
+		fflush(stdout);
+
+	}
+
+
+
+	(*** integration du checksum dans la trame ***)
+
+	trame[nb_octet+1] := (checksum / 256) & 0xff;	(* CHECKSUM HIGH *)
+
+	trame[nb_octet+2] := checksum & 0x00ff;		(* CHECKSUM LOW *)
+
+	if(trace)
+
+	{
+
+		printf("trame[ %v] = %02x\n", nb_octet + 1, trame[nb_octet+1]);
+
+		printf("trame[ %v] = %02x\n", nb_octet + 2, trame[nb_octet+2]);
+
+		fflush(stdout);
+
+	}
+
+
+
+	(*** emission data par le port serie FONCTION DLL ***)
+
+	rswrt(hFile, @trame, nb_octet + 2);
+
+
+	case (Mode)
+
+	{
+
+		REPONSE:
+
+		{
+
+			Gestion_reponse();
+
+		}
+
+		RIEN:
+		{
+
+			(* ignore la reponse du PC *)
+
+			(* !!!!!!!!!!!!!!!!!!!!!!! *)
+
+			(* ATTENTION LE BUFFER DU  *)
+
+			(* PORT SERIE VA CONSERVER *)
+
+			(* LES DATAS NON LUES DE   *)
+
+			(* LA TRAME PRECEDENTE     *)
+
+			(* EMISE PAR LE PC BDM     *)
+
+			(* !!!!!!!!!!!!!!!!!!!!!!! *)
+
+		}
+
+		
+	}
+
+}
+
+
+:Calculmidbase36(valeur string) string
+{
+	:digit string;
+	:variable_faute int;
+
+	variable_faute:=1;
+
+	if(valeur="0") {digit := "00"; variable_faute:=0};
+	if(valeur="1") {digit := "01"; variable_faute:=0};
+	if(valeur="2") {digit := "02"; variable_faute:=0};
+	if(valeur="3") {digit := "03"; variable_faute:=0};
+	if(valeur="4") {digit := "04"; variable_faute:=0};
+	if(valeur="5") {digit := "05"; variable_faute:=0};
+	if(valeur="6") {digit := "06"; variable_faute:=0};
+	if(valeur="7") {digit := "07"; variable_faute:=0};
+	if(valeur="8") {digit := "08"; variable_faute:=0};
+	if(valeur="9") {digit := "09"; variable_faute:=0};
+	if(valeur="A") {digit := "0a"; variable_faute:=0};
+	if(valeur="B") {digit := "0b"; variable_faute:=0};
+	if(valeur="C") {digit := "0c"; variable_faute:=0};
+	if(valeur="D") {digit := "0d"; variable_faute:=0};
+	if(valeur="E") {digit := "0e"; variable_faute:=0};
+	if(valeur="F") {digit := "0f"; variable_faute:=0};
+	if(valeur="G") {digit := "10"; variable_faute:=0};
+	if(valeur="H") {digit := "11"; variable_faute:=0};
+	if(valeur="I") {digit := "12"; variable_faute:=0};
+	if(valeur="J") {digit := "13"; variable_faute:=0};
+	if(valeur="K") {digit := "14"; variable_faute:=0};
+	if(valeur="L") {digit := "15"; variable_faute:=0};
+	if(valeur="M") {digit := "16"; variable_faute:=0};
+	if(valeur="N") {digit := "17"; variable_faute:=0};
+	if(valeur="P") {digit := "18"; variable_faute:=0};
+	if(valeur="R") {digit := "19"; variable_faute:=0};
+	if(valeur="S") {digit := "1a"; variable_faute:=0};
+	if(valeur="T") {digit := "1b"; variable_faute:=0};
+      	if(valeur="U") {digit := "1c"; variable_faute:=0};    
+        if(valeur="V") {digit := "1d"; variable_faute:=0};
+        if(valeur="W") {digit := "1e"; variable_faute:=0};
+        if(valeur="X") {digit := "1f"; variable_faute:=0};
+        if(valeur="Y") {digit := "20"; variable_faute:=0};
+        if(valeur="Z") {digit := "21"; variable_faute:=0};
+        if(valeur="-") {digit := "22"; variable_faute:=0};
+        if(valeur="+") {digit := "23"; variable_faute:=0};
+
+
+	if(variable_faute=1) 
+		{
+		digit := "00";
+		message:="caractere non convertible : "+ sprintf("%s", valeur);
+		ReportFault(message);
+		};
+
+	return(digit);
+}
+
+:Calculincrementmidbase36(valeur string) int
+{
+	:digit int;
+	:variable_faute int;
+
+	variable_faute:=1;
+
+	if(valeur="00") {digit := 0; variable_faute:=0};
+	if(valeur="01") {digit := 1; variable_faute:=0};
+	if(valeur="02") {digit := 2; variable_faute:=0};
+	if(valeur="03") {digit := 3; variable_faute:=0};
+	if(valeur="04") {digit := 4; variable_faute:=0};
+	if(valeur="05") {digit := 5; variable_faute:=0};
+	if(valeur="06") {digit := 6; variable_faute:=0};
+	if(valeur="07") {digit := 7; variable_faute:=0};
+	if(valeur="08") {digit := 8; variable_faute:=0};
+	if(valeur="09") {digit := 9; variable_faute:=0};
+	if(valeur="0a") {digit := 10; variable_faute:=0};
+	if(valeur="0b") {digit := 11; variable_faute:=0};
+	if(valeur="0c") {digit := 12; variable_faute:=0};
+	if(valeur="0d") {digit := 13; variable_faute:=0};
+	if(valeur="0e") {digit := 14; variable_faute:=0};
+	if(valeur="0f") {digit := 15; variable_faute:=0};
+	if(valeur="10") {digit := 16; variable_faute:=0};
+	if(valeur="11") {digit := 17; variable_faute:=0};
+	if(valeur="12") {digit := 18; variable_faute:=0};
+	if(valeur="13") {digit := 19; variable_faute:=0};
+	if(valeur="14") {digit := 20; variable_faute:=0};
+	if(valeur="15") {digit := 21; variable_faute:=0};
+	if(valeur="16") {digit := 22; variable_faute:=0};
+	if(valeur="17") {digit := 23; variable_faute:=0};
+	if(valeur="18") {digit := 24; variable_faute:=0};
+        if(valeur="19") {digit := 25; variable_faute:=0};
+        if(valeur="1a") {digit := 26; variable_faute:=0};
+        if(valeur="1b") {digit := 27; variable_faute:=0};
+        if(valeur="1c") {digit := 28; variable_faute:=0};
+        if(valeur="1d") {digit := 29; variable_faute:=0};
+        if(valeur="1e") {digit := 30; variable_faute:=0};
+        if(valeur="1f") {digit := 31; variable_faute:=0};
+	if(valeur="20") {digit := 32; variable_faute:=0};
+        if(valeur="21") {digit := 33; variable_faute:=0};
+        if(valeur="22") {digit := 34; variable_faute:=0};
+        if(valeur="23") {digit := 35; variable_faute:=0};
+
+	if(variable_faute=1) 
+		{
+		digit := 0;
+		message:="caractere non convertible : "+ sprintf("%s", valeur);
+		ReportFault(message);
+		};
+
+	return(digit);
+}
+
+
+
+
+:Gestion_MID(codebarresmid string) string
+{
+	(* fonction specifique du combine v et bto *)
+
+	:i int;
+	:midbase36 string;
+	:midincrementbase36 string;
+	:ascii string;
+
+	ascii:="";
+	midbase36:="";
+	midincrementbase36:="";
+
+	(* mid string variable globale*)
+
+	for(i:=1;i<=sizeof(codebarresmid);i:=i+1)
+	{
+		midbase36:=midbase36+Calculmidbase36(mid[i]);
+	}
+
+
+
+	(* calcule du numéro incremental *)
+	midincrementbase36 := sprintf("%02x",
+	Calculincrementmidbase36(midbase36[7..8])*36*36+Calculincrementmidbase36(midbase36[9..10])*36+Calculincrementmidbase36(midbase36[11..12]) );
+
+	if(sizeof(midincrementbase36)=1){midincrementbase36:="00000"+midincrementbase36}
+	if(sizeof(midincrementbase36)=2){midincrementbase36:="0000"+midincrementbase36}
+	if(sizeof(midincrementbase36)=3){midincrementbase36:="000"+midincrementbase36}
+	if(sizeof(midincrementbase36)=4){midincrementbase36:="00"+midincrementbase36}
+	if(sizeof(midincrementbase36)=5){midincrementbase36:="0"+midincrementbase36}
+
+
+	midincrementbase36 := StrTranslate("A-Z", "a-Z", midincrementbase36);
+
+
+	(* passage du mid de caracteres en ascii *)
+	for(i := 1; i <= 9; i := i + 1)
+	{
+		ascii := sprintf("%s%02x", ascii, extractchar(mid, i));
+	}
+
+	(* formation du code a mettre en eeprom*)
+	midbase36:=midincrementbase36
+		+sprintf("%02d",Calculincrementmidbase36(midbase36[13..14]))
+		+sprintf("%02d",Calculincrementmidbase36(midbase36[15..16]))
+		+sprintf("%02d",Calculincrementmidbase36(midbase36[17..18])-10)  (* -10 pour date PSA en claire  *)
+		+StrTranslate("A-Z", "a-Z", ascii[3..6]);
+
+
+	return(midbase36);
+}
+
+
+:Old_verif_trame_recu(datatrame1 string,datatrame2 string,message_erreur string) void
+{
+
+	if (datatrame1=datatrame2)
+	{
+		if(trace)
+		{
+			message :="datatrame1= "+sprintf("%s\n",datatrame1)+"datatrame2= "+sprintf("%s\n", datatrame2);
+
+			PrintMessage(message);
+		}
+	
+    	}
+	else
+	{
+		
+		message :="datatrame1= " + sprintf("%s\n",datatrame1) + "datatrame2= " + sprintf("%s\n", datatrame2);
+
+		PrintMessage(message);
+		PrintMessage(message_erreur);
+		ReportFault("Probleme lecture trame recu\n");
+
+	}
+}
+
+:verif_trame_recu(Tr_Recue string,Tr_Attendue string,message_erreur string) void
+{
+	:Resultat_Comp int;
+
+	if (Tr_Recue=Tr_Attendue)
+	{
+		Resultat_Comp := 0 ;
+		if(trace)
+		{
+			message :="Tr_Recue= "+sprintf("%s\n",Tr_Recue)+"Tr_Attendue= "+sprintf("%s\n", Tr_Attendue);
+			PrintMessage(message);
+		}	
+    	}
+	else
+	{
+		Resultat_Comp := 1 ;
+		
+		message :="Tr_Recue= " + sprintf("%s\n",Tr_Recue) + "Tr_Attendue= " + sprintf("%s\n", Tr_Attendue);
+		PrintMessage(message);
+		PrintMessage(message_erreur);
+		ReportFault("\nProbleme lecture trame recu\n");
+
+	}
+
+	VERB ACTIVE "CAN" 0,0 
+	{
+		Result.measured:=Resultat_Comp;
+		if ( sizeof(message_erreur) < 16 )
+			Test.Ident:=message_erreur
+		else
+			Test.ident:=message_erreur[sizeof(message_erreur)-15..sizeof(message_erreur)]
+	}
+}
+
+
+
+
+:FlushBarCodes() void
+{
+      :fd1 int;
+      :c[1] char;
+
+      fd1 := open("/bcr", O_SERIAL);
+
+	while(select(fd1)>0)
+	{
+		read(fd1,1,@c);
+      }
+	
+	close(fd1);
+}
+
+
+:Entier(f float) float
+{	
+	:i      int;
+	:f1     float;
+	:neg    boolean;
+
+	neg := false;
+
+	if (f < 0 )
+	{
+		neg := true;
+		f := -f;
+	};
+
+	i := f;
+
+	if ( f - i >= 0.5 )
+	{
+		f1 := i + 1;
+	}
+	else
+	{
+		f1 := i
+	};
+
+
+	if (neg)
+	{
+		f1 := -f1
+	};
+
+	return (f1);
+
+}
+
+(****************************************************************************************************)
+:Fsm() void
+
+{
+	:name string;
+    	name:="EMF A+";
+
+	:val_fsm float;
+	val_fsm:=0;
+
+	val_fsm := ((freq-__VAL_MID_FSM__)*1000000);
+
+
+	if(mid=__MID_FSM__)
+    	{
+		fflush(sys.print.channel);
+		
+		fprintf(sys.print.channel,"*************************************\n");
+		fprintf(sys.print.channel,"*       RELEVE F.S.M %s         *\n",name);
+		fprintf(sys.print.channel,"*************************************\n\n");
+
+		fprintf(sys.print.channel,"Veuillez remplir le document = %s\n\n\n",name);
+		fprintf(sys.print.channel,"CODE_MID = %s\n\n\n",mid);
+		(*fprintf(sys.print.channel,"RELEVE = %f microHz      \n\n",(freq-__VAL_MID_FSM__)*1000000);*)
+		fprintf(sys.print.channel,"RELEVE FSM = %f microHz      \n\n",val_fsm);
+		fprintf(sys.print.channel,"*************************************\n");
+		fprintf(sys.print.channel,"Frequence de reference = %f Hz\n",__VAL_MID_FSM__);
+		fprintf(sys.print.channel,"*************************************\n");
+
+	      	IO.printstring := sprintf("Ref Produit: ^"%s^"\n%s\n\n\n\n\n\n\n\n\n",Name,time.ascii(time.current));
+
+		fflush(sys.print.channel);
+    	} 
+
+}
+(****************************************************************************************************)
+
+
+:attente_placementcarte(fonction int,chaine string,attente boolean) void
+{
+         if (fonction = 0)
+        {
+                (* attente PLACEMENT CARTE *)
+                lib.fenetre(5,10,70,6);
+                VT.cursor:=25,13,on;
+                printf("%s",chaine);
+		fflush(stdout);
+
+                        repeat
+                        { }
+                        until (fixture.sense[2]=off)
+        }
+            else
+        {
+                (* attente EXTRAIRE CARTE *)
+                lib.fenetre(5,10,70,6);
+                VT.cursor:=25,13,on;
+                printf("%s",chaine);
+                fflush(stdout);
+
+                        repeat
+                        { }
+                        until (fixture.sense[2]=on)
+      }
+}
+
+
+:attente_placementcarte_sortieduprogramme(fonction int,chaine1 string,chaine2 string,attente boolean) void
+{
+         if (fonction = 0)
+        {
+                (* attente PLACEMENT CARTE *)
+                lib.fenetre(5,10,70,6);
+                VT.cursor:=25,13,on;
+                printf("%s",chaine1);
+		fflush(stdout);
+                VT.cursor:=25,14,on;
+                printf("%s",chaine2);
+		fflush(stdout);
+
+                repeat
+                {
+			delay(200ms);
+			if(GetChar(nowait)=142)
+			{
+				sortieduprogramme:=true
+			}
+			else
+			{
+				sortieduprogramme:=false
+			}
+		 }
+                 until ((fixture.sense[2]=off)||sortieduprogramme)
+        }
+        else
+        {
+                (* attente EXTRAIRE CARTE *)
+                lib.fenetre(5,10,70,6);
+                VT.cursor:=25,13,on;
+                printf("%s",chaine1);
+                fflush(stdout);
+
+                        repeat
+                        { }
+                        until (fixture.sense[2]=on)
+      }
+}
+
+
+
+:Verif_Ligne_LCD(MinImpaire Value,MaxImpaire Value,MinPaire Value,MaxPaire Value,VMessage string)void
+{
+	(*  if(prog.faults!=0) return; *)
+	NewTest(pasdebut,Active, "Verif_Ligne_LCD" + VMessage);
+	printf("\n   ==> Verification du bus LCD avec damier PAIRE\n");
+
+	DCV "V_LIGNE_1_TP28" (L=#q69,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_3_TP30" (L=#c121,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_5_TP33" (L=#c110,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_7_TP35" (L=#c101,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_9_TP37" (L=#c100,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+
+	DCV "V_LIGNE_11_TP39" (L=#q68,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_13_TP41" (L=#q67,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_15_TP43" (L=#q66,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_17_TP45" (L=#q65,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_19_TP47" (L=#q64,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+
+	DCV "V_LIGNE_21_TP49" (L=#c127,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_23_TP51" (L=#c126,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_25_TP54" (L=#c124,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_27_TP56" (L=#c123,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_29_TP58" (L=#c122,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+
+	DCV "V_LIGNE_30_TP60" (L=#c120,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_32_TP62" (L=#c119,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_34_TP64" (L=#c118,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_36_TP67" (L=#c117,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_38_TP70" (L=#c116,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+
+	DCV "V_LIGNE_40_TP71" (L=#c115,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_42_TP73" (L=#c114,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_44_TP76" (L=#c113,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_46_TP78" (L=#c112,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_48_TP80" (L=#c111,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+
+	DCV "V_LIGNE_50_TP82" (L=#c109,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_52_TP84" (L=#c108,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_54_TP86" (L=#c107,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_55_TP184" <1V (L=#c106,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_56_TP185" (L=#c105,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_58_TP89" (L=#c104,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_59_TP91" <1V (L=#c103,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+
+	DCV "V_LIGNE_61_TP93" <1V (L=#c102,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_63_TP95" <1V (L=#c95,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_64_TP188" (L=#c94,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_66_TP97" (L=#c93,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_68_TP99" (L=#c92,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+
+	DCV "V_LIGNE_70_TP101" (L=#c91,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_71_TP103" <1V (L=#c90,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_72_TP105" (L=#c89,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_74_TP107" (L=#c88,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_76_TP109" (L=#c63,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_78_TP189" (L=#c62,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_79_TP111" <1V (L=#c31,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+
+	DCV "V_LIGNE_80_TP113" (L=#c30,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_82_TP115" (L=#c61,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_84_TP117" (L=#c60,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire; }
+	DCV "V_LIGNE_86_TP190" (L=#c59,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_87_TP119" <1V (L=#c29,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire; Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_88_TP121" (L=#c28,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+
+	DCV "V_LIGNE_90_TP123" (L=#c27,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire; }
+	DCV "V_LIGNE_92_TP125" (L=#c58,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_94_TP191" (L=#c57,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire;	}
+	DCV "V_LIGNE_95_TP127" <1V (L=#c26,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinImpaire;	Result.Hilimit:=MaxImpaire; }
+	DCV "V_LIGNE_96_TP129" (L=#c25,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire; }
+	DCV "V_LIGNE_98_TP131" (L=#c56,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire; }
+
+	DCV "V_LIGNE_100_TP133" (L=#q115,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire; }
+	DCV "V_LIGNE_102_TP192" (L=#q114,R=#PS7)
+	{ Result.uselolimit:=TRUE; Result.usehilimit:=TRUE; Result.Lolimit:=MinPaire; Result.Hilimit:=MaxPaire; }
+
+	if(prog.faults!=0)
+	{
+		fprintf(sys.print.channel,"Court-circuit sur le bus LCD\n\n");
+	}
+
+}
+
+
+:verif_bus_LCD_com() void
+{
+if(prog.faults!=0) return;
+
+	if (afficheur!=0)
+	{
+           NewTest(pasdebut,Active, "Verif_bus_LCD");
+
+			emission(trameAplus_sortie_logiques_0, reponse);
+(*			delay(1s);*)
+			verif_trame_recu(trame_recue[5..10],trameAplus_status_sortie_logiques,"trameAplus_status_sortie_logiques_0");
+
+(*	fprintf(sys.print.channel,"trameAplus_status_sortie_logiques: %s\n\n", trame_recue);*)
+
+			DCV "V_COM1_TP154_OV" <1V (L=#q59,R=#PS7)
+			DCV "V_COM2_TP155_OV" <1V (L=#q58,R=#PS7)
+			DCV "V_COM3_TP156_OV" <1V (L=#q24,R=#PS7)
+			DCV "V_COM4_TP157_OV" <1V (L=#q87,R=#PS7)
+
+			if(prog.faults!=0) return;
+
+			emission(trameAplus_sortie_logiques_1, reponse);
+(*			delay(1s);*)
+			verif_trame_recu(trame_recue[5..10],trameAplus_status_sortie_logiques,"trameAplus_status_sortie_logiques_1");
+
+(*	fprintf(sys.print.channel,"trameAplus_status_sortie_logiques: %s\n\n", trame_recue);*)
+
+			DCV "V_COM1_TP154_5V" 4.9V,5.2V (L=#q59,R=#PS7)
+			DCV "V_COM2_TP155_OV1" <1V (L=#q58,R=#PS7)
+			DCV "V_COM3_TP156_5V" 4.9V,5.2V (L=#q24,R=#PS7)
+			DCV "V_COM4_TP157_OV1" <1V (L=#q87,R=#PS7)
+
+			if(prog.faults!=0) return;
+
+			emission(trameAplus_sortie_logiques_2, reponse);
+(*			delay(1s);*)
+			verif_trame_recu(trame_recue[5..10],trameAplus_status_sortie_logiques,"trameAplus_status_sortie_logiques_2");
+
+(*	fprintf(sys.print.channel,"trameAplus_status_sortie_logiques: %s\n\n", trame_recue);*)
+
+			DCV "V_COM1_TP154_0V2" <1V (L=#q59,R=#PS7)
+			DCV "V_COM2_TP155_5V" 4.9V,5.2V (L=#q58,R=#PS7)
+			DCV "V_COM3_TP156_0V2" <1V (L=#q24,R=#PS7)
+			DCV "V_COM4_TP157_5V" 4.9V,5.2V (L=#q87,R=#PS7)
+
+			if(prog.faults!=0) return;
+
+			emission(trameAplus_sortie_logiques_3, reponse);
+(*			delay(1s);*)
+			verif_trame_recu(trame_recue[5..10],trameAplus_status_sortie_logiques,"trameAplus_status_sortie_logiques_3");
+
+(*	fprintf(sys.print.channel,"trameAplus_status_sortie_logiques: %s\n\n", trame_recue);*)
+
+			DCV "V_COM1_TP154_h" 2.4V,2.6V (L=#q59,R=#PS7)
+			DCV "V_COM2_TP155_h" 2.4V,2.6V (L=#q58,R=#PS7)
+			DCV "V_COM3_TP156_h" 2.4V,2.6V (L=#q24,R=#PS7)
+			DCV "V_COM4_TP157_h" 2.4V,2.6V (L=#q87,R=#PS7)
+
+			if(prog.faults!=0) return;
+
+	}
+}
+
+(*---------------------------------------------------------------------------------------------------------*)
+:calibration_horloge() void
+{
+        NewTest(pasdebut,Active, "Calibration_horloge");
+
+	if (posage="droit") 
+	{
+		fixture.control[5]:=on;	        (* commute relais BNC *)
+	}
+	else
+	{
+		if( posage="gauche") 
+		{
+			fixture.control[6]:=on;	(* commute relais BNC *)
+		}
+	}
+
+	delay(800ms);
+
+        :bit15            float;
+        :rap              float; 
+        :rapport_freq     float;  
+        :correctiond      float;
+(*        :correction       string;*)
+
+        :ecrit_config_tab       string;
+        :lect_config_tab        string;
+
+        :results     string;   (*  variable GPIB   *)
+	:taille	int;
+
+
+	GPIB.State:=Closed;
+	GPIB.State:=Open;
+
+
+        GPIB.Printf(7,"CLR");
+ (*	GPIB.Printf(7,"DS0"); *)
+	GPIB.Printf(7,"SR1");
+ (*	GPIB.Printf(7,"DH1"); *)
+
+        GPIB.Printf(7,"SMT500");
+
+	(* debut de la mesure 1 *)
+   	delay(1s);
+
+	GPIB.Printf(7,"TRG");
+
+	if(GPIB.WaitSRQ(5s)=FALSE)
+	{
+		printf("ERROR/GPIB Device timed Out\n")
+	}
+	else
+	{
+		GPIB.Gets(7,1s,@results);
+	}
+
+	taille:=sizeof(results)-3;
+	
+	Freq:=atof(results[7..18]);
+
+	Freq1:=Freq;
+	printf("\nRes : %s ::: Feq1 %f\n", results, Freq1);
+	printf(  "Res : 12345678901234567890 ::: Size:%d\n", taille);
+	printf(  "Res :    #%s#\n", results[7..18]);
+	fflush(stdout);
+
+	(* fin de la mesure 1 *)
+
+
+	(* debut de la mesure 2 *)
+        GPIB.Printf(7,"CLR");
+	GPIB.Printf(7,"SR1");
+        GPIB.Printf(7,"SMT500");
+
+   	delay(1s);
+
+	GPIB.Printf(7,"TRG");
+
+	if(GPIB.WaitSRQ(4s)=FALSE)
+	{
+		printf("ERROR/GPIB Device timed Out\n")
+	}
+	else
+	{
+		GPIB.Gets(7,1s,@results);
+	}
+
+	taille:=sizeof(results);
+
+	Freq:=atof(results[6..taille]);
+	Freq:=atof(results[7..18]);
+
+	Freq2:=Freq;
+
+printf("\nRes : %s ::: Feq %f\n", results, Freq);
+printf(  "Res : 12345678901234567890 ::: Size:%d\n", taille);
+printf(  "Res :    #%s#\n", results[7..18]);
+fflush(stdout);
+
+
+	(* fin de la mesure 2 *)
+
+ 	deltafreq1_2:=freq1-freq2;
+
+	if  ((deltafreq1_2>0.00025) || (deltafreq1_2<-0.00025))
+	{
+		
+		(* debut de la mesure 3 *)
+	        GPIB.Printf(7,"CLR");
+		GPIB.Printf(7,"SR1");
+	        GPIB.Printf(7,"SMT500");
+
+   		delay(1s);
+
+		GPIB.Printf(7,"TRG");
+
+		if(GPIB.WaitSRQ(4s)=FALSE)
+		{
+			printf("ERROR/GPIB Device timed Out\n")
+		}
+		else
+		{
+			GPIB.Gets(7,1s,@results);
+		}
+		taille:=sizeof(results);
+
+		Freq:=atof(results[6..taille]);
+		Freq:=atof(results[7..18]);
+
+		Freq3:=Freq;
+
+printf("\nRes : %s ::: Feq1 %f\n", results, Freq1);
+printf(  "Res : 12345678901234567890 ::: Size:%d\n", taille);
+printf(  "Res :    #%s#\n", results[7..18]);
+fflush(stdout);
+
+		(* fin de la mesure 3 *)
+
+		deltafreq1_3:=freq1-freq3;
+		deltafreq2_3:=freq2-freq3;
+
+		if  (((deltafreq1_3)>0.00025) || ((deltafreq1_3)<-0.00025))
+		{
+			if  (((deltafreq2_3)>0.00025) || ((deltafreq2_3)<-0.00025))
+            	 	{
+				prog.faults:=prog.faults+1;
+				fprintf(sys.print.channel,"Deltafreqmax = %f\n", 0.00025);
+				fprintf(sys.print.channel,"Deltafreq1_2 = %f\n", deltafreq1_2);
+				fprintf(sys.print.channel,"Deltafreq1_3 = %f\n", deltafreq1_3);
+				fprintf(sys.print.channel,"Deltafreq2_3 = %f\n", deltafreq2_3);
+             		}
+		}
+
+
+	}
+
+(* pour debug           
+	fprintf(sys.print.channel,"Deltafreqmax = %f\n", 0.00025);
+	fprintf(sys.print.channel,"Deltafreq1_2 = %f\n", deltafreq1_2);
+	fprintf(sys.print.channel,"Deltafreq1_3 = %f\n", deltafreq1_3);
+	fprintf(sys.print.channel,"Deltafreq2_3 = %f\n", deltafreq2_3);
+	fprintf(sys.print.channel,"freq1 = %f\n", freq1);
+	fprintf(sys.print.channel,"freq2 = %f\n", freq2);
+	fprintf(sys.print.channel,"freq3 = %f\n", freq3);
+	fprintf(sys.print.channel,"freq = %f\n", freq);
+
+
+  pour debug*)
+
+
+	(* !!!!!!!!! CTFE !!!!!!!!!!! *)
+	(* NE PAS CHANGER LES LIMITES *)
+	if ( freq < 62.494 || freq > 62.506 )
+	{
+		prog.faults:=prog.faults+1;
+		fprintf(sys.print.channel,"ERR FREQ PWM ECLAIRAGE\n" );
+		fprintf(sys.print.channel,"--> Mesure : %fHz\n", Freq );
+		return ;
+	}
+	(* !!!!!!!!! CTFE !!!!!!!!!!! *)
+
+
+	
+	correction:=(((freq*ration)-freq_theo)/freq_theo)*1000000;
+
+	if ((correction < LB_Coef_Correction) || (correction > LH_Coef_Correction))
+	{
+		prog.faults:=prog.faults+1;
+		fprintf(sys.print.channel,"Erreur de FREQUENCE OSCILLATEUR\n");
+		fprintf(sys.print.channel,"Frequence mesure: %f\n", freq);
+		fprintf(sys.print.channel,"--> Mesure correction: %f\n", correction );
+	}
+
+	if (correction < 0)
+	{
+	 correctiond:= Sys80.Round(255+correction+1+0.5)
+	}
+	else
+	{
+	 correctiond:= Sys80.Round(correction+0.5)
+	}
+
+	correction_hex:= sprintf("%02x", entier(correctiond));
+
+(*	fprintf(sys.print.channel,"freq = %f\n", freq);
+	fprintf(sys.print.channel,"correction = %f\n", correction);
+	fprintf(sys.print.channel,"correctiond = %f\n", correctiond);
+	fprintf(sys.print.channel,"correction_hex = %s\n", correction_hex);
+*)
+	trameAplus_ecriture_correction_montre:=(trameAplus_ecriture_correction_montre[1..26]+correction_hex);
+
+	emission(trameAplus_ecriture_correction_montre, reponse);
+	delay(250ms);
+	verif_trame_recu(trame_recue[5..8],trameAplus_status_ecriture_correction_montre,"trameAplus_status_ecriture_correction_montre");
+
+	fixture.control[6]:=off;
+
+  	if (capabilite_fonctionnel) 
+	{
+	        fdf:=fopen("A_Plus_fonc.res","a");
+		fprintf (fdf,"%-6.6s %-8v %-8v %-10v\n","correction", -10, 50, correctiond);
+		fclose(fdf);
+	}
+
+
+}
+(*---------------------------------------------------------------------------------------------------------*)
+
+(*---------------------------------------------------------------------------------------------------------*)
+:OLD_calibration_horloge() void
+{
+        NewTest(pasdebut,Active, "Calibration_horloge");
+
+	if (posage="droit") 
+	{
+		fixture.control[5]:=on;	        (* commute relais BNC *)
+	}
+	else
+	{
+		if( posage="gauche") 
+		{
+			fixture.control[6]:=on;	(* commute relais BNC *)
+		}
+	}
+
+	delay(500ms);
+
+        :bit15            float;
+        :rap              float; 
+        :rapport_freq     float;  
+        :correctiond      float;
+(*        :correction       string;*)
+
+        :ecrit_config_tab       string;
+        :lect_config_tab        string;
+
+        :results     string;   (*  variable GPIB   *)
+	:taille	int;
+
+
+	GPIB.State:=Closed;
+	GPIB.State:=Open;
+
+
+        GPIB.Printf(7,"CLR");
+ (*	GPIB.Printf(7,"DS0"); *)
+	GPIB.Printf(7,"SR1");
+ (*	GPIB.Printf(7,"DH1"); *)
+
+        GPIB.Printf(7,"SMT340");
+
+	(* debut de la mesure 1 *)
+   	delay(1s);
+
+	GPIB.Printf(7,"TRG");
+
+	if(GPIB.WaitSRQ(2s)=FALSE)
+	{
+		printf("ERROR/GPIB Device timed Out\n")
+	}
+	else
+	{
+		GPIB.Gets(7,1s,@results);
+	}
+
+	taille:=sizeof(results);
+
+	Freq:=atof(results[6..taille]);
+
+	Freq1:=Freq;
+
+
+	(* fin de la mesure 1 *)
+
+
+	(* debut de la mesure 2 *)
+        GPIB.Printf(7,"CLR");
+	GPIB.Printf(7,"SR1");
+        GPIB.Printf(7,"SMT340");
+
+   	delay(1s);
+
+	GPIB.Printf(7,"TRG");
+
+	if(GPIB.WaitSRQ(2s)=FALSE)
+	{
+		printf("ERROR/GPIB Device timed Out\n")
+	}
+	else
+	{
+		GPIB.Gets(7,1s,@results);
+	}
+
+	taille:=sizeof(results);
+
+	Freq:=atof(results[6..taille]);
+
+	Freq2:=Freq;
+
+	(* fin de la mesure 2 *)
+
+ 	deltafreq1_2:=freq1-freq2;
+
+	if  ((deltafreq1_2>0.00025) || (deltafreq1_2<-0.00025))
+	{
+		
+		(* debut de la mesure 3 *)
+	        GPIB.Printf(7,"CLR");
+		GPIB.Printf(7,"SR1");
+	        GPIB.Printf(7,"SMT340");
+
+   		delay(1s);
+
+		GPIB.Printf(7,"TRG");
+
+		if(GPIB.WaitSRQ(2s)=FALSE)
+		{
+			printf("ERROR/GPIB Device timed Out\n")
+		}
+		else
+		{
+			GPIB.Gets(7,1s,@results);
+		}
+		taille:=sizeof(results);
+
+		Freq:=atof(results[6..taille]);
+		Freq3:=Freq;
+		(* fin de la mesure 3 *)
+
+		deltafreq1_3:=freq1-freq3;
+		deltafreq2_3:=freq2-freq3;
+
+		if  (((deltafreq1_3)>0.00025) || ((deltafreq1_3)<-0.00025))
+		{
+			if  (((deltafreq2_3)>0.00025) || ((deltafreq2_3)<-0.00025))
+            	 	{
+				prog.faults:=prog.faults+1;
+				fprintf(sys.print.channel,"Deltafreqmax = %f\n", 0.00025);
+				fprintf(sys.print.channel,"Deltafreq1_2 = %f\n", deltafreq1_2);
+				fprintf(sys.print.channel,"Deltafreq1_3 = %f\n", deltafreq1_3);
+				fprintf(sys.print.channel,"Deltafreq2_3 = %f\n", deltafreq2_3);
+             		}
+		}
+
+
+	}
+
+(* pour debug           
+	fprintf(sys.print.channel,"Deltafreqmax = %f\n", 0.00025);
+	fprintf(sys.print.channel,"Deltafreq1_2 = %f\n", deltafreq1_2);
+	fprintf(sys.print.channel,"Deltafreq1_3 = %f\n", deltafreq1_3);
+	fprintf(sys.print.channel,"Deltafreq2_3 = %f\n", deltafreq2_3);
+	fprintf(sys.print.channel,"freq1 = %f\n", freq1);
+	fprintf(sys.print.channel,"freq2 = %f\n", freq2);
+	fprintf(sys.print.channel,"freq3 = %f\n", freq3);
+	fprintf(sys.print.channel,"freq = %f\n", freq);
+
+
+  pour debug*)
+
+
+	(* !!!!!!!!! CTFE !!!!!!!!!!! *)
+	(* NE PAS CHANGER LES LIMITES *)
+	if ( freq < 62.494 || freq > 62.506 )
+	{
+		prog.faults:=prog.faults+1;
+		fprintf(sys.print.channel,"ERR FREQ PWM ECLAIRAGE\n" );
+		fprintf(sys.print.channel,"--> Mesure : %fHz\n", Freq );
+		return ;
+	}
+	(* !!!!!!!!! CTFE !!!!!!!!!!! *)
+
+
+	
+	correction:=(((freq*ration)-freq_theo)/freq_theo)*1000000;
+
+	if ((correction < LB_Coef_Correction) || (correction > LH_Coef_Correction))
+	{
+		prog.faults:=prog.faults+1;
+		fprintf(sys.print.channel,"Erreur de FREQUENCE OSCILLATEUR\n");
+	}
+
+	if (correction < 0)
+	{
+	 correctiond:= Sys80.Round(255+correction+1+0.5)
+	}
+	else
+	{
+	 correctiond:= Sys80.Round(correction+0.5)
+	}
+
+	correction_hex:= sprintf("%02x", entier(correctiond));
+
+(*	fprintf(sys.print.channel,"freq = %f\n", freq);
+	fprintf(sys.print.channel,"correction = %f\n", correction);
+	fprintf(sys.print.channel,"correctiond = %f\n", correctiond);
+	fprintf(sys.print.channel,"correction_hex = %s\n", correction_hex);
+*)
+	trameAplus_ecriture_correction_montre:=(trameAplus_ecriture_correction_montre[1..26]+correction_hex);
+
+	emission(trameAplus_ecriture_correction_montre, reponse);
+	delay(250ms);
+	verif_trame_recu(trame_recue[5..8],trameAplus_status_ecriture_correction_montre,"trameAplus_status_ecriture_correction_montre");
+
+	fixture.control[6]:=off;
+
+  	if (capabilite_fonctionnel) 
+	{
+	        fdf:=fopen("A_Plus_fonc.res","a");
+		fprintf (fdf,"%-6.6s %-8v %-8v %-10v\n","correction", -10, 50, correctiond);
+		fclose(fdf);
+	}
+
+
+}
+(*---------------------------------------------------------------------------------------------------------*)
+
+
+
+(*---------------------------------------------------------------------------------------------------------*)
+:test_reset() void
+{
+	board.powerdown();
+	board.powerup1();
+	board.powerup2();
+	board.powerdown();
+}
+(*---------------------------------------------------------------------------------------------------------*)
+
+
+(*---------------------------------------------------------------------------------------------------------*)
+:verification_horloge() void
+{
+        NewTest(pasdebut,Active, "Verification_horloge");
+
+	if (posage="droit") 
+	{
+		fixture.control[5]:=on;	        (* commute relais BNC *)
+	}
+	else
+	{
+		if( posage="gauche") 
+		{
+			fixture.control[6]:=on;	(* commute relais BNC *)
+		}
+	}
+
+	delay(200ms);
+
+        :bit15            float;
+        :rap              float; 
+        :rapport_freq     float;  
+        :correctiond      float;
+(*        :correction       string;*)
+
+        :ecrit_config_tab       string;
+        :lect_config_tab        string;
+
+        :results     string;   (*  variable GPIB   *)
+	:taille	int;
+
+	GPIB.State:=Closed;
+	GPIB.State:=Open;
+
+
+        GPIB.Printf(7,"CLR");
+ (*	GPIB.Printf(7,"DS0"); *)
+	GPIB.Printf(7,"SR1");
+ (*	GPIB.Printf(7,"DH1"); *)
+
+        GPIB.Printf(7,"SMT340");
+
+	(* debut de la mesure 1 *)
+   	delay(2s);
+
+	GPIB.Printf(7,"TRG");
+
+	if(GPIB.WaitSRQ(2s)=FALSE)
+	{
+		printf("ERROR/GPIB Device timed Out\n")
+	}
+	else
+	{
+		GPIB.Gets(7,1s,@results);
+	}
+	taille:=sizeof(results);
+
+	Freq:=atof(results[6..taille]);
+	Freq4:=Freq;
+	(* fin de la mesure 1 *)
+
+(*	fprintf(sys.print.channel,"freq4 = %f\n", freq4); *)
+
+(*	if ((freq4 < (freq2-0.00005)) || (freq4 > (freq2+0.00005)))
+*)
+
+	if ( (freq4 < ((((LB_Coef_Correction/1000000)*freq_theo)+freq_theo)/ration)) || 
+             (freq4 > ((((LH_Coef_Correction/1000000)*freq_theo)+freq_theo)/ration))	 )
+	{
+		prog.faults:=prog.faults+1;
+		fprintf(sys.print.channel,"Erreur de calibration FREQUENCE OSCILLATEUR\n");
+	}
+
+
+}
+(*---------------------------------------------------------------------------------------------------------*)
+
+
+:Verif_CC_Sur_Bus_LCD () void 
+{
+
+	:i int;
+	:VResult float;
+	i:=0;
+	printf("\n==> Verification des court-circuit sur le bus LCD\n\n");
+	
+	(******************************* PAIRE ***********************************)
+	emission(trameAplus_ligne_paire, reponse);
+	delay(10ms);
+	emission(trameAplus_com_paire, reponse);
+	delay(10ms);
+
+	DCV "V_COM1_TP154_0V" <1V (L=#q59,R=#PS7)
+	DCV "V_COM2_TP155_5V" 4.8V,5.2V (L=#q58,R=#PS7)
+	DCV "V_COM3_TP156_0V" <1V (L=#q24,R=#PS7)
+	DCV "V_COM4_TP157_5V" 4.8V,5.2V (L=#q87,R=#PS7)
+
+	DCV "Verification_LIGNE_1_TP28" -1V,6V (L=#q69,R=#PS7)
+	VResult:=result.measured;
+	i:=0;
+	printf("   --> Vpaire mesure %d = %v V\n",i,VResult);
+	While ( (VResult > 2) && (i < 20))
+	{
+		i:=i+1;
+		printf("   --> Trame paire non pris en compte: Reiteration numero %d\n",i);
+	
+		(******* Arret BP + lignes ********)
+		emission(trameAplus_com_Stop, reponse);
+		emission(trameAplus_ligne_Stop, reponse);
+		delay(10ms);
+			
+		emission(trameAplus_ligne_paire, reponse);
+		delay(i*10ms);
+		emission(trameAplus_com_paire, reponse);
+		delay(i*2ms);
+			
+		DCV "Verification_LIGNE_1_TP28" -1V,6V (L=#q69,R=#PS7)
+		VResult:=result.measured;
+		printf("   --> Vpaire mesure %d = %v V\n",i,VResult);
+	}
+
+	Verif_Ligne_LCD(-1V,1V,4.8V,5.2V,"--->PAIRE");	(*VERIFICATION LIGNE EN PAIRE*)
+
+	(******* Arret BP + lignes ********)
+	emission(trameAplus_com_Stop, reponse);
+	emission(trameAplus_ligne_Stop, reponse);
+	delay(20ms);
+	(****************************** FIN PAIRE *********************************)
+
+			
+
+	(******************************* IMPAIRE **********************************
+	emission(trameAplus_ligne_impaire, reponse);
+	delay(10ms);
+	emission(trameAplus_com_impaire, reponse);
+	delay(10ms);
+
+	DCV "V_COM1_TP154_0V" 4.8V,5.2V (L=#q59,R=#PS7)
+	DCV "V_COM2_TP155_5V" <1V (L=#q58,R=#PS7)
+	DCV "V_COM3_TP156_0V" 4.8V,5.2V (L=#q24,R=#PS7)
+	DCV "V_COM4_TP157_5V" <1V (L=#q87,R=#PS7)
+
+	DCV "Verification_LIGNE_1_TP28" -1V,6V (L=#q69,R=#PS7)
+	VResult:=result.measured;
+	i:=0;
+	printf("   --> VImpaire mesure %d = %v V\n",i,VResult);
+	While ( (VResult < 3) && (i < 20))
+	{
+		i:=i+1;
+		printf("   --> Trame impaire non pris en compte: Reiteration numero %d\n",i);
+
+		(******* Arret BP + lignes ********)
+		emission(trameAplus_com_Stop, reponse);
+		emission(trameAplus_ligne_Stop, reponse);
+		delay(10ms);
+	
+		emission(trameAplus_ligne_impaire, reponse);
+		delay(i*10ms);
+		emission(trameAplus_com_impaire, reponse);
+		delay(i*2ms);
+		
+		DCV "Verification_LIGNE_1_TP28" -1V,6V (L=#q69,R=#PS7)
+		VResult:=result.measured;
+		printf("   --> VImpaire mesure %d = %v V\n",i,VResult);
+	}
+
+	Verif_Ligne_LCD(4.8V,5.2V,-1V,1V,"--->IMPAIRE"); 	(*VERIFICATION LIGNE EN IMPAIRE*)
+
+	(******* Arret BP + lignes ********)
+	emission(trameAplus_com_Stop, reponse);
+	emission(trameAplus_ligne_Stop, reponse);
+	****************************** FIN IMPAIRE *******************************)
+}
+
+:can() void
+{
+        NewTest(pasdebut,Active, "CAN");
+
+	if(prog.faults!=0) return;
+	trace:=false;
+	
+	
+	if (posage="droit") 
+	{
+		fixture.control[7]:=on;	        (* commute relais CAN *)
+	}
+	else
+	{
+		if( posage="gauche") 
+		{
+			fixture.control[8]:=on;	(* commute relais CAN *)
+		}
+	}
+
+
+	delay(100ms);
+
+	initdll(); (* permet de dire a MTL que l on utilise un fichier externe *) 
+
+	open_com();
+
+	emission(trameAplus_initialisation_communication, reponse);
+	verif_trame_recu(trame_recue[1..8],trameAplus_ack,"lecture_ack_1");
+
+	emission(trameAplus_declaration_identificateurs, reponse);
+	verif_trame_recu(trame_recue[1..8],trameAplus_ack,"lecture_ack_2");
+
+
+
+	emission(trameAplus_BSI_mode_standart, reponse);
+	
+	verif_trame_recu(trame_recue[1..8],trameAplus_ack,"BSI_mode_standart");
+	delay(500ms); (* delai obligatoire *)
+			
+	if (prog.faults=0)
+	{
+		emission(trameAplus_passage_mode_diag, reponse);
+		verif_trame_recu(trame_recue[5..8],trameAplus_status_passage_mode_diag,"trameAplus_status_passage_mode_diag");
+	}
+
+	if(prog.faults=0) 
+	{
+
+(*********************************************************************************************)
+(* Transforme le NIP, de caracteres en ascci Hex *)
+Nip_ascii :=""
+
+for(j := 1; j <= 9; j := j + 1)
+{
+Nip_ascii := sprintf("%s%02x", Nip_ascii, extractchar(Nip_ecrit, j));
+}
+
+printf("\nNip_ascii = %s",Nip_ascii);
+
+(*********************************************************************************************)
+(* ecriture du code NIP en fin de EEPROM *)
+			emission(trameAplus_ecriture_Nip_ecrit+Nip_ascii, reponse);
+			(* emission(trameAplus_ecriture_Nip_ecrit+"ffffffffffffffffff", reponse); *)
+
+			delay(250ms); 
+			verif_trame_recu(trame_recue[5..6],trameAplus_status_ecriture_Nip_ecrit,"trameAplus_status_ecriture_Nip_ecrit_mauvais");
+
+			emission(trameAplus_lecture_Nip_lu, reponse);
+			delay(250ms);  
+			verif_trame_recu(trame_recue[5..6],trameAplus_status_lecture_Nip_lu,"trameAplus_status_lecture_Nip_lu_mauvais");
+
+printf("\ntrameAplus_status_lecture_Nip_lu: %s\n\n", trame_recue);  
+(*********************************************************************************************)
+
+
+
+
+		emission(trameAplus_lecture_checksum, reponse);
+		verif_trame_recu(trame_recue[5..8],trameAplus_status_lecture_checksum,"trameAplus_status_lecture_checksum");
+
+(*		fprintf(sys.print.channel,"trameAplus_status_lecture_lecture_checksum: %s\n\n", trame_recue);*)
+
+
+		if (trame_recue[9..12] != chksumsoft)      
+		{
+			prog.faults:=prog.faults+1;
+			fprintf(sys.print.channel,"Erreur Checksum \n");
+			fprintf(sys.print.channel,"Checksum=%s \n",trame_recue[9..12]);
+			fflush(sys.print.channel);
+		}
+
+(*		fprintf(sys.print.channel,"trameAplus_status_lecture_checksum: %s\n\n", trame_recue);*)
+
+(*		emission(trameAplus_lecture_typesoft, reponse);
+		verif_trame_recu(trame_recue[5..10],trameAplus_status_typesoft,"trameAplus_status_typesoft");
+*)
+
+		emission(trameAplus_lecture_version_soft, reponse);
+		verif_trame_recu(trame_recue[5..8],trameAplus_status_lecture_version_soft,"trameAplus_status_lecture_version_soft");
+
+(*		fprintf(sys.print.channel,"trameAplus_status_lecture_lecture_version_soft: %s\n\n", trame_recue);
+*)
+
+		if (trame_recue[33..36] != versionsoft)      
+		{
+			prog.faults:=prog.faults+1;
+			fprintf(sys.print.channel,"Erreur version soft \n");
+			fprintf(sys.print.channel,"Version=%s \n",trame_recue[33..36]);
+			fflush(sys.print.channel);
+		}
+
+(*		fprintf(sys.print.channel,"trameAplus_status_lecture_version_soft: %s\n\n", trame_recue);
+*)
+		emission(trameAplus_eclairage_05, reponse);
+		verif_trame_recu(trame_recue[5..10],trameAplus_status_eclairage_05,"trameAplus_status_eclairage_05");
+
+(*		fprintf(sys.print.channel,"trameAplus_status_eclairage_05: %s\n\n", trame_recue)*)
+
+
+		verif_bus_LCD_com();
+
+		(* ecriture code à barres *)
+		(* conversion code a barres base 36 + ajout dans trameX4_ecriture_tracabilite*)
+
+		trameAplus_ecriture_tracabilite:=trameAplus_ecriture_tracabilite[1..26]+"00"+Gestion_MID(mid);
+
+(*		fprintf(sys.print.channel,"trameAplus_ecriture_tracabilite: %s\n", trameAplus_ecriture_tracabilite);
+*)
+
+		if (prog.faults=0)
+		{
+			emission(trameAplus_ecriture_tracabilite, reponse);
+			verif_trame_recu(trame_recue[5..8],trameAplus_status_ecriture_tracabilite,"trameAplus_status_ecriture_tracabilite");
+		}
+
+(*		emission(trameAplus_lecture_tracabilite, reponse);
+		delay(250ms);
+		verif_trame_recu(trame_recue[5..8],trameAplus_status_lecture_tracabilite,"trameAplus_status_lecture_tracabilite");
+
+(*		fprintf(sys.print.channel,"trameAplus_lecture_tracabilite: %s\n", trame_recue[5..24]);
+*)
+		if (trame_recue[9..24] != trameAplus_ecriture_tracabilite[27..42])      
+		{
+			prog.faults:=prog.faults+1;
+			fprintf(sys.print.channel,"Probleme ecriture Mid \n");
+			fflush(sys.print.channel);
+		}
+*)
+		if (prog.faults=0)
+		{
+			calibration_horloge();
+		}
+
+		if(prog.faults=0) 
+		{
+			(* Verif_CC_Sur_Bus_LCD(); *)
+		}
+
+		(* Nouvelle trame config produit A58 PLUS BESOIN DEPUIS LE SOFT 9.50 date :22 07 2008
+		if (prog.faults=0)
+		{
+			emission(trameAplus_Configuration_fonctions, reponse);
+			verif_trame_recu(trame_recue[5..8],"7bb3","trameAplus_Configuration_fonctions");
+		}*)
+
+		if(prog.faults=0) 
+		{
+
+			emission(trameAplus_lecture_octetprocess, reponse);
+			verif_trame_recu(trame_recue[5..8],trameAplus_status_lecture_octetprocess,"trameAplus_status_lecture_octetprocess");
+
+(*			fprintf(sys.print.channel,"trameAplus_status_lecture_octetprocess: %s\n\n", trame_recue); 
+			fprintf(sys.print.channel,"trameAplus_ecriture_octetprocess: %s\n\n", trameAplus_ecriture_octetprocess);
+*)
+		
+			if(prog.faults=0) 
+			{
+				delay(250ms);
+
+				trameAplus_ecriture_octetprocess:=trameAplus_ecriture_octetprocess[1..26]+trame_recue[9..32]+octetprocess+trame_recue[35..40];
+				emission(trameAplus_ecriture_octetprocess, reponse);
+				verif_trame_recu(trame_recue[5..8],trameAplus_status_ecriture_octetprocess,"trameAplus_status_ecriture_octetprocess");
+
+				(*On lui laisse le temps de faire ces écriture E2prom *)
+				delay(250ms);
+			}
+		}
+	}
+
+
+	if (prog.faults = 0)
+	{ 
+		emission(trameAplus_reset_micro, reponse);
+		delay(900ms);
+(*@RC*)
+		emission(trameAplus_initialisation_communication, reponse);
+		verif_trame_recu(trame_recue[1..8],trameAplus_ack,"lecture_ack_1");
+
+		emission(trameAplus_declaration_identificateurs, reponse);
+		verif_trame_recu(trame_recue[1..8],trameAplus_ack,"lecture_ack_2");
+
+		emission(trameAplus_BSI_mode_standart, reponse);
+		verif_trame_recu(trame_recue[1..8],trameAplus_ack,"BSI_mode_standart_2\n");
+		delay(500ms); (* delai obligatoire *)
+
+		emission(trameAplus_passage_mode_diag, reponse);
+(*		delay(250ms);*)
+		verif_trame_recu(trame_recue[5..8],trameAplus_status_passage_mode_diag,"Status_passage_mode_diag_2\n");
+
+		emission(trameAplus_eclairage_05, reponse);
+(*		delay(250ms);*)
+		verif_trame_recu(trame_recue[5..10],trameAplus_status_eclairage_05,"trameAplus_status_eclairage_05");
+
+(*		fprintf(sys.print.channel,"trameAplus_status_eclairage_05: %s\n\n", trame_recue)*)
+
+		if (prog.faults = 0)
+		{ 
+			emission(trameAplus_lecture_tracabilite, reponse);
+(*			delay(250ms);*)
+			verif_trame_recu(trame_recue[5..8],trameAplus_status_lecture_tracabilite,"trameAplus_status_lecture_tracabilite");
+
+(*			fprintf(sys.print.channel,"trameAplus_lecture_tracabilite: %s\n", trame_recue[5..24]);
+*)
+
+        		if (trame_recue[9..24] != trameAplus_ecriture_tracabilite[27..42])      
+			{
+				prog.faults:=prog.faults+1;
+				fprintf(sys.print.channel,"Probleme ecriture Mid \n");
+				fflush(sys.print.channel);
+			}
+
+			emission(trameAplus_lecture_correction_montre, reponse);
+(*			delay(250ms);*)
+			verif_trame_recu(trame_recue[5..8],trameAplus_status_lecture_correction_montre,"trameAplus_status_lecture_correction_montre");
+
+
+	        	if (trame_recue[9..10] != correction_hex)      
+			{
+				prog.faults:=prog.faults+1;
+				fprintf(sys.print.channel,"valeur lue=%s \n",trame_recue[9..10]);
+				fprintf(sys.print.channel,"valeur attendue=%s \n",correction_hex);
+				fprintf(sys.print.channel,"defaut correction montre\n");
+				fflush(sys.print.channel);
+			}
+
+
+(* inutile			verification_horloge();*)
+
+
+		}
+	}
+
+	emission(trameAplus_arret_communication_can, reponse);	
+			
+	close_com();
+	freedll(); (* liberation de la dll quand plus utilise *)
+
+
+	fixture.control[7]:=off;	(* commute relais CAN *)
+	fixture.control[8]:=off;	(* commute relais CAN *)
+
+	fixture.control[5]:=off;	(* commute relais BNC *)
+	fixture.control[6]:=off;	(* commute relais BNC *)
+
+
+(*	delay(100ms);*)
+
+}
+
+(* fin fonctions utilisees pour communication can *)
+
+
+:can1() void
+{
+        NewTest(pasdebut,Active, "CAN_1");
+
+	if (posage="droit") 
+	{
+		fixture.control[7]:=on;	        (* commute relais CAN *)
+	}
+	else
+	{
+		if( posage="gauche") 
+		{
+			fixture.control[8]:=on;	(* commute relais CAN *)
+		}
+	}
+	delay(200ms);
+
+	initdll(); (* permet de dire a MTL que l on utilise un fichier externe *) 
+
+	open_com();
+
+	emission(trameAplus_initialisation_communication, reponse);
+	delay(500ms);
+	verif_trame_recu(trame_recue[1..8],trameAplus_ack,"lecture_ack_1_process_mauvais");
+
+	emission(trameAplus_declaration_identificateurs, reponse);
+	delay(50ms);
+	verif_trame_recu(trame_recue[1..8],trameAplus_ack,"lecture_ack_2_process_mauvais");
+
+	emission(trameAplus_BSI_mode_standart, reponse);
+	delay(50ms);
+	verif_trame_recu(trame_recue[1..8],trameAplus_ack,"BSI_mode_standart_process_mauvais");
+	delay(500ms); (* delai obligatoire *)
+
+	emission(trameAplus_passage_mode_diag, reponse);
+	delay(250ms);
+	verif_trame_recu(trame_recue[5..8],trameAplus_status_passage_mode_diag,"trameAplus_status_passage_mode_diag_process_mauvais");
+
+	emission(trameAplus_eclairage_05, reponse);
+(*	delay(250ms);*)
+	verif_trame_recu(trame_recue[5..10],trameAplus_status_eclairage_05,"trameAplus_status_eclairage_05");
+
+(*	fprintf(sys.print.channel,"trameAplus_status_eclairage_05: %s\n\n", trame_recue)*)
+
+	emission(trameAplus_lecture_octetprocess, reponse);
+	delay(250ms);
+	verif_trame_recu(trame_recue[5..8],trameAplus_status_lecture_octetprocess,"trameAplus_status_lecture_octetprocess_process_mauvais");
+
+(*	fprintf(sys.print.channel,"trameAplus_status_lecture_octetprocess: %s\n\n", trame_recue); *)
+
+	trameAplus_ecriture_octetprocess:=trameAplus_ecriture_octetprocess[1..26]+trame_recue[9..32]+octetprocessff+trame_recue[35..40];
+
+(*	fprintf(sys.print.channel,"trameAplus_ecriture_octetprocess: %s\n\n", trameAplus_ecriture_octetprocess);*)
+
+	emission(trameAplus_ecriture_octetprocess, reponse);
+	delay(250ms);
+	verif_trame_recu(trame_recue[5..8],trameAplus_status_ecriture_octetprocess,"trameAplus_status_ecriture_octetprocess_process_mauvais");
+		
+	emission(trameAplus_arret_communication_can, reponse);	
+
+	close_com();
+	freedll(); (* liberation de la dll quand plus utilise *)
+
+
+	fixture.control[7]:=off;
+	fixture.control[8]:=off;
+	delay(200ms);
+
+}
+(* fin fonctions utilisees pour communication can *)
+
+
+
+
+
+
+
+:traca_extern(chemin_entier string, Action  enum {WRITE, EFFACER, FIND},Donnees string) boolean
+{
+:abcd int;
+:commande string;
+:message_erreur string;
+
+NewTest(pasdebut,Passive, "gestion_fichier");
+
+
+	    case (Action)
+	{
+ 	      WRITE:
+ 		{
+(* indique si le fichier a bien ete cree *)
+			if((abcd := fopen (chemin_entier,"w"))= -1)
+			{
+			prog.faults:=prog.faults + 1;
+			message_erreur :="Probleme ecriture fichier tracabilite:\n" + sprintf("%s\n",chemin_entier);
+	if(sys.print.mode = onfault)
+
+	{
+		fprintf(sys.print.channel, message_erreur);
+		fflush(sys.print.channel);
+	}
+			return(FALSE);
+
+			}
+
+			else
+			{     
+			fprintf(abcd,"%s\n",Donnees);
+			fclose(abcd);
+			return(TRUE);
+			}
+
+		}
+
+		EFFACER:
+		{
+(* pas de verification que le fichier est correctement efface *)
+			commande := "$del " + chemin_entier ;
+			fprintf(stdout,"commande = %s \n",commande);
+			fflush(stdout);
+			shellescape(commande,nowait);
+			return(TRUE);
+
+		}
+
+ 	      FIND:
+ 		{
+(* indique si le fichier existe ou pas *)
+		if((abcd := fopen (chemin_entier,"r"))= -1)
+			{
+			return(FALSE);
+			}
+
+			else
+			{     
+			fclose(abcd);
+			return(TRUE);
+			}
+		}
+	}
+}
+
+
+
+(* @RC --------------------------------------------------------------------------------------------------------*)
+
+:lecture_posage() string
+{
+   
+	:s	string;
+
+	if (fixture.sense[3]=off && fixture.sense[2]=off) s:="gauche et droit";
+
+	if (fixture.sense[3]=off && fixture.sense[2]=on)  s:="gauche";
+
+	if (fixture.sense[3]=on  && fixture.sense[2]=off) s:="droit";
+
+	if (fixture.sense[3]=on  && fixture.sense[2]=on)  s:="ouvert";
+
+	if (trace1) printf("posage = %s\n",s);
+	
+	return(s);
+
+}
+
+:ouverture( str string)boolean
+{
+     
+	if ( (str="gauche") && (fixture.sense[3]=on)) return(true)
+	if ( (str="droit") &&  (fixture.sense[2]=on)) return(true)
+
+	return(false)
+}
+
+:detect_carte_posage() string
+{
+    
+	:s	string;
+
+	s:="absent";
+
+	if (fixture.sense[2]=off) s:="droit" ;
+	if (fixture.sense[3]=off) s:="gauche";
+
+	if (trace1) printf("carte = %s\n",s);
+
+	return(s);
+
+}
+(* @RC --------------------------------------------------------------------------------------------------------*)
+
+
+(* @MN --------------------------------------------------------------------------------------------------------*)
+:End_BC() void				(* Called to end test program *)
+     {
+		IO.Progress := "End Bar Code" ;
+	 	if (Prog.Fail)
+		{
+	 		IO.PrintString :=
+			sprintf("Ref Produit : A PLUS  \n%s\n", Time.Ascii(Time.Current));
+			IO.PrintString := sprintf("Code MID... : %s\nCote ...... : %s\n\n\n\n\n",mid,posage);
+			Display_fail();
+			(*IO.Getanykey("\n\n\1\1\1MAUVAIS CODE BARRE .... APPUYER SUR LA BARRE D'ESPACE");*)
+		}
+	 	
+		fflush(ticketprinter);
+ 		Prog.End(cont);
+	 	attente_plateau_BC(1,"OUVREZ LEs PLATEAUx",true);
+     }
+(* @MN --------------------------------------------------------------------------------------------------------*)
+
+
+
+
+:BoardTest() void
+{
+	
+	:chemin string;
+	:Value_CB string ;
+
+
+	if(circuit_ref)passe_circuit_ref();
+
+	VT.cursor:=1,1,off;
+	VT.clearscreen();
+
+	(* ----------------------------------------------------------------------------------------------------*)
+	board.release();
+	(* ----------------------------------------------------------------------------------------------------*)
+
+	(* ----------------------------------------------------------------------------------------------------*)
+	with initbarcode
+	{
+		initbarcode("0000000000000006",NUM_SERIE_CAB_DROIT);
+		initbarcode("0000000000000006",NUM_SERIE_CAB_GAUCHE);
+
+	}    
+	(* ----------------------------------------------------------------------------------------------------*)
+
+
+	(* ----------------------------------------------------------------------------------------------------*)
+	attente_plateau(1,"OUVREZ LEs PLATEAUx",false);
+
+	InitDll_MNT ( sprintf("%4d", Fixture.Ident) );
+
+
+	(* Ouverture des 2 posages *)
+	dualuut.state:=none;	(* relachement des puits *)
+
+    	while (posage <> "ouvert")
+	{
+		posage:=lecture_posage();
+	}
+	(* ----------------------------------------------------------------------------------------------------*)
+
+	
+
+
+	while(1)
+	{
+		(* --------------------------------------------------------------------------------------------*)
+	      sys.reset(); 	
+		Options.Default();
+
+		VT.cursor:=1,2,off;
+		VT.clearscreen();
+		Display_Count();
+		VT.cursor:=1,1,off;
+		printf(" Produit : A PLUS  Reference : %s\n\n\n\n",Reference_du_produit);
+ 	(* printf("\ncode a barre = %s",Value_CB); *)
+
+	
+		VT.cursor:=15,16,on;
+	    	printf("%s","PLACEZ UNE CARTE ET FERMEZ LE PLATEAU                           ");
+	   	fflush(stdout);
+		(* --------------------------------------------------------------------------------------------*)
+
+	(* Nip_ecrit := Value_CB; *)
+	(* printf("\nNip_ecrit = %s",Nip_ecrit); *)
+
+
+		(* --------------------------------------------------------------------------------------------*)		
+		posage:="";
+		
+		repeat
+		{
+		    delay(100ms);
+		
+		    posage:=lecture_posage();
+		}
+		until (posage="droit" || posage="gauche")
+		(* --------------------------------------------------------------------------------------------*)
+
+		(* --------------------------------------------------------------------------------------------*)
+		Time.elapsed := 0s;
+	
+			(* ------------------------------------------------------------------------------------
+			(* Engage *)
+			if (posage="droit") 
+			{
+				(* Engage droit *)
+				dualuut.state:=right;
+			}
+			else
+			{
+				if( posage="gauche") 
+				{
+					(* Engage gauche *)
+					dualuut.state:=left;
+				}
+			}
+		       ------------------------------------------------------------------------------------*)
+
+
+		(* On lit le CaB *)
+		if (posage="droit") 
+		{
+			Value_CB := initbarcode.lecturecodebarres(NUM_SERIE_CAB_DROIT);
+		}
+		else
+		{
+			if( posage="gauche") 
+			{
+				Value_CB := initbarcode.lecturecodebarres(NUM_SERIE_CAB_GAUCHE);
+			}
+		}
+		mid := Value_CB;
+		printf("\ncode a barre = %s",Value_CB);
+		Nip_ecrit := Value_CB;	
+		printf("\nNip_ecrit = %s",Nip_ecrit);
+		(* --------------------------------------------------------------------------------------------*)
+
+		(* --------------------------------------------------------------------------------------------*)		
+        	if((Value_CB[1..3] != __MID__)  || (sizeof(Value_CB)!=9))			
+    		{									
+   		(* arret de l'enregistrement *)
+			prog.ontest:=void;
+
+			(* sortie normale du ticket de fautes *)
+			if (Sys.print.Mode <> Off)
+				sys.print.function:=initial.print.function;
+
+			(* config normale de ibase *)
+			if (Sys.Log.Mode <> Off)
+				sys.log.function:=initial.log.function;
+	
+		fprintf(sys.print.channel,"\ncode a barre = %s\n",Value_CB);		
+	        	Prog.Faults := Prog.Faults+1;						
+   		
+		End_BC();
+							
+		}
+	      else									
+        	{
+		      (* ------------------------------------------------------------------------------------*)
+			(* Engage *)
+			if (posage="droit") 
+			{
+				(* Engage droit *)
+				dualuut.state:=right;
+			}
+			else
+			{
+				if( posage="gauche") 
+				{
+					(* Engage gauche *)
+					dualuut.state:=left;
+				}
+			}
+		       (*------------------------------------------------------------------------------------*)
+
+		      (* ------------------------------------------------------------------------------------*)        	
+			if (capabilite)
+                	{
+                		init_capabilite();
+                	}
+		      (* ------------------------------------------------------------------------------------*)
+
+		      (* ------------------------------------------------------------------------------------*)
+			Board.Begin();
+				
+			TMPposage := posage ;
+			Inc_Maintenance_Auto ( @TMPposage ) ;
+
+			(* arret de l'enregistrement *)
+			prog.ontest:=void;
+
+			(* sortie normale du ticket de fautes *)
+			if (Sys.print.Mode <> Off)
+				sys.print.function:=initial.print.function;
+
+			(* config normale de ibase *)
+			if (Sys.Log.Mode <> Off)
+				sys.log.function:=initial.log.function;
+
+			sys.reset();
+
+			Discharges();
+
+(*			presence_cadre();
+			presence_afficheur();
+*)                      
+			enregistrement_defauts.init_defauts();
+				 
+			if (!Contacts())
+			{
+
+				if (!TrackLinks())
+				{
+					(* mise en route de l'enregistrement *)
+					if (capabilite)
+                              {
+                 	            		prog.ontest:=resultat_capabilite;
+                              } 
+
+					(* sortie ticket fautes personalisee *)
+					if (ticketcustom)
+					sys.print.function := Ticket_Faute.ticket;
+
+					Test_Connecteur();
+					fuses();
+					Resistors();
+					ResPacks();	
+					Capacitors();
+					Diodes();
+					diodes_clamping();
+					Presence_leds();
+					Transistors();
+					Reseaux_Transistors();
+					Discharges();
+
+					(* sortie normale du ticket de fautes *)
+					sys.print.function:=initial.print.function;
+
+					if (prog.faults = 0)
+					{ 
+						sys.reset();
+
+						fixture.relay[8]:= A; (* connexion PSTP0 a PSTP7 *)
+
+                               			board.powerup();            
+                              			digitals();
+
+						Pin7_U1();                                
+					
+						(* sortie normale ticket de fautes *)
+						if (ticketcustom)
+						sys.print.function:=initial.print.function;
+
+
+						can();
+ 
+						board.powerdown();
+					}
+
+					if (prog.faults = 0)
+					{ 
+						if (capabilite)	prog.ontest:=resultat_capabilite;
+
+						Discharges();
+						mesure_par_pneumatique();
+
+						(* En cas d'erreur sur pompes pneu on met l'octet process a jour *)
+						if (prog.faults != 0)
+						{ 
+						 	board.powerup();            
+						 	delay(900ms);
+						 	can1();
+ 							board.powerdown(); 
+						}
+					}
+
+					fixture.relay[8]:= off; (* deconnexion PSTP0 a PSTP7 *)
+				}
+			}
+
+
+			(* ecriture et fermeture du fichier enregistrement *)
+			if (capabilite)
+			{
+				sauver_capabilite(""+mid[1..3]+"_A_plus.res");
+ 			}
+
+           		
+			(* Gestion des fichiers de Traçabilité externe Process de Test *)
+ 			if ( TRACA_THERMO = true )
+			{
+				chemin:="D:\\verrou_ICT_fonctionnel\\"+mid+".txt" ;
+				if (prog.faults=0)
+				{
+					traca_extern(chemin,WRITE,"");
+				}
+				else
+				{
+					traca_extern(chemin,EFFACER,"");
+				}
+			}
+
+
+			(* ecriture et fermeture du fichier enregistrement *)
+			if(capabilite) fclose(fdc);
+
+			(*fflush(ticketprinter);*)
+			FSM();
+			enregistrement_defauts.sauver_defauts(true,"A_Plus_Double",MID,posage);
+			Board.End();
+			fflush(ticketprinter);
+
+			printf ( "Tps estime %v", Time.elapsed );
+
+			repeat {}
+			until ( ouverture(posage) )
+			delay(250ms);
+
+		}
+
+	} (* fin du while *)
+
+}
+
+
+:menu() void
+{
+	FreeDll_MNT ();
+
+	cd"c:\\ifr\\Winsys.nt\\lib\\";
+	load"startmenu_aplus";
+}
+
+Prog.OnStart := BoardTest;
+

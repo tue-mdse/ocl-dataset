@@ -1,0 +1,128 @@
+[comment encoding = UTF-8 /]
+[module accessors('http://iwz/appmodel')]
+
+[import iwz::appmodel::acceleo::templates::common/]
+[import iwz::appmodel::acceleo::templates::database::names/]
+[import iwz::appmodel::acceleo::templates::database::mysql::types/]
+
+
+[template private generateProcedureSelectAll(entity : Entity)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [entity.getAccessorName_SelectAll()/];
+CREATE PROCEDURE [entity.getAccessorName_SelectAll()/] () 
+BEGIN
+
+SELECT * FROM [entity.getDatabaseName()/];
+
+END$$
+[/template]
+
+
+[template private generateProcedureSelectOne(entity : Entity)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [entity.getAccessorName_SelectOne()/];
+CREATE PROCEDURE [entity.getAccessorName_SelectOne()/] (
+[for (prop : Property | entity.getPrimaryProperties()) separator(',')]
+	[prop.getParameterName()/] [prop.getDatabaseDataType()/]
+[/for]
+) 
+BEGIN
+
+SELECT * 
+FROM [entity.getDatabaseName()/]
+WHERE 
+[for (p : Property | entity.getPrimaryProperties()) separator(' AND ')]
+	[entity.getDatabaseName()/].[p.getDatabaseName()/]=[p.getParameterName()/]
+[/for];
+
+END$$
+[/template]
+
+
+[template private generateProcedureInsert(entity : Entity)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [entity.getAccessorName_Insert()/];
+CREATE PROCEDURE [entity.getAccessorName_Insert()/] (
+[for (prop : Property | entity.properties) separator(',')]
+	[prop.getParameterName()/] [prop.getDatabaseDataType()/]
+[/for]
+) 
+BEGIN
+
+[for (p : Property | entity.getPrimaryProperties())]
+[if (p.isGUID())]
+IF [p.getParameterName()/] IS NULL THEN
+	SET [p.getParameterName()/]=UUID();
+END IF;
+[/if]
+[/for]
+
+INSERT INTO [entity.getDatabaseName()/] ([for (prop : Property | entity.properties) separator(',')][prop.getDatabaseName()/][/for])
+VALUES ([for (prop : Property | entity.properties) separator(',')][prop.getParameterName()/][/for]);
+
+SELECT
+[for (prop : Property | entity.properties) separator(',')]
+	[prop.getParameterName()/] AS [prop.getDatabaseName()/]
+[/for];
+
+END$$
+[/template]
+
+
+[template private generateProcedureUpdate(entity : Entity)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [entity.getAccessorName_Update()/];
+CREATE PROCEDURE [entity.getAccessorName_Update()/] (
+[for (prop : Property | entity.properties) separator(',')]
+	[prop.getParameterName()/] [prop.getDatabaseDataType()/]
+[/for]
+) 
+BEGIN
+
+UPDATE [entity.getDatabaseName()/] SET
+[for (prop : Property | entity.properties->select(isPrimary=false)) separator(',')]
+	[prop.getDatabaseName()/]=[prop.getParameterName()/]
+[/for]
+WHERE [for (prop : Property | entity.getPrimaryProperties()) separator(' AND ')][prop.getDatabaseName()/]=[prop.getParameterName()/][/for];
+
+END$$
+[/template]
+
+
+[template private generateProcedureDelete(entity : Entity)]
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS [entity.getAccessorName_Delete()/];
+CREATE PROCEDURE [entity.getAccessorName_Delete()/] (
+[for (prop : Property | entity.getPrimaryProperties()) separator(',')]
+	[prop.getParameterName()/] [prop.getDatabaseDataType()/]
+[/for]
+) 
+BEGIN
+
+DELETE FROM [entity.getDatabaseName()/]
+WHERE [for (prop : Property | entity.getPrimaryProperties()) separator(' AND ')][prop.getDatabaseName()/]=[prop.getParameterName()/][/for];
+
+END$$
+[/template]
+
+
+[template public generateAccessors(entity : Entity)]
+[if (entity.read)]
+[entity.generateProcedureSelectAll()/]
+[entity.generateProcedureSelectOne()/]
+[/if]
+[if (entity.create)]
+[entity.generateProcedureInsert()/]
+[/if]
+[if (entity.update)]
+[entity.generateProcedureUpdate()/]
+[/if]
+[if (entity.delete)]
+[entity.generateProcedureDelete()/]
+[/if]
+[/template]

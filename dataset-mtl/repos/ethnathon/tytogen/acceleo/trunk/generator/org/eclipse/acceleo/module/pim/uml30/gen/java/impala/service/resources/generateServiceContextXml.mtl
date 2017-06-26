@@ -1,0 +1,67 @@
+[comment encoding = UTF-8 /]
+[module generateServiceContextXml('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::service::common::servicePathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::service::common::serviceCommon /]
+[template public generateServiceContextXml(aModel : Model, resourceFoler : String)]
+	[file (aModel.generateProjectFolder().concat(resourceFoler).concat('/').concat(aModel.generateProjectFolder()).concat('-context.xml'), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:service="http://www.impalaframework.org/schema/service"
+       xsi:schemaLocation="
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+http://www.impalaframework.org/schema/service http://impala.googlecode.com/svn/schema/service-registry.xsd">
+
+    <service:export-array beanNames="[aModel.eAllContents(Class)->select(aClass:Class|aClass.isService()).name.toLower()->sep(',')/]"/>
+	[for (aEntityClass : Class | aModel.eAllContents(Class)->select(aClass:Class|aClass.isEntity())->asSet())]
+	<service:import id = "[aEntityClass.name.toLower()/]dao" proxyTypes = "[if (aEntityClass.generateJavaPackage().size()>0)][aEntityClass.generateJavaPackage()/].[/if][aEntityClass.name/]Dao"/>
+	[/for]
+	<service:import id = "transactionManager" proxyTypes = "org.springframework.transaction.PlatformTransactionManager"/>  
+	<service:import id = "dataSource" proxyTypes = "javax.sql.DataSource"/>
+	<service:import id = "hibernateInterceptor" proxyTypes = "org.aopalliance.intercept.MethodInterceptor"/>  
+
+	[for (aService : Class | aModel.eAllContents(Class)->select(aClass:Class|aClass.isService())->asSet())]
+    <bean id="[if (aService.generateJavaPackage().size()>0)][aService.generateJavaPackage()/].[/if][aService.name.toUpperFirst()/]Impl" class="[if (aService.generateJavaPackage().size()>0)][aService.generateJavaPackage()/].[/if][aService.name.toUpperFirst()/]Impl">
+		[for (aDaoClass : Class | aService.getRelatedDaos())]
+			[if (aService.generateJavaPackage() <> aDaoClass.generateJavaPackage())]
+        <property name="[aDaoClass.name.toLowerFirst()/]Dao" ref="[aDaoClass.name.toLower()/]dao"/>
+			[/if]
+		[/for]
+
+        <!-- Task entity property merge-point -->
+    </bean>
+
+	<!-- TimeTrackingService Service Proxy with inner TimeTrackingService Service Implementation -->
+    <bean id="[aService.name.toLower()/]" class="org.springframework.aop.framework.ProxyFactoryBean">
+        <property name="target" ref="[if (aService.generateJavaPackage().size()>0)][aService.generateJavaPackage()/].[/if][aService.name.toUpperFirst()/]Impl"/>
+        <property name="proxyInterfaces" value="[if (aService.generateJavaPackage().size()>0)][aService.generateJavaPackage()/].[/if][aService.name.toUpperFirst()/]"/>
+        <property name="interceptorNames">
+            <list>
+                <value>serviceTransactionInterceptor</value>
+                <value>hibernateInterceptor</value>
+            </list>
+        </property>
+    </bean>
+
+	[/for]    
+
+    <!-- Service Transactional Interceptor -->
+    <bean id="serviceTransactionInterceptor" class="org.springframework.transaction.interceptor.TransactionInterceptor">
+        <property name="transactionManager" ref="transactionManager"/>
+        <property name="transactionAttributeSource">
+            <value>
+				[for (anOperation : Operation | aModel.eAllContents(Class)->select(aClass:Class|aClass.isService()).ownedOperation)]
+					[let aService : Class = anOperation.owner.oclAsType(Class)]
+                [if (aService.generateJavaPackage().size()>0)][aService.generateJavaPackage()/].[/if][aService.name.toUpperFirst()/].[anOperation.name/]=PROPAGATION_REQUIRED
+					[/let]					
+				[/for]
+            </value>
+        </property>
+    </bean>
+
+</beans>
+	[/file]
+[/template]

@@ -1,0 +1,53 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module cassandra.
+ */]
+[module mongo('http://www.observability.com/emf')]
+[import com::observability::modeling::generation::files::systemMetrics/]
+[import com::observability::modeling::generation::files::notifications/]
+[**
+ * The documentation of the template generateCassandra.
+ * @param aNodeMachine
+ */]
+[template public generateMongodb(aCluster : DatabaseCluster, frequency : Integer)]
+
+[for (machine : NodeMachine | aCluster.machines)]
+
+[file ( machine.IP +  '_' + machine.Port + '_collectd.conf' , false, 'UTF-8')]
+Interval [frequency/]
+Hostname [machine.IP/]
+
+[machine.generateSystemMetrics(aCluster)/]
+	
+LoadPlugin "network"
+<Plugin "network">
+  Server "[aCluster.eContainer(Model).serverIP/]"
+</Plugin>
+
+
+<LoadPlugin python>
+    Globals true 
+</LoadPlugin>
+
+[aCluster.generateNotifications(machine)/]
+
+
+<Plugin python>
+  [for (keyValue : KeyValue | machine.keyValues)]
+  [keyValue.key/] [keyValue.value/]
+  [/for]
+
+  [for (element : Element | machine.elements)]
+	[if element.name.startsWith('Module')]
+    <Module mongodb>
+	  [for (keyValue : KeyValue | element.keyValues)]
+	  [keyValue.key/] [keyValue.value/]
+	  [/for]	  	
+    </Module>
+	[/if]
+  [/for]
+	
+</Plugin>
+[/file]
+[/for]
+[/template]

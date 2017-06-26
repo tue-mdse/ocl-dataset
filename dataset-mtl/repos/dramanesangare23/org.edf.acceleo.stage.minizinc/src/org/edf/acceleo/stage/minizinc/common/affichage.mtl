@@ -1,0 +1,45 @@
+[comment encoding = UTF-8 /]
+[**
+ * Documentation of the module affichage
+ * Le module d'affichage du resultat des operations (les affectations) effectuees par minizinc.
+ * Il depend d'un fichier uml -cette dependance est exprimee en parametre du module- comme tous 
+ * les autres modules du projet.
+ * Il definit un (1) seul template, portant le meme nom que lui.
+*/]
+[module affichage('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[**
+ * Documentation of the template affichage
+ * Contient le code permettant l'affichage du resultat des affectations effectuees par manizinc.
+ * @param aPackage correspond au package qui contient les classes.
+ * Nous recuperons la classe qui nous interesse que nous stoquons dans une variable. Ensuite nous ecrivons 
+ * le code acceleo generant le minizinc
+*/]
+[template public affichage(aPackage : Package)]
+[let classTournee : Class =
+	aPackage.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.attribute->exists(
+			p : Property | 
+			p.name.toLower().contains('distancetournee') 
+		)
+	)->asOrderedSet()->at(1)
+]
+
+%affichage
+output
+['['/]show("\n----------------------------------------------------------------------------------------------")[']'/] ++
+['['/]show("\nAux tournees suivantes (distances) sont affectes des vehicules electriques : ")[']'/] ++
+['['/]show(t in [classTournee.name /]s where kmElec['['/]t[']'/] != 0)(distanceTournee['['/]t[']'/])[']'/]++
+['['/]show("\nAux tournees suivantes (distances) sont affectes des vehicules thermiques : ")[']'/] ++
+['['/]show(i in [classTournee.name /]s where kmElec['['/]i[']'/] = 0)(distanceTournee['['/]i[']'/])[']'/]++
+['['/]show("\n----------------------------------------------------------------------------------------------")[']'/] ++
+['['/]"\nLes vehicules electriques parcourent ", show(sum(t in [classTournee.name /]s)(kmElec['['/]t[']'/])), " km"[']'/]++
+['['/]"\nLes vehicules thermiques parcourent ", show(sum(t in [classTournee.name /]s)(distanceTournee['['/]t[']'/])-sum(t in [classTournee.name /]s)(kmElec['['/]t[']'/])), " km"[']'/]++
+['['/]show("\n----------------------------------------------------------------------------------------------")[']'/] ++
+['['/]show("\nLes affectations : \n")[']'/]++
+['['/]show("DistTournee = ")[']'/]++['['/]show_int(3, distanceTournee['['/]t[']'/]) ++ "  " | t in [classTournee.name /]s, [']'/]++['['/]show("\n")[']'/]++
+['['/]show("Vehicule ID = ")[']'/]++['['/]show_int(3, tourneeVehicule['['/]t[']'/]) ++ "  " | t in [classTournee.name /]s[']'/]
+;
+[/let]
+[/template]

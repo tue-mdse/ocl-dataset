@@ -1,0 +1,52 @@
+[comment encoding = UTF-8 
+
+Copyright (c) 2012 Obeo
+All rights reserved.  This program and the accompanying materials
+are made available under the terms of the Eclipse Public License 1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+You can apply any license to the files generated with this module and Acceleo.
+
+Contributors :
+	Mathieu Cartaud (Obeo) - initial API and implementation
+/]
+[module helpContentXmlFile('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel', 'http://www.obeonetwork.org/dsl/eclipse')]
+
+[import org::obeonetwork::dsl::gen::eclipse::common::normalizeName /]
+
+[template private helpContentXmlFile(anHelpContent : HelpContents)]
+[anHelpContent.eContainer(Bundle).genBundlePath()/]/help/[anHelpContent.refactorHelpLabel()/].xml
+[/template]
+
+[template public genHelpContentsXmlFile(anHelpContent : HelpContents)]
+[file (helpContentXmlFile(), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<?NLS TYPE="org.eclipse.help.toc"?>
+
+<toc label="[anHelpContent.label/]" topic="help/html/[anHelpContent.refactorHelpLabel()/].html">
+[for (anHelpPage : HelpPage | anHelpContent.helpPages)]
+	<topic label="[anHelpPage.label/]"  href="help/html/[anHelpPage.label.substituteAll(' ', '_').toLowerFirst()/].html">  
+[for (anExternalHelpPage : HelpPage | anHelpPage.externalHelpPages)]
+		<topic label="[anExternalHelpPage.label/]"  href="PLUGINS_ROOT/[anExternalHelpPage.eContainer(Bundle).genBundleID()/]/html/[anExternalHelpPage.label.substituteAll(' ', '_').toLowerFirst()/].html"/>
+[/for][for (aSubHelpPage : HelpPage | anHelpPage.helpPages)]
+[aSubHelpPage.subHelpPage()/]
+[/for]
+	</topic>
+[/for][for (anExternalHelpPage : HelpPage | anHelpContent.externalHelpPages)]
+	<topic label="[anExternalHelpPage.label/]"  href="PLUGINS_ROOT/[anExternalHelpPage.eContainer(Bundle).genBundleID()/]/help/html/[anExternalHelpPage.label.substituteAll(' ', '_').toLowerFirst()/].html"/>
+[/for]
+</toc>
+[/file]
+[/template]
+
+[template private subHelpPage(aSubHelpPage : HelpPage)]
+		<topic label="[aSubHelpPage.label/]"  href="help/html/[aSubHelpPage.label.substituteAll(' ', '').toLowerFirst()/].html"[if (not(aSubHelpPage.helpPages->size() > 0) and not(aSubHelpPage.externalHelpPages->size() > 0))]/>[else]> 
+[for (anExternalHelpPage : HelpPage | aSubHelpPage.externalHelpPages)]
+			<topic label="[anExternalHelpPage.label/]"  href="PLUGINS_ROOT/[anExternalHelpPage.eContainer(Bundle).genBundleID()/]/help/html/[anExternalHelpPage.label.substituteAll(' ', '').toLowerFirst()/].html"/>
+[/for][for (anHelpPage : HelpPage | aSubHelpPage.helpPages)]
+	[anHelpPage.subHelpPage()/]
+[/for]		
+		</topic>
+[/if]
+[/template]

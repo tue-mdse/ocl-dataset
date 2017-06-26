@@ -1,0 +1,75 @@
+[comment encoding = UTF-8 /]
+[module generateServiceImplJava('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::service::common::servicePathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::java::javaclass /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::structureUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::stringUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::service::common::serviceCommon /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::build::common::entityUtil /]
+[template public generateServiceImplJava(aService : Class)]
+	[file (aService.getModel().generateProjectFolder().concat(aService.getModel().pathToMainJava()).concat('/').concat(aService.generateJavaPackagePath()).concat('/').concat(aService.name.toUpperFirst()).concat('Impl.java'), false, 'UTF-8')]
+package [aService.generateJavaPackage()/];
+//[protected ('user imports')]
+import java.io.Serializable;
+[aService.generateImports()/]
+
+[if (not (aService.superClass->isEmpty()))]
+	[if (aService.generateJavaPackage() <> aService.superClass->asSequence()->first().generateJavaPackage())]
+import [aService.superClass.generateJavaPackage()/].[aService.superClass.name/];
+	[/if]
+[/if]
+[comment][for (aDaoClass : Class | aService.getRelatedDaos())]
+	[if (aService.generateJavaPackage() <> aDaoClass.generateJavaPackage())]
+import [aDaoClass.generateJavaPackage()/].[aDaoClass.name/]Dao;
+	[/if]
+[/for][/comment]
+//[/protected]
+public class [aService.name.toUpperFirst()/]Impl extends [aService.name.toUpperFirst()/]BaseImpl {
+	    /**
+     * Default constructor.
+     */
+    public [aService.name/]Impl() {
+        super();
+    }
+
+[let props : Sequence(Property) = aService.classAttributes()]
+	[if (props->size() > 0)]
+
+    /**
+     * Constructor with all parameters initialized.
+		[for (prop:Property|props)]
+     * @param [prop.paramName()/]
+			[if (prop.ownedComment._body->size() > 0)]
+     *            [prop.ownedComment._body.replaceAll('n', '\n     *            ')/]
+			[else]
+     *            Warning, no comment in the model.
+			[/if]
+		[/for]
+     */
+    public [aService.name/]Impl([aService.classAttributes().asParameter()->sep(', ')/]) {
+		super([aService.classAttributes().name.toLowerFirst()->sep(', ')/]);
+    }
+	[/if]
+[/let]
+[for (anSimpleOperation : Operation | aService.ownedOperation->select(oper:Operation|not oper.isFinder()))]
+	[anSimpleOperation.generateJavadoc()/]
+	[anSimpleOperation.genModifiers()/] [anSimpleOperation.generateReturn()/] [anSimpleOperation.name/]([anSimpleOperation.generateParameters()/])
+    {
+		//[protected ('user code')]
+        // TODO implement public void addTimeAllocation(TimeAllocation timeAllocation)
+        throw new UnsupportedOperationException("[if (aService.generateJavaPackage().trim().size()>0)][aService.generateJavaPackage()/].[/if][aService.name/].[anSimpleOperation.name/]([anSimpleOperation.generateParameters()/]) Not implemented!");
+		//[/protected]
+    }
+[/for]
+
+}
+	[/file]
+[/template]
+

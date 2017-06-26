@@ -1,0 +1,73 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generate.
+ */]
+[module generate('http://www.ufrn.br/dimap/ase/dsl/Expdslv3')]
+
+
+[template public generateElement(exp: ExperimentElement)]
+
+[comment @main/]
+[file (exp.name.concat('.conf').toLower().trim(),true,'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<experimental_plan type="[(exp.experiments.type)/]" internalReplication="[(exp.experiments.replication)/]">
+
+
+[let maxValue : Integer = exp.experiments.replication]
+
+[if (exp.experiments.type = DesignType::CDR)]
+[for (p: Process| exp.process)]
+	[for (t: Range| p.treatment )]
+		[for (counter : Integer | Sequence{1..maxValue})]
+			[let selectedSubject : Integer = randomRange(1, maxValue*p.treatment->size())]
+	<process name="[p.name/]" subject="[selectedSubject/]" />
+			[/let]
+		[/for]
+	[/for]
+[/for]
+[elseif (exp.experiments.type=DesignType::RCBD)]
+[for (p: Process| exp.process)]
+	[for (it : Range| p.treatment )]
+		[for (counter : Integer | Sequence{1..maxValue})]
+			[let selectedSubject : Integer = randomRange(1, (maxValue*p.treatment->size()))]
+					[comment][if it.eContainer(DOE).oclAsType(RCBD).blockVariable = 'False'][/comment]
+					[let block : String = it.eContainer(DOE).oclAsType(RCBD).blockVariable.name]
+	<process name="[p.name/]" subject="[selectedSubject/]" block="[ block /]" />
+					[/let]
+					[comment][/if][/comment]
+			[/let]
+		[/for]
+	[/for]
+[/for]
+[elseif (exp.experiments.type = DesignType::LS)]
+	
+	<ls treatment="[exp.experiments.doe.oclAsType(LS).treatment.name/]" col="[exp.experiments.doe.oclAsType(LS).col.name/]" row="[exp.experiments.doe.oclAsType(LS).row.name/]" />
+					
+
+[for (f: Factor|exp.experiments.factor)]
+		 [for (range: Range|f.range)]
+			<factor  name="[f.name/]" level="[range.name/]" />
+		 [/for]
+	[/for]
+    
+     	
+ 	
+	[for (p: Process| exp.process)]
+		[for (it : Range| p.treatment )]
+			<link name="[p.name/]"
+				treatment="[it.eContainer(Factor).name/].[it.name/]," />
+		[/for]
+	[/for]
+
+
+[/if]
+[/let]	
+
+</experimental_plan>
+
+[/file]
+[/template]
+
+[query public randomRange(initialValue :Integer, maxValue :Integer) : Integer 
+= invoke('AcceleoExpDSL.main.RandomSubject','randomize(java.lang.Integer, java.lang.Integer)', Sequence{initialValue, maxValue}) /]
+

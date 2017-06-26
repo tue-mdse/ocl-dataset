@@ -1,0 +1,146 @@
+[module serviceimpl('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(class : Class)]
+[if (class.isService())][class.pathToMainJava()/]/[class.serviceImplPackage().toPath()/]/[class.name/]Impl.java[/if]
+[/template][/comment]
+
+
+[template public generateServiceImpl(class : Class)? (class.isService())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(), class.serviceImplPackage().toPath(), class.name.concat('Impl.java')), false))]
+package [class.serviceImplPackage()/];
+
+// [protected ('imports')] 
+// for import
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import org.sharengo.exceptions.TechnicalException;
+
+import [class.servicePackage()/].I[class.name/];
+
+[if (class.ownedOperation->select(isRemote())->notEmpty())]
+import [class.servicePackage()/].I[class.name/]WebService;
+[/if]
+
+[for (classifier:Classifier|class.operationsParametersTypes())]
+	[if (classifier.isEntity())]
+import [classifier.entityPackage()/].[classifier.name/];
+	[elseif (classifier.isView())]
+import [classifier.viewImplPackage()/].[classifier.name/];
+	[else]
+import [classifier.getCompleteName()/];	
+	[/if]
+[/for]
+
+[class.genCollectionImports()/]
+
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().isService())]
+import [class.superClass.serviceImplPackage()/].[class.superClass.name/]Impl;
+[/if]
+
+[for (oper:Operation|class.ownedOperation)]
+	[for (type:Type|oper.raisedException)]
+import [type.getCompleteName()/];
+	[/for]
+[/for]
+
+[iocImport('Dao')/]
+[iocImport('Service')/]
+[iocImport('Config')/]
+
+// [/protected] 
+
+[class.generateJavadoc()/]
+public class [class.name/]Impl[class.extensions()/] {
+
+	/**
+	 * class dedicated logger
+ 	 */
+	private static Log log = LogFactory.getLog([class.name/]Impl.class.getName()); 
+
+	[iocAccessors('Dao')/]
+	[iocAccessors('Service')/]
+	[iocAccessors2('Config')/]
+	
+[comment  Config properties /]
+[for (prop:Property|class.attribute->select(isConfig()))]
+	private [prop.convertToJavaType()/] [prop.name.toLowerFirst()/] = null;
+
+	public void set[prop.name.toUpperFirst()/]([prop.convertToJavaType() /] [prop.name.toLowerFirst()/]) {
+		this.[prop.name.toLowerFirst()/] = [prop.name.toLowerFirst()/];
+	}
+	
+	public [prop.convertToJavaType()/] get[prop.name.toUpperFirst()/]() {
+		return this.[prop.name.toLowerFirst()/];
+	}				
+[/for]
+	
+[for (oper:Operation|class.ownedOperation)]
+	public [oper.generateReturn()/] [oper.name/]([oper.generateRawParameters()/]) throws TechnicalException[oper.genExceptions()/] {
+		// [protected ('operation')]        
+		// TODO implement [oper.name/]
+        throw new UnsupportedOperationException("Method not yet implemented");
+        // [/protected]
+        }
+        
+[/for]
+	
+	// Associations	
+[comment attribute.filterExistProperty("association", true).genAssociations/]
+[class.getAssociationProperties(true).genAssociations()/]
+	
+	// [protected ('private methods')] 
+	// for private methods
+	// [/protected] private methods
+		
+}
+[/file]
+[/template]
+
+
+[template public genAssociations(property : Property)]
+[if (property.type->select(oclIsTypeOf(Classifier) and oclAsType(Classifier).isDao())->notEmpty())]
+
+	I[property.type.name/] [property.type.name.toLowerFirst()/]=null;
+	public I[property.type.name/] get[property.type.name.toUpperFirst()/]() {
+ 		return [property.type.name.toLowerFirst()/];
+ 	}
+
+ 	public void set[property.type.name.toUpperFirst()/](I[property.type.name/] [property.type.name.toLowerFirst()/]) {
+ 		this.[property.type.name.toLowerFirst()/] = [property.type.name.toLowerFirst()/];
+ 	} 	
+[/if]
+
+[/template]
+
+
+[template public extensions(class : Class)]
+[class.inheritances()/][class.implements()/]
+[/template]
+
+
+[template public inheritances(class : Class)]
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().isService())] extends [class.superClass.name/]Impl[/if]
+[/template]
+
+
+[template public implements(class : Class)]
+ implements I[class.name/][if (class.ownedOperation->select(isRemote())->notEmpty())], I[class.name/]WebService[/if]
+[/template]
+

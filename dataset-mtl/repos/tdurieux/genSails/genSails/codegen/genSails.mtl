@@ -1,0 +1,108 @@
+[comment encoding = UTF-8 /]
+[module genSails('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+
+[template public generate(aClass : Class)]
+[comment @main/]
+[file ('api/models/'.concat(aClass.name).concat('.js'), false, 'UTF-8')]
+/**
+* [aClass.name.concat('.js')/]
+*
+* @description :: [aClass.ownedComment._body/]
+* @docs        :: http://sailsjs.org/#!documentation/models
+*/
+module.exports = {
+    autoCreatedAt: false,
+    autoUpdatedAt: false,
+    "attributes": {
+    [aClass.attribute.genAttribute()/]
+    [aClass.getAssociations().genAssociations(aClass)/]
+    }
+};
+[/file]
+[file ('api/controllers/'.concat(aClass.name).concat('Controller.js'), false, 'UTF-8')]
+/**
+ * [aClass.name.concat('.js')/]
+ *
+ * @description :: [aClass.ownedComment._body/]
+ * @docs        :: http://sailsjs.org/#!documentation/controllers
+ */
+module.exports = {
+
+[for (o : Operation | aClass.getOperations()) separator(',\n') ]
+    /**
+    * [o.ownedComment._body/]
+    * 
+    * @return [o.returnResult().type.name/]
+    */
+    "[o.name/]": function (req, res) {
+        
+    }
+[/for]
+
+};
+[/file]
+[/template]
+
+
+[**
+ * Generates attribute code (name and type). 
+ * @param p UML Property.
+*/]
+[template public genAttribute(p : Property) ? (p.type.oclIsKindOf(Enumeration)) post (trim().concat(',\n'))]
+    "[p.name/]": {
+        "type": "string",
+        "enum": [p.type->selectByType(Enumeration).genEnumerationArray()/]
+    }
+[/template]
+
+[template public genEnumerationArray(e : Enumeration)]
+['['/][for (l : EnumerationLiteral | e.ownedLiteral) separator(', ')]"[l.name/]"[/for]]
+[/template]
+
+[**
+ * Generates attribute code (name and type). 
+ * @param p UML Property.
+*/]
+[template public genAttribute(p : Property) ? (p.type.oclIsKindOf(PrimitiveType)) post (trim().concat(',\n')) ]
+    "[p.name/]": {
+        "type": "[p.type.name/]",
+        [if (p.type.name = 'Date')]
+        "defualtsTo": function(){return new Date();},
+        [/if]
+        [if (p.name.contains('id') and p.type.name = 'Integer')]
+        "primaryKey": true,
+        "autoIncrement": true
+        [/if]
+    }
+[/template]
+
+[**
+ * Generates attribute code (name and type). 
+ * @param p UML Property.
+*/]
+[template public genAssociations(a : Association, c : Class) post (trim().concat(',\n'))]
+    [if (c.name = a.memberEnd->at(1).type.name)]
+    [if a.memberEnd->at(2).name <> '']
+    "[a.memberEnd->at(2).name/]": {
+        [if (a.memberEnd->at(2).upper = -1 or a.memberEnd->at(2).upper > 1)]
+        "collection": "[a.memberEnd->at(2).type.name/]",
+        "via": "[a.memberEnd->at(1).name/]"
+        [else]
+        "model": "[a.memberEnd->at(2).type.name/]"
+        [/if]
+    }
+    [/if]
+    [else]
+    [if a.memberEnd->at(1).name <> '']
+    "[a.memberEnd->at(1).name/]": {
+        [if (a.memberEnd->at(1).upper = -1 or a.memberEnd->at(1).upper > 1)]
+        "collection": "[a.memberEnd->at(1).type.name/]",
+        "via": "[a.memberEnd->at(2).name/]"
+        [else]
+        "model": "[a.memberEnd->at(1).type.name/]"
+        [/if]
+    }
+    [/if]
+    [/if]
+[/template]

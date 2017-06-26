@@ -1,0 +1,154 @@
+[module structure('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes/]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+
+[query public classAttributes(class : Class) : Sequence(Property) =
+class.ownedAttribute->asSequence()->union(class.getOppositeAttributes())->asSequence()
+/]
+
+[query public classAttributes(class : Class, mustBeNavigable : Boolean) : Sequence(Property) =
+class.ownedAttribute->asSequence()->union(class.getOppositeAttributes(mustBeNavigable))
+/]
+
+[query public getOppositeAttributes(class : Class) : Sequence(Property) =
+	class.getOppositeAttributes(true)
+/]
+
+[query public getOppositeAttributes(class : Class, mustBeNavigable : Boolean) : Sequence(Property) =
+if(class.getAssociations()->notEmpty()) then
+	class.getAssociations().memberEnd->select(prop:Property|prop.type<>class and (not mustBeNavigable or prop.isNavigable()))
+else
+	Set{}
+endif
+/]
+
+
+[query public itfAttributes(interface : Interface) : Set(Property) =
+interface.getAssociations()->filter(Association).oppositeAttributeOf(interface)->select(isNavigable()) 
+->including(interface.ownedAttribute)->asSet()
+/]
+
+[comment][template public generateImports(class:Class) post (trim())]
+[for (prop:Property|class.classAttributes()->select(type.oclIsTypeOf(NamedElement)))]
+	[let propType : Type = prop.type]
+		[let typeName : String = propType.name]
+			[if (propType._package.name <> 'UMLPrimitiveTypes' and 
+				typeName <> 'String' and typeName <> 'Integer' and 
+				typeName <> 'Float' and typeName <> 'Long' and 
+				typeName <> 'Boolean' and typeName <> 'Date')]
+import [propType.getCompleteName()/];
+			[/if]		
+		[/let]
+	[/let]
+
+[/for]
+
+[/template][/comment]
+
+
+[template public generateParameters(operation:Operation)]
+[operation.getRealParameters()->filter(Parameter).genDeclare()->sep(', ')/]
+[/template]
+
+
+[template public genDeclare(parameter:Parameter)]
+final [parameter.convertToJavaType()/] [parameter.name/]
+[/template]
+
+
+[template public paramName(parameter:Parameter)]
+some[name.toUpperFirst()/]
+[/template]
+
+
+[template public paramName(property:Property)]
+some[name.toUpperFirst()/]
+[/template]
+
+
+[template public generateRawParameters(operation:Operation)]
+[operation.getRealParameters()->filter(Parameter).genRawDeclare()->sep(', ')/]
+[/template]
+
+
+[template public genRawDeclare(parameter:Parameter)]
+[parameter.convertToJavaType()/] [name.toLowerFirst()/]
+[/template]
+
+
+[template public generateReturn(operation:Operation)]
+[if (type = null)]void[else][operation.returnResult().convertToJavaType()/][/if]
+[/template]
+
+
+[template public generateParameterNames(operation:Operation)]
+[operation.getRealParameters()->collect(name)->sep(', ')/]
+[/template]
+
+
+[template public generateJavadoc(namedElement:NamedElement)]
+/**
+[namedElement.generateJavadocBody()/]
+ */
+[/template]
+
+
+[template public generateJavadocBody(namedElement:NamedElement)]
+[comment]
+ * <!-- [protected ('function java doc')] -->
+ * <p>
+ * </p>
+ * <!-- [/protected] -->
+[/comment]
+	[if (ownedComment._body->size() > 0)]
+ * <p>[ownedComment._body/]</p>
+	[/if]
+[/template]
+
+
+[template public generateJavadoc(operation:Operation)]
+	/**
+[operation.generateJavadocBody()/]
+	 */
+[/template]
+
+
+[template public generateJavadocBody(operation:Operation)]
+[comment]
+	 * <!-- [protected ('function java doc')] -->	 
+	 * <p>
+	 * </p>
+[/comment]
+[for (param:Parameter | operation.getRealParameters())]
+	 * @param [param.name/] [if (param.ownedComment._body->size() > 0)][ownedComment._body/][/if]
+[/for]
+[if (type <> null)]
+	 * @return [type.ownedComment._body/]
+[/if]
+[comment]
+	 * <!-- [/protected] for [name/] -->[if (ownedComment._body->size() > 0)]
+[/comment]
+	 * <p>[ownedComment._body/]</p>
+[comment]
+[/if]
+[/comment]
+[/template]
+
+
+[template public extensions(class:Class)]
+[if (not (class.general->isEmpty()))]extends [class.general.name/][/if]
+[/template]
+
+
+[query public normalizedName(_package:Package):String=
+_package.name.toStandardNotation().toLower()
+/]
+
+[template public getCompleteName(namedElement:NamedElement) post (trim())]
+[let packages : Sequence(Package) = namedElement.ancestors(Package)->select(not oclIsTypeOf(Model))]
+	[packages.name->reverse()->sep('.')->toString().concat(if(packages->notEmpty())then '.' else '' endif).concat(namedElement.name)/]
+[/let]
+[/template]
+
+

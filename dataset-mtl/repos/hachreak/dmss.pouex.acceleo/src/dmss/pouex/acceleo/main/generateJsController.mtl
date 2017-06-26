@@ -1,0 +1,223 @@
+[comment encoding = UTF-8 /]
+[module generateJsController('http://pouexmm/1.0')]
+[import dmss::pouex::acceleo::main::generateUtils/]
+
+[comment]
+/**
+ * Copyright (C) 2014 Leonardo Rossi <leonardo.rossi@studenti.unipr.it>
+ *
+ * This source code is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This source code is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this source code; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ *
+ */
+[/comment]
+
+[template public generateGameJsController(aGame : Game)]
+[comment @main comment Generate Controller /]
+[file ('js/'+ aGame.name.generateUnderscoreName() +'Controller.js', false, 'UTF-8')]
+var PouexApp = angular.module("PouexApp", [ '[' /] 'ngStorage' ]);
+
+PouexApp.factory('PouexDataService', [ '[' /] '$http', '$localStorage', '$q', function($http, $localStorage, $q) {
+
+    var getData = function() {
+        var deferred = $q.defer();
+
+        $http({method:"GET", url:"model/[aGame.name.generateUnderscoreName()/].json"}).success(function(data){
+            // init local storage
+            $storage = $localStorage.$default({
+              game: data
+            });
+            // resolve data
+            deferred.resolve($storage);
+        });
+
+        return deferred.promise;
+    };
+
+    var reset = function(){
+      delete $storage.game;
+    };
+
+    return { getData: getData, reset: reset };
+}]);
+
+PouexApp.controller('CtrlMenu', [ '[' /] '$scope', '$http', 'PouexDataService', function($scope, $http, PouexDataService){
+  
+  // load model
+  var myDataPromise = PouexDataService.getData();
+
+  myDataPromise.then(function(result){
+    $scope.$storage = result;
+
+    // if not set, set birthday
+    $scope.$storage.game.pouex.birthday = $scope.$storage.game.pouex.birthday || new Date();
+
+    [for (s : State | aGame.pouex.states)]
+      // state's activation
+      $scope.$watchCollection("[ '[' /] [for (ac : ActivationCondition | s.activationConditions) separator (', ')][ac.generateActivationConditionListVariableToWatch()/][/for] ]", function(newValues, oldValues){
+        if(typeof $scope.$storage.game != "undefined"){
+          var i = 0;
+          if([for (ac : ActivationCondition | s.activationConditions) separator (' || ')][ac.generateActivationConditionIfStatement(s, i - 1)/][/for]){
+            // set in model the activation
+            [s.generateStateVariable()/].active = true;
+          }else{
+           // set in model the activation
+           [s.generateStateVariable()/].active = false;
+          }
+        }
+      });
+
+      $scope.$watch("[s.generateStateVariableToWatch()/]", function(newValue, oldValue){
+        if(typeof $scope.$storage.game != "undefined"){
+          if(newValue){
+            [for (ba : BodyAlteration | s.bodyAlterations)]
+            	[ba.bodyPart.generateStateVariable()/].default = [ba.bodyPart.generateStateVariable()/].imageUrl;
+              // state animation 
+              [ba.bodyPart.generateStateVariable()/].imageUrl = 'imgs/[ba.image/]'; 
+            [/for]
+          }else{
+            [for (ba : BodyAlteration | s.bodyAlterations)]
+              // restore animation 
+              [ba.bodyPart.generateStateVariable()/].imageUrl = [ba.bodyPart.generateStateVariable()/].default;
+            [/for]
+          }
+        }
+      });
+
+      [s.generateStateActivationEventCatcher()/]
+    [/for]
+
+    // execute a action: manipupate feature value
+    $scope.executeAction = function(name){
+      if(typeof $scope.$storage.game != "undefined"){
+        angular.forEach($scope.$storage.game.pouex.actions[ '[' /] name ], function(value, key){
+          var operation = value.operation;
+          var operator = value.operator; 
+          var fname = value.feature;
+          var fvalue = $scope.$storage.game.pouex.features[ '[' /] fname ].value;
+          var fmax = $scope.$storage.game.pouex.features[ '[' /] fname ].maximum;
+          var fmin = $scope.$storage.game.pouex.features[ '[' /] fname ].minimum;
+
+          var ret = eval(fvalue + operator + operation);
+
+          if(ret > fmax){
+            ret = fmax;
+          }
+          if(ret < fmin){
+            ret = fmin;
+          }
+
+          $scope.$storage.game.pouex.features[ '[' /] fname ].value = ret;
+        });
+      }
+    };
+
+    // implement a repeated event
+    [aGame.pouex.actions->selectByKind(RepeatedAction).generateControllerRepeatedAction()/]
+
+    // Compute a feature value transformation: from number to percetual value
+    $scope.getFeaturePercValue = function(name){
+      if(typeof($scope.$storage.game) === "undefined") return 0;
+      return ($scope.$storage.game.pouex.features[ '[' /]name].value - $scope.$storage.game.pouex.features[ '[' /]name].minimum) * 100 / ($scope.$storage.game.pouex.features[ '[' /]name].maximum - $scope.$storage.game.pouex.features[ '[' /]name].minimum);
+    };
+
+  });
+
+  $scope.PouexNewGame = function(){
+    // reset memory
+    PouexDataService.reset();
+    // reload page
+    $('#state-dead').modal();
+  };
+}]);
+	
+[/file]
+[/template]
+
+[template public generateActivationConditionIfStatement(ac : ActivationCondition, s: State, i: Integer) post(trim())][/template]
+
+[template public generateActivationConditionIfStatement(ac : MinThresholdActivationCondition, s: State, index: Integer) post(trim())]
+  newValues[ '[' /] i++ ] < [ac.threshold/]
+[/template]
+
+[template public generateActivationConditionIfStatement(ac : MaxThresholdActivationCondition, s: State, index: Integer) post(trim())]
+  newValues[ '[' /] i++ ] > [ac.threshold/]
+[/template]
+
+[template public generateActivationConditionIfStatement(ac : StateActivationCondition, s: State, index: Integer) post(trim())]
+  [if (ac.condition = false) ]![/if]newValues[ '[' /] i++ ]
+[/template]
+
+[template public generateActivationConditionIfStatement(ac : AndLogicActivationCondition, s: State, index: Integer) post(trim())]
+[let index2 : Integer = index]
+  ( [for (term : ActivationCondition | ac.terms) separator (' && ')][term.generateActivationConditionIfStatement(s, index2 + i - 1)/][/for] )
+[/let]
+[/template]
+
+[template public generateActivationConditionIfStatement(ac : OrLogicActivationCondition, s: State, index: Integer) post(trim())]
+[let index2 : Integer = index]
+  ( [for (term : ActivationCondition | ac.terms) separator (' || ')][term.generateActivationConditionIfStatement(s, index2 + i - 1)/][/for] )
+[/let]
+[/template]
+
+[template public generateActivationConditionListVariableToWatch(ac : ActivationCondition) post(trim())][/template]
+
+[template public generateActivationConditionListVariableToWatch(ac : ThresholdActivationCondition) post(trim())]
+  $storage.game.pouex.features[ '[' /]'[ac.feature.name.generateUnderscoreName()/]'].value
+[/template]
+
+[template public generateActivationConditionListVariableToWatch(ac : StateActivationCondition) post(trim())]
+  $storage.game.pouex.states[ '[' /]'[ac.state.name.generateUnderscoreName()/]'].active
+[/template]
+
+[template public generateStateVariableToWatch(s : State) post(trim())]
+  $storage.game.pouex.states[ '[' /]'[s.name.generateUnderscoreName()/]'].active
+[/template]
+
+[template public generateStateVariable(s : State) post(trim())]
+  $scope.$storage.game.pouex.states.[s.name.generateUnderscoreName()/]
+[/template]
+
+[template public generateStateVariable(bp : BodyPart) post(trim())]
+  $scope.$storage.game.pouex.body.[bp.generateBodyFullyQualifiedName()/]
+[/template]
+
+[template public generateActivationConditionListVariableToWatch(ac : LogicActivationCondition) post(trim())]
+  [for (term : ActivationCondition | ac.terms) separator (', ')][term.generateActivationConditionListVariableToWatch()/][/for]
+[/template]
+
+[template public generateStateActivationEventCatcher(s : State)][/template]
+
+[template public generateStateActivationEventCatcher(s : StateDead)]
+  // catch state activation
+  $scope.$watch("$storage.game.pouex.states[ '[' /]'[s.name.generateUnderscoreName()/]'].active", function(){
+    // if dead 
+    if(this.last){
+      // reset memory
+      PouexDataService.reset();
+      // end the game
+      $('#state-dead').modal();
+    }
+  });  
+	
+[/template]
+
+[template public generateControllerRepeatedAction(ra : RepeatedAction)]
+  var [ra.name.generateUnderscoreName()/]_timer = setInterval(function(){
+    $scope.executeAction('[ra.name.generateUnderscoreName()/]');
+    $scope.$apply();
+  }, [ra.eachMillisec/]);
+
+[/template]
+

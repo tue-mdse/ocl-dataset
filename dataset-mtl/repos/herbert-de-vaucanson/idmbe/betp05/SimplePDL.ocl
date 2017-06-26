@@ -1,0 +1,43 @@
+MainModel : http://simplepdl
+
+context Process
+inv nameIsDefined: -- is the name of process correct?
+    if  self.name.oclIsUndefined() then
+	false
+    else
+	self.name <> ''
+    endif
+
+context Process
+inv containmentConsistency:
+  let elements : Set(ProcessElement) = self.processElements in
+    let wds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(WorkDefinition)) in
+      let wss: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(WorkSequence)) in
+        -- WS linked to a process WD are elements of this process
+        wds->forAll(wd: ProcessElement |
+            elements->includesAll(wd.oclAsType(WorkDefinition).linksToPredecessors)
+            and elements->includesAll(wd.oclAsType(WorkDefinition).linksToSuccessors))
+        -- source and target of a process WS are elements of this process
+        and wss->forAll(ws: ProcessElement |
+            elements->includes(ws.oclAsType(WorkSequence).predecessor)
+            and elements->includes(ws.oclAsType(WorkSequence).successor))
+
+--  1. deux sous-activités différentes d’un même processus ne peuvent pas avoir le même nom.           
+context Process
+inv notSameNameForWD:
+  let elements : Set(ProcessElement) = self.processElements in
+    let wds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(WorkDefinition)) in
+        wds->product(wds)->forAll(t: Tuple(first: ProcessElement, second: ProcessElement) | t.first <> t.second implies t.first.oclAsType(WorkDefinition).name <> t.second.oclAsType(WorkDefinition).name)
+
+-- 2. une dépendance ne peut pas être réflexive.
+context WorkSequence
+inv noReflexivity:
+  self.predecessor <> self.successor
+
+-- 3. le nom d’une activité doit être composé d’au moins un caractère.
+context WorkDefinition
+inv moreThanOneLetter:
+  self.name.size() >= 1
+      
+      
+      

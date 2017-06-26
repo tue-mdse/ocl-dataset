@@ -1,0 +1,207 @@
+[comment encoding = UTF-8 /]
+[**
+ * This module contains some helpers to code generation 
+ */]
+[module resources('http://www.example.org/sml', 'http://www.example.org/ctx')]
+
+[**
+ * Union of two OrderedSet(Participant)
+ */]
+[query public osunion(la: OrderedSet(Participant), lb: OrderedSet(Participant)): OrderedSet(Participant) =
+	lb->iterate(
+		ei : Participant;
+		acci : OrderedSet(Participant) = la
+		| if acci->includes(ei) then
+			acci
+		else
+			acci->append(ei)
+		endif
+	)
+/]
+
+[**
+ * Add an SituationTypeElement to a OrderedSet if are not included in
+ */]
+[query public add_dep(acc:OrderedSet(Participant), e : Participant) : OrderedSet(Participant) =
+	if not e.oclIsUndefined() then
+		if acc->includes(e) then
+			acc
+		else
+			acc->osunion(dependency(e))->append(e)
+		endif
+	else
+		acc
+	endif
+/]
+
+[**
+ * Se for um perticipante, retorna o proprio, se for um atributo, retorna a entidade, se for um parametro, retorna a situacao
+ */]
+[query public participant(e : SituationTypeElement) : Participant =
+	if e.oclIsKindOf(Participant) then
+		e.oclAsType(Participant)
+	else
+		if e.oclIsTypeOf(AttributeReference) then
+			e.oclAsType(AttributeReference).entity
+		else
+			if e.oclIsTypeOf(SituationParameterReference) then
+				e.oclAsType(SituationParameterReference).situation
+			else
+				null
+			endif
+		endif
+	endif
+/]
+
+[**
+ * Os target de uma relacao formal devem vir antes $s2 Sit(this before $s1) 
+ */]
+[query public participant_formal_dependency(e : Participant) : OrderedSet(Participant) =
+	e.sourceRelation->iterate(
+		r:ComparativeRelation;
+		acc : OrderedSet(Participant) = OrderedSet{}
+		| acc->add_dep(r.target.participant())
+	)
+/]
+
+[query public attribute_formal_dependency(e : Participant) : OrderedSet(Participant) =
+	e.reference.sourceRelation->iterate(
+		r:ComparativeRelation;
+		acc : OrderedSet(Participant) = OrderedSet{}
+		| acc->add_dep(r.target.participant())
+	)
+/]
+
+[query public situation_formal_dependency(e : SituationParticipant) : OrderedSet(Participant) =
+	e.parameter.sourceRelation->iterate(
+		r:ComparativeRelation;
+		acc : OrderedSet(Participant) = OrderedSet{}
+		| acc->add_dep(r.target.participant())
+	)
+/]
+
+[**
+ * Relational dependency between entities
+ */]
+[query public relational_dependency(e : RelatorParticipant) : OrderedSet(Participant) =
+	e.links->iterate(
+		l: Link;
+		acc : OrderedSet(Participant) = OrderedSet{}
+		| acc->add_dep(l.entity)
+	)
+/]
+
+[**
+ * OrderedSet of SituationTypeElement that a SituationTypeElement depends
+ */]
+[query public dependency(e : Participant) : OrderedSet(Participant) =
+	if e.oclIsTypeOf(RelatorParticipant) then
+		relational_dependency(e.oclAsType(RelatorParticipant))->osunion(attribute_formal_dependency(e.oclAsType(RelatorParticipant)))
+	else
+		if e.oclIsTypeOf(EntityParticipant) then
+			participant_formal_dependency(e.oclAsType(EntityParticipant))->osunion(attribute_formal_dependency(e.oclAsType(EntityParticipant)))
+		else
+			if e.oclIsKindOf(SituationParticipant) then
+				participant_formal_dependency(e.oclAsType(SituationParticipant))->osunion(situation_formal_dependency(e.oclAsType(SituationParticipant)))
+			else
+				OrderedSet(SituationTypeElement){}
+			endif
+		endif
+	endif
+ /]
+
+
+[**
+ * Build the dependency relationships among a set of entities (SituationTypeElement).
+ */]
+[query public ordered(origin : OrderedSet(Participant)) : OrderedSet(Participant) = 
+	origin->iterate(
+		e : Participant;
+		acc : OrderedSet(Participant) = OrderedSet{}
+		|  acc->add_dep(e)
+	)
+/]
+
+
+[**
+ * Name of a java class thar represent a situation element
+ */]
+[template public name(n : OclAny) post (trim())]
+	[if (n.oclIsTypeOf(SituationType))]
+		[n.oclAsType(SituationType).name.toUpperFirst().clean()/]Situation
+	[/if]
+	[if (n.oclIsTypeOf(EntityParticipant))]
+		[n.oclAsType(EntityParticipant).isOfType.name.toUpperFirst().clean()/]
+	[/if]
+	[if (n.oclIsTypeOf(RelatorParticipant))]
+		[n.oclAsType(RelatorParticipant).isOfType.name.toUpperFirst().clean()/]
+	[/if]
+[/template]
+
+[**
+ * Clean String
+ */]
+[template public clean(name : String) post (trim())]
+[name.replaceAll('\\s+', '_')/]
+[/template]
+
+
+[**
+ * Context ComparativeFormalRelation represented as an operator in drools
+ */]
+[template public drools_relation(rel : ComparativeFormalRelation) post (trim())]
+[if (rel.oclIsUndefined())]
+	==
+[else]
+	[if (not rel.oclIsTypeOf(PrimitiveFormalRelation))]
+		[rel.name.clean()/]
+	[else]
+		[if (name = 'equals')]
+			==
+		[elseif (name = 'greater than')]
+			>
+		[elseif (name = 'less than')]
+			<
+		[else]
+			[rel.name.clean()/]
+		[/if]
+	[/if]
+[/if]
+[/template]
+
+[query public time_attrubute(a : AttributeReference) : Literal = a.sourceRelation.target->filter(Literal)->select(l:Literal|l.dataType.name='Time')->first() /]
+
+[template public time_litral(l:Literal) post (trim())]
+	[l.value.replaceAll(' ', '').replaceAll('days|day','d')/]
+[/template]
+
+[comment mantem a ordem/]
+[query public parameters(f : Function) : OrderedSet(Parameter) =
+	f.function.parameter->iterate(
+		q:QualitativeParameter;
+		acc : OrderedSet(Parameter) = OrderedSet{}
+		| acc->append(f.parameter->select(p:Parameter| p.parameter = q)->first())
+	) 
+ /]
+
+[comment return a set of all superclasses for a set of classes/]
+[query public superclasses(s : Set(EntityClass)) : Set(EntityClass) =
+	self->iterate(
+		e : EntityClass;
+		acc : Set(EntityClass) = Set(EntityClass){}
+		| if acc->includes(e) then
+			acc
+		else
+			if e.superclass.oclIsUndefined() then
+				acc->including(e)
+			else
+				acc->including(e)->union(superclasses(Set{e.superclass}))
+			endif
+		endif
+	)
+/]
+
+[query public associations(p : ModelClass) : OrderedSet(Association) = eContainer(ContextModel).elements->filter(Association)->select(a:Association|a.source = p or a.target = p) /]
+
+
+

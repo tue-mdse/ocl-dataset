@@ -1,0 +1,150 @@
+[
+  {
+    "name": "Processus",
+    "expressions": [
+      {
+        "operations": {"oclIsUndefined": 1},
+        "name": "precedent",
+        "body": "self.activites -> one(a : Activite | a.precedente.oclIsUndefined())",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "LDP::Activite::precedente",
+          "LDP::Processus::activites"
+        ]
+      },
+      {
+        "operations": {"oclIsUndefined": 1},
+        "name": "suivant",
+        "body": "self.activites -> one( a : Activite | a.suivante.oclIsUndefined())",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "LDP::Processus::activites",
+          "LDP::Activite::suivante"
+        ]
+      }
+    ],
+    "properties": [
+      "fin",
+      "activites",
+      "activiteCourante",
+      "debut"
+    ]
+  },
+  {
+    "name": "PseudoEtat",
+    "expressions": [],
+    "properties": ["reference"]
+  },
+  {
+    "name": "Debut",
+    "expressions": [{
+      "operations": {"oclIsUndefined": 1},
+      "name": "premiereActivite",
+      "body": "self.reference.precedente.oclIsUndefined()",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "VariableExpImpl": 1,
+        "OperationCallExpImpl": 1,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": [
+        "LDP::Activite::precedente",
+        "LDP::PseudoEtat::reference"
+      ]
+    }],
+    "properties": ["Processus"]
+  },
+  {
+    "name": "Fin",
+    "expressions": [{
+      "operations": {"oclIsUndefined": 1},
+      "name": "derniersActivite",
+      "body": "self.reference.suivante.oclIsUndefined()",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "VariableExpImpl": 1,
+        "OperationCallExpImpl": 1,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": [
+        "LDP::Activite::suivante",
+        "LDP::PseudoEtat::reference"
+      ]
+    }],
+    "properties": ["Processus"]
+  },
+  {
+    "name": "Activite",
+    "expressions": [
+      {
+        "operations": {
+          "allInstances": 1,
+          "=": 1
+        },
+        "name": "nomUnique",
+        "body": "Activite.allInstances()->one(a : Activite | a.name = self.name)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 2,
+          "TypeExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": ["LDP::Activite::name"]
+      },
+      {
+        "operations": {
+          "not": 1,
+          "oclIsUndefined": 1,
+          "and": 1,
+          "pasDansSuivant": 1,
+          "=": 1
+        },
+        "name": "pasDansSuivant",
+        "body": "if self.suivante.oclIsUndefined() then true \n\t\t\t      else not(self.suivante = act) and self.suivante.pasDansSuivant(act)\n\t\t\t      endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 5,
+          "OperationCallExpImpl": 5,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 3,
+          "BooleanLiteralExpImpl": 1
+        },
+        "properties": ["LDP::Activite::suivante"]
+      },
+      {
+        "operations": {"pasDansSuivant": 1},
+        "name": "pasDeCycle",
+        "body": "self.pasDansSuivant(self)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 2
+        },
+        "properties": []
+      }
+    ],
+    "properties": [
+      "PseudoEtat",
+      "Processus",
+      "description",
+      "name",
+      "precedente",
+      "suivante",
+      "Processus"
+    ]
+  }
+]

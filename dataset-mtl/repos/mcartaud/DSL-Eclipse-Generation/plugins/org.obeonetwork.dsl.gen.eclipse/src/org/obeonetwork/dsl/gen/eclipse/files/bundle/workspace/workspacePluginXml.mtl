@@ -1,0 +1,218 @@
+[comment encoding = UTF-8 
+
+Copyright (c) 2012 Obeo
+All rights reserved.  This program and the accompanying materials
+are made available under the terms of the Eclipse Public License 1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+You can apply any license to the files generated with this module and Acceleo.
+
+Contributors :
+	Mathieu Cartaud (Obeo) - initial API and implementation
+/]
+[module workspacePluginXml('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel', 'http://www.obeonetwork.org/dsl/eclipse')]
+
+[import org::obeonetwork::dsl::gen::eclipse::common::normalizeName /]
+
+
+[template public genWorkspacePluginXml(aBundle : Bundle)]
+[if (aBundle.extensionPointProvider->size() > 0)][aBundle.genExtensionPointProvider()/][/if]
+[if (aBundle.natures->size() > 0)]
+   <extension
+        point="org.eclipse.core.resources.natures"
+[for (aNature : Nature | aBundle.natures)][aNature.natureTemplate()/]
+[/for]
+   </extension>
+[/if][if (aBundle.natures.hasToggleNature->size() > 0)]
+   <extension
+         point="org.eclipse.ui.popupMenus">
+[for (aNature : Nature | aBundle.natures)][if (aNature.hasToggleNature)][aNature.toogleNatureTemplate()/][/if]
+[/for]
+   </extension>
+[/if][if (aBundle.builders->size() > 0)]
+   <extension
+        point="org.eclipse.core.resources.builders"
+[for (aBuilder : Builder | aBundle.builders)][aBuilder.builderTemplate()/]
+[/for]
+   </extension>
+[/if][if (aBundle.eAllContents(Wizard)->size() > 0)]
+   <extension
+         point="org.eclipse.ui.newWizards">
+[for (aCategory : Category | aBundle.categories)][if (aCategory.wizards->size() > 0)][aCategory.wizardCategory()/][/if]
+[/for]
+[for (aWizard : Wizard | aBundle.eAllContents(Wizard))][aWizard.wizardTemplate()/]
+[/for]
+   </extension>
+[/if][if (aBundle.decorators->size() > 0)]
+   <extension
+         point="org.eclipse.ui.decorators">
+[for (aDecorator : Decorator | aBundle.decorators)][aDecorator.decoratorTemplate()/]
+[/for]
+   </extension>
+[/if][if (aBundle.markers->size() > 0)]
+   <extension
+         point="org.eclipse.core.resources.markers"
+[for (aMarker : Marker | aBundle.markers)][aMarker.markersTemplate()/]
+[/for]
+   </extension>
+[/if][if (aBundle.helpContents->size() > 0)]
+   <extension
+         point="org.eclipse.help.toc">
+[for (anHelpContent : HelpContents | aBundle.helpContents)][anHelpContent.helpTemplate()/]
+[/for]
+   </extension>
+[/if][if (aBundle.eAllContents(DynamicHelp)->size() > 0)]
+   <extension
+         point="org.eclipse.help.contexts">
+[for (aDynamicHelp : DynamicHelp | aBundle.eAllContents(DynamicHelp))][aDynamicHelp.dynamicHelpTemplate()/]
+[/for]
+   </extension>
+[/if][if (aBundle.extensionPointClient->size() > 0)]
+[for (anExtensionPoint : ExtensionPointClient | aBundle.extensionPointClient)]
+[anExtensionPoint.userDefineExtensionPoint()/]
+[/for]
+[/if]
+[/template]
+
+
+
+[template private genExtensionPointProvider(aBundle : Bundle)]
+[for (anExtensionPoint : ExtensionPointProvider | aBundle.extensionPointProvider)]
+   <extension-point id="[anExtensionPoint.ancestors(Bundle).genBundleID()/].[anExtensionPoint.genExtensionName()/]" name="[anExtensionPoint.genExtensionName()/]" schema="schema/[anExtensionPoint.genExtensionName()/].exsd"/>
+[/for]
+[/template]
+
+[template private userDefineExtensionPoint(anExtensionPoint : ExtensionPointClient)]
+   <extension
+         point="[anExtensionPoint.provider.eContainer(Bundle).genBundleID()/].[anExtensionPoint.provider.genExtensionName()/]">
+	  <[anExtensionPoint.provider.genExtensionName()/]
+			[anExtensionPoint.provider.className/]="[anExtensionPoint.eContainer(Bundle).genBundleID()/].contributions.[anExtensionPoint.genExtensionClientClass()/]"
+[for (anAttribute : StringAttribute | anExtensionPoint.provider.stringAttributes)]
+			[anAttribute.name/]="[anAttribute.refactorAttributeName()/]"
+[/for][for (anAttribute : JavaAttribute | anExtensionPoint.provider.javaAttributes)]
+			[anAttribute.name/]="[anExtensionPoint.eContainer(Bundle).genBundleID()/].contributions.[anExtensionPoint.genExtensionClientClass()/][anAttribute.genAttributeClassName()/]"
+[/for]
+			/>
+   </extension>
+[/template]
+
+[template private wizardCategory(aCategory : Category)]
+      <category
+            name="%Wizard-[aCategory.refactorCategoryName().toUpperFirst()/]-Category-Name"
+            id="[aCategory.genCategoryID()/]">
+      </category>
+[/template]
+
+[template private natureTemplate(aNature : Nature)]
+      id="[aNature.genNatureID()/]"
+      name="%Nature-[aNature.refactorNatureName().toUpperFirst()/]-Name">
+      <runtime>
+         <run 
+			class="[aNature.genNaturePath()/]">
+         </run>
+      </runtime>
+[for (aBuilder : Builder | aNature.builders)]
+      <builder
+            id="[aBuilder.genBuilderID()/]">
+      </builder>
+[/for]
+[/template]
+
+[template private builderTemplate(aBuilder : Builder)]
+         id="[aBuilder.genBuilderID()/]"
+         name="%Builder-[aBuilder.refactorBuilderName().toUpperFirst()/]-Name">
+      <builder
+            hasNature="[associatedNature()/]">
+         <run
+               class="[aBuilder.genBuilderPath()/]">
+         </run>
+      </builder>
+[/template]
+
+[template private associatedNature(aBuilder : Builder)]
+[if ((aBuilder.natures)->size() > 0)]
+true[else]
+false[/if]
+[/template]
+
+[template private toogleNatureTemplate(aNature : Nature)]
+      <objectContribution
+            adaptable="true"
+            objectClass="org.eclipse.core.resources.IProject"
+            nameFilter="*"
+            id="[aNature.ancestors(Bundle).genBundleID()/].popupMenus.[aNature.refactorNatureName()/]Contribution">
+         <action
+               label="Add/Remove [aNature.name/] Nature"
+               class="[aNature.ancestors(Bundle).genBundleID()/].nature.Toggle[aNature.refactorNatureName().toUpperFirst()/]Action"
+               menubarPath="additions"
+               enablesFor="+"
+               id="[aNature.ancestors(Bundle).genBundleID()/].popupMenus.addRemove[aNature.refactorNatureName().toUpperFirst()/]Action">
+         </action>
+      </objectContribution>
+[/template]
+
+[template private wizardTemplate(aWizard : Wizard)]
+      <wizard
+            name="%Wizard-[aWizard.refactorWizardName().toUpperFirst()/]-Name"
+            icon="icons/[aWizard.iconName()/]"
+[if (aWizard.isProject)]
+			project="true"
+[/if][if (aWizard.category->size() > 0)]
+			category="[aWizard.category.genCategoryID()/]"
+[/if]
+            class="[aWizard.genWizardPath()/]"
+            id="[aWizard.genWizardID()/]">
+      </wizard>
+[/template]
+
+[template private decoratorTemplate(aDecorator : Decorator)]
+      <decorator
+            lightweight="[aDecorator.isLightweight/]"
+            location="[aDecorator.location/]"
+            adaptable="[aDecorator.isAdaptable/]"
+            label="[aDecorator.name/]"
+            icon="icons/[aDecorator.iconName()/]"
+            state="true"
+            id="[aDecorator.genDecoratorID()/]">
+         <enablement>
+            <and>
+               <objectClass
+                     name="org.eclipse.core.resources.IResource">
+               </objectClass>
+               <or>
+                  <objectClass
+                        name="org.eclipse.core.resources.IProject">
+                  </objectClass>
+                  <objectClass
+                        name="org.eclipse.core.resources.IFile">
+                  </objectClass>
+               </or>
+            </and>
+         </enablement>
+      </decorator>
+[/template]
+
+[template private markersTemplate(aMarker : Marker)]
+         id="[aMarker.genMarkerID()/]"
+         name="%Marker-[aMarker.refactorMarkerName().toUpperFirst()/]-Name">
+      <super
+            type="org.eclipse.core.resources.problemmarker">
+      </super>
+      <persistent
+            value="[aMarker.isPersistant/]">
+      </persistent>
+[/template]
+
+[template private helpTemplate(anHelpContent : HelpContents)]
+      <toc
+            file="help/[anHelpContent.refactorHelpLabel()/].xml"
+			primary="true">
+      </toc>
+[/template]
+
+[template private dynamicHelpTemplate(aDynamicHelp : DynamicHelp)]
+      <contexts
+            file="help/dynamic[aDynamicHelp.refactorDynamicHelpLabel().toUpperFirst()/].xml">
+      </contexts>
+[/template]

@@ -1,0 +1,86 @@
+[comment encoding = UTF-8 /]
+[module generate('/RedPetri/petri.ecore')]
+
+
+[template public generateElement(aPetrinet : RedPetri)]
+[comment @main/]
+[file ('petrinet.java', false, 'UTF-8')]
+package test.out;
+
+import com.mxgraph.model.mxCell;
+import com.mxgraph.model.mxGeometry;
+import com.mxgraph.view.mxGraph;
+
+public class VisualizePetriNet_Ejemplo {
+
+	public static void main(String['[]'/] args) {
+		mxGraph graph = new mxGraph();
+
+		[for (place: Place | aPetrinet.iniPlace) separator('\n')]
+			[ place.generateElement() /]
+		[/for]
+		[for (tran: Transition | aPetrinet.iniTrans) separator('\n')]
+			[ tran.generateElement() /]
+		[/for]
+		[for (place: Place | aPetrinet.iniPlace) separator('\n')]
+			[ place.genConnection() /]
+		[/for]
+		[for (tran: Transition | aPetrinet.iniTrans) separator('\n')]
+			[ tran.genConnection() /]
+		[/for]
+		new JGraphVisualizer().drawGraph(graph);
+	}
+}
+
+[/file]
+[/template]
+
+[template public generateElement(aPlace : Place)]
+
+mxCell p[aPlace.name/] = new mxCell();
+p[aPlace.name/].setValue("[aPlace.tokens/]");
+p[aPlace.name/].setVertex(true);
+p[aPlace.name/].setId("p[aPlace.name/]");
+p[aPlace.name/].setGeometry(new mxGeometry(0, 0, 20, 20));
+p[aPlace.name/].setStyle(";shape=ellipse;strokeColor=black;fillColor=white;");
+graph.addCell(p[aPlace.name/]);
+
+[/template]
+
+[template public genConnection(aPlace : Place)]
+//conexiones 
+[for (tran: Transition | aPlace.connection) separator('\n')]
+	mxCell c_p[aPlace.name/]_t[tran.name/] = new mxCell();
+	c_p[aPlace.name/]_t[tran.name/].setEdge(true);
+	c_p[aPlace.name/]_t[tran.name/].setSource(p[aPlace.name/]);
+	c_p[aPlace.name/]_t[tran.name/].setTarget(t[tran.name/]);
+	c_p[aPlace.name/]_t[tran.name/].setStyle("startArrow=none;endArrow=none");
+	graph.addCell(c_p[aPlace.name/]_t[tran.name/]);
+[/for]
+
+[/template]
+
+[template public generateElement(tran : Transition)]
+
+	mxCell t[tran.name/] = new mxCell();
+	t[tran.name/].setValue("");
+	t[tran.name/].setVertex(true);
+	t[tran.name/].setId("t[tran.name/]");
+	t[tran.name/].setGeometry(new mxGeometry(0, 0, 10, 20));
+	t[tran.name/].setStyle(";shape=rectangle;strokeColor=black;fillColor=black;");
+
+	graph.addCell(t[tran.name/]);
+
+
+[/template]
+
+[template public genConnection(tran : Transition)]
+[for (place: Place | tran.connection) separator('\n')]
+	mxCell c_t[tran.name/]_p[place.name/] = new mxCell();
+	c_t[tran.name/]_p[place.name/].setEdge(true);
+	c_t[tran.name/]_p[place.name/].setSource(t[tran.name/]);
+	c_t[tran.name/]_p[place.name/].setTarget(p[place.name/]);
+	c_t[tran.name/]_p[place.name/].setStyle("startArrow=none;endArrow=none");
+	graph.addCell(c_t[tran.name/]_p[place.name/]);
+[/for]
+[/template]

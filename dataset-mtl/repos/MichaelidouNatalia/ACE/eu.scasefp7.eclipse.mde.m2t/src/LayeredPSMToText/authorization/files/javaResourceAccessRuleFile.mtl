@@ -1,0 +1,200 @@
+[comment encoding = UTF-8 /]
+[module javaResourceAccessRuleFile('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthorizationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+
+[template public javaResourceAccessRuleFile(anAnnotationStack : AnnotationStack)]
+
+[file (anAnnotationStack.hasCorePSM.name  + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/utilities/authorization/core/ResourceAccessRule.java', false, 'UTF-8')]
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import javax.persistence.Column;
+import javax.persistence.ElementCollection;
+import javax.persistence.CollectionTable;
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
+import javax.persistence.Table;
+
+import org.hibernate.annotations.ForeignKey;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.attr.BooleanAttribute;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.Action;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.AuthorizationResultCode;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.RuleType;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.operators.EvaluationResult;
+
+@Entity
+@Table(name="rule")
+public class ResourceAccessRule implements Evaluatable{
+
+	@Id
+	@GeneratedValue	@Column(name = "ruleId")
+	private int ruleId;
+	
+	@Enumerated(EnumType.STRING)
+	private RuleType ruleType;
+	
+	@ElementCollection(fetch = FetchType.EAGER)
+	@CollectionTable(
+    name="allowedaction",
+    joinColumns=@JoinColumn(name="ruleId")
+	)
+	@Enumerated(EnumType.STRING)
+	private Set<Action> allowedAction;
+	
+	@ManyToOne(fetch = FetchType.EAGER)
+	@JoinColumn(name="parentpolicyId")
+	@ForeignKey(name = "fk_rule_policy")
+	private ResourceAccessPolicy resourceAccessPolicy;
+	
+	@OneToMany(fetch = FetchType.EAGER, mappedBy="resourceAccessRule",orphanRemoval=true)
+	@OnDelete(action=OnDeleteAction.CASCADE)
+	private Set<ResourceAccessCondition> setOfMatchCondition;
+	
+	public ResourceAccessRule(){
+		
+	}
+	
+	public ResourceAccessRule(RuleType ruleType,Set<Action> allowedAction,ResourceAccessPolicy resourceAccessPolicy){
+		this.setRuleType(ruleType);
+		this.setAllowedAction(allowedAction);
+		this.setResourceAccessPolicy(resourceAccessPolicy);
+	}
+	
+	public AuthorizationResult evaluate(AbstractEvaluationContext evaluationContext){
+		//System.out.println("Evaluating Rule : " + this.getRuleId());		
+		if (!this.getAllowedAction().contains(evaluationContext.getRequest().getAction())){
+			return new AuthorizationResult(AuthorizationResultCode.NOT_APPLICABLE);
+		}
+		boolean atLeastOneFalse = false;
+		boolean atLeastOneIndeterminate = false;
+		boolean atLeastOneTrue = false;
+		String errors = "";
+		for (ResourceAccessCondition matchCondition : getSetOfMatchCondition()){
+			EvaluationResult result = matchCondition.evaluate(evaluationContext);
+			if (result.getAttributeValue() == null){
+				//We ignore if the error is the case where an included resource is not found
+				if (!result.getErrorStatus().equals("Included resource not included in request")){
+					if(!atLeastOneIndeterminate){
+						atLeastOneIndeterminate = true;
+					}
+					errors += result.getErrorStatus() + "\n";
+				}
+			}else{
+				if (result.getAttributeValue().equals(BooleanAttribute.getFalseInstance()) && !atLeastOneFalse){
+					atLeastOneFalse = true;
+				}else if (result.getAttributeValue().equals(BooleanAttribute.getTrueInstance()) && !atLeastOneTrue){
+					atLeastOneTrue = true;
+				}
+			}
+		}
+
+		if(atLeastOneFalse){
+			return this.getEffectResult(false);
+		}
+		if(atLeastOneIndeterminate){
+			return new AuthorizationResult(AuthorizationResultCode.INDETERMINATE,errors);
+		}
+		if(atLeastOneTrue){
+			return this.getEffectResult(true);
+		}
+		return new AuthorizationResult(AuthorizationResultCode.NOT_APPLICABLE,"Included resource not included in request");
+	}
+		
+	private AuthorizationResult getEffectResult(boolean dontGetOpposite){
+		if ((getRuleType() == RuleType.PERMIT && dontGetOpposite) || (getRuleType() == RuleType.DENY && !dontGetOpposite)){
+			return new AuthorizationResult(AuthorizationResultCode.PERMIT);
+		}
+		return new AuthorizationResult(AuthorizationResultCode.DENY);
+	}
+
+	/**
+	 * @return the ruleId
+	 */
+	public int getRuleId() {
+		return ruleId;
+	}
+
+	/**
+	 * @param ruleId the ruleId to set
+	 */
+	public void setRuleId(int ruleId) {
+		this.ruleId = ruleId;
+	}
+
+	/**
+	 * @return the ruleType
+	 */
+	public RuleType getRuleType() {
+		return ruleType;
+	}
+
+	/**
+	 * @param ruleType the ruleType to set
+	 */
+	public void setRuleType(RuleType ruleType) {
+		this.ruleType = ruleType;
+	}
+
+	/**
+	 * @return the allowedAction
+	 */
+	public Set<Action> getAllowedAction() {
+		if (allowedAction == null){
+			allowedAction = new HashSet<Action>();
+		}
+		return allowedAction;
+	}
+
+	/**
+	 * @param allowedAction the allowedAction to set
+	 */
+	public void setAllowedAction(Set<Action> allowedAction) {
+		this.allowedAction = allowedAction;
+	}
+
+	/**
+	 * @return the resourceAccessPolicy
+	 */
+	public ResourceAccessPolicy getResourceAccessPolicy() {
+		return resourceAccessPolicy;
+	}
+
+	/**
+	 * @param resourceAccessPolicy the resourceAccessPolicy to set
+	 */
+	public void setResourceAccessPolicy(ResourceAccessPolicy resourceAccessPolicy) {
+		this.resourceAccessPolicy = resourceAccessPolicy;
+	}
+
+	/**
+	 * @return the setOfMatchCondition
+	 */
+	public Set<ResourceAccessCondition> getSetOfMatchCondition() {
+		if (setOfMatchCondition == null){
+			setOfMatchCondition = new HashSet<ResourceAccessCondition>();
+		}
+		return setOfMatchCondition;
+	}
+
+	/**
+	 * @param setOfMatchCondition the setOfMatchCondition to set
+	 */
+	public void setSetOfMatchCondition(Set<ResourceAccessCondition> setOfMatchCondition) {
+		this.setOfMatchCondition = setOfMatchCondition;
+	}
+}
+
+[/file]
+[/template]

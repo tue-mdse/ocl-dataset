@@ -1,0 +1,67 @@
+[comment encoding = UTF-8 /]
+[module task_termination_monitor()/]
+
+[template public task_termination_monitor()]
+	
+[comment @main /]
+
+[file ('start_up.ads', false, 'UTF-8')]
+package Start_Up is
+   pragma Elaborate_Body;
+end Start_Up;
+[/file]
+
+[file ('start_up.adb', false, 'UTF-8')]
+with Ada.Task_Identification; use Ada.Task_Identification;
+with Ada.Task_Termination;    use Ada.Task_Termination;
+with Ada.Exceptions;          use Ada.Exceptions;
+
+--  Use the terminal output for the PC
+with Ada.Text_IO; use Ada.Text_IO;
+--  Use the LCD display fot the NXT
+--  with Nxt.Display; use Nxt.Display;
+
+package body Start_Up is
+   protected Grim_Reaper is
+      procedure Last_Gasp
+        (C : Cause_Of_Termination;
+         T : Task_Id;
+         X : Exception_Occurrence);
+   private
+      procedure Put_Log (item : String);
+   end Grim_Reaper;
+
+   protected body Grim_Reaper is
+      procedure Last_Gasp
+        (C : Cause_Of_Termination;
+         T : Task_Id;
+         X : Exception_Occurrence)
+      is
+      begin
+         case C is
+            when Normal =>
+               null;
+            when Abnormal =>
+               Put_Log ("Something nasty happened to task ");
+               Put_Log (Image (T));
+            when Unhandled_Exception =>
+               Put_Log ("Unhandled exception occurred in task ");
+               Put_Log (Image (T));
+               Put_Log (Exception_Information (X));
+         end case;
+      end Last_Gasp;
+
+      procedure Put_Log (item : String) is
+      begin
+         --  Note: we should not call potentially blocking operations
+         --  (such as Put to a file) within a protected operation.
+         Put_Line (item);
+      end Put_Log;
+
+   end Grim_Reaper;
+begin
+   Set_Dependents_Fallback_Handler (Grim_Reaper.Last_Gasp'Access);
+end Start_Up;
+[/file]
+	
+[/template]

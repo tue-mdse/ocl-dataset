@@ -1,0 +1,256 @@
+[comment encoding = UTF-8 /]
+[module utilJava('http://www.eclipse.org/uml2/5.0.0/UML', 'http://www.eclipse.org/uml2/5.0.0/Types')/]
+[import m2t::uml::gen::common::files::utilCommon /]
+
+[template public genJavaClassOrInterface(c : Classifier)]
+[if (c.oclIsTypeOf(Class)) ]
+[c.oclAsType(Class).genJavaClass()/]
+[elseif (c.oclIsTypeOf(Interface)) ]
+[c.oclAsType(Interface).genJavaInterface()/]   
+[/if]
+[/template]
+
+
+[template public genJavaInstanceVarFromUmlAssRole(c : Class)]
+[for (a : Association | c.getAssociations() )]
+  [let p : Property = a.queryGetOppositeAssociationEnd(c)]
+  [comment les associations composite ont deja une extremite en tant qu'attribut /]       
+       [if (p.aggregation <> AggregationKind::composite )]
+[p.genJavaPrivateProperty()/]
+       [/if]
+  [/let] 
+ [/for]
+[/template]
+
+[template public genJavaGetterSetterFromUmlAssRole(c: Class)]
+[for (a : Association | c.getAssociations() )]
+     [let p : Property = a.queryGetOppositeAssociationEnd(c)]
+       [comment les associations composite ont deja une extremite en tant qu'attribut /]       
+       [if (p.aggregation <> AggregationKind::composite)]		
+[p.genJavaGetter()/]
+[p.genJavaSetter()/]
+       [/if]
+     [/let] 
+    [/for]
+[/template]
+
+[template public genJavaClass(c : Class)]
+public [if (c.isAbstract)]abstract[/if] class [c.name.toUpperFirst()/] [c.javaExtendsfromUml()/] [c.javaImplementsfromUml()/]{
+[for (p: Property | c.attribute)]
+[p.genJavaPrivateProperty()/]
+[/for]
+[comment {c.genJavaInstanceVarFromUmlAssRole()/} for old uml version /]
+[c.genJavaDefaultConstructor()/]      
+[c.genJavaToString()/]           
+[for (p: Property | c.attribute)]
+[p.genJavaGetter()/]
+[p.genJavaSetter()/]
+[/for]
+[comment {c.genJavaGetterSetterFromUmlAssRole()/} for old uml version /]
+        
+[for (o: Operation | c.ownedOperation)]
+[o.genJavaMethod()/]
+[/for]
+[for (interf : Interface | c.getImplementedInterfaces())]
+[for (o : Operation | interf.ownedOperation)][o.genJavaMethod()/][/for]
+[/for]
+}
+[/template]
+
+[template public genJavaInterface(itf : Interface)]
+public interface [itf.name.toUpperFirst()/] {        
+[for (o: Operation | itf.ownedOperation)]
+	[o.genJavaMethodSignature()/];
+[/for]       
+}
+[/template]
+
+
+[template public genJavaEnumeration(e : Enumeration)]
+public enum [e.name.toUpperFirst()/] {
+[for (el: EnumerationLiteral | e.ownedLiteral) separator(',')][el.name/][/for]
+}
+[/template]
+
+[template public genJavaImportsFromPackageDependencies(c : Classifier)]
+[for (d : Dependency  | c._package.clientDependency)]
+  [let n : Namespace = d.supplier->asOrderedSet()->first().namespace ]
+import [c.packagePrefixFromUml()/].[if (n <> null) and (n.name <> 'LogicalView') and (n.name <> 'Model') and (n.visibility <> VisibilityKind::private)][n.recursiveQualifiedName()/].[/if][d.supplier.name/].*;
+ [/let]
+[/for]
+[/template]
+
+[template public genJavaNeedsImports(c : Classifier)]
+//(re-)generated imports:
+[if (c.oclIsKindOf(Class))]
+[(c.oclAsType(Class)).genJavaImportsFromPackageDependencies()/]
+[(c.oclAsType(Class)).javaImportsNeedForImplementsfromUml()/]
+[(c.oclAsType(Class)).javaImportsNeedForExtendsfromUml()/]
+[/if]	
+//end of generated imports
+[/template]
+
+[template public genJavaDefaultImports(c : Classifier)]
+//[protected ('java_customized_imports')]
+import java.util.*;		
+//[/protected]
+[/template]
+
+
+[template public genJavaPackage(c : Classifier)]
+package [c.packageNameFromUml()/];
+[/template]
+
+[template public genJavaDefaultConstructor(c : Class)]
+	public [c.name.toUpperFirst()/](){
+		super(); 
+	}
+[/template]
+
+
+[template public javaImportsNeedForExtendsfromUml(c : Class)post(trim())]
+[let pN : String = c.packageNameFromUml()]
+	[for (superC : Class | c.superClass)] 
+	 	[let spN : String = superC.packageNameFromUml()]
+	 	  [if ( pN <> spN ) ]
+import [superC.fullNameFromUml()/];
+	      [/if]
+	    [/let]	
+	[/for]
+[/let]	   
+[/template]
+
+[template public javaImportsNeedForImplementsfromUml(c : Class)post(trim())]
+[let pN : String = c.packageNameFromUml()]
+	[for (interf : Interface | c.getImplementedInterfaces())] 
+	 	[let ipN : String = interf.packageNameFromUml()]
+	 	  [if ( pN <> ipN ) ]
+import [interf.fullNameFromUml()/];
+	      [/if]
+	    [/let]	
+	[/for]
+[/let]	   
+[/template]
+
+[template public javaExtendsfromUml(c : Class)post(trim())]
+[for (superC : Class | c.superClass) before(' extends ') separator(',')] [superC.name/][/for]
+[/template]
+
+[template public javaImplementsfromUml(c : Class)post(trim())]
+[for (interf : Interface | c.getImplementedInterfaces()) before(' implements ') separator(',')] [interf.name/][/for]
+[/template]	
+
+	
+[template public defaultJavaCodeStringFromUmlOperation(o: Operation) post(trim()) ]
+[if(o.type = null)]
+return ;
+[else]
+	[let opType : String = o.type.javaAdjustedTypeName()]
+[if (opType = 'int' or opType = 'short')]
+return 0;
+[elseif (opType = 'long')]
+return 0L;
+[elseif (opType = 'double')]
+return 0.0;
+[elseif (opType = 'float')]
+return 0.0f;
+[else]
+return null;
+[/if]
+	[/let]   
+[/if]
+[/template]
+
+[template public javaExempleValueStringFromUmlProperty(p:Property) post(trim())
+{ umlType : String = p.type.javaAdjustedTypeName();} ]
+    [if (umlType = 'int' or umlType = 'short' or umlType = 'long')]
+			0
+		[elseif (umlType = 'double'  or umlType = 'float' )]
+			0.0
+		[elseif (umlType = 'java.util.Date')]
+			new Date()
+		[elseif (umlType = 'String')]
+			"abc"		
+		[else][comment  null or 0 or ... ?/]
+			null
+		[/if]
+[/template]
+
+[template public inputParametersForOp(o: Operation) post(trim())] 
+[for (p : Parameter | o.ownedParameter) separator(',') ? (p.direction <> ParameterDirectionKind::return)][p.type.javaAdjustedTypeName()/] [p.name/][/for]
+[/template]
+
+[template public genJavaMethodSignature(o: Operation) post(trim())]
+ [o.visibility/] [if (o.type.oclIsUndefined()) ]void[else][o.type.javaAdjustedTypeName()/][/if] [o.name/]([o.inputParametersForOp()/])
+[/template]
+
+[template public genJavaMethod(o: Operation)]
+	[o.genJavaMethodSignature()/] {
+		//[protected (o.name)]
+		[defaultJavaCodeStringFromUmlOperation()/]   
+		//[/protected]               
+	}
+[/template]
+
+[template public javaAdjustedTypeName(t : Type) post(trim())]
+[if (t.name = 'Real')]
+  double
+  [else]
+  	 [t.name/]
+  [/if]
+[/template]
+
+[template public javaType(p : Property) post(trim())]
+[if (p.type <> null) ]
+  	 [p.type.javaAdjustedTypeName()/]
+[elseif (p.name.startsWith('id') or p.name.startsWith('num')) ]
+long
+[elseif (p.name = 'prix' or p.name='price' or p.name = 'value' or p.name = 'valeur') ]
+double
+[elseif (p.name = 'valid' or p.name='valide' or p.name.startsWith('is') or p.name.startsWith('est') ) ]
+boolean
+[else]
+String
+[/if]
+[/template]
+
+[template public javaTypeNameFromPropertyUpper(p : Property) post(trim())]
+[if (p.upper = -1 or p.upper > 1)]Collection<[p.javaType()/]>[else][p.javaType()/][/if]
+[/template]
+
+
+[template public genJavaPrivateProperty(p : Property)]
+	private [p.javaTypeNameFromPropertyUpper()/] [p.name/];
+[/template]
+
+
+
+[template public genJavaGetter(p : Property)]
+	public [p.javaTypeNameFromPropertyUpper()/] get[p.name.toUpperFirst()/]() {
+		return this.[p.name/];
+	}
+[/template]
+
+[template public genJavaSetter(p : Property)]
+	public void set[p.name.toUpperFirst()/]([p.javaTypeNameFromPropertyUpper()/] [p.name/]){
+		this.[p.name/]=[p.name/];
+	}
+[/template]
+
+
+[template public javaName(c : Class) post (trim())]
+[c.name.toUpperFirst() /]
+[/template]
+
+[template public genJavaToString(c : Class)]
+[if (not c.attribute->isEmpty())]
+	public String toString(){
+		return "[c.name/]("+[for (p: Property | c.attribute ) separator('+","+') ] "[p.name/]=" + [p.name/][/for] + ")";
+	}
+[else]
+	public String toString(){
+		return super.toString();
+	}	
+[/if]	
+[/template]
+

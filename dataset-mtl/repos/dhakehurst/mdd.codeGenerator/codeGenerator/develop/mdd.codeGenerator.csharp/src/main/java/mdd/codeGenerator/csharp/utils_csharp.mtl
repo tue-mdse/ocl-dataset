@@ -1,0 +1,123 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module utils_csharp('http://www.eclipse.org/uml2/4.0.0/UML') extends mdd::codeGenerator::common::utils]
+
+[query public nonKeyWordName(ne:NamedElement) : String =
+  let
+    keyWords:Set(String) = Set{'operator', 'lock'}
+  in
+    if keyWords->includes(ne.name) then
+  	  ne.name + '_'
+    else
+      ne.name
+    endif
+/]
+
+[template public generateLogger(c : Classifier, location : String)]
+global::framework.logging.LoggerRef log = new global::framework.logging.LoggerRef(new global::framework.logging.Location("[location/]"));
+[/template]
+
+[query public fullName(t:Type) : String =
+  if t.oclIsUndefined() then
+	'void'
+  else
+    if t.owner.oclIsKindOf(TemplateParameter) then
+      t.name
+    else
+      if t.oclIsTypeOf(Enumeration) then
+	    'global::'+t.qualifiedName('.')+'?'
+      else
+	    'global::'+t.qualifiedName('.')
+      endif
+    endif
+  endif
+/]
+
+[query public typeName(p:Parameter) : String =
+  if p.type.oclIsUndefined() then
+	'void'
+  else
+    let
+      tName:String = p.type.fullName()
+    in
+		if p.upperBound() = 1 then
+	      tName
+	    else
+		  'global::framework.collections.Sequence<'+tName+'>'
+	    endif
+  endif
+/]
+
+[query public typeName(p:Port) : String =
+  if p.type.oclIsUndefined() then
+	'*Unknown*'
+  else
+	if p.upperBound() = 1 then
+		'global::'+p.type.qualifiedName('.')
+    else
+		'global::framework.collections.Sequence<global::'+p.type.qualifiedName('.')+'>'
+    endif
+  endif
+/]
+
+[query public typeName(p:Property) : String =
+  if p.type.oclIsUndefined() then
+	'*Unknown*'
+  else
+	if p.upperBound() = 1 then
+      if p.type.oclIsTypeOf(Enumeration) then
+		'global::'+p.type.qualifiedName('.')+'?'
+      else
+		'global::'+p.type.qualifiedName('.')
+      endif
+    else
+		'global::framework.collections.Sequence<'+'global::'+p.type.qualifiedName('.')+'>'
+    endif
+  endif
+/]
+
+[query public typeName2(p:Property) : String =
+  if p.type.oclIsUndefined() then
+	'*Unknown*'
+  else
+	if p.upperBound() = 1 then
+      if p.type.oclIsTypeOf(Enumeration) then
+		'global::'+p.type.qualifiedName('.')+'?'
+      else
+		'global::'+p.type.qualifiedName('.')
+      endif
+    else
+		'Sequence<'+'global::'+p.type.qualifiedName('.')+'>'
+    endif
+  endif
+/]
+
+[query public returnTypeName(op : Operation) : String =
+ let
+  rp:Parameter = op.ownedParameter->any(p:Parameter|p.direction = ParameterDirectionKind::return)
+ in
+  if rp.type.oclIsUndefined() then
+   'void'
+  else
+    let
+      tName:String = rp.type.fullName()
+    in
+		if rp.upperBound() = 1 then
+	      tName
+	    else
+		  'global::framework.collections.Sequence<'+tName+'>'
+	    endif
+  endif
+/]
+
+[query public dependencyOn(t : Type) : String =
+  'using ' +  t.qualifiedName('.')
+/]

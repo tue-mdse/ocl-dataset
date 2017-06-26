@@ -1,0 +1,150 @@
+[comment encoding = UTF-8 /]
+[module generateMain('http://wfe/1.0')/]
+
+[template public generateMain(aWorkflow : Workflow)]
+	
+	[comment @main /]
+	[file ('Main.java', false, 'UTF-8')]
+	package engine.gen;
+
+	import java.util.*;
+	
+	public final class Main {
+	
+		public static void main(final String['['']'/] args) {
+
+			// Create empty workflow
+			[aWorkflow.eClass().name/] workflow = new [aWorkflow.eClass().name/]("[aWorkflow.name/]", new LinkedList<Arc>(), new LinkedList<Resource>(), new LinkedList<Node>(), new LinkedList<Expression>());
+			Node startNode = null;			
+
+			// Generate arcs 
+			final HashMap<String, LinkedList<Arc>> outgoingArcByNodeName = new HashMap<String, LinkedList<Arc>>();
+			final HashMap<String, LinkedList<Arc>> incomingArcByNodeName = new HashMap<String, LinkedList<Arc>>();
+			
+			Arc a = null;
+			[for (a : Arc | aWorkflow.contains_arcs)]
+			a = new [a.eClass().name/]("[a.name/]", null, null);
+			workflow.getContains_arcs().add(a);
+			
+			if(outgoingArcByNodeName.containsKey("[a.source.name/]") == false) {
+				outgoingArcByNodeName.put("[a.source.name/]", new LinkedList<Arc>());
+			}
+			if(incomingArcByNodeName.containsKey("[a.target.name/]") == false) {
+				incomingArcByNodeName.put("[a.target.name/]", new LinkedList<Arc>());
+			}
+			
+			outgoingArcByNodeName.get("[a.source.name/]").add(a);		
+			incomingArcByNodeName.get("[a.target.name/]").add(a);
+			[/for]
+
+			// Generate resource
+			final HashMap<String, Resource> resourceByName = new HashMap<String, Resource>();
+			Resource r = null;
+			[for (r : Resource | aWorkflow.has_resources)]
+			[if (r.eClass() = Actor)]
+			r = new [r.eClass().name/]("[r.name/]", "[r.description/]", "[r.oclAsType(Actor).first_name/]", "[r.oclAsType(Actor).last_name/]");
+			[else]
+			r = new [r.eClass().name/]("[r.name/]", "[r.description/]");
+			[/if]
+			workflow.getHas_resources().add(r);
+			resourceByName.put("[r.name/]", r);
+			[/for]
+
+			// Generate expressions
+			final HashMap<String, Expression> expressionByName = new HashMap<String, Expression>();
+			final HashMap<Expression, String> lhsByExpression = new HashMap<Expression, String>();
+			final HashMap<Expression, String> rhsByExpression = new HashMap<Expression, String>();
+			Expression e = null;
+			[for (e : Expression | aWorkflow.contains_expressions)]
+			[if(e.eClass() = AND)]
+			e = new [e.eClass().name/](null, null);
+			lhsByExpression.put(e,"[e.oclAsType(AND).lhs.name/]");
+			rhsByExpression.put(e,"[e.oclAsType(AND).rhs.name/]");
+			[elseif(e.eClass() = OR)]
+			e = new [e.eClass().name/](null, null);
+			lhsByExpression.put(e,"[e.oclAsType(OR).lhs.name/]");
+			rhsByExpression.put(e,"[e.oclAsType(OR).rhs.name/]");
+			[elseif(e.eClass() = NOT)]
+			e = new [e.eClass().name/](null);
+			lhsByExpression.put(e,"[e.oclAsType(NOT).lhs.name/]");
+			[elseif(e.eClass() = Variable)]
+			e = new [e.eClass().name/]("[e.oclAsType(Variable).name/]", [e.oclAsType(Variable).value/]);
+			[else]
+			e = new [e.eClass().name/]();
+			[/if]
+			workflow.getContains_expressions().add(e);
+			expressionByName.put("[e.name/]", e);
+			[/for]
+			
+			for(Expression e2: workflow.getContains_expressions()){
+				if(e2 instanceof BinaryOperator){
+					((BinaryOperator)e2).setRhs(expressionByName.get(rhsByExpression.get(e2)));
+				}
+				if(e2 instanceof Operator){
+					((Operator)e2).setLhs(expressionByName.get(lhsByExpression.get(e2)));
+				}
+			}
+				
+
+			
+			// Generate nodes
+			Node n = null;
+			final HashMap<Arc, Node> sourceNodeByArc = new HashMap<Arc, Node>();
+			final HashMap<Arc, Node> targetNodeByArc = new HashMap<Arc, Node>();
+
+			[for (n : Node | aWorkflow.contains_nodes)]
+			[if (n.eClass() = Sleep)]
+			n = new [n.eClass().name/]("[n.name/]", false, false, false, "[n.oclAsType(Sleep).description/]", [n.oclAsType(Sleep).seconds/], outgoingArcByNodeName.get("[n.name/]"), incomingArcByNodeName.get("[n.name/]"), workflow, new LinkedList<Resource>());
+			[elseif (n.eClass() = Custom)]
+			n = new [n.eClass().name/]("[n.name/]", false, false, false, "[n.oclAsType(Custom).description/]", [n.oclAsType(Custom).path/], outgoingArcByNodeName.get("[n.name/]"), incomingArcByNodeName.get("[n.name/]"), workflow, new LinkedList<Resource>());
+			[elseif (n.eClass() = Confirm)]
+			n = new [n.eClass().name/]("[n.name/]", false, false, false, "[n.oclAsType(Confirm).description/]", outgoingArcByNodeName.get("[n.name/]"), incomingArcByNodeName.get("[n.name/]"), workflow, new LinkedList<Resource>());
+			[elseif (n.eClass() = Synchbar)]
+			n = new [n.eClass().name/]("[n.name/]", false, false, false, "[n.oclAsType(Synchbar).description/]", outgoingArcByNodeName.get("[n.name/]"), incomingArcByNodeName.get("[n.name/]"), workflow, new LinkedList<Resource>());
+			[elseif (n.eClass() = Gate)]
+			n = new [n.eClass().name/]("[n.name/]", false, false, false, "[n.oclAsType(Gate).description/]", outgoingArcByNodeName.get("[n.name/]"), incomingArcByNodeName.get("[n.name/]"), workflow, new LinkedList<Resource>(), expressionByName.get("[n.oclAsType(Gate).condition.name/]"));
+			[elseif (n.eClass() = SetVariable)]
+			n = new [n.eClass().name/]("[n.name/]", false, false, false, "[n.oclAsType(SetVariable).description/]", outgoingArcByNodeName.get("[n.name/]"), incomingArcByNodeName.get("[n.name/]"), workflow, new LinkedList<Resource>(), variableByName.get("[n.oclAsType(SetVariable).sets_variable.name/]"), "expressionByName.get("[n.oclAsType(SetVariable).evaluated_expression.name/]")");
+			[else]
+			n = new [n.eClass().name/]("[n.name/]", false, false, false, outgoingArcByNodeName.get("[n.name/]"), incomingArcByNodeName.get("[n.name/]"), workflow);
+			[/if]
+
+			[if (n.eClass().isInstance(Activity))]
+				[for (r : Resource | aWorkflow.has_resources)]
+					n.gethas_assigned().add(resourceByName.get([r.name/]));
+				[/for]
+			[/if]
+
+			[if (n.eClass() = StartNode)]
+			startNode = n;
+			[/if]
+			workflow.getContains_nodes().add(n);
+			
+			if(outgoingArcByNodeName.containsKey("[n.name/]")){
+				for(Arc a2 : outgoingArcByNodeName.get("[n.name/]")) {
+					sourceNodeByArc.put(a2, n);
+				}
+			}
+			if(incomingArcByNodeName.containsKey("[n.name/]")){
+				for(Arc a2 : incomingArcByNodeName.get("[n.name/]")) {
+					targetNodeByArc.put(a2, n);
+				}
+			}
+			[/for]
+
+			// Adds node relations to arcs
+			for(Arc a2 : workflow.getContains_arcs()) {
+				a2.setSource(sourceNodeByArc.get(a2));
+				a2.setTarget(targetNodeByArc.get(a2));
+			}
+
+
+
+			// Run workflow
+			startNode.run();
+			
+		}
+	}
+	[/file]
+	
+[/template]

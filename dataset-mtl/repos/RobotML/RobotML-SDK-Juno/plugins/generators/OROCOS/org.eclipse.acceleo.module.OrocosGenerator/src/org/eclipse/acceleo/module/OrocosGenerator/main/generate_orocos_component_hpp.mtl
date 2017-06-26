@@ -1,0 +1,300 @@
+[comment encoding = UTF-8 /]
+[module generate_orocos_component_hpp('http://www.eclipse.org/uml2/3.0.0/UML')]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DataTypeQueries /]
+[import org::eclipse::acceleo::module::OrocosGenerator::mmqueries::OrocosQueries/]
+[import org::eclipse::acceleo::module::OrocosGenerator::main::generate_orocos_interface_hpp /]
+[import org::eclipse::acceleo::module::OrocosGenerator::main::generate_FSM/]
+[import org::eclipse::acceleo::module::OrocosGenerator::main::generate_Datatype_file /]
+
+[template public generateOrocosComponentHpp(c : Class, root_model : Model)]
+[for (b : Behavior | c.ownedBehavior )]
+	[if (b.isFSM())]
+	[let sm : StateMachine = b.oclAsType(StateMachine)]
+	[generateFSM(root_model, c, sm)/]
+	[/let]
+	[/if]
+[/for]
+
+[comment we do not generate orocos components for actuators and sensors /]
+[file ( 'src/'+c.name+'/'+c.name+'.hpp', false, 'UTF-8')]
+[comment] [setLibraries(c)/] [/comment]
+#include <rtt/TaskContext.hpp>
+#include <ocl/Component.hpp>
+#include <rtt/Port.hpp>
+#include <iostream>
+#include <numeric>
+[for (elt : Element | getDataTypesInElement(c))]
+[let type: Type = elt] 
+[comment]
+[if(isRobotMLDataType(root_model, type.name))]
+[let ne : NamedElement = type.owner]
+#include <[ne.name.replace('_datatypes', '_msgs')/]/[type.name/].h>
+[/let]
+[else]
+[/comment]
+	[if(not isPrimitiveType(type))]
+		[if (isInterface(type))]
+		#include "../[type.name+'/Task'+type.name/].hpp"
+		[else]
+		#include "../Datatypes/[type.name/].hpp"
+		[/if]
+[comment]#include "[(type.qualifiedName.substitute(' ', '_')).replaceAll('::', '/')/].h"[/comment]	
+	[/if]
+[comment /if/]
+[/let]
+[/for]
+#include <stdlib.h>
+#include <math.h>
+
+using namespace std;
+using namespace RTT;
+
+[generate_Datatype_file(c, root_model)/]
+[let nspace : String = c.qualifiedName.substitute('::'+c.name,'')]
+[let nameSpace : Sequence(String) = nspace.tokenize('::')]
+[for(s : String | nameSpace)]
+namespace [s/]{
+[/for]
+[/let]
+[/let]
+class [c.name/]:
+[for (sp : Port | getServicePort())]				
+		[let interface : Interface = sp.type]
+				[if (isAProvidedPort(sp))]
+	public Task[interface.name/],
+				[/if]
+		[/let]
+[/for]
+	public RTT::TaskContext 
+{   [comment ports and services declaration/]
+	// ports, operations and attributes
+
+[let elt : Element = c.oclAsType(Element)]
+			[for (sp : Port | getServicePort())]				
+				[let interface : Interface = sp.type]
+				[generateOrocosInterfaceHpp(interface, root_model)/]
+					[for (op : Operation | interface.getAllOperations())]
+						[if (isARequiredPort(sp))]
+[let t :Type = op.type]
+	[if (t = null)]
+		RTT::OperationCaller <void(
+		[if(getOperationInputParameters(op) <> null)]	
+			[for (input: Element | getOperationInputParameters(op))]
+			[let p : Parameter = input]
+			[let paramType : Type = p.type]
+			[if(isPrimitiveType(paramType))]
+				[if(paramType.name.equalsIgnoreCase('boolean') or paramType.name.equalsIgnoreCase('Bool'))]
+				bool [p.name/],
+				[else]
+				[paramType.name/] [p.name/],
+				[/if]
+			[else]
+				[paramType.name/] [p.name/],
+			[/if]
+			[comment in case of ros datatypes, uncomment]
+			[if(isRobotMLDataType(m, paramType.name))]
+				[let ne : NamedElement = paramType.owner]
+				[ne.name.replace('_datatypes', '_msgs')/]::[paramType.name/] [p.name/], 
+				[/let]
+			[else]
+				[paramType.name/] [p.name/],
+			[/comment] 
+			[/let]
+			[/let]
+			[/for]
+		[else]
+			void
+		[/if]
+		)>[interface.name/]_[op.name/];
+	[else]
+		RTT::OperationCaller <[t.name/](
+		[if(getOperationInputParameters(op) <> null)]
+		[for (input: Element | getOperationInputParameters(op))]
+			[let p : Parameter = input]
+			[let paramType : Type = p.type]
+			[if(isPrimitiveType(paramType))]
+				[if(paramType.name.equalsIgnoreCase('boolean') or paramType.name.equalsIgnoreCase('Bool'))]
+				bool [p.name/],
+				[else]
+				[paramType.name/] [p.name/],
+				[/if]
+			[else]
+				[paramType.name/] [p.name/],
+			[/if]
+			[comment in case of ros datatypes, uncomment]
+			[if(isRobotMLDataType(m, paramType.name))]
+				[let ne : NamedElement = paramType.owner]
+				[ne.name.replace('_datatypes', '_msgs')/]::[paramType.name/] [p.name/], 
+				[/let]
+			[else]
+				[paramType.name/] [p.name/],
+			[/comment] 
+		    [/let]
+			[/let]
+		    [/for]
+		[else]
+			void
+		[/if]
+		)>[interface.name/]_[op.name/];
+	[/if]
+[/let]				
+[/if]
+[/for]
+[/let]				
+			[/for]
+		[/let]
+
+
+	[let elt : Element = c.oclAsType(Element)]
+ 		[for (port : Port | getInputPortsForElement(elt))] 
+			[if (isRobotMLDataType(root_model, port.type.name))]
+			[let ne : NamedElement = port.type.owner]
+[comment]			
+[for(s : Connector | getConnectionsFromPort(port))]
+         [getSourceComponentForConnector(s)/]
+[/for]
+[/comment]
+			[port.visibility/]: InputPort<[ne.name.replace('_datatypes', '_msgs')/]::[port.type.name/]> [port.name/];
+			[/let]
+			[else]
+			[port.visibility/]: InputPort<[port.type.qualifiedName/]> [port.name/];
+			[/if]
+		[/for]
+  		[for (port : Port | getOutputPortsForElement(elt))]
+			[if (isRobotMLDataType(root_model, port.type.name))]
+			[let ne : NamedElement = port.type.owner]
+			[port.visibility/]: OutputPort<[ne.name.replace('_datatypes', '_msgs')/]::[port.type.name/]> [port.name/];
+			[/let]
+			[else]
+			[port.visibility/]: OutputPort<[port.type.name/]> [port.name/];
+			[/if]		
+		[/for]
+	[/let]
+
+	
+	[comment constructor/]// Constructor
+	[c.visibility/]: [c.name/] (const std::string& name)
+		: TaskContext(name) 						//Add Rostopics		
+		[let elt : Element = c.oclAsType(Element)]
+		[for (port : Port | getAllPorts(elt))]
+			, [port.name/]("[port.name/]")	
+		[/for]
+		[/let]
+		[for (sp : Port | getServicePort())]				
+			[let interface : Interface = sp.type]
+				[for (op : Operation | interface.getAllOperations())]
+					[if (isARequiredPort(sp))]
+			, [interface.name/]_[op.name/] ("[interface.name/]_[op.name/]")
+					[/if]
+       			[/for]
+			[/let]				
+		[/for]	
+  		{ 	
+		[comment adding ports to the constructor/]
+		[let elt : Element = c.oclAsType(Element)]
+			[for (port : Port | getAllPorts(elt))]
+		this->ports()->addPort([port.name/]);	
+			[/for]
+		[/let]
+
+		[comment Subcomponents must be handled differently in Orocos/]
+		[comment]
+		[for ( property1: Property | getAllSubComponentsInClass(c))]
+			[if (not isActuator(getclass(property1))) and (not isSensor(getclass(property1)))]
+		this->addProperty("[property1.type.name.toLower()/]", [property1.type.name.toLower()/]).doc("Description :  [property1.type.name.toUpperFirst()/]") ;	
+			[/if]
+		[/for]
+		[/comment]
+		
+		[comment adding Properties to the constructor /]	
+		[let elt : Element = c.oclAsType(Element)]
+			[for (property : Property | getProperties(c,elt))]
+		this->addProperty("[property.name/]", [property.name/]);
+			[/for]
+		[/let]
+
+[comment adding operations to the constructor /]	
+	[for (op : Operation | c.getAllOperations())]
+		this->addOperation("[interface.name/]_[op.name/]", &[c.name/]::[op.name/], this, RTT::ClientThread)[getOperationSignatureName(op)/]
+			.doc("Description : [op.type.name.toUpperFirst()/]");
+		[/for]
+
+        [let elt : Element = c.oclAsType(Element)]
+			[for (sp : Port | getServicePort())]				
+				[let interface : Interface = sp.type]
+					[for (op : Operation | interface.getAllOperations())]
+						[if (isARequiredPort(sp))]
+		this->requires("Task[interface.name/]")
+			->addOperationCaller([interface.name/]_[op.name/]);
+						[/if]
+       				[/for]
+				[/let]				
+			[/for]
+		[/let]
+	}
+	[comment destructor/]// Destructor
+    ~[c.name/]() {}
+	[comment components methods/]
+	/**
+	 * This function is for the configuration code.
+     * Return false to abort configuration.
+     */
+	bool configureHook() {
+			[for (sp : Port | getServicePort())]				
+			[let interface : Interface = sp.type]
+				[if (isARequiredPort(sp))]
+					[let p : Port = getOppositePort(sp)]
+		if (!(requires("[interface.name/]")->connectTo(getPeer("[p.class.name/]")->provides("[interface.name/]")))){
+			log(Info) << "connection problem to service" << endlog();
+		}
+					[/let]
+				[/if]
+			[/let]				
+		[/for]
+		// ...
+		return true;
+	}
+
+	/**
+	 * This function is for the application's start up code.
+	 * Return false to abort start up.
+	 */
+	bool startHook() {
+		// ...
+		return true;
+	}
+
+	/**
+	 * This function is called by the Execution Engine.
+	 */
+	void updateHook() {
+		// algorithm goes here.
+	}
+
+	/**
+	 * This function is called when the task is stopped.
+ 	 */
+	void stopHook() {
+		// stop code after last updateHook()
+	}
+
+	/**
+	 * This function is called when the task is being deconfigured.
+	 */
+	void cleanupHook() {
+		// Your configuration cleanup code
+	}	
+};
+
+[let nspace : String = c.qualifiedName.substitute('::'+c.name,'')]
+[let nameSpace : Sequence(String) = nspace.tokenize('::')]
+[for(s : String | nameSpace)]
+}
+[/for]
+[/let]
+[/let]
+[/file]
+
+[/template]

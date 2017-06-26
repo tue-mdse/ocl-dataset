@@ -1,0 +1,45 @@
+[{
+  "name": "Permission",
+  "expressions": [{
+    "operations": {
+      "excludes": 1,
+      "or": 1,
+      "equalTo": 1,
+      "allInstances": 2,
+      "includes": 1,
+      "oclAsType": 5,
+      "flatten": 1,
+      "getDayOfWeek": 1,
+      "checkHours": 1,
+      "oclIsTypeOf": 4,
+      "and": 3,
+      "isContained": 1,
+      "asSet": 1,
+      "=": 3
+    },
+    "name": "DayOfWeekHourPermAssign",
+    "body": "\nif  self.idPermission = 'p1'  then\nlet  u : RBACUtility = RBACUtility.allInstances() ->any(true),\n     day:RelativeTimePoint =  u.getDayOfWeek(),\n\t r: Role = Role.allInstances()\n\t     ->select(m : Role | m.idRole = 'r1')-> any(true) ,\ntemporalContext: Set(RBACContext) = self.permissionContextAssignment-> select(c|c.oclIsTypeOf(TemporalContext)), \n timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet(),\n days: Set (ComposedRelativeTE) = timeE -> select (t: ComposedRelativeTE| (t.oclIsTypeOf(RelativeTimeInterval) and t.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(DayOfWeek) and\n       \tday.isContained(t.oclAsType(RelativeTimeInterval)) ) or t.oclIsTypeOf(DayOfWeek) and  day.equalTo (t.oclAsType(DayOfWeek)))\n in\t \n \n    if days -> exists (t| t.checkHours(u)= true) then\n       self.roles -> includes (r)\n    else\n       self.roles -> excludes (r)  \n \n  endif\n   else\n   true\n   endif\n    \n\n",
+    "type": "ConstraintImpl",
+    "constructs": {
+      "IteratorExpImpl": 10,
+      "VariableExpImpl": 25,
+      "OperationCallExpImpl": 26,
+      "LetExpImpl": 6,
+      "TypeExpImpl": 11,
+      "StringLiteralExpImpl": 2,
+      "IfExpImpl": 2,
+      "PropertyCallExpImpl": 8,
+      "BooleanLiteralExpImpl": 4
+    },
+    "properties": [
+      "gemRBAC::Permission::idPermission",
+      "gemRBAC::Permission::roles",
+      "gemRBAC::RelativeTimeInterval::start",
+      "gemRBAC::Role::idRole",
+      "gemRBAC::TemporalContext::timeexpression",
+      "gemRBAC::Permission::permissionContextAssignment",
+      "gemRBAC::TimeExpression::relative"
+    ]
+  }],
+  "properties": []
+}]

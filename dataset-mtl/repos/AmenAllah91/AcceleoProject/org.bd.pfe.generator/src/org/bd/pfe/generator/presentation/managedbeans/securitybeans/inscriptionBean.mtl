@@ -1,0 +1,207 @@
+[comment encoding = UTF-8 /]
+[module inscriptionBean('http://www.businessdecision.fr/Generator')]
+
+[template public generateInscriptionBean(persistantObject : PersistanceObject) {packageName : String = persistantObject.eContainer(Application)._package;    projectName : String = persistantObject.eContainer(Application).name;}]
+
+[file ('pfe-web/src/main/java/'.concat(packageName.replaceAll('\\.','/')).concat('/managedBeans/InscriptionBean.java'), false, 'UTF-8')]
+package [packageName/].managedBeans;
+import java.util.List;
+import java.util.UUID;
+
+import javax.annotation.PostConstruct;
+import javax.faces.application.FacesMessage;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ManagedProperty;
+import javax.faces.bean.RequestScoped;
+import javax.faces.component.UIComponent;
+import javax.faces.context.FacesContext;
+import javax.faces.validator.ValidatorException;
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
+
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.mail.javamail.MimeMessagePreparator;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+import  [packageName.concat('.exception')/].BDException;
+import [packageName/].persistance.Role;
+import [packageName/].service.RoleService;
+import [packageName/].persistance.[persistantObject.name.toUpperFirst()/];
+import [packageName/].service.[persistantObject.name.toUpperFirst()/]Service;
+/**
+ * @author business&decision
+ *
+ */
+@ManagedBean
+@RequestScoped
+public class InscriptionBean {
+
+	@ManagedProperty(value = "#{[persistantObject.name.toLowerFirst()/]ServiceImplement}")
+	private [persistantObject.name.toUpperFirst()/]Service [persistantObject.name.toLowerFirst()/]Service;
+	
+	@ManagedProperty(value = "#{roleServiceImplement}")
+	private RoleService roleService;
+	
+	@ManagedProperty(value = "#{passwordEncoder}")
+	private BCryptPasswordEncoder passwordEncoder;
+	
+	@ManagedProperty(value = "#{javaMailSenderImpl}")
+	private JavaMailSender mailSender;
+	
+	
+	private [persistantObject.name.toUpperFirst()/] [persistantObject.name.toLowerFirst()/];
+	private String confirmPassword;
+
+	@PostConstruct
+	public void init() {
+		[persistantObject.name.toLowerFirst()/] = new [persistantObject.name.toUpperFirst()/]();
+		confirmPassword = null;
+	}
+	
+	public Boolean matchingPassword(String password, String confirmPassword)
+	{
+		if (password.compareTo(confirmPassword) == 0)
+		{
+			return true;
+		}
+		else return false;
+	}
+	
+	public Boolean verifyUsername(String username)
+	{
+		Boolean result = false;
+		[persistantObject.name.toUpperFirst()/] [persistantObject.name.toLowerFirst()/] = [persistantObject.name.toLowerFirst()/]Service.find[persistantObject.name.toUpperFirst()/]ByLogin(username);
+		if ([persistantObject.name.toLowerFirst()/] != null) 
+		{
+			result = true;
+		}
+		return result;
+	}
+	
+	public Boolean verifyEmail(String email) {
+		Boolean result = false;
+		[persistantObject.name.toUpperFirst()/] [persistantObject.name.toLowerFirst()/] = [persistantObject.name.toLowerFirst()/]Service.find[persistantObject.name.toUpperFirst()/]ByEmail(email);
+		if ([persistantObject.name.toLowerFirst()/] != null) {
+			result = true;
+		}
+		return result;
+	}
+	
+	public String doInscription() {
+		System.out.println([persistantObject.name.toLowerFirst()/]);
+		String page = null;
+		Role role = roleService.findRoleByRole("new user");
+
+		if ((verifyUsername([persistantObject.name.toLowerFirst()/].getLogin()) == false) && (verifyEmail([persistantObject.name.toLowerFirst()/].getEmail()) == false) && (matchingPassword([persistantObject.name.toLowerFirst()/].getPwd(), getConfirmPassword()) == true)) {
+			[persistantObject.name.toLowerFirst()/].setPwd(passwordEncoder.encode([persistantObject.name.toLowerFirst()/].getPwd()));
+			[persistantObject.name.toLowerFirst()/].setRole(role);
+			[persistantObject.name.toLowerFirst()/].setAcountActivated(false);
+			[persistantObject.name.toLowerFirst()/].setAcountBloqued(true);
+			[persistantObject.name.toLowerFirst()/].setFirstLogin(true);
+			
+            try {
+				[persistantObject.name.toLowerFirst()/]Service.create[persistantObject.name.toUpperFirst()/]([persistantObject.name.toLowerFirst()/]);
+			} catch (BDException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			
+			final String token = UUID.randomUUID().toString();
+			[persistantObject.name.toLowerFirst()/]Service.createVerificationTokenFor[persistantObject.name.toUpperFirst()/]([persistantObject.name.toLowerFirst()/], token);
+	
+			
+			mailSender.send(new MimeMessagePreparator()
+			{
+				  public void prepare(MimeMessage mimeMessage) throws MessagingException {
+				    MimeMessageHelper message = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+				    message.setTo([persistantObject.name.toLowerFirst()/].getEmail());
+				    message.setSubject("Confirm Registration");
+				    String mail = "Dear "+[persistantObject.name.toLowerFirst()/].getLogin()+" , <br/>here is your token: <b>"+token+"</b><br/>Please click on the link below to confirm your registration:<br/>";
+					String url = "<a href=\"http://localhost:8080/[projectName/]-web/public/confirmRegistration.jsf\">Confirm Registration</a>";
+				    message.setText(mail+url, true);
+				  }
+			 	});
+			
+			[persistantObject.name.toLowerFirst()/] = new [persistantObject.name.toUpperFirst()/]();
+			String success = "Un email pour valider la création de votre compte vous a été envoyé. S'il ne figure pas dans votre boite de réception, veuillez vérifier votre dossier Spam.";
+			FacesMessage message = new FacesMessage(FacesMessage.SEVERITY_INFO, success, null);
+			FacesContext.getCurrentInstance().addMessage(null, message);
+			page = "/public/register.jsf?faces-redirect=true";
+		} 
+
+		else if (verifyUsername([persistantObject.name.toLowerFirst()/].getLogin()) == true) 
+		{
+			FacesMessage msg = new FacesMessage(FacesMessage.SEVERITY_WARN, "Username already exists !", null); 
+			FacesContext.getCurrentInstance().addMessage("username", msg);
+			page = "/public/register.jsf?faces-redirect=true";
+		} 
+		
+		else if (verifyEmail([persistantObject.name.toLowerFirst()/].getEmail()) == true) 
+		{
+			FacesMessage msg = new FacesMessage(FacesMessage.SEVERITY_WARN, "Email already exists !", null); 
+			FacesContext.getCurrentInstance().addMessage("email", msg);
+			page = "/public/register.jsf?faces-redirect=true";
+		} 
+		
+		else if (matchingPassword([persistantObject.name.toLowerFirst()/].getPwd(), getConfirmPassword()) == false) 
+		{
+			FacesMessage msg = new FacesMessage(FacesMessage.SEVERITY_WARN, "Confirm Password isn't matching !", null); 
+			FacesContext.getCurrentInstance().addMessage("confirmPassword", msg);
+			page = "/public/register.jsf?faces-redirect=true";
+		}
+		return page;
+	}
+		
+	public [persistantObject.name.toUpperFirst()/]Service get[persistantObject.name.toUpperFirst()/]Service() {
+		return [persistantObject.name.toLowerFirst()/]Service;
+	}
+
+	public void set[persistantObject.name.toUpperFirst()/]Service([persistantObject.name.toUpperFirst()/]Service [persistantObject.name.toLowerFirst()/]Service) {
+		this.[persistantObject.name.toLowerFirst()/]Service = [persistantObject.name.toLowerFirst()/]Service;
+	}
+
+	public RoleService getRoleService() {
+		return roleService;
+	}
+
+	public void setRoleService(RoleService roleService) {
+		this.roleService = roleService;
+	}
+	
+	public BCryptPasswordEncoder getPasswordEncoder() {
+		return passwordEncoder;
+	}
+
+	public void setPasswordEncoder(BCryptPasswordEncoder passwordEncoder) {
+		this.passwordEncoder = passwordEncoder;
+	}
+	
+	public JavaMailSender getMailSender() {
+		return mailSender;
+	}
+
+	public void setMailSender(JavaMailSender mailSender) {
+		this.mailSender = mailSender;
+	}
+
+	public [persistantObject.name.toUpperFirst()/] get[persistantObject.name.toUpperFirst()/]() {
+		return [persistantObject.name.toLowerFirst()/];
+	}
+
+	public void set[persistantObject.name.toUpperFirst()/]([persistantObject.name.toUpperFirst()/] [persistantObject.name.toLowerFirst()/]) {
+		this.[persistantObject.name.toLowerFirst()/] = [persistantObject.name.toLowerFirst()/];
+	}
+
+	public String getConfirmPassword() {
+		return confirmPassword;
+	}
+
+	public void setConfirmPassword(String confirmPassword) {
+		this.confirmPassword = confirmPassword;
+	}
+}
+[/file]
+[/template]

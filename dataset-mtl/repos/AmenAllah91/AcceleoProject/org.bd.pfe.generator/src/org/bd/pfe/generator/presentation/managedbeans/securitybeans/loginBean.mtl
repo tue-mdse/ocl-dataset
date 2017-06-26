@@ -1,0 +1,170 @@
+[comment encoding = UTF-8 /]
+[module loginBean('http://www.businessdecision.fr/Generator')]
+
+[template public generateLoginBean(persistantObject : PersistanceObject) {packageName : String = persistantObject.eContainer(Application)._package;}]
+
+[file ('pfe-web/src/main/java/'.concat(packageName.replaceAll('\\.','/')).concat('/managedBeans/LoginBean.java'), false, 'UTF-8')]
+package [packageName/].managedBeans;
+import java.io.IOException;
+import java.util.Collection;
+
+import javax.annotation.PostConstruct;
+import javax.faces.application.FacesMessage;
+import javax.faces.bean.ManagedBean;
+import javax.faces.bean.ManagedProperty;
+import javax.faces.bean.SessionScoped;
+import javax.faces.context.ExternalContext;
+import javax.faces.context.FacesContext;
+import javax.faces.event.PhaseEvent;
+import javax.faces.event.PhaseId;
+import javax.faces.event.PhaseListener;
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.WebAttributes;
+
+import [packageName/].persistance.[persistantObject.name.toUpperFirst()/];
+import [packageName/].service.[persistantObject.name.toUpperFirst()/]Service;
+/**
+ * @author business&decision
+ *
+ */
+@ManagedBean
+@SessionScoped
+public class LoginBean implements PhaseListener {
+	private static final long serialVersionUID = 1L;
+
+	protected final Log logger = LogFactory.getLog(getClass());
+	private [persistantObject.name.toUpperFirst()/] [persistantObject.name.toLowerFirst()/];
+	private [persistantObject.name.toUpperFirst()/] logged[persistantObject.name.toUpperFirst()/];
+	private String login="";
+	private String password="";
+	private String authority;
+	@ManagedProperty(value = "#{[persistantObject.name.toLowerFirst()/]ServiceImplement}")
+	private [persistantObject.name.toUpperFirst()/]Service [persistantObject.name.toLowerFirst()/]Service;
+	
+	
+	
+	@PostConstruct
+	public void init() {
+		refresh();
+	}
+	
+	public void refresh() {
+		this.[persistantObject.name.toLowerFirst()/] = [persistantObject.name.toLowerFirst()/]Service.find[persistantObject.name.toUpperFirst()/]ByLogin(this.login);
+		this.login = getPrincipal();
+		this.authority = [persistantObject.name.toLowerFirst()/]Authority();
+	}
+	public String doLogin() throws ServletException, IOException {
+		ExternalContext context = FacesContext.getCurrentInstance().getExternalContext();
+        RequestDispatcher dispatcher = ((ServletRequest) context.getRequest()).getRequestDispatcher("/j_spring_security_check");
+        dispatcher.forward((ServletRequest) context.getRequest(), (ServletResponse) context.getResponse());
+        FacesContext.getCurrentInstance().responseComplete();
+        
+        return null;
+    }
+	
+	public String doLogout() throws IOException, ServletException {
+		ExternalContext context = FacesContext.getCurrentInstance().getExternalContext();
+		RequestDispatcher dispatcher = ((ServletRequest) context.getRequest()).getRequestDispatcher("/j_spring_security_logout");
+        dispatcher.forward((ServletRequest) context.getRequest(), (ServletResponse) context.getResponse());
+        FacesContext.getCurrentInstance().responseComplete();
+        return null;
+	}
+	
+	public void afterPhase(PhaseEvent arg0) {
+	}
+
+	public void beforePhase(PhaseEvent arg0) {
+		Exception e = (Exception) FacesContext.getCurrentInstance().getExternalContext().getSessionMap().get(WebAttributes.AUTHENTICATION_EXCEPTION);
+		 
+		        if (e instanceof BadCredentialsException) {
+		            logger.debug("Found exception in session map: "+e);
+		            FacesContext.getCurrentInstance().getExternalContext().getSessionMap().put(WebAttributes.AUTHENTICATION_EXCEPTION, null);
+		            FacesContext.getCurrentInstance().addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR, "Username or password not valid.", "Username or password not valid"));
+		        }
+	}
+
+	
+	public String getPrincipal() {
+		String username;
+		Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+		if (principal instanceof UserDetails) {
+			username = ((UserDetails) principal).getUsername();
+		} else {
+			username = principal.toString();
+		}
+		return username;
+	}
+	
+	public String [persistantObject.name.toLowerFirst()/]Authority() {
+		String authority = new String();
+		Collection<? extends GrantedAuthority> authorities = SecurityContextHolder.getContext().getAuthentication().getAuthorities();
+		for(GrantedAuthority ga : authorities) {
+			authority = ga.getAuthority();
+		}
+		return authority;
+	}
+	
+	public PhaseId getPhaseId() {
+		return PhaseId.RENDER_RESPONSE;
+	}
+	
+	public String getLogin() {
+		return login;
+	}
+
+	public void setLogin(String login) {
+		this.login = login;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	public [persistantObject.name.toUpperFirst()/] get[persistantObject.name.toUpperFirst()/]() {
+		return [persistantObject.name.toLowerFirst()/];
+	}
+
+	public void set[persistantObject.name.toUpperFirst()/]([persistantObject.name.toUpperFirst()/] [persistantObject.name.toLowerFirst()/]) {
+		this.[persistantObject.name.toLowerFirst()/] = [persistantObject.name.toLowerFirst()/];
+	}
+
+	public String getAuthority() {
+		return authority;
+	}
+
+	public void setAuthority(String authority) {
+		this.authority = authority;
+	}
+
+	public [persistantObject.name.toUpperFirst()/]Service get[persistantObject.name.toUpperFirst()/]Service() {
+		return [persistantObject.name.toLowerFirst()/]Service;
+	}
+
+	public void set[persistantObject.name.toUpperFirst()/]Service([persistantObject.name.toUpperFirst()/]Service [persistantObject.name.toLowerFirst()/]Service) {
+		this.[persistantObject.name.toLowerFirst()/]Service = [persistantObject.name.toLowerFirst()/]Service;
+	}
+
+	public [persistantObject.name.toUpperFirst()/] getLogged[persistantObject.name.toUpperFirst()/]() {
+		return logged[persistantObject.name.toUpperFirst()/];
+	}
+
+	public void setLogged[persistantObject.name.toUpperFirst()/]([persistantObject.name.toUpperFirst()/] logged[persistantObject.name.toUpperFirst()/]) {
+		this.logged[persistantObject.name.toUpperFirst()/] = logged[persistantObject.name.toUpperFirst()/];
+	}
+}
+[/file]
+[/template]

@@ -1,0 +1,205 @@
+[comment encoding = UTF-8 /]
+[module generateGraph('http://www.example.org/adfg')]
+
+[import acceleo::adfg::services::connectionservices /]
+[import acceleo::adfg::services::actorservices /]
+
+[template public generateGraph(aGraph : Graph)]
+[comment @main/]
+[file (aGraph.owner.name.toLower().concat('/').concat(aGraph.name.toLower()).concat('/').concat(aGraph.name.toUpperFirst()).concat('.java'), false, 'UTF-8')]
+package [aGraph.owner.name.toLower()/].[aGraph.name.toLower()/];
+
+import static javax.safetycritical.annotate.Level.SUPPORT;
+import static javax.safetycritical.annotate.Phase.CLEANUP;
+import static javax.safetycritical.annotate.Phase.INITIALIZATION;
+
+import javax.safetycritical.annotate.DefineScope;
+import javax.safetycritical.annotate.RunsIn;
+import javax.safetycritical.annotate.SCJAllowed;
+import javax.safetycritical.annotate.SCJRestricted;
+import javax.safetycritical.annotate.Scope;
+
+import javax.realtime.MemoryArea;
+import javax.safetycritical.PriorityScheduler;
+import javax.safetycritical.ManagedMemory;
+import javax.safetycritical.L1Mission;
+import javax.safetycritical.PeriodicEventHandler;
+import javax.safetycritical.AperiodicEventHandler;
+import javax.safetycritical.Terminal;
+[if (self.owner.nbProcessors>1)]
+import javax.realtime.AffinitySet;
+[/if]
+
+import scj.adfg.Capsule; 
+import scj.adfg.Channel;
+import scj.adfg.LossyChannel;
+import scj.adfg.Connection;
+
+[comment import non-generated types of channels and actors/]
+
+/**
+ * @generated
+ */
+@SCJAllowed
+@Scope("MISSON")
+public class [aGraph.name.toUpperFirst()/] extends L1Mission {
+
+	/**
+	 * 
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public static final int ID=[aGraph.id/];
+
+	/**
+	 * 
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public [aGraph.name.toUpperFirst()/](){
+		super();
+	}
+
+	/**
+	 * 
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	@SCJAllowed
+	public long missionMemorySize() {
+		// TODO Auto-generated method stub
+		return 600000;
+	}
+
+	/**
+	 * Initialize mission: instantiate and register all of the ManagedSchedulable objects, allocate shared objects in the mission memory.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	@SCJAllowed(SUPPORT)
+	@SCJRestricted(INITIALIZATION)
+	public void initialize() {
+		[comment Create channels and Lossy channels from Connection objects /]
+		// Shared Channels and Lossy channels;	
+		[for (connection : Connection | aGraph.connections)]
+			[if (connection.oclIsKindOf(Channel))]
+				[let channel : Channel = connection.oclAsType(Channel)]
+		/**
+		 * 
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		final Channel channel[channel.id/]=new Channel(new [channel.dataType()/](), [channel.size/]);
+
+				[/let]
+            [elseif (connection.oclIsKindOf(LossyChannel))]
+				[let lchannel : LossyChannel = connection.oclAsType(LossyChannel)]
+		/**
+		 * 
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		final LossyChannel lchannel[lchannel.id/]=new  LossyChannel(new [lchannel.dataType()/](),[lchannel.size/]);
+
+				[/let]
+           	
+			[/if]
+		[/for]
+		
+		[comment instantiate and register event periodic and aperiodic handlers /]
+		// Event periodic and aperiodic handlers;
+		[for (actor : Actor | aGraph.nodes)]
+			[if (actor.oclIsKindOf(PeriodicActor))]
+				[let actor : PeriodicActor = actor.oclAsType(PeriodicActor)]
+		/**
+		 * 
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		final PeriodicEventHandler [actor.name.toLowerFirst()/]= new [actor.ActorType()/]([actor.getParameterNames()/]);
+		[actor.name.toLowerFirst()/].register();
+
+				[/let]
+			[elseif (actor.oclIsKindOf(AperiodicActor))]
+				[let actor : AperiodicActor = actor.oclAsType(AperiodicActor)]
+		/**
+		 * 
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		final AperiodicEventHandler [actor.name.toLowerFirst()/]= new [actor.ActorType()/]([actor.getParameterNames()/]);
+		[actor.name.toLowerFirst()/].register();			
+
+				[/let]
+			[/if]			
+		[/for]
+
+		[comment create affinitySets (partitionned multiprocessor scheduling) /]
+		[if (self.owner.nbProcessors>1)]
+		//Partitionned multiprocessor scheduling: initialize affinity sets
+	   /**
+		 * 
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		AffinitySet['['/][']'/] processors=AffinitySet.getPredefinedAffinitySets();
+		
+		[for (actor : Actor | aGraph.nodes)]
+		AffinitySet.setProcessorAffinity(processors['['/][actor.procNumber/][']'/],[actor.name.toLowerFirst()/]);
+
+		[/for]
+		[/if]
+		[comment initialize buffers /]
+		// Initialize channels and lossy channels if necessary;
+       /**
+		 * 
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		@DefineScope(name="INITCHANNEL",parent="MISSION")
+		class ChannelInitialization implements Runnable{
+
+			@Override
+			@RunsIn("INITCHANNEL")
+			public void run() {
+				// TODO Auto-generated method stub
+				/* objects created in this method will be distroyed when it finishes */
+				
+			}
+			
+		}
+	    ManagedMemory mem = (ManagedMemory) MemoryArea.getMemoryArea(new Object());
+		// The size of the temporary private memory has to be adapted.
+	    mem.enterPrivateMemory(50000, new ChannelInitialization());
+	
+	}
+
+	@Override
+	@SCJAllowed(SUPPORT)
+    @SCJRestricted(CLEANUP)
+	public void cleanUp() {
+		Terminal.getTerminal().write("cleanUp.\n");
+	}
+
+	@Override
+	@SCJAllowed(SUPPORT)
+	@RunsIn("MISSION")
+	public PriorityScheduler getSchedule() {
+		return PriorityScheduler.instance();
+	}
+
+}
+[/file]
+[/template]

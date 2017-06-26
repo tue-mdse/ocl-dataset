@@ -1,0 +1,413 @@
+[comment encoding = UTF-8 /]
+[module ResponseBusinessObjectParserSAX('http://www.eyal.fr/android/datalib')]
+[import fr::eyal::datalib::generator::acceleo::common::Tools /]
+[import fr::eyal::datalib::generator::acceleo::common::BusinessObjectTool /]
+
+
+[template public businessObjectParserSAX(aBusinessObject : ResponseBusinessObject){
+_package:String = aBusinessObject._package+'.parser';
+_directory:String = getDirectoryFromPackage(_package);
+}]
+
+[file (_directory + aBusinessObject.javaName.toUpperFirst() + 'Parser.java', false, 'UTF-8')]
+package [_package/];
+
+import java.util.ArrayList;
+
+import org.xml.sax.Attributes;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
+
+import fr.eyal.lib.data.model.ResponseBusinessObject;
+import fr.eyal.lib.data.parser.GenericHandler;
+import [aBusinessObject._package+'.model.'+getPackage(aBusinessObject)+'.*'/];
+// [protected (aBusinessObject.name.toUpperFirst()+'Parser imports')]
+// You can add here your personal imports
+// DO NOT MODIFY THE GENERATED COMMENTS "Start of user code" and "End of user code"
+// [/protected]
+
+
+public class [aBusinessObject.javaName.toUpperFirst()/]Parser extends DefaultHandler implements GenericHandler {
+
+    private static final String TAG = [aBusinessObject.javaName.toUpperFirst()/]Parser.class.getSimpleName();
+
+    public static final int UNKNOWN = -1;
+
+	[declareTagConstants (aBusinessObject)/]
+    
+	private int mState = UNKNOWN;
+
+    private final StringBuilder mBuilder = new StringBuilder();
+	[declareTempBusinessObjects (aBusinessObject) /]
+
+    public [aBusinessObject.javaName.toUpperFirst()/]Parser() {
+	[initTempBusinessObject (aBusinessObject) /]
+	}
+
+    @Override
+    public ResponseBusinessObject getParsedData() {
+        return [aBusinessObject.javaName.toLowerFirst()/];
+    }
+
+    @Override
+    public void startElement(final String uri, final String localName, final String qName, final Attributes attributes) throws SAXException {
+
+        mBuilder.setLength(0);
+
+        switch (mState) {
+
+			[defineStartElementCase(aBusinessObject)/]
+
+            default:
+                // do nothing
+                break;
+        }
+    }
+
+    @Override
+    public void characters(final char['['/]] ch, final int start, final int length) throws SAXException {
+        mBuilder.append(ch, start, length);
+    }
+
+    @Override
+    public void endElement(final String uri, final String localName, final String qName) throws SAXException {
+
+        switch (mState) {
+			
+			[defineEndElement(aBusinessObject)/]
+
+            default:
+                // do nothing
+                break;
+        }
+    }
+
+    @Override
+    public void parse(final Object content) {
+        // TODO Auto-generated method stub
+    }
+
+// [protected (aBusinessObject.name.toUpperFirst()+'Parser')]
+// You can add here your personal content
+// DO NOT MODIFY THE GENERATED COMMENTS "Start of user code" and "End of user code"
+// [/protected]
+
+}
+
+
+[/file]
+[/template]
+
+
+[template public defineEndElement (aBusinessObject : ResponseBusinessObject) post (trim()) ]
+
+[for (field : Field | aBusinessObject.xmlContentFields)]
+	[let  prefixVariable:String = aBusinessObject.javaName.toLowerFirst()]
+		[if (field.oclIsKindOf(FieldBusinessObject))]
+[defineEndElement (field.oclAsType(FieldBusinessObject), prefixVariable) /]
+		[else]
+[defineEndElement (field, prefixVariable) /]
+		[/if]
+	[/let]
+[/for]
+
+[/template]
+
+[template public defineEndElement (aBusinessObject : FieldBusinessObject, prefixVariable : String) post (trim()) ]
+case [aBusinessObject.javaTag/]:
+    if (qName.equals("[getName(aBusinessObject)/]")) {
+        mState = [aBusinessObject.javaTagXMLParent()/];
+		[comment we add the child to the childs array /]
+		[aBusinessObject.businessObject.javaName.toLowerFirst()/].[aBusinessObject.javaName.toLowerFirst()/].add([aBusinessObject.javaName.toLowerFirst()/]);
+    }
+    break;
+
+[for (field : Field | aBusinessObject.xmlContentFields)]
+	[let  prefixVariable:String = aBusinessObject.javaName.toLowerFirst()]
+		[if (field.oclIsKindOf(FieldBusinessObject))]
+[defineEndElement (field.oclAsType(FieldBusinessObject), prefixVariable) /]
+	[else]
+[defineEndElement (field, prefixVariable) /]
+		[/if]
+	[/let]
+[/for]
+[/template]
+
+[template public defineEndElement (aBusinessObject : BusinessObject, prefixVariable : String) post (trim()) ]
+case [aBusinessObject.javaTag/]:
+    if (qName.equals("[getName(aBusinessObject)/]")) {
+        mState = [aBusinessObject.javaTagParent()/];
+		[comment we add the child to the childs array /]
+		[prefixVariable/].[aBusinessObject.javaName.toLowerFirst()/].add([aBusinessObject.javaName.toLowerFirst()/]);
+    }
+    break;
+	
+
+[let  prefixChildVariable:String =  aBusinessObject.javaName.toLowerFirst()]
+	[for (field : Field | aBusinessObject.contentFields)]
+[defineEndElement (field, prefixChildVariable) /]
+	[/for]
+[comment we give the whole variable path to the BusinessObject adding/]
+	[for (businessObject : BusinessObject | aBusinessObject.childs)]
+[defineEndElement (businessObject, prefixChildVariable) /]
+	[/for]
+[/let]
+[/template]
+
+[template public defineEndElement (field : Field, prefixVariable : String) post (trim()) ]
+case [field.javaTag/]:
+    if (qName.equals("[getName(field)/]")) {
+        mState = [field.javaTagXMLParent()/];
+[if (field.relatedField.oclIsUndefined()._not())]
+	[if (field.type = ParameterType::String)]
+		[field.relatedField.businessObject.javaName.toLowerFirst()/].[field.javaName.toLowerFirst()/] = mBuilder.toString();
+	[elseif (field.type = ParameterType::int)]
+		[field.relatedField.businessObject.javaName.toLowerFirst()/].[field.javaName.toLowerFirst()/] = Integer.parseInt(mBuilder.toString());
+	[elseif (field.type = ParameterType::float)]
+		[field.relatedField.businessObject.javaName.toLowerFirst()/].[field.javaName.toLowerFirst()/] = Float.parseFloat(mBuilder.toString());
+	[elseif (field.type = ParameterType::boolean)]
+		[field.relatedField.businessObject.javaName.toLowerFirst()/].[field.javaName.toLowerFirst()/] = Boolean.parseBoolean(mBuilder.toString());
+	[/if]
+[/if]
+    }
+    break;
+	
+[for (field : Field | field.xmlContentFields)]
+	[let  prefixVariable:String = field.javaName.toLowerFirst()]
+		[if (field.oclIsKindOf(FieldBusinessObject))]
+[defineEndElement (field.oclAsType(FieldBusinessObject), prefixVariable) /]
+	[else]
+[defineEndElement (field, prefixVariable) /]
+		[/if]
+	[/let]
+[/for]
+
+[/template]
+
+[template public defineStartElementCase (aBusinessObject : Field) post (trim()) ]
+[if (aBusinessObject.xmlContentFields->size() > 0)]
+case [aBusinessObject.javaTag/]:
+
+[for (field : Field | aBusinessObject.xmlContentFields)]
+	[if (i=1)]
+    if (qName.equals("[getName(field)/]")) {
+	[else]
+	else if (qName.equals("[getName(field)/]")) {
+	[/if]
+	[comment if we are declaring a Business Object /]
+	[if (field.oclIsKindOf(FieldBusinessObject))]
+        mState = [field.javaTag/];
+        [initTempBusinessObject (field.oclAsType(FieldBusinessObject).content) /]
+		[comment for each attributes inside the tag we add it to the corresponding BusinessObject /]
+		[setXmlAttributes(field)/]
+	[else]
+		mState = [field.javaTag/];
+		[comment for each attributes inside the tag we add it to the corresponding BusinessObject /]
+		[setXmlAttributes(field)/]
+	[/if]
+    }
+[/for]
+    break;
+[/if]
+
+[for (field : Field | aBusinessObject.xmlContentFields)][defineStartElementCase (field) /][/for]
+[comment][for (businessObject : BusinessObject | aBusinessObject.childs)][defineStartElementCase (businessObject, prefixChild) /][/for][/comment]
+[/template]
+
+
+[template public defineStartElementCase (aBusinessObject : ResponseBusinessObject) post (trim()) ]
+case UNKNOWN:
+
+[if (aBusinessObject.xmlContentFields->size() > 0)]
+[for (field : Field | aBusinessObject.xmlContentFields)]
+	[if (i=1)]
+    if (qName.equals("[getName(field)/]")) {
+	[else]
+	else if (qName.equals("[getName(field)/]")) {
+	[/if]
+	[comment if we are declaring a Business Object /]
+	[if (field.oclIsKindOf(FieldBusinessObject))]
+        mState = [field.javaTag/];
+		[initTempBusinessObject (field.oclAsType(FieldBusinessObject).content) /]
+		[comment for each attributes inside the tag we add it to the corresponding BusinessObject /]
+		[setXmlAttributes(field)/]
+	[else]
+		mState = [field.javaTag/];
+		[comment for each attributes inside the tag we add it to the corresponding BusinessObject /]
+		[setXmlAttributes(field)/]
+	[/if]
+    }
+[/for]
+    break;
+[/if]
+
+[comment][defineStartElementCase (aBusinessObject, '') /][/comment]
+[for (field : Field | aBusinessObject.xmlContentFields)]
+[defineStartElementCase (field) /]
+[/for]
+
+[/template]
+
+[comment]
+[template public initTempResponseBusinessObject (aBusinessObject : ResponseBusinessObject) post (trim()) { variable:String = aBusinessObject.javaName.toLowerFirst(); } ]
+[variable/] = new [aBusinessObject.javaName.toUpperFirst()/]();
+[for (child : BusinessObject | aBusinessObject.childs) ]
+[variable/].[child.javaName.toLowerFirst()/] = new ArrayList<[child.javaName.toUpperFirst()/]>();
+[/for]
+[/template]
+[/comment]
+
+[template public initTempBusinessObject (aBusinessObject : BusinessObject) post (trim()) { variable:String = aBusinessObject.javaName.toLowerFirst(); } ]
+[variable/] = new [aBusinessObject.javaName.toUpperFirst()/]();
+[for (child : BusinessObject | aBusinessObject.childs) ]
+[variable/].[child.javaName.toLowerFirst()/] = new ArrayList<[child.javaName.toUpperFirst()/]>();
+[/for]
+[/template]
+
+[template public declareTempBusinessObjects (aBusinessObject : BusinessObject) post (trim()) ]
+private [aBusinessObject.javaName.toUpperFirst()/] [aBusinessObject.javaName.toLowerFirst()/];
+[for (child : BusinessObject | aBusinessObject.childs)]
+[declareTempBusinessObjects (child) /]
+[/for]
+[/template]
+
+[template public declareTagConstants (aBusinessObject : ResponseBusinessObject) post (trim()) ]
+//[aBusinessObject.name.toUpperFirst()/]
+[comment]private static final int [aBusinessObject.javaTag/] = [aBusinessObject.parseId/];[/comment]
+[comment]We browse all the XML field of the response. The XML fields contains the Fields AND the BusinessObjects of the response[/comment]
+[for (field : Field | aBusinessObject.xmlContentFields)]
+[declareTagConstants(field)/]
+[/for]
+[/template]
+
+[comment] Not Used
+[template public declareTagConstants (aBusinessObject : BusinessObject, prefix : String) post (trim()) ]
+//[aBusinessObject.name.toUpperFirst()/]
+private static final int [prefix.toUpper()+getName(aBusinessObject).toUpper()/] = [aBusinessObject.parseId/];
+[for (field : Field | aBusinessObject.contentFields)]
+[declareTagConstants (field, prefix.toUpper()+getName(aBusinessObject).toUpper()+'_') /]
+[/for]
+[for (child : BusinessObject | aBusinessObject.childs) ]
+[declareTagConstants(child, prefix.toUpper()+'_'+getName(child).toUpper()+'_')/]
+[/for]
+[/template]
+[/comment]
+
+[template public declareTagConstants (parentField : Field) post (trim()) ]
+private static final int [parentField.javaTag/] = [parentField.parseId/];
+[for (field : Field | parentField.xmlContentFields)]
+[declareTagConstants (field) /]
+[/for]
+[/template]
+
+[comment][template public setXmlAttributes (field : FieldBusinessObject) post (trim()) ]
+[for (field : Field | field.xmlAttributes)]
+[let buffVariableName:String = 'buff'+field.javaName.toUpperFirst()]
+	[if (field.type=ParameterType::String)]
+[field.businessObject.javaName.toLowerFirst()/].attr[field.javaName.toUpperFirst()/] = attributes.getValue("[field.xmlName/]");
+	[elseif (field.type=ParameterType::int)]
+String [buffVariableName/] = attributes.getValue("[field.xmlName/]");
+if([buffVariableName/] != null)
+	[field.businessObject.javaName.toLowerFirst()/].attr[field.name.toUpperFirst()/] = Integer.parseInt([buffVariableName/]);
+	[elseif (field.type=ParameterType::float)]
+String [buffVariableName/] = attributes.getValue("[field.xmlName/]");
+if([buffVariableName/] != null)
+	[field.businessObject.javaName.toLowerFirst()/].attr[field.name.toUpperFirst()/] = Float.parseFloat([buffVariableName/]);
+	[elseif (field.type=ParameterType::boolean)]
+String [buffVariableName/] = attributes.getValue("[field.xmlName/]");
+if([buffVariableName/] != null)
+	[field.businessObject.javaName.toLowerFirst()/].attr[field.name.toUpperFirst()/] = Boolean.parseBoolean([buffVariableName/]);
+	[/if]
+[/let]
+[/for]
+[/template][/comment]
+
+[template public setXmlAttributes (field : Field) post (trim()) ]
+[for (field : Field | field.xmlAttributes)]
+[let buffVariableName:String = 'buff'+field.javaName.toUpperFirst()]
+	[if (field.type=ParameterType::String)]
+[field.businessObject.javaName.toLowerFirst()/].attr[field.javaName.toUpperFirst()/] = attributes.getValue("[field.xmlName/]");
+	[elseif (field.type=ParameterType::int)]
+String [buffVariableName/] = attributes.getValue("[field.xmlName/]");
+if([buffVariableName/] != null)
+	[field.businessObject.javaName.toLowerFirst()/].attr[field.javaName.toUpperFirst()/] = Integer.parseInt([buffVariableName/]);
+	[elseif (field.type=ParameterType::float)]
+String [buffVariableName/] = attributes.getValue("[field.xmlName/]");
+if([buffVariableName/] != null)
+	[field.businessObject.javaName.toLowerFirst()/].attr[field.javaName.toUpperFirst()/] = Float.parseFloat([buffVariableName/]);
+	[elseif (field.type=ParameterType::boolean)]
+String [buffVariableName/] = attributes.getValue("[field.xmlName/]");
+if([buffVariableName/] != null)
+	[field.businessObject.javaName.toLowerFirst()/].attr[field.javaName.toUpperFirst()/] = Boolean.parseBoolean([buffVariableName/]);
+	[/if]
+[/let]
+[/for]
+[/template]
+
+[template public setXmlAttributes (aBusinessObject : ResponseBusinessObject) post (trim()) ]
+[for (field : Field | aBusinessObject.xmlAttributes)]
+[let buffVariableName:String = 'buff'+field.javaName.toUpperFirst()]
+	[if (field.type=ParameterType::String)]
+[field.businessObject.javaName.toLowerFirst()/].attr[field.javaName.toUpperFirst()/] = attributes.getValue("[field.xmlName/]");
+	[elseif (field.type=ParameterType::int)]
+String [buffVariableName/] = attributes.getValue("[field.xmlName/]");
+if([buffVariableName/] != null)
+	[field.businessObject.javaName.toLowerFirst()/].attr[field.javaName.toUpperFirst()/] = Integer.parseInt([buffVariableName/]);
+	[elseif (field.type=ParameterType::float)]
+String [buffVariableName/] = attributes.getValue("[field.xmlName/]");
+if([buffVariableName/] != null)
+	[field.businessObject.javaName.toLowerFirst()/].attr[field.javaName.toUpperFirst()/] = Float.parseFloat([buffVariableName/]);
+	[elseif (field.type=ParameterType::boolean)]
+String [buffVariableName/] = attributes.getValue("[field.xmlName/]");
+if([buffVariableName/] != null)
+	[field.businessObject.javaName.toLowerFirst()/].attr[field.javaName.toUpperFirst()/] = Boolean.parseBoolean([buffVariableName/]);
+	[/if]
+[/let]
+[/for]
+[/template]
+
+[template public getName(businessObject : BusinessObject)][businessObject.xmlName/][/template]
+[template public getName(field : Field)][field.xmlName/][/template]
+
+[template public getCompleteNameToUpperRaw (field : Field, separator : String) post (trim())]
+[if (field.relatedField.oclIsUndefined()._not())][getCompleteNameToUpper (field.relatedField, separator)/]
+[else][field.xmlName.toUpper()/][/if]
+[/template]
+
+[template public getCompleteNameToUpperParentRaw (field : Field, separator : String) post (trim())]
+[if (field.relatedField.oclIsUndefined()._not() and field.relatedField.xmlParent.oclIsUndefined()._not())][getCompleteNameToUpper (field.relatedField.xmlParent, separator)/]
+[else]UNKNOWN[/if]
+[/template]
+
+[template public javaTagParent (field : Field) post (trim())]
+[if (field.relatedField.oclIsUndefined()._not() and field.relatedField.xmlParent.oclIsUndefined()._not())][field.relatedField.xmlParent.javaTag/]
+[else]UNKNOWN[/if]
+[/template]
+
+[template public javaTagXMLParent (field : Field) post (trim())]
+[if (field.oclIsUndefined()._not() and field.xmlParent.oclIsUndefined()._not())][field.xmlParent.javaTag/]
+[else]UNKNOWN[/if]
+[/template]
+
+[template public javaTagParent (businessObject : BusinessObject) post (trim())]
+[if (businessObject.relatedField.oclIsUndefined()._not() and businessObject.relatedField.xmlParent.oclIsUndefined()._not())][businessObject.relatedField.xmlParent.javaTag/][/if]
+[/template]
+
+
+[template public getCompleteNameToUpperRelatedField (businessObject : BusinessObject, separator : String) post (trim())]
+[if (businessObject.relatedField.oclIsUndefined()._not())][getCompleteNameToUpper (businessObject.relatedField, separator)/][/if]
+[/template]
+
+[template public getCompleteNameToUpperRelatedFieldParent (businessObject : BusinessObject, separator : String) post (trim())]
+[if (businessObject.relatedField.oclIsUndefined()._not() and businessObject.relatedField.xmlParent.oclIsUndefined()._not())][getCompleteNameToUpper (businessObject.relatedField.xmlParent, separator)/][/if]
+[/template]
+
+
+[template public getCompleteNameToUpper (field : Field, separator : String) post (trim())]
+[if (field.xmlParent <> null)][getCompleteNameToUpper (field.xmlParent, separator)/][/if][separator/][field.xmlName.toUpper()/]
+[/template]
+
+
+
+
+[query public getCounter(bo : BusinessObject, i : Integer) : Integer = getCounter(bo, i) /]

@@ -1,0 +1,90 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2015 Spacebel SA.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Johan Hardy (Spacebel) - initial API and implementation
+[/comment]
+[module namedelement('http://www.eclipse.org/uml2/5.0.0/UML')/]
+[import org::eclipse::umlgen::gen::embedded::c::services::queries/]
+
+[query public getFullFilePath(typ : uml::NamedElement) : String = 
+if ancestors(Package)->asOrderedSet()->reverse()->select(oclIsTypeOf(uml::Package))->isEmpty()
+then ''
+else
+((ancestors(Package)->asOrderedSet()->reverse()->select(oclIsTypeOf(uml::Package)))
+  -> iterate(it ; result : String = '' |
+        (if (result = '')
+        then result.concat(it.oclAsType(Package).getName())
+        else result.concat('/').concat(it.oclAsType(Package).getName())
+        endif)
+           )
+ ).concat('/').trim()
+endif
+/]
+
+[query public getFilePath(typ : uml::NamedElement) : String = 
+if (not getNearestPackage().oclIsUndefined()) then getNearestPackage().getName().substituteAll(' ','').substituteAll('.', '/').concat('/')
+else ''
+endif
+/]
+
+[query public getFileName(nE : uml::NamedElement) : String = 
+name.deleteWhitespace().trim()
+/]
+
+[query public getName(nE : uml::NamedElement) : String =
+if (name.oclIsUndefined()) then ''
+else name.deleteWhitespace().trim()
+endif
+/]
+
+[query public getNameFirstLower(nE : uml::NamedElement) : String =
+if name.oclIsUndefined() then  formatedError('name is undefined')
+else name.deleteWhitespace().toLowerFirst().trim()
+endif
+/]
+
+[query public getNameFirstUpper(nE : uml::NamedElement) : String =
+if name.oclIsUndefined() then formatedError('name is undefined')
+else name.deleteWhitespace().toUpperFirst().trim()
+endif
+/]
+
+[query public getNameLowerCase(nE : uml::NamedElement) : String = 
+if name.oclIsUndefined() then formatedError('name is undefined')
+else name.deleteWhitespace().toLower()
+endif
+/]
+
+[query public getNameUpperCase(nE : uml::NamedElement) : String = 
+if name.oclIsUndefined() then formatedError('name is undefined')
+else name.deleteWhitespace().toUpper()
+endif
+/]
+
+[query public equalsNameIgnoreCase(nE1 : uml::NamedElement, nE2 : uml::NamedElement) : Boolean = 
+if  (not (nE1.name.oclIsUndefined()) and  (not nE2.name.oclIsUndefined()) )  
+then nE1.name.deleteWhitespace().toLower() = nE2.name.deleteWhitespace().toLower()
+else false
+endif
+/]
+
+[query public orderByContents(b : Bag(uml::NamedElement)) : Sequence (uml::NamedElement) = 
+b->sortedBy(n : uml::NamedElement | n.eContainer().eContents()->indexOf(n))/]
+
+[query public orderByContents(s : Set(uml::NamedElement)) : Sequence (uml::NamedElement) = 
+s->sortedBy(n : uml::NamedElement | n.eContainer().eContents()->indexOf(n))->asSequence()/]
+
+[query public orderByContents(s : Sequence(uml::NamedElement)) : Sequence (uml::NamedElement) = 
+s->sortedBy(n : uml::NamedElement | n.eContainer().eContents()->indexOf(n))/]
+
+[query public orderByContents(s : Sequence(uml::Usage)) : Sequence (uml::Usage) = 
+s->sortedBy(u : uml::Usage | u.oclAsType(uml::NamedElement).eContainer().eContents()->indexOf(u.oclAsType(uml::NamedElement)))/]
+
+[query public hasStereotype(e : uml::Element, qualifiedName : String) : Boolean =
+not(e.getAppliedStereotype(qualifiedName).oclIsUndefined())/]

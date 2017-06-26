@@ -1,0 +1,165 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2015 Spacebel SA.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Johan Hardy (Spacebel) - initial API and implementation
+[/comment]
+[module variable('http://www.eclipse.org/uml2/5.0.0/UML')/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::class/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::property/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::namedelement/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::constraint/]
+[import org::eclipse::umlgen::gen::embedded::c::services::configuration/]
+[import org::eclipse::umlgen::gen::embedded::c::services::queries/]
+[import org::eclipse::umlgen::gen::embedded::c::templates::structure/]
+
+[query public hasCVariables(c : uml::Class) : Boolean = not(getNotReadOnly(getHasTypeApplied(ownedAttribute->asSequence()))->isEmpty())/]
+
+[query public hasHVariables(c : uml::Class) : Boolean = not(getPublic(getNotReadOnly(getHasTypeApplied(ownedAttribute->asSequence())))->isEmpty())/]
+
+[query public hasCVariablesUsesStaticMethods(c : uml::Class) : Boolean = 
+not(getUsesStaticMethods(getNotReadOnly(getHasTypeApplied(ownedAttribute->asSequence())))->isEmpty())/]
+
+[template private genMultiplicity(p : uml::Property) ? (isArrray()) post(trim())]
+['['/][p.getMultiplicity()/][']'/]
+[/template]
+
+[template private genMultiplicity(p : uml::Property) ? (not(isArrray())) post(trim())]
+[if (p.upper <> '*' and p.upperBound() > 1)]
+['['/][p.upper/][']'/]
+[/if]
+[/template]
+
+[template private genDefaultValue(p : uml::Property)]
+[if not(p.default->isEmpty())] = [p.default/][/if]
+[/template]
+
+[template private genCVariable(p : uml::Property) post(trim())]
+[if isVolatile()]volatile [/if][p.type.name/][genPointer().trim()/] [p.name/][p.genMultiplicity()/]
+[/template]
+
+[template private genHVariable(p : uml::Property) post(trim())]
+[if isVolatile()]volatile [/if][p.type.name/][genPointer().trim()/] [p.name/][p.genMultiplicity()/]
+[/template]
+
+[template private genAttribute(p : uml::Property) ? (hasAttribute())]
+ __attribute__ [p.getAttribute()/]
+[/template]
+
+[template public genCVariables(c : uml::Class) ? (isObject() and not(isSingleton())) post(trim())]
+[let seqProp : Sequence(uml::Property) = getNotReadOnly(getHasTypeApplied(ownedAttribute->asSequence()))]
+[for (p : uml::Property | seqProp )]
+[if not(p.isDerived) and not(p.isUsesStaticMethods())]
+/*! 
+ * \var [p.name/]
+[if ownedComment->notEmpty()]
+ * [ownedComment.format('\x5cbrief ', false, ' *        ', 120)/]
+[/if]
+[if (isTraceabilityEnabled())]
+[if (p.isConstrained(getModel().getAllConstraints()))]
+ *
+ * <b>Requirements traceability</b>
+ [p.getRequirementList('*     ')/]
+[/if]
+[/if]
+ */
+[if (isPrivate())]static [/if][genCVariable()/][genAttribute()/][genDefaultValue()/];
+
+[/if]
+[/for]
+[/let]
+[/template]
+
+[template public genHVariables(c : uml::Class) ? (isObject() and not(isSingleton())) post(trim())]
+[let seqProp : Sequence(uml::Property) = getPublic(getNotReadOnly(getHasTypeApplied(ownedAttribute->asSequence())))]
+[for (p : uml::Property | seqProp )]
+/*! 
+ * \var [p.name/]
+[if ownedComment->notEmpty()]
+ * [ownedComment.format('\x5cbrief ', false, ' *        ', 120)/]
+[/if]
+[if (isTraceabilityEnabled())]
+[if (p.isConstrained(getModel().getAllConstraints()))]
+ *
+ * <b>Requirements traceability</b>
+ [p.getRequirementList('*     ')/]
+[/if]
+[/if]
+ */
+extern [genHVariable()/];
+
+[/for]
+[/let]
+[/template]
+
+[template public genCVariables(c : uml::Class) ? (isSingleton() and not(isObject())) post(trim())]
+/*!
+ * \var The instance of the singleton [name/]
+ */
+[if (isPrivate())]static [name/]_t me;[else][name/]_t [name/];
+[/if]
+[/template]
+
+[template public genHVariables(c : uml::Class) ? (isSingleton() and not(isObject())) post(trim())]
+/*!
+ * \brief Type definition of the singleton class [c.name/]
+ */
+typedef struct [name/]_t
+{
+[let seq : Sequence(uml::NamedElement) = getNotReadOnly(getHasTypeApplied(getNotUsesStaticMethods(ownedAttribute->asSequence())))]
+[for (n : uml::NamedElement | seq->orderByContents())]
+    [n.oclAsType(uml::Property).genFields()/]
+[/for]
+[/let]
+} [c.name/]_t;
+[if (isPublic())]
+
+/*!
+ * \var External declaration of the instance of the singleton [c.name/]
+ */
+extern [c.name/]_t [c.name/];
+[/if]
+[/template]
+
+[template public genHVariables(c : uml::Class) ? (not(isSingleton()) and not(isObject())) post(trim())]
+/*!
+ * \brief Type definition of the class [c.name/]
+ */
+typedef struct [name/]_t
+{
+[let seq : Sequence(uml::NamedElement) = getNotReadOnly(getHasTypeApplied(getNotUsesStaticMethods(ownedAttribute->asSequence())))]
+[for (n : uml::NamedElement | seq->orderByContents())]
+    [n.oclAsType(uml::Property).genFields()/]
+[/for]
+[/let]
+} [c.name/]_t;
+[/template]
+
+[template public genCVariablesUsesStaticMethods(c : uml::Class) ? (isObject()) post(trim())]
+[let seqProp : Sequence(uml::Property) = getNotReadOnly(getHasTypeApplied(ownedAttribute->asSequence()))]
+[for (p : uml::Property | seqProp )]
+[if p.isUsesStaticMethods()]
+/*! 
+ * \var [p.name/]
+[if ownedComment->notEmpty()]
+ * [ownedComment.format('\x5cbrief ', false, ' *        ', 120)/]
+[/if]
+[if (isTraceabilityEnabled())]
+[if (p.isConstrained(getModel().getAllConstraints()))]
+ *
+ * <b>Requirements traceability</b>
+ [p.getRequirementList('*     ')/]
+[/if]
+[/if]
+ */
+[if (isPrivate())]static [/if][genCVariable()/][genAttribute()/][genDefaultValue()/];
+
+[/if]
+[/for]
+[/let]
+[/template]

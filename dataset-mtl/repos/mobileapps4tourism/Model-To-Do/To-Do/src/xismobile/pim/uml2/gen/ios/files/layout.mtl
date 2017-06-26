@@ -1,0 +1,730 @@
+[comment encoding = UTF-8 /]
+[module layout('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::ios::common::xisMobileUtils /]
+
+[template public generateViews(m : Model)]
+[let spaces : OrderedSet(Class) = m.getAllXisInteractionSpaces()]
+[let entities : OrderedSet(Class) = m.getAllXisEntities()]
+[for (c : Class | spaces)] 
+	[if (c.isMainScreen())]
+		[comment generate MainViewController.h file/]
+		[file ('MainViewController.h', false, 'UTF-8')]
+#import <UIKit/UIKit.h>
+#import "Task.h"
+#import "ViewNoteController.h"
+#import "NewTaskViewController.h"
+
+@interface MainViewController : UIViewController <NewTaskViewControllerDelegate, ViewNoteControllerDelegate,  UITableViewDataSource, UITableViewDelegate>
+
+@property (nonatomic, retain) UITableView *tableView;
+@property (nonatomic, retain) NSMutableArray *taskArray;
+@property (nonatomic, retain) Task *task;
+
+@end
+		[/file]
+		[file ('MainViewController.m', false, 'UTF-8')]
+#import "MainViewController.h"
+
+@interface MainViewController ()
+
+@end
+
+@implementation MainViewController
+
+- (NSMutableArray* ) taskArray{
+    if(_taskArray == nil){
+        _taskArray = ['['/]['['/]NSMutableArray alloc[']'/] init[']'/];
+    }
+    return _taskArray;
+}
+
+- (void)viewDidLoad
+{
+    ['['/]super viewDidLoad[']'/];
+    CGRect screenRect = ['['/]['['/]UIScreen mainScreen[']'/] bounds[']'/];
+    CGFloat screenWidth = screenRect.size.width;
+    CGFloat screenHeight = screenRect.size.height;
+    
+    self.title = @"To-Do";
+    self.tableView = ['['/]['['/]UITableView alloc[']'/] initWithFrame:CGRectMake(0, 0, screenWidth, screenHeight) style:UITableViewStylePlain[']'/];
+    self.tableView.rowHeight = 60;
+    self.tableView.delegate = self;
+    self.tableView.dataSource = self;
+    ['['/]self.view addSubview:self.tableView[']'/];
+    
+    UIBarButtonItem *newButton = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(newClicked:)[']'/] ;
+    UIBarButtonItem *delButton = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithBarButtonSystemItem:UIBarButtonSystemItemTrash target:self action:@selector(delClicked:)[']'/] ;
+    self.navigationItem.rightBarButtonItems = @['['/]newButton,delButton[']'/];
+    self.navigationItem.leftBarButtonItem = self.editButtonItem;
+}
+
+- (void)addItemViewController:(NewTaskViewController *)controller didFinishEnteringItem:(Task *)item
+{
+    NSLog(@"This was returned from ViewControllerB %@",item.category.name);
+    ['['/]self.taskArray addObject:item[']'/];
+    ['['/]self.tableView reloadData[']'/];
+}
+
+- (void)removeItemViewController:(ViewNoteController *)controller didFinishEnteringItem:(Task *)item{
+    if(['['/]self.taskArray containsObject:item[']'/]){
+        ['['/]self.taskArray removeObject:item[']'/];
+    }
+    ['['/]self.tableView reloadData[']'/];
+}
+
+- (IBAction)newClicked:(id)sender {
+    NewTaskViewController *newTaskView = ['['/]['['/]NewTaskViewController alloc[']'/] init[']'/];
+    newTaskView.delegate = self;
+    ['['/]self.navigationController pushViewController:newTaskView animated:YES[']'/];
+}
+
+-(IBAction)delClicked:(id)sender{
+//Delete all tasks
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{
+    return 1;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    NSInteger count = self.taskArray.count;
+    if(self.editing) {
+        count = count + 1;
+    }
+    return count;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    static NSString *CellIdentifier = @"Cell";
+    UITableViewCell *cell = ['['/]self.tableView dequeueReusableCellWithIdentifier:CellIdentifier[']'/];
+    if (cell == nil){
+        cell = ['['/]['['/]UITableViewCell alloc[']'/] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:CellIdentifier[']'/];
+    }
+    if (indexPath.row < self.taskArray.count ) {
+        self.task= ['['/]self.taskArray objectAtIndex:indexPath.row[']'/];
+        cell.textLabel.text = self.task.name;
+        cell.detailTextLabel.text = self.task.date;
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    } else {
+        cell.textLabel.text = @"Add New Task";
+        //cell.textLabel.textColor = ['['/]UIColor lightGrayColor[']'/];
+        cell.editingAccessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
+    return cell;
+}
+
+- (void) tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    ['['/]self.tableView deselectRowAtIndexPath:indexPath animated:YES[']'/];
+    if ((indexPath.row < self.taskArray.count) && !self.editing) {
+        ViewNoteController *viewNote = ['['/]['['/]ViewNoteController alloc[']'/] init[']'/];
+        viewNote.task = ['['/]self.taskArray objectAtIndex:indexPath.row[']'/];
+        viewNote.delegate = self;
+        ['['/]self.navigationController pushViewController:viewNote animated:YES[']'/];
+    }else if ((indexPath.row == self.taskArray.count) && self.editing){
+        NewTaskViewController *newTaskView = ['['/]['['/]NewTaskViewController alloc[']'/] init[']'/];
+        newTaskView.delegate = self;
+        ['['/]self.navigationController pushViewController:newTaskView animated:YES[']'/];
+    }
+}
+
+- (UITableViewCellEditingStyle)tableView:(UITableView *)tableView
+           editingStyleForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.row < self.taskArray.count ) {
+        return UITableViewCellEditingStyleDelete;
+    } else {
+        return UITableViewCellEditingStyleInsert;
+    }
+}
+
+-(void)setEditing:(BOOL)editing animated:(BOOL) animated {
+    if( editing != self.editing ) {
+        ['['/]super setEditing:editing animated:animated[']'/];
+        ['['/]self.tableView setEditing:editing animated:animated[']'/];
+        NSArray *indexes =
+        ['['/]NSArray arrayWithObject:
+        ['['/]NSIndexPath indexPathForRow:self.taskArray.count inSection:0[']'/][']'/];
+        if (editing == YES ) {
+            ['['/]self.tableView insertRowsAtIndexPaths:indexes
+                             withRowAnimation:UITableViewRowAnimationLeft[']'/];
+        } else {
+            ['['/]self.tableView deleteRowsAtIndexPaths:indexes
+                             withRowAnimation:UITableViewRowAnimationLeft[']'/];
+        }
+    }
+}
+
+- (void) tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle) editing
+ forRowAtIndexPath:(NSIndexPath *)indexPath {
+    if(editing == UITableViewCellEditingStyleDelete ) {
+        ['['/]self.taskArray removeObjectAtIndex:indexPath.row[']'/];
+        ['['/]tableView deleteRowsAtIndexPaths:['['/]NSArray arrayWithObject:indexPath[']'/]
+                  withRowAnimation:UITableViewRowAnimationLeft[']'/];
+    }else{
+        NewTaskViewController *newTaskView = ['['/]['['/]NewTaskViewController alloc[']'/] init[']'/];
+        newTaskView.delegate = self;
+        ['['/]self.navigationController pushViewController:newTaskView animated:YES[']'/];
+    }
+}
+@end
+		[/file]
+	[/if]
+[/for]
+[/let]
+[/let]	
+[comment generate ViewNoteController.h file/]
+[file ('ViewNoteController.h', false, 'UTF-8')]
+#import <UIKit/UIKit.h>
+#import "Task.h"
+
+@class ViewNoteController;
+
+//Protocol for communication with mainView
+@protocol ViewNoteControllerDelegate <NSObject>
+- (void)removeItemViewController:(ViewNoteController *)controller didFinishEnteringItem:(Task *)item;
+- (void)addItemViewController:(ViewNoteController *)controller didFinishEnteringItem:(Task *)item;
+@end
+
+@interface ViewNoteController : UIViewController <UITableViewDataSource, UITableViewDelegate>
+
+@property (nonatomic, retain) IBOutlet UITextField *nameField;
+@property (nonatomic, retain) IBOutlet UITextField *dateField;
+@property (nonatomic, retain) IBOutlet UITextField *descriptionField;
+@property (nonatomic, retain) IBOutlet UITextField *categoryField;
+@property (nonatomic, weak) id <ViewNoteControllerDelegate> delegate;
+@property (nonatomic, retain) Task *task;
+@property (nonatomic, retain) UITableView *tableView;
+@property (nonatomic, assign) BOOL isEditing;
+
+@end
+[/file]
+[comment generate ViewNoteController.m file/]
+[file ('ViewNoteController.m', false, 'UTF-8')]
+#import "ViewNoteController.h"
+#import "NotesViewController.h"
+
+@interface ViewNoteController ()
+
+@end
+
+@implementation ViewNoteController
+
+- (void)viewDidLoad
+{
+    self.isEditing = NO;
+    ['['/]super viewDidLoad[']'/];
+    CGRect screenRect = ['['/]['['/]UIScreen mainScreen[']'/] bounds[']'/];
+    CGFloat screenWidth = screenRect.size.width;
+    CGFloat screenHeight = screenRect.size.height;
+    
+    self.title = @"Details";
+    self.tableView = ['['/]['['/]UITableView alloc[']'/] initWithFrame:CGRectMake(0, 0, screenWidth, screenHeight) style:UITableViewStyleGrouped[']'/];
+    self.tableView.rowHeight = 60;
+    self.tableView.delegate = self;
+    self.tableView.dataSource = self;
+    ['['/]self.view addSubview:self.tableView[']'/];
+    
+    UIBarButtonItem *editButton = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithTitle:@"Edit" style:UIBarButtonItemStylePlain target:self action:@selector(editClicked:)[']'/] ;
+    self.navigationItem.rightBarButtonItem = editButton;
+}
+
+- (IBAction)editClicked:(id)sender {
+    self.isEditing = YES;
+    UIBarButtonItem *doneButton = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithTitle:@"Save" style:UIBarButtonItemStylePlain target:self action:@selector(doneClicked:)[']'/] ;
+    self.navigationItem.rightBarButtonItem = doneButton;
+    ['['/]self.tableView reloadData[']'/];
+}
+
+- (IBAction)doneClicked:(id)sender {
+    self.isEditing = NO;
+    UIBarButtonItem *editButton = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithTitle:@"Edit" style:UIBarButtonItemStylePlain target:self action:@selector(editClicked:)[']'/] ;
+    self.navigationItem.rightBarButtonItem = editButton;
+    ['['/]self.tableView reloadData[']'/];
+    if (self.nameField.text.length > 0) {
+        self.task = ['['/]['['/]Task alloc[']'/] init[']'/];
+        self.task.name = self.nameField.text;
+        self.task.category.name = self.categoryField.text;
+        self.task.date = self.dateField.text;
+        //Call the addItemViewController in mainView to add task to taskArray
+        ['['/]self.delegate addItemViewController:self didFinishEnteringItem:self.task[']'/];
+    }
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{
+    return 2;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    if (section == 0) {
+        return 4;
+    }else {
+        return 1;
+    }
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    if (self.isEditing==YES) {
+        static NSString *CellIdentifier = @"Cell";
+        UITableViewCell *cell = ['['/]self.tableView dequeueReusableCellWithIdentifier:CellIdentifier[']'/];
+        if (cell == nil){
+            cell = ['['/]['['/]UITableViewCell alloc[']'/] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier[']'/];
+        }
+        CGRect cellRect = ['['/]cell bounds[']'/];
+        CGFloat cellWidth = cellRect.size.width;
+        CGFloat cellHeight = cellRect.size.height;
+        if (indexPath.section == 0) {
+            if (indexPath.row == 0) {
+                self.nameField = ['['/]['['/]UITextField alloc[']'/] initWithFrame:CGRectMake(15, 0, cellWidth,cellHeight)[']'/];
+                cell.textLabel.text = @"";
+                self.nameField.text = self.task.name;
+                ['['/]cell.contentView addSubview:self.nameField[']'/];
+            }else if (indexPath.row == 1){
+                cell.textLabel.text = @"";
+                cell.detailTextLabel.text = @"";
+                self.descriptionField = ['['/]['['/]UITextField alloc[']'/] initWithFrame:CGRectMake(15, 0, cellWidth, cellHeight)[']'/];
+                self.descriptionField.text = self.task.description;
+                ['['/]cell.contentView addSubview:self.descriptionField[']'/];
+            }else if (indexPath.row == 2){
+                cell.textLabel.text = @"Date:";
+                cell.detailTextLabel.text = @"";
+                self.dateField = ['['/]['['/]UITextField alloc[']'/] initWithFrame:CGRectMake(60, 0, cellWidth, cellHeight)[']'/];
+                self.dateField.text = self.task.date;
+                ['['/]cell.contentView addSubview:self.dateField[']'/];
+            }else if (indexPath.row == 3){
+                cell.textLabel.text = @"Category:";
+                cell.detailTextLabel.text = @"";
+                self.categoryField = ['['/]['['/]UITextField alloc[']'/] initWithFrame:CGRectMake(95, 0, cellWidth, cellHeight)[']'/];
+                self.categoryField.text = self.task.category.name;
+                ['['/]cell.contentView addSubview:self.categoryField[']'/];
+            }
+        }else if(indexPath.section == 1 && self.isEditing == NO){
+            cell.textLabel.text = @"View Notes";
+            cell.textLabel.textAlignment = NSTextAlignmentCenter;
+        }else if(indexPath.section == 1 && self.isEditing == YES){
+            cell.textLabel.text = @"Manage Notes";
+            cell.textLabel.textAlignment = NSTextAlignmentCenter;
+        }else{
+            cell.textLabel.text = @"Delete Task";
+            cell.textLabel.textAlignment = NSTextAlignmentCenter;
+        }
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        return cell;
+    }else{
+    static NSString *CellIdentifier = @"Cell";
+    UITableViewCell *cell = ['['/]self.tableView dequeueReusableCellWithIdentifier:CellIdentifier[']'/];
+    if (cell == nil){
+        cell = ['['/]['['/]UITableViewCell alloc[']'/] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:CellIdentifier[']'/];
+    }
+    if (indexPath.section == 0) {
+        if (indexPath.row == 0) {
+            cell.textLabel.text = self.task.name;
+            self.nameField.hidden = YES;
+        }else if (indexPath.row == 1){
+            cell.textLabel.text = self.task.description;
+            self.dateField.hidden = YES;
+        }else if (indexPath.row == 2){
+            cell.textLabel.text = @"Date:";
+            cell.detailTextLabel.text = self.task.date;
+            self.dateField.hidden = YES;
+        }else if (indexPath.row == 3){
+            cell.textLabel.text = @"Category:";
+            self.categoryField.hidden = YES;
+            cell.detailTextLabel.text = self.task.category.name;
+        }
+    }else if(indexPath.section == 1){
+        cell = ['['/]['['/]UITableViewCell alloc[']'/] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier[']'/];
+        cell.textLabel.text = @"View Notes";
+        cell.textLabel.textAlignment = NSTextAlignmentCenter;
+    }
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    return cell;
+    }
+}
+
+- (void) tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    if (indexPath.section==1) {
+        NotesViewController *noteView = ['['/]['['/]NotesViewController alloc[']'/] init[']'/];
+        ['['/]self.navigationController pushViewController:noteView animated:YES[']'/];
+    }
+}
+@end
+[/file]
+
+[comment generate NotesViewController.h file/]
+[file ('NotesViewController.h', false, 'UTF-8')]
+#import <UIKit/UIKit.h>
+#import "Task.h"
+#import "NewTaskViewController.h"
+
+@interface NotesViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
+
+@property (nonatomic, retain) UITableView *tableView;
+@property (nonatomic, retain) NSMutableArray *notes;
+@property (nonatomic, retain) UITextField IBOutlet *noteField;
+
+@end
+[/file]
+
+[comment generate NotesViewController.m file/]
+[file ('NotesViewController.m', false, 'UTF-8')]
+#import "NotesViewController.h"
+
+@interface NotesViewController ()
+
+@end
+
+@implementation NotesViewController
+
+- (NSMutableArray* ) notes{
+    if(_notes == nil){
+        _notes = ['['/]['['/]NSMutableArray alloc[']'/] init[']'/];
+    }
+    return _notes;
+}
+
+- (void)viewDidLoad
+{
+    ['['/]super viewDidLoad[']'/];
+    CGRect screenRect = ['['/]['['/]UIScreen mainScreen[']'/] bounds[']'/];
+    CGFloat screenWidth = screenRect.size.width;
+    CGFloat screenHeight = screenRect.size.height;
+    
+    self.title = @"Notes";
+    self.tableView = ['['/]['['/]UITableView alloc[']'/] initWithFrame:CGRectMake(0, 0, screenWidth, screenHeight) style:UITableViewStylePlain[']'/];
+    self.tableView.rowHeight = 60;
+    self.tableView.delegate = self;
+    self.tableView.dataSource = self;
+    ['['/]self.view addSubview:self.tableView[']'/];
+    
+    self.navigationItem.rightBarButtonItem = self.editButtonItem;
+}
+
+
+- (IBAction)newClicked:(id)sender {
+    NewTaskViewController *newTaskView = ['['/]['['/]NewTaskViewController alloc[']'/] init[']'/];
+    ['['/]self.navigationController pushViewController:newTaskView animated:YES[']'/];
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{
+    return 1;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    NSInteger count = self.notes.count;
+    if(self.editing) {
+        count = count + 1;
+    }
+    return count;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    static NSString *CellIdentifier = @"Cell";
+    UITableViewCell *cell = ['['/]self.tableView dequeueReusableCellWithIdentifier:CellIdentifier[']'/];
+    if (cell == nil){
+        cell = ['['/]['['/]UITableViewCell alloc[']'/] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:CellIdentifier[']'/];
+    }
+    if (indexPath.row < self.notes.count ) {
+        cell.textLabel.text = ['['/]self.notes objectAtIndex:indexPath.row[']'/];
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    } else {
+        self.noteField = ['['/]['['/]UITextField alloc[']'/] initWithFrame:CGRectMake(15, 10, cell.bounds.size.width, cell.bounds.size.height)[']'/];
+        self.noteField.placeholder = @"Add New Note";
+        ['['/]cell.contentView addSubview:self.noteField[']'/];
+        //cell.editingAccessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
+    return cell;
+}
+
+- (UITableViewCellEditingStyle)tableView:(UITableView *)tableView
+           editingStyleForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.row < self.notes.count ) {
+        return UITableViewCellEditingStyleDelete;
+    } else {
+        return UITableViewCellEditingStyleInsert;
+    }
+}
+
+-(void)setEditing:(BOOL)editing animated:(BOOL) animated {
+    if(editing != self.editing ) {
+        ['['/]super setEditing:editing animated:animated[']'/];
+        ['['/]self.tableView setEditing:editing animated:animated[']'/];
+        NSArray *indexes =['['/]NSArray arrayWithObject:['['/]NSIndexPath indexPathForRow:self.notes.count inSection:0[']'/][']'/];
+        if (editing == YES ) {
+            ['['/]self.tableView insertRowsAtIndexPaths:indexes
+                                  withRowAnimation:UITableViewRowAnimationLeft[']'/];
+        } else {
+            ['['/]self.tableView deleteRowsAtIndexPaths:indexes
+                                  withRowAnimation:UITableViewRowAnimationLeft[']'/];
+        }
+    }
+}
+
+- (void) tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle) editing
+ forRowAtIndexPath:(NSIndexPath *)indexPath {
+    if(editing == UITableViewCellEditingStyleDelete ) {
+        ['['/]self.notes removeObjectAtIndex:indexPath.row[']'/];
+        ['['/]tableView deleteRowsAtIndexPaths:['['/]NSArray arrayWithObject:indexPath[']'/]
+                         withRowAnimation:UITableViewRowAnimationLeft[']'/];
+    }else{
+        NSString *test = ['['/]['['/]NSString alloc[']'/] init[']'/];
+        test = @"";
+        ['['/]self.notes addObject:test[']'/];
+        ['['/]self.tableView reloadData[']'/];
+    }
+}
+@end
+[/file]
+
+[comment generate NewTaskViewController.h file/]
+[file ('NewTaskViewController.h', false, 'UTF-8')]
+#import <UIKit/UIKit.h>
+#import "Task.h"
+#import "NotesViewController.h"
+
+@class NewTaskViewController;
+
+//Protocol for communication to mainView
+@protocol NewTaskViewControllerDelegate <NSObject>
+- (void)addItemViewController:(NewTaskViewController *)controller didFinishEnteringItem:(Task *)item;
+@end
+
+@interface NewTaskViewController : UIViewController <UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate, UIPickerViewDelegate, UIPickerViewDataSource>
+//Part of communication protocol
+@property (nonatomic, weak) id <NewTaskViewControllerDelegate> delegate;
+
+@property (nonatomic, retain) IBOutlet UITextField *nameField;
+@property (nonatomic, retain) IBOutlet UITextField *dateField;
+@property (nonatomic, retain) IBOutlet UITextField *descriptionField;
+@property (nonatomic, retain) IBOutlet UITextField *categoryField;
+@property (nonatomic, retain) IBOutlet UIDatePicker *picker;
+@property (nonatomic, retain) IBOutlet UIPickerView *pickerView;
+@property (nonatomic, retain) NSMutableArray *category;
+@property (nonatomic, retain) Task *task;
+@property (nonatomic, retain) UITableView *tableView;
+
+@end
+[/file]
+
+[comment generate NewTaskViewController.m file/]
+[file ('NewTaskViewController.m', false, 'UTF-8')]
+#import "NewTaskViewController.h"
+
+@interface NewTaskViewController ()
+
+@end
+
+@implementation NewTaskViewController 
+
+- (void)viewDidLoad {
+    ['['/]super viewDidLoad[']'/];
+    
+    CGRect screenRect = ['['/]['['/]UIScreen mainScreen[']'/] bounds[']'/];
+    CGFloat screenWidth = screenRect.size.width;
+    CGFloat screenHeight = screenRect.size.height;
+    
+    self.title = @"New Task";
+    self.tableView = ['['/]['['/]UITableView alloc[']'/] initWithFrame:CGRectMake(0, 0, screenWidth, screenHeight+300) style:UITableViewStyleGrouped[']'/];
+    self.tableView.scrollEnabled = YES;
+    self.tableView.rowHeight = 60;
+    self.tableView.delegate = self;
+    self.tableView.dataSource = self;
+    ['['/]self.view addSubview:self.tableView[']'/];
+    
+    UIBarButtonItem *doneButton = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithTitle:@"Save" style:UIBarButtonItemStylePlain target:self action:@selector(doneClicked:)[']'/] ;
+    self.navigationItem.rightBarButtonItem = doneButton;
+    
+    self.category = ['['/]['['/]NSMutableArray alloc[']'/]initWithObjects:@"Cleaning",@"Reminder",@"Errand",@"Economy",@"Food",@"Activity",@"Work",@"School", nil[']'/];
+    self.task = ['['/]['['/]Task alloc[']'/] init[']'/];
+    self.task.notes = ['['/]['['/]NSMutableArray alloc[']'/]init[']'/];
+    self.task.note = ['['/]['['/]Note alloc[']'/] init[']'/];
+}
+
+- (void) hideKeyboard{
+    ['['/]self.nameField resignFirstResponder[']'/];
+    ['['/]self.descriptionField resignFirstResponder[']'/];
+}
+
+- (IBAction)doneClicked:(id)sender {
+    if (self.nameField.text.length > 0) {
+        self.task.name = self.nameField.text;
+        self.task.description = self.descriptionField.text;
+        self.task.category.name = self.categoryField.text;
+        //Call the addItemViewController in mainView to add task to taskArray
+        ['['/]self.delegate addItemViewController:self didFinishEnteringItem:self.task[']'/];
+    }
+    ['['/]self.navigationController popToRootViewControllerAnimated:YES[']'/];
+}
+
+-( IBAction) resignPicker:(id)sender {
+    ['['/]self.dateField resignFirstResponder[']'/];
+    ['['/]self.categoryField resignFirstResponder[']'/];
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{
+    return 2;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    if (section == 0) {
+        return 4;
+    }else {
+        return 1;
+    }
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    static NSString *CellIdentifier = @"Cell";
+    UITableViewCell *cell = ['['/]self.tableView dequeueReusableCellWithIdentifier:CellIdentifier[']'/];
+    if (cell == nil){
+        cell = ['['/]['['/]UITableViewCell alloc[']'/] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:CellIdentifier[']'/];
+    }
+    CGRect cellRect = ['['/]cell bounds[']'/];
+    CGFloat cellWidth = cellRect.size.width;
+    CGFloat cellHeight = cellRect.size.height;
+    if (indexPath.section == 0) {
+        if (indexPath.row == 0) {
+            self.nameField = ['['/]['['/]UITextField alloc[']'/] initWithFrame:CGRectMake(15, 10, cellWidth,cellHeight)[']'/];
+            self.nameField.placeholder = @"Title";
+            self.nameField.delegate = self;
+            ['['/]cell.contentView addSubview:self.nameField[']'/];
+        }else if(indexPath.row == 1){
+            self.descriptionField = ['['/]['['/]UITextField alloc[']'/] initWithFrame:CGRectMake(15, 10, cellWidth, cellHeight)[']'/];
+            self.descriptionField.placeholder = @"Description";
+            self.descriptionField.delegate = self;
+            ['['/]cell.contentView addSubview:self.descriptionField[']'/];
+        }else if(indexPath.row == 2){
+            cell.textLabel.text = @"Date:";
+            self.dateField = ['['/]['['/]UITextField alloc[']'/] initWithFrame:CGRectMake(60, 10, cellWidth, cellHeight)[']'/];
+            self.picker = ['['/]['['/]UIDatePicker alloc[']'/]init[']'/];
+            self.picker.datePickerMode = UIDatePickerModeDate;
+            ['['/]self.picker addTarget:self action:@selector(LabelChange:) forControlEvents:UIControlEventValueChanged[']'/];
+            
+            UIToolbar *pickerToolbar = ['['/]['['/]UIToolbar alloc[']'/] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 40)[']'/];
+            pickerToolbar.barStyle = UIBarStyleDefault;
+            ['['/]pickerToolbar sizeToFit[']'/];
+            NSMutableArray *barItems = ['['/]['['/]NSMutableArray alloc[']'/] init[']'/];
+            
+            UIBarButtonItem *btnCancel = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(resignPicker:)[']'/];
+            ['['/]barItems addObject:btnCancel[']'/];
+            
+            UIBarButtonItem *flexSpace = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:self action:nil[']'/];
+            ['['/]barItems addObject:flexSpace[']'/];
+            
+            flexSpace = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:self action:nil[']'/];
+            ['['/]barItems addObject:flexSpace[']'/];
+            
+            UIBarButtonItem *doneBtn = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(resignPicker:)[']'/];
+            ['['/]barItems addObject:doneBtn[']'/];
+            
+            ['['/]pickerToolbar setItems:barItems animated:YES[']'/];
+            self.dateField.delegate= self;
+            ['['/]self.dateField setInputView:self.picker[']'/];
+            self.dateField.inputAccessoryView = pickerToolbar;
+            ['['/]cell.contentView addSubview:self.dateField[']'/];
+        }else if(indexPath.row == 3){
+            cell.textLabel.text = @"Category:";
+            self.categoryField = ['['/]['['/]UITextField alloc[']'/] initWithFrame:CGRectMake(100, 10, self.view.frame.size.width, 40)[']'/];
+            
+           self.pickerView = ['['/]['['/]UIPickerView alloc[']'/]initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 100)[']'/];
+            self.pickerView.delegate = self;
+            self.pickerView.dataSource = self;
+            self.pickerView.showsSelectionIndicator = YES;
+
+            UIToolbar *pickerToolbar = ['['/]['['/]UIToolbar alloc[']'/] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 40)[']'/];
+            pickerToolbar.barStyle = UIBarStyleDefault;
+            ['['/]pickerToolbar sizeToFit[']'/];
+            NSMutableArray *barItems = ['['/]['['/]NSMutableArray alloc[']'/] init[']'/];
+            
+            UIBarButtonItem *btnCancel = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(resignPicker:)[']'/];
+            ['['/]barItems addObject:btnCancel[']'/];
+            
+            UIBarButtonItem *flexSpace = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:self action:nil[']'/];
+            ['['/]barItems addObject:flexSpace[']'/];
+            
+            flexSpace = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:nil[']'/];
+            ['['/]barItems addObject:flexSpace[']'/];
+            
+            UIBarButtonItem *doneBtn = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(resignPicker:)[']'/];
+            ['['/]barItems addObject:doneBtn[']'/];
+            
+            ['['/]pickerToolbar setItems:barItems animated:YES[']'/];
+            self.pickerView.delegate = self;
+            ['['/]self.categoryField setInputView:self.pickerView[']'/];
+            self.categoryField.inputAccessoryView=pickerToolbar;
+            ['['/]cell.contentView addSubview:self.categoryField[']'/];
+        }
+    }else if (indexPath.section == 1){
+        if (indexPath.row == 0){
+            cell.textLabel.text = @"Add Notes";
+            cell.textLabel.textAlignment = NSTextAlignmentCenter;
+        }
+    }
+    return cell;
+}
+
+-(void)LabelChange:(id)sender{
+    NSDateFormatter *dateFormatter1 = ['['/]['['/]NSDateFormatter alloc[']'/] init[']'/];
+    ['['/]dateFormatter1 setDateStyle:NSDateFormatterShortStyle[']'/];
+    ['['/]dateFormatter1 setTimeStyle:NSDateFormatterNoStyle[']'/];
+    NSString *dateString = ['['/]dateFormatter1 stringFromDate: self.picker.date[']'/];
+    NSLog(@"Date:,%@",dateString);
+    self.dateField.text = dateString;
+    self.task.date = dateString;
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField{
+    NSLog(@"You entered %@",textField.text);
+    ['['/]self hideKeyboard[']'/];
+    if (textField.tag == 1){
+        ['['/]UIView beginAnimations:nil context:NULL[']'/];
+        ['['/]UIView setAnimationDuration:0.35f[']'/];
+        CGRect frame = self.view.frame;
+        frame.origin.y = 0;
+        ['['/]self.view setFrame:frame[']'/];
+        ['['/]UIView commitAnimations[']'/];
+    }
+    return YES;
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    ['['/]self.tableView deselectRowAtIndexPath:indexPath animated:YES[']'/];
+    if (indexPath.section==1) {
+        NotesViewController *noteView = ['['/]['['/]NotesViewController alloc[']'/] init[']'/];
+        ['['/]self.navigationController pushViewController:noteView animated:YES[']'/];
+    }
+}
+
+- (void)pickerView:(UIPickerView *)pickerView didSelectRow: (NSInteger)row inComponent:(NSInteger)component{
+    NSString *title;
+    title = ['['/]self.category objectAtIndex:row[']'/];
+    self.categoryField.text = title;
+    self.task.category.name = title;
+}
+
+- (NSInteger)pickerView:(UIPickerView *)pickerView numberOfRowsInComponent:(NSInteger)component {
+    return ['['/]self.category count[']'/];
+}
+
+- (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pickerView {
+    return 1;
+}
+
+- (NSString *)pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row forComponent:(NSInteger)component {
+    NSString *title;
+    title = ['['/]self.category objectAtIndex:row[']'/];
+    return title;
+}
+
+- (CGFloat)pickerView:(UIPickerView *)pickerView widthForComponent:(NSInteger)component {
+    CGRect screenRect = ['['/]['['/]UIScreen mainScreen[']'/] bounds[']'/];
+    CGFloat screenWidth = screenRect.size.width;
+    return screenWidth;
+}
+
+@end
+
+[/file]
+[/template]
+
+
+

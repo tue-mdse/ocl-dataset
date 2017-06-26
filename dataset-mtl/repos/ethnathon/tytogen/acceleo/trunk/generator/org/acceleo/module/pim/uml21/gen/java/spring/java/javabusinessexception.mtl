@@ -1,0 +1,136 @@
+[module javabusinessexception('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(class : Class)]
+[if (class.isBusinessException())][class.pathToMainJava()/]/[class.classPackage().toPath()/]/[class.name/].java[/if]
+[/template][/comment]
+
+
+[template public generateJavaBusinessException(class : Class)? (class.isBusinessException())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(), class.classPackage().toPath(), class.name.concat('.java')), false))]
+package [class.classPackage()/];
+
+// [protected ('imports')] 
+// for import
+import org.sharengo.exceptions.BusinessException;
+
+[for (type:Type|class.operationsParametersTypes())]
+import [type.getCompleteName()/];	
+[/for]
+[class.genCollectionImports()/]
+
+// [/protected] for import
+
+[class.generateJavadoc()/]
+[class.genModifiers()/] class [class.name/][class.extensions()/] {
+
+[comment  Generate attributes /]
+[for (prop:Property|class.attribute)]
+	[prop.visibility/] [prop.type.convertToJavaType()/] [prop.name/];
+[/for]
+
+	/**
+	 * Default constructor 
+	 */
+	private [class.name/]() {
+		super();
+	}
+
+[if (class.attribute->notEmpty())]
+	/**
+	 * Constructor with all parameters initialized
+	[for (prop:Property|class.attribute)]
+	 * @param [prop.name/] [prop.ownedComment._body/]
+	[/for]
+	 */	
+	private [class.name/]([class.attribute.asParameter()->sep(', ')/]) {
+
+	[for (prop:Property|class.attribute)]
+		this.[prop.name/] = [prop.name/];
+	[/for]
+	}	
+[/if]
+
+[comment  Generate operations /]
+[for (oper:Operation|ownedOperation)]
+	[oper.generateJavadoc()/]
+	[oper.genModifiers()/] [oper.generateReturn()/] [oper.name/]([oper.generateRawParameters()/])[oper.genOperationBody()/]
+[/for]
+
+	// [protected ('other operations')]
+	// for other operations 	
+	// [/protected] 
+
+}
+
+[/file]
+[/template]
+
+
+[template private extensions(class : Class)]
+[class.inheritances()/][class.implements()/]
+[/template]
+
+
+[template private inheritances(class : Class)]
+ extends [if (class.general->isEmpty())]BusinessException[else][class.general.name/][/if]
+[/template]
+
+
+[template private implements(class : Class)]
+[if (class.interfaceRealization->notEmpty())] implements [class.interfaceRealization.asClass()->sep(', ')/][/if]
+[/template]
+
+
+[template private asClass(interfaceRealization : InterfaceRealization)]
+[interfaceRealization.supplier.name/]
+[/template]
+
+
+[template private asParameter(property : Property)]
+[property.type.convertToJavaType()/] [property.name/]
+[/template]
+
+
+[template private genModifiers(operation : Operation)]
+[operation.visibility/][if (operation.isLeaf)] final[/if][if (operation.isAbstract)] abstract[/if][if (operation.isStatic)] static[/if]
+[/template]
+
+
+[template private genModifiers(class : Class)]
+[class.visibility/][if (class.isLeaf)] final[/if][if (class.isAbstract or class.ownedOperation->select(isAbstract)->notEmpty())] abstract[/if]
+[/template]
+
+
+[template private genOperationBody(operation : Operation)]
+[if (operation.isAbstract)]
+;
+[else]
+	{
+		// [protected ('operation')]		
+		// TODO implement [operation.name/]
+		throw new UnsupportedOperationException("Method not yet implemented");
+		// [/protected]
+	}
+
+[/if]
+
+[/template]
+
+
+

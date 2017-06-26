@@ -1,0 +1,134 @@
+[comment]
+  Copyright 2015
+[/comment]
+[module gameController('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import common/]
+
+[template public generateClassGameController(c : Class)]
+[c.packageBlock()/]
+
+[_commentBodyBlock()/]
+
+import java.util.ArrayList;
+
+import model.Cenario;
+import model.Elemento;
+import model.GameLogic;
+import view.GameRenderer;
+
+public class GameController implements LoopSteps {
+
+	private MainLoop main;
+	private GameRenderer render;
+	private GameLogic logic;
+	public static final int width = 800;
+	public static final int height = 600;
+	public static String currentCenario;
+	public static volatile float alpha = 0.0f;
+	public static float add = 0.01f;
+
+	public GameController() {
+		main = new MainLoop(this, 60);
+		this.logic = new GameLogic();
+		new Thread(main).start();
+	}
+
+	@Override
+	public void setup() {
+		[for (o : Operation | c.getOperations())]
+        	[for (s : String | o.name)]
+				[if (s = 'loadCenario')]
+		[o.loadCenario()/]
+				[else]
+					[if (s = 'addTeleport')]
+		[o.addTeleport()/]
+					[else]
+						[if (s = 'configLayerInferior')]
+		[o.configLayerInferior()/]
+						[else]
+							[if (s = 'configLayerSuperior')]
+		[o.configLayerSuperior()/]
+							[/if]
+						[/if]
+					[/if]
+				[/if]
+			[/for]
+		[/for]
+		this.render = new GameRenderer(logic.getElemento(), logic.getElementos(), logic.getCenarios());
+
+		render.init();
+		render.addKeyListener(InputManager.getInstance());
+		render.addMouseListener(InputManager.getInstance());
+	}
+
+	@Override
+	public void processLogics(int tick) {
+		InputManager.getInstance().update();
+		logic.logica(tick);
+		if (logic.isAlert()) {
+			render.currentCenario();
+			logic.setAlert(false);
+		}
+	}
+
+	@Override
+	public void renderGraphics() {
+		render.paint();
+	}
+
+	@Override
+	public void tearDown() {
+
+	}
+
+	public void loadCenario(String cenario) {
+		if (!logic.getCenarios().containsKey(cenario)) {
+			Cenario scenery = new Cenario(cenario);
+			logic.getCenarios().put(cenario, scenery);
+			ArrayList<Elemento> elements = new ArrayList<Elemento>();
+			logic.getElementos().put(cenario, elements);
+		}
+	}
+
+	protected void configLayerInferior(String cenario, String layer) {
+		logic.getCenarios().get(cenario).configLayerInferior(layer);
+	}
+
+	protected void configLayerSuperior(String cenario, String layer) {
+		logic.getCenarios().get(cenario).configLayerSuperior(layer);
+	}
+
+	public void addElemento(String cenario, Elemento e) {
+		logic.getElementos().get(cenario).add(e);
+	}
+
+	public void addElementoPrincipal(Elemento e) {
+		logic.setElemento(e);
+	}
+
+	public void addTeleport(String cenariOrigem, String cenarioDestino,
+			int local) {
+		if (logic.getCenarios().containsKey(cenariOrigem)
+				&& logic.getCenarios().containsKey(cenarioDestino)) {
+			logic.getCenarios().get(cenariOrigem).addTeleport(cenarioDestino, local);
+		}
+	}
+
+}
+[/template]
+
+[template public loadCenario(o : Operation)]
+loadCenario([for (p : Parameter | o.ownedParameter) separator(',')] "[p.name/]"[/for]);
+[/template]
+
+[template public addTeleport(o : Operation)]
+addTeleport([for (p : Parameter | o.ownedParameter) separator(',')][if ((p.direction = ParameterDirectionKind::return))] [p.name/][else] "[p.name/]"[/if][/for]);
+[/template]
+
+[template public configLayerInferior(o : Operation)]
+configLayerInferior([for (p : Parameter | o.ownedParameter) separator(',')] "[p.name/]"[/for]);
+[/template]
+
+[template public configLayerSuperior(o : Operation)]
+configLayerSuperior([for (p : Parameter | o.ownedParameter) separator(',')] "[p.name/]"[/for]);
+[/template]

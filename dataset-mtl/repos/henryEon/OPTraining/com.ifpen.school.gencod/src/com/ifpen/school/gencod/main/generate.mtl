@@ -1,0 +1,33 @@
+[comment encoding = UTF-8 /]
+[module generate('http://www.eclipse.org/emf/2002/Ecore')]
+
+
+[template public generateElement(anEPackage : EPackage)]
+[comment @main/]
+
+[for (it : EClass | anEPackage.eClassifiers->selectByType(EClass))]
+	[it.generateEClass()/]
+[/for]
+[/template]
+
+[template public generateEClass(c : EClass)]
+[file (c.name + '.java', false, 'UTF-8')]
+package 
+public class [c.name/] {
+
+  [for (att : EAttribute | c.eAllAttributes)]
+  	private [att.eType.instanceClassName/] [att.name/];
+
+  [/for]
+  [for (ref : EReference | c.eAllReferences)]
+    [let refType : String = ref.eType.name.replace('java.lang', '')]
+  		[if (ref.upperBound > 1 or ref.upperBound = -1)]
+  	private List<[ref.eType.name/]> [ref.name/];
+   	 [else]
+  	private [ref.eType.name/] [ref.name/];
+    	[/if]
+    [/let]
+  [/for]
+}
+[/file]
+[/template]

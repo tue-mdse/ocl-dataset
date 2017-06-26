@@ -1,0 +1,195 @@
+[comment encoding = UTF-8 /]
+[module index('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import ::utils /]
+[import frontend::entities::main /]
+
+[template public indexMain(m : Model, path : String)]
+[m.appjs(path.concat('src/'))/]
+[m.index(path)/]
+[/template]
+
+
+[template protected appjs(m : Model, path : String)]
+[file (path.concat('app.js'), false, 'UTF-8')]
+/*
+[m.license()/]
+*/
+(function (ng) {
+    var mod = ng.module('mainApp', ['['/]
+        //'ngCrudMock',
+        'ngCrud',
+        'ui.router',
+        'ui.grid',
+        [for (c : Class | m.getClasses())]
+        [if(c.isAbstract=false)]
+        '[c.getModule()/]',
+        [/if]
+        [/for]
+        'authModule'
+    [']'/]);
+
+    mod.constant('baseUrl', 'api');
+
+    mod.config(['['/]'$logProvider', function ($logProvider) {
+            $logProvider.debugEnabled(true);
+        }[']'/]);
+
+    mod.config(['['/]'RestangularProvider', 'baseUrl', function (rp, baseUrl) {
+            rp.setBaseUrl(baseUrl);
+            rp.setRequestInterceptor(function (elem, operation) {
+                if (operation === "remove") {
+                    return null;
+                }
+                return elem;
+            });
+            rp.addResponseInterceptor(function (data, operation, what, url, response) {
+                if (operation === "getList") {
+                    data.totalRecords = parseInt(response.headers("X-Total-Count")) || 1;
+                }
+                return data;
+            });
+        }[']'/]);
+
+    mod.config(['['/]'$urlRouterProvider', function ($urlRouterProvider) {
+                $urlRouterProvider.otherwise('/');
+        }[']'/]);
+
+    mod.config(['['/]'authServiceProvider', 'baseUrl', function (auth, baseUrl) {
+            auth.setValues({
+                apiUrl: baseUrl + '/users/',
+                successState: '[m.getClasses()->any(1=1).getListStateName()/]'
+            });
+        }[']'/]);
+
+    /*
+     * When there's an error changing state, ui-router doesn't raise an error
+     * This configuration allows to print said errors
+     */
+    mod.run(['['/]'$rootScope', '$log', function ($rootScope, $log) {
+            $rootScope.$on('$stateChangeError', function (event, toState, toParams, fromState, fromParams, error) {
+                $log.warn(error);
+            });
+        }[']'/]);
+})(window.angular);
+[/file]
+[/template]
+
+[template protected index(m : Model, path : String)]
+[file (path.concat('index.html'), false, 'UTF-8')]
+<!DOCTYPE html>
+<!--
+[m.license()/]
+-->
+<html ng-app="mainApp">
+    <head>
+        <title>[m.name/]</title>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <!-- build:css(<%= meta.src %>) styles/vendor.css -->
+        <!-- bower:css -->
+        <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css" />
+        <link rel="stylesheet" href="bower_components/angular-ui-grid/ui-grid.css" type="text/css">
+        <!-- endbower -->
+        <!-- endbuild -->
+
+        <!-- build:css(<%= meta.src %>) styles/main.css -->
+        <!-- include: "type": "css", "files": "<%= meta.includeCssFiles %>" -->
+        <!-- /include -->
+        <!-- endbuild -->
+
+        <!-- build:js(<%= meta.src %>) scripts/vendor.js -->
+        <!-- bower:js -->
+        <script src="bower_components/jquery/dist/jquery.js"></script>
+        <script src="bower_components/angular/angular.js"></script>
+        <script src="bower_components/angular-bootstrap/ui-bootstrap-tpls.js"></script>
+        <script src="bower_components/bootstrap/dist/js/bootstrap.js"></script>
+        <script src="bower_components/lodash/lodash.js"></script>
+        <script src="bower_components/restangular/dist/restangular.js"></script>
+        <script src="bower_components/angular-messages/angular-messages.js"></script>
+        <script src="bower_components/ngstorage/ngStorage.js"></script>
+        <script src="bower_components/checklist-model/checklist-model.js"></script>
+        <script src="bower_components/angular-ui-router/release/angular-ui-router.js"></script>
+        <script src="bower_components/angular-cookies/angular-cookies.js"></script>
+        <script src="bower_components/pdfmake/build/pdfmake.min.js"></script>
+        <script src="bower_components/angular-ui-grid/ui-grid.min.js"></script>
+        <script src="bower_components/angular-touch/angular-touch.min.js"></script>
+        <script src="bower_components/angular-animate/angular-animate.min.js"></script>
+        <!-- endbower -->
+        <!-- endbuild -->
+
+        <!-- build:js(<%= meta.src %>) scripts/scripts.js -->
+        <!-- include: "type": "js", "files": "<%= meta.includeJsFiles %>" -->
+        <script src="src/app.js"></script>
+        <script src="src/modules/directives/js/crud.mod.js"></script>
+        <script src="src/modules/directives/js/crud.dir.js"></script>        
+        <script src="src/modules/login/js/auth.mod.js"></script>
+        <script src="src/modules/login/js/auth.ctrl.js"></script>
+        <script src="src/modules/login/js/auth.dir.js"></script>
+        <script src="src/modules/login/js/auth.svc.js"></script>
+        [for (c : Class | m.getClasses())]
+        [if(c.isAbstract=false)]
+        <script src="src/modules/[c.getName()/]/[c.getName()/].mod.js"></script>
+        [/if]
+        [/for]
+        [for (c : Class | m.getClasses())]
+        [if(c.isAbstract=false)]
+        <script src="src/modules/[c.getName()/]/[c.getName()/].ctrl.js"></script>
+        [for (a : Property | c.getNonCompositeCollectionAttributes())]
+        <script src="src/modules/[c.getName()/]/instance/[a.name/]/edit/[c.getName()/].[a.name/].edit.ctrl.js"></script>
+        <script src="src/modules/[c.getName()/]/instance/[a.name/]/list/[c.getName()/].[a.name/].list.ctrl.js"></script>
+        [/for]
+        <script src="src/modules/[c.getName()/]/instance/delete/[c.getName()/].delete.ctrl.js"></script>
+        <script src="src/modules/[c.getName()/]/instance/detail/[c.getName()/].detail.ctrl.js"></script>
+        <script src="src/modules/[c.getName()/]/instance/edit/[c.getName()/].edit.ctrl.js"></script>
+        <script src="src/modules/[c.getName()/]/list/[c.getName()/].list.ctrl.js"></script>
+        <script src="src/modules/[c.getName()/]/new/[c.getName()/].new.ctrl.js"></script>
+        [/if]
+        [/for]
+        <!-- /include -->
+        <!-- endbuild -->
+
+    </head>
+    <body style="padding-top: 60px;">
+        <div class="container">
+            <div class="col-md-12">
+                <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+                    <div class="container-fluid">
+                        <!-- Brand and toggle get grouped for better mobile display -->
+                        <div class="navbar-header">
+                            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#main-bar">
+                                <span class="sr-only">Toggle navigation</span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                                <span class="icon-bar"></span>
+                            </button>
+                            <a class="navbar-brand" href>[m.name/]</a>
+                        </div>
+
+                        <!-- Collect the nav links, forms, and other content for toggling -->
+                        <div class="collapse navbar-collapse" id="main-bar">
+                            <ul class="nav navbar-nav">
+                                [for (c : Class | m.getRootClasses())]
+                                [if(c.isAbstract=false)]
+                                <li><a ui-sref="[c.getListStateName()/]({page: 1, limit: 15})">[c.getDisplayName()/]</a></li>
+                                [/if]
+                                [/for]
+                            </ul>
+                            <ul class="nav navbar-nav navbar-right">
+                                <login-button></login-button>
+                            </ul>
+                        </div> <!-- /.navbar-collapse -->
+                    </div> <!-- /.container-fluid -->
+                </nav>
+            </div>
+            <div ui-view="mainView"></div>
+        </div>
+    </body>
+</html>
+[/file]
+[/template]
+
+[template protected getDisplayName(c : Class)]
+[c.name.asDisplayName()/]
+[/template]

@@ -1,0 +1,207 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module segment_gen.
+ */]
+[module segment_gen('http://www.eclipse.org/uml2/4.0.0/UML',
+					'http://www.eclipse.org/papyrus/0.7.0/SysML',
+					'http:///schemas/Functional/_dozfwFO0EeSLefC5vJP4yw/4',
+					'http://Mapping/schemas/Allocation/_Px3IoFO1EeSj9tgZpcmhcg/3')]
+
+[import org::eclipse::acceleo::module::tres_gen::requests::util_general /]
+[import org::eclipse::acceleo::module::tres_gen::requests::util_sr /]
+
+[**
+ * Generate the commands to transform subsystems into segments. Transformation entry point
+ * @param mdl UML::Model instance representing a functional model whose subsystems must be transformed into segments 
+ */]
+[template public generate_segments(mdl : Model) post(trim())]
+[comment Preliminary variables /]
+[let mdl_name : String = mdl.name]
+[let pkgs : Sequence(Package) = mdl.eContents(Package)]
+[let funp : Package = mdl.eContents(PackageImport)->selectSinglePackageByName('Functional')]
+[let mapp : Package = pkgs->selectSinglePackageByName('Mapping')]
+[let f2t_set : Set(Abstraction) = mapp.getFunctionToTaskMapsFromPack()]
+
+[comment ========================= /]
+[comment Generate the file content /]
+[comment ========================= /]
+[file ('subsys_to_segments_tr_commands.m', false, 'UTF-8')]
+[for (c : Class | funp.eContents(Class)) ? (c.hasStereotypeApplied('Functional::SRSubsystem'))]
+%
+%%%%% Transformation commands for subsystem [c.name/]
+%
+% - Converting to subsystem with trigger
+[convertToSubsystemWithTrigger(mdl_name, c)/] 
+%
+% - Setting sample times of subsystem's internal blocks to -1.0
+[setBlocksSampleTimesForFnctCall(mdl_name, c)/]
+%
+% - Adding the latch block (with connections between the triggered subsys. and the latch)
+[generateLatch(mdl_name, c)/]
+%
+% - Adding the 'start segment' signal
+[generateActivateSegmentInfrastruct(mdl_name, c, f2t_set->selectSingleAbstractionBySupplier(c))/]
+%
+% - Adding the 'finish segment' signal
+[generateTerminateSegmentInfrastruct(mdl_name, c, f2t_set->selectSingleAbstractionBySupplier(c))/]
+[/for]
+%
+%%%%% Manage the connections among the latches and the corresponding consumer subsystems
+[for (c : Class | funp.eContents(Class)) ? (c.hasStereotypeApplied('Functional::SRSubsystem'))]
+%
+% - Latch_[c.name/]
+[manageLatchConnections(mdl_name, c, funp.eContents(Class)->selectSingleClassByName('FunctionalSystem'))/]
+[/for]
+[/file]
+
+[comment Closing the preliminary var. declaration section /]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/template]
+
+[**
+ * 
+ */]
+[template public convertToSubsystemWithTrigger(mdl_name : String, elem : Class)]
+[elem.lowerCaseName()/]_hd = get_param('[mdl_name/]_bn/[elem.name/]', 'handle');
+[elem.lowerCaseName()/]_pp = get_param([elem.lowerCaseName()/]_hd, 'Position');
+ss[elem.lowerCaseName()/]_pp = [elem.lowerCaseName()/]_pp;
+Simulink.BlockDiagram.createSubSystem([elem.lowerCaseName()/]_hd);
+ss[elem.lowerCaseName()/]_hd = get_param(gcb, 'handle');
+set_param(ss[elem.lowerCaseName()/]_hd, 'name', 'SS_[elem.name/]');
+set_param(ss[elem.lowerCaseName()/]_hd, 'Position', ss[elem.lowerCaseName()/]_pp);
+% _Force_ the correct routing among IN/OUT ports within the new subsystem (Simulink.BlockDiagram.createSubSystem() does NOT guarantee it)
+% Done.
+[let elem_inports : OrderedSet(Port) = elem.getInSRPorts()->sortPortsByIndex()]
+[let elem_outports : OrderedSet(Port) = elem.getOutSRPorts()->sortPortsByIndex()]
+[for (Sequence{1 .. elem.getNumberOfInSRPorts()})]
+set_param('[mdl_name/]_bn/SS_[elem.name/]/In[i/]', 'name', '[elem_inports->at(i).name/]');
+[/for]
+[for (Sequence{1 .. elem.getNumberOfOutSRPorts()})]
+set_param('[mdl_name/]_bn/SS_[elem.name/]/Out[i/]', 'name', '[elem_outports->at(i).name/]');
+[/for]
+[/let]
+[/let]
+[elem.lowerCaseName()/]_pp = get_param([elem.lowerCaseName()/]_hd, 'Position');
+fnct_pp = ['['/][elem.lowerCaseName()/]_pp(3:4)+50, [elem.lowerCaseName()/]_pp(3:4)+70[']'/];
+add_block('built-in/TriggerPort', '[mdl_name/]_bn/SS_[elem.name/]/function', 'Position', fnct_pp);
+set_param('[mdl_name/]_bn/SS_[elem.name/]/function', 'TriggerType', 'function-call');
+set_param('[mdl_name/]_bn/SS_[elem.name/]/function', 'StatesWhenEnabling', 'held');
+set_param('[mdl_name/]_bn/SS_[elem.name/]/function', 'PropagateVarSize', 'During execution');
+set_param('[mdl_name/]_bn/SS_[elem.name/]/function', 'SampleTimeType', 'triggered');
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+%
+%%%% Clear the temporary variables defined for managing the generation of Triggered Subsystem [mdl_name/]_bn/SS_[elem.name/]
+%
+% Clearing the tmp vars for the position of subsystem SS_[elem.name/] and its trigger
+clear [elem.lowerCaseName()/]_hd [elem.lowerCaseName()/]_pp ss[elem.lowerCaseName()/]_pp ss[elem.lowerCaseName()/]_hd fnct_pp;
+[/file]
+[/template]
+
+[**
+ * 
+ */]
+[template public setBlocksSampleTimesForFnctCall(mdl_name : String, elem : Class)]
+[elem.lowerCaseName()/]_blks = find_system('[mdl_name/]_bn/SS_[elem.name/]/[elem.name/]', 'LookUnderMasks', 'all', 'SearchDepth', 1);
+[elem.lowerCaseName()/]_blks = [elem.lowerCaseName()/]_blks(2:end);
+cellfun(@(x) set_param(x, 'SampleTime', '-1.0'), [elem.lowerCaseName()/]_blks(cellfun(@(y) isfield(get_param(y, 'ObjectParameters'), 'SampleTime'), [elem.lowerCaseName()/]_blks)));
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars collecting the internal blocks of (control) subsystem SS_[elem.name/]/[elem.name/]
+clear [elem.lowerCaseName()/]_blks;
+[/file]
+[/template]
+
+[**
+ * 
+ */]
+[template public generateLatch(mdl_name : String, producer : Class) post(trim())]
+[let latch_label : String = 'lch_' + producer.lowerCaseName()]
+[latch_label/]_xy  = ['['/]ss[producer.lowerCaseName()/]_pp(3)+45,ss[producer.lowerCaseName()/]_pp(2)[']'/];
+[latch_label/]_wh  = ['['/]ss[producer.lowerCaseName()/]_pp(3)-ss[producer.lowerCaseName()/]_pp(1),ss[producer.lowerCaseName()/]_pp(4)-ss[producer.lowerCaseName()/]_pp(2)[']'/];
+[latch_label/]_pp  = ['['/][latch_label/]_xy, [latch_label/]_xy+[latch_label/]_wh[']'/];
+add_block('simulink/Ports & Subsystems/Function-Call Subsystem', '[mdl_name/]_bn/Latch_[producer.name/]', 'Position', [latch_label/]_pp);
+add_line('[mdl_name/]_bn', 'SS_[producer.name/]/1', 'Latch_[producer.name/]/1', 'autorouting', 'on');
+[if (producer.getNumberOfOutSRPorts()>1)]
+set_param('[mdl_name/]_bn/Latch_[producer.name/]/In1', 'name', 'D1');
+set_param('[mdl_name/]_bn/Latch_[producer.name/]/Out1', 'name', 'Q1');
+[for (Sequence{2 .. producer.getNumberOfOutSRPorts()})]
+add_block('built-in/Inport', '[mdl_name/]_bn/Latch_[producer.name/]/D[i+1/]', 'Position', ['['/]30,105+[i/]*45,60,118+[i/]*45[']'/]);
+add_block('built-in/Outport', '[mdl_name/]_bn/Latch_[producer.name/]/Q[i+1/]', 'Position', ['['/]360,105+[i/]*45,390,118+[i/]*45[']'/]);
+add_line('[mdl_name/]_bn', 'SS_[producer.name/]/[i+1/]', 'Latch_[producer.name/]/[i+1/]', 'autorouting', 'on');
+add_line('[mdl_name/]_bn/Latch_[producer.name/]', 'D[i+1/]/1', 'Q[i+1/]/1', 'autorouting', 'on');
+[/for]
+[else]
+set_param('[mdl_name/]_bn/Latch_[producer.name/]/In1', 'name', 'D');
+set_param('[mdl_name/]_bn/Latch_[producer.name/]/Out1', 'name', 'Q');
+[/if]
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of latch [mdl_name/]_bn/Latch_[producer.name/]
+clear [latch_label/]_xy [latch_label/]_wh [latch_label/]_pp;
+[/file]
+[/let]
+[/template]
+
+[**
+ * 
+ */]
+[template public manageLatchConnections(mdl_name : String, producer : Class, functional_system : Class) post(trim())]
+[let producer_conns : Set(Connector) = producer.selectConnectorsAsSource(functional_system.ownedConnector)]
+[for (c : Connector | producer_conns)]
+delete_line('[mdl_name/]_bn', 'SS_[producer.name/]/[c.getIndexOfSourcePort()/]', '[c.getDestination().generateConsumerName()/]/[c.getIndexOfDestinationPort()/]');
+add_line('[mdl_name/]_bn', 'Latch_[producer.name/]/[c.getIndexOfSourcePort()/]', '[c.getDestination().generateConsumerName()/]/[c.getIndexOfDestinationPort()/]', 'autorouting', 'on');
+[/for]
+[/let]
+[/template]
+
+[**
+ * 
+ */]
+[template public generateActivateSegmentInfrastruct(mdl_name : String, elem : Class, allc : Abstraction) post(trim())]
+[let segment_no : String = allc.getValueOfStereotypeProperty('Mapping::Allocation::FunctionToThreadMap','mapOrder').toString()]
+[let task_no : String = allc.client->asSequence()->first().oclAsType(Property).type.oclAsType(Class).getTaskIdLong()]
+[let label_prefix : String = '_'.concat(task_no+'_'+segment_no+'_1')]
+froms[label_prefix/]_xy = ss[elem.lowerCaseName()/]_pp(1:2) - ['['/]45,30[']'/];
+froms[label_prefix/]_wh = ['['/]55,20[']'/];
+froms[label_prefix/]_pp = ['['/]froms[label_prefix/]_xy, froms[label_prefix/]_xy+froms[label_prefix/]_wh[']'/];
+add_block('built-in/From', '[mdl_name/]_bn/FromS[label_prefix/]', 'Position', froms[label_prefix/]_pp);
+set_param('[mdl_name/]_bn/FromS[label_prefix/]', 'GotoTag', 'S[label_prefix/]');
+set_param('[mdl_name/]_bn/FromS[label_prefix/]', 'ShowName', 'off' );
+add_line('[mdl_name/]_bn', 'FromS[label_prefix/]/1', 'SS_[elem.name/]/Trigger', 'autorouting', 'on');
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/FromS[label_prefix/]
+clear froms[label_prefix/]_xy froms[label_prefix/]_wh froms[label_prefix/]_pp;
+[/file]
+[/let]
+[/let]
+[/let]
+[/template]
+
+[**
+ * 
+ */]
+[template public generateTerminateSegmentInfrastruct(mdl_name : String, elem : Class, allc : Abstraction)]
+[let segment_no : String = allc.getValueOfStereotypeProperty('Mapping::Allocation::FunctionToThreadMap','mapOrder').toString()]
+[let task_no : String = allc.client->asSequence()->first().oclAsType(Property).type.oclAsType(Class).getTaskIdLong()]
+[let label_prefix : String = '_'.concat(task_no+'_'+segment_no+'_1')]
+fromf[label_prefix/]_xy = lch_[elem.lowerCaseName()/]_pp(1:2) - ['['/]45,30[']'/];
+fromf[label_prefix/]_wh = ['['/]55,20[']'/];
+fromf[label_prefix/]_pp = ['['/]fromf[label_prefix/]_xy, fromf[label_prefix/]_xy+fromf[label_prefix/]_wh[']'/];
+add_block('built-in/From', '[mdl_name/]_bn/FromF[label_prefix/]', 'Position', fromf[label_prefix/]_pp);
+set_param('[mdl_name/]_bn/FromF[label_prefix/]', 'GotoTag', 'F[label_prefix/]');
+set_param('[mdl_name/]_bn/FromF[label_prefix/]', 'ShowName', 'off' );
+add_line('[mdl_name/]_bn', 'FromF[label_prefix/]/1', 'Latch_[elem.name/]/Trigger', 'autorouting', 'on');
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/FromF[label_prefix/]
+clear fromf[label_prefix/]_xy fromf[label_prefix/]_wh fromf[label_prefix/]_pp;
+[/file]
+[/let]
+[/let]
+[/let]
+[/template]

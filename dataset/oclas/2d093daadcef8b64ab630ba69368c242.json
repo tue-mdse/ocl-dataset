@@ -1,0 +1,917 @@
+[
+  {
+    "name": "RelativeLocation",
+    "expressions": [],
+    "properties": [
+      "relativeLocID",
+      "Root",
+      "relativedirection",
+      "location",
+      "distance",
+      "unit"
+    ]
+  },
+  {
+    "name": "Operation",
+    "expressions": [],
+    "properties": [
+      "Root",
+      "logOperation",
+      "RBACUtility",
+      "permissions",
+      "idOperation"
+    ]
+  },
+  {
+    "name": "RBACContext",
+    "expressions": [],
+    "properties": [
+      "r1",
+      "r2",
+      "logContext",
+      "Root",
+      "p1",
+      "p2",
+      "idContext"
+    ]
+  },
+  {
+    "name": "DayType",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "delegationType",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Root",
+    "expressions": [],
+    "properties": [
+      "obj",
+      "u",
+      "d",
+      "c",
+      "dur",
+      "currentDay",
+      "r",
+      "period",
+      "loc",
+      "log",
+      "sys",
+      "currentT",
+      "s",
+      "op",
+      "p",
+      "rloc",
+      "rd"
+    ]
+  },
+  {
+    "name": "ComposedRelativeTE",
+    "expressions": [
+      {
+        "operations": {
+          "flatten": 1,
+          "checkHours": 2,
+          "or": 2,
+          "getDayOfWeek": 1,
+          "oclIsTypeOf": 4,
+          "and": 7,
+          "isContained": 1,
+          "oclAsSet": 4,
+          "equalTo": 1,
+          "notEmpty": 1,
+          "=": 8,
+          "oclAsType": 6
+        },
+        "name": "checkDaysRank",
+        "body": "\n\t\t\tlet  day:RelativeTimePoint =  u.getDayOfWeek() in \n\t\t\tif self.overlay -> notEmpty()  and  self.overlay ->flatten() ->exists(a|a.oclIsTypeOf(DayOfWeek) or \n \t    \t    a.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(DayOfWeek)) then \n \t    \t    /* relative time interval */\n \t    \t    self.overlay -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(RelativeTimeInterval) = true and \n\t\t\t\t day.isContained(t.oclAsType(RelativeTimeInterval))  = true and day.rank = t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfWeek).rank and\n                 t.checkHours(u)= true) \n \t    \t    or\n \t    \t    /* relative time point */\n                 self.overlay -> exists (t:ComposedRelativeTE|t.oclIsTypeOf(DayOfWeek) = true and \n                 day.equalTo (t.oclAsType(DayOfWeek)) = true and day.rank = t.oclAsType(DayOfWeek).rank and\n       \t\t     t.checkHours(u)= true)\n \t    \t else\n \t    \t \ttrue\n \t    \t endif\n \t    \t    ",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 3,
+          "OperationCallExpImpl": 38,
+          "VariableExpImpl": 21,
+          "LetExpImpl": 1,
+          "TypeExpImpl": 10,
+          "IfExpImpl": 1,
+          "BooleanLiteralExpImpl": 7,
+          "PropertyCallExpImpl": 10
+        },
+        "properties": [
+          "gemRBAC::RelativeTimeInterval::start",
+          "gemRBAC::RelativeTimePoint::rank",
+          "gemRBAC::ComposedRelativeTE::overlay"
+        ]
+      },
+      {
+        "operations": {
+          "<=": 1,
+          "checkHours": 2,
+          "or": 1,
+          "oclIsTypeOf": 4,
+          "checkDays": 2,
+          "and": 9,
+          "getCurrentTime": 1,
+          "=": 9,
+          "oclAsType": 7,
+          ">=": 1
+        },
+        "name": "checkMonth",
+        "body": "\n\t\t\t let month :ecore::EInt = u.getCurrentTime().month in\n\t\t\t  (self.oclIsTypeOf(MonthOfYear) = true\n \t  \t\t\t\t\t and self.oclAsType(MonthOfYear).month  = month and\n \t  \t\t\t\t\t self.checkHours(u)= true and self.checkDays(u)= true) \n \t  \t\t\t or\n \t  \t\t\t (self.oclIsTypeOf(RelativeTimeInterval) = true \n \t    \t    and self.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(MonthOfYear) = true\n \t    \t    and self.oclAsType(RelativeTimeInterval).end.oclIsTypeOf(MonthOfYear) = true and \n \t    \t    self.oclAsType(RelativeTimeInterval).start.oclAsType(MonthOfYear).month <= month   and\n \t    \t    self.oclAsType(RelativeTimeInterval).end.oclAsType(MonthOfYear).month >= month and\n \t    \t    self.checkHours(u)= true and self.checkDays(u)= true)",
+        "type": "OperationImpl",
+        "constructs": {
+          "OperationCallExpImpl": 37,
+          "VariableExpImpl": 19,
+          "LetExpImpl": 1,
+          "TypeExpImpl": 11,
+          "PropertyCallExpImpl": 8,
+          "BooleanLiteralExpImpl": 8
+        },
+        "properties": [
+          "gemRBAC::RelativeTimeInterval::start",
+          "gemRBAC::TimePoint::month",
+          "gemRBAC::RelativeTimeInterval::end",
+          "gemRBAC::MonthOfYear::month"
+        ]
+      },
+      {
+        "operations": {
+          "flatten": 1,
+          "<=": 1,
+          "or": 2,
+          "oclIsTypeOf": 5,
+          "and": 6,
+          "oclAsSet": 3,
+          "notEmpty": 1,
+          "getCurrentTime": 2,
+          "oclAsType": 9,
+          "=": 5,
+          ">": 1
+        },
+        "name": "checkHours",
+        "body": "\n\t\t\tlet hour :ecore::EInt = u.getCurrentTime().hour in \n\t\t\tif self.overlay -> notEmpty() and  self.overlay ->flatten() ->exists(a|a.oclIsTypeOf(HourOfDay) or \n \t    \t    a.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(HourOfDay)) then\n\t\t\t\tself.overlay -> exists (h: ComposedRelativeTE|h.oclIsTypeOf(RelativeTimeInterval) = true \n \t    \t    \tand h.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(HourOfDay) = true\n \t    \t    \tand h.oclAsType(RelativeTimeInterval).end.oclIsTypeOf(HourOfDay) = true and \n \t    \t    \th.oclAsType(RelativeTimeInterval).start.oclAsType(HourOfDay).hour <= hour   and\n \t    \t    \t(h.oclAsType(RelativeTimeInterval).end.oclAsType(HourOfDay).hour > hour or\n \t    \t    \t(h.oclAsType(RelativeTimeInterval).end.oclAsType(HourOfDay).hour = hour and u.getCurrentTime().minute = 0 )\n \t    \t    ))\n \t    \t else\n \t    \t \ttrue\n \t    \t endif\n \t    \t    ",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "OperationCallExpImpl": 36,
+          "VariableExpImpl": 16,
+          "LetExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "TypeExpImpl": 14,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 14,
+          "BooleanLiteralExpImpl": 4
+        },
+        "properties": [
+          "gemRBAC::RelativeTimeInterval::start",
+          "gemRBAC::TimePoint::hour",
+          "gemRBAC::HourOfDay::hour",
+          "gemRBAC::TimePoint::minute",
+          "gemRBAC::RelativeTimeInterval::end",
+          "gemRBAC::ComposedRelativeTE::overlay"
+        ]
+      },
+      {
+        "operations": {
+          "flatten": 1,
+          "checkHours": 2,
+          "getDayOfWeek": 1,
+          "or": 2,
+          "oclIsTypeOf": 4,
+          "and": 5,
+          "isContained": 1,
+          "oclAsSet": 4,
+          "equalTo": 1,
+          "notEmpty": 1,
+          "=": 6,
+          "oclAsType": 3
+        },
+        "name": "checkDays",
+        "body": "\n\t\t\tlet  day:RelativeTimePoint =  u.getDayOfWeek() in \n\t\t\tif self.overlay -> notEmpty()  and  self.overlay ->flatten() ->exists(a|a.oclIsTypeOf(DayOfWeek) or \n \t    \t    a.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(DayOfWeek)) then\n\t\t\t\t /* relative time interval */\n\t\t\t\t self.overlay -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(RelativeTimeInterval) = true and \n\t\t\t\t day.isContained(t.oclAsType(RelativeTimeInterval))  = true and\n                 t.checkHours(u)= true)  or \n                 /* relative time point */\n                 self.overlay -> exists (t:ComposedRelativeTE|t.oclIsTypeOf(DayOfWeek) = true and \n                 day.equalTo (t.oclAsType(DayOfWeek)) = true and\n       \t\t     t.checkHours(u)= true)\n \t    \t else\n \t    \t \ttrue\n \t    \t endif\n \t    \t    ",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 3,
+          "OperationCallExpImpl": 31,
+          "VariableExpImpl": 17,
+          "LetExpImpl": 1,
+          "TypeExpImpl": 7,
+          "IfExpImpl": 1,
+          "BooleanLiteralExpImpl": 7,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "gemRBAC::RelativeTimeInterval::start",
+          "gemRBAC::ComposedRelativeTE::overlay"
+        ]
+      }
+    ],
+    "properties": [
+      "ComposedRelativeTE",
+      "overlay"
+    ]
+  },
+  {
+    "name": "DayOfWeek",
+    "expressions": [],
+    "properties": [
+      "day",
+      "Root"
+    ]
+  },
+  {
+    "name": "TimeUnitType",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Session",
+    "expressions": [],
+    "properties": [
+      "user",
+      "enabledRoles",
+      "activeRoles",
+      "idSession",
+      "Root"
+    ]
+  },
+  {
+    "name": "Polygon",
+    "expressions": [],
+    "properties": ["segment"]
+  },
+  {
+    "name": "TemporalContext",
+    "expressions": [],
+    "properties": ["timeexpression"]
+  },
+  {
+    "name": "SpatialContext",
+    "expressions": [],
+    "properties": [
+      "label",
+      "User",
+      "location"
+    ]
+  },
+  {
+    "name": "RelativeDirection",
+    "expressions": [],
+    "properties": [
+      "Root",
+      "idDirection",
+      "relativelocation"
+    ]
+  },
+  {
+    "name": "RBACUtility",
+    "expressions": [
+      {
+        "operations": {},
+        "name": "getDayOfWeek",
+        "body": "\n\t\t\tself.currentDay",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["gemRBAC::RBACUtility::currentDay"]
+      },
+      {
+        "operations": {},
+        "name": "getCumulativeActiveDuration",
+        "body": "\n\t\t\tduration",
+        "type": "OperationImpl",
+        "constructs": {"VariableExpImpl": 1},
+        "properties": []
+      },
+      {
+        "operations": {},
+        "name": "getCurrentTime",
+        "body": "\n\t\t        self.currentT ",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["gemRBAC::RBACUtility::currentT"]
+      }
+    ],
+    "properties": [
+      "maxPermission",
+      "boundedPermissions",
+      "maxRole",
+      "businessTaskList",
+      "Root",
+      "currentDay",
+      "maxActiveRole",
+      "currentT"
+    ]
+  },
+  {
+    "name": "CardinalDirection",
+    "expressions": [],
+    "properties": [
+      "direction",
+      "angle"
+    ]
+  },
+  {
+    "name": "History",
+    "expressions": [],
+    "properties": [
+      "op",
+      "context",
+      "Root",
+      "role",
+      "user",
+      "idLog",
+      "object",
+      "permission"
+    ]
+  },
+  {
+    "name": "Circle",
+    "expressions": [],
+    "properties": [
+      "radius",
+      "center"
+    ]
+  },
+  {
+    "name": "QualitativeType",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "TimeExpression",
+    "expressions": [],
+    "properties": [
+      "absolute",
+      "idTimeExpr",
+      "TemporalContext",
+      "relative"
+    ]
+  },
+  {
+    "name": "AbsoluteTE",
+    "expressions": [{
+      "operations": {
+        "oclAsSet": 1,
+        "notEmpty": 1
+      },
+      "name": "hasDuration",
+      "body": "\n\t\t\tself.duration -> notEmpty()",
+      "type": "OperationImpl",
+      "constructs": {
+        "VariableExpImpl": 1,
+        "OperationCallExpImpl": 2,
+        "PropertyCallExpImpl": 1
+      },
+      "properties": ["gemRBAC::AbsoluteTE::duration"]
+    }],
+    "properties": [
+      "TimeExpression",
+      "duration",
+      "idAbsoluteTE"
+    ]
+  },
+  {
+    "name": "ActivationDuration",
+    "expressions": [{
+      "operations": {
+        "and": 1,
+        "=": 1,
+        ">": 1
+      },
+      "name": "greaterThan",
+      "body": "self.timeUnit = d.timeUnit\n\t\t\t      and self.value> d.value",
+      "type": "OperationImpl",
+      "constructs": {
+        "VariableExpImpl": 4,
+        "OperationCallExpImpl": 3,
+        "PropertyCallExpImpl": 4
+      },
+      "properties": [
+        "gemRBAC::ActivationDuration::timeUnit",
+        "gemRBAC::ActivationDuration::value"
+      ]
+    }],
+    "properties": [
+      "Root",
+      "idDuration",
+      "isContinous",
+      "rexp",
+      "aexp",
+      "timeUnit",
+      "value"
+    ]
+  },
+  {
+    "name": "User",
+    "expressions": [],
+    "properties": [
+      "revocation",
+      "recieveddelegation",
+      "userLog",
+      "Root",
+      "userLocation",
+      "delegatedRoles",
+      "idUser",
+      "roles",
+      "delegation",
+      "sessions"
+    ]
+  },
+  {
+    "name": "HourOfDay",
+    "expressions": [],
+    "properties": [
+      "hour",
+      "minute"
+    ]
+  },
+  {
+    "name": "PhysicalLocation",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Polyline",
+    "expressions": [],
+    "properties": [
+      "end",
+      "Polygon",
+      "start"
+    ]
+  },
+  {
+    "name": "TimeInterval",
+    "expressions": [],
+    "properties": [
+      "end",
+      "start"
+    ]
+  },
+  {
+    "name": "Point",
+    "expressions": [],
+    "properties": [
+      "Polyline",
+      "alt",
+      "Polyline",
+      "lat",
+      "long",
+      "Circle"
+    ]
+  },
+  {
+    "name": "TimePoint",
+    "expressions": [
+      {
+        "operations": {
+          "=": 4,
+          ">": 7
+        },
+        "name": "isAfter",
+        "body": "\n\t\t\t      if self.year > t.year then true \n\t\t\t      \telse\n\t\t\t             if self.year = t.year then \n\t\t\t             \tif  self.month > t.month then\n\t\t\t             \t\ttrue\n\t\t\t             \telse\n\t\t\t             \t \tif  self.month = t.month then \n\t\t\t             \t \t\n\t\t\t             \t \t\tif self.day > t.day then\n\t\t\t             \t \t\t   true\n\t\t\t             \t \t\telse\n\t\t\t             \t \t\t\tif self.day = t.day then \n\t\t\t             \t \t\t\t\tif self.hour > t.hour then\n\t\t\t             \t \t\t   true\n\t\t\t             \t \t\telse\n\t\t\t             \t \t\t\tif self.hour > t.hour then\n\t\t\t             \t \t\t\t\ttrue\n\t\t\t             \t \t\t\telse\n\t\t\t             \t \t\t\t\tif self.hour = t.hour then\n\t\t\t             \t \t\t\t\t\tif self.minute > t.minute then\n\t\t\t             \t \t\t\t\t\t\ttrue\n\t\t\t             \t \t\t\t\t\telse\n\t\t\t             \t \t\t\t\t\t\tif self.second > t.second then\n\t\t\t             \t \t\t\t\t\t\t\ttrue\n\t\t\t             \t \t\t\t\t\t\telse\n\t\t\t             \t \t\t\t\t\t\t\tfalse\n\t\t\t             \t \t\t\t\t\t\tendif\n\t\t\t             \t \t\t\t\t\tendif\n\t\t\t             \t \t\t\t\telse\n\t\t\t             \t \t\t\t\t\tfalse\n\t\t\t             \t \t\t\t\tendif\n\t\t\t             \t \t\t\tendif\n\t\t\t             \t \t\tendif\n\t\t\t             \t \t\t\telse\n\t\t\t             \t \t\t\t\tfalse\n\t\t\t             \t \t\t\tendif\n\t\t\t             \t \t\tendif\n\t\t\t             \t \telse\n\t\t\t             \t \t\tfalse\n\t\t\t             \t \tendif\n\t\t\t             \tendif\n\t\t\t             else\n\t\t\t             \tfalse\n\t\t\t             endif\n\t\t\t      endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "OperationCallExpImpl": 11,
+          "VariableExpImpl": 22,
+          "IfExpImpl": 11,
+          "PropertyCallExpImpl": 22,
+          "BooleanLiteralExpImpl": 12
+        },
+        "properties": [
+          "gemRBAC::TimePoint::day",
+          "gemRBAC::TimePoint::second",
+          "gemRBAC::TimePoint::year",
+          "gemRBAC::TimePoint::month",
+          "gemRBAC::TimePoint::hour",
+          "gemRBAC::TimePoint::minute"
+        ]
+      },
+      {
+        "operations": {
+          "and": 5,
+          "=": 6
+        },
+        "name": "equalTo",
+        "body": "self.day = t.day and \n\t\t\t      self.month = t.month and\n\t\t\t      self.year = t.year and\n\t\t\t      self.hour = t.hour and\n\t\t\t      self.minute = t.minute and\n\t\t\t      self.second = t.second",
+        "type": "OperationImpl",
+        "constructs": {
+          "OperationCallExpImpl": 11,
+          "VariableExpImpl": 12,
+          "PropertyCallExpImpl": 12
+        },
+        "properties": [
+          "gemRBAC::TimePoint::second",
+          "gemRBAC::TimePoint::day",
+          "gemRBAC::TimePoint::year",
+          "gemRBAC::TimePoint::month",
+          "gemRBAC::TimePoint::hour",
+          "gemRBAC::TimePoint::minute"
+        ]
+      },
+      {
+        "operations": {
+          "or": 2,
+          "and": 1,
+          "equalTo": 2,
+          "isAfter": 1,
+          "isBefore": 1
+        },
+        "name": "isContained",
+        "body": "\n\t\t\t    self.equalTo(t.end) or (self.isBefore (t.end) and (self.isAfter(t.start) or self.equalTo(t.start)))\n\t\t\t      \n\t\t\t",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 8,
+          "OperationCallExpImpl": 7,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "gemRBAC::TimeInterval::end",
+          "gemRBAC::TimeInterval::start"
+        ]
+      },
+      {
+        "operations": {
+          "<": 7,
+          "=": 4
+        },
+        "name": "isBefore",
+        "body": "\n\t\t\t      if self.year < t.year then true \n\t\t\t      \telse\n\t\t\t             if self.year = t.year then \n\t\t\t             \tif  self.month < t.month then\n\t\t\t             \t\ttrue\n\t\t\t             \telse\n\t\t\t             \t \tif  self.month = t.month then \n\t\t\t             \t \t\n\t\t\t             \t \t\tif self.day < t.day then\n\t\t\t             \t \t\t   true\n\t\t\t             \t \t\telse\n\t\t\t             \t \t\t\tif self.day = t.day then \n\t\t\t             \t \t\t\t\tif self.hour < t.hour then\n\t\t\t             \t \t\t   true\n\t\t\t             \t \t\telse\n\t\t\t             \t \t\t\tif self.hour < t.hour then\n\t\t\t             \t \t\t\t\ttrue\n\t\t\t             \t \t\t\telse\n\t\t\t             \t \t\t\t\tif self.hour = t.hour then\n\t\t\t             \t \t\t\t\t\tif self.minute < t.minute then\n\t\t\t             \t \t\t\t\t\t\ttrue\n\t\t\t             \t \t\t\t\t\telse\n\t\t\t             \t \t\t\t\t\t\tif self.second < t.second then\n\t\t\t             \t \t\t\t\t\t\t\ttrue\n\t\t\t             \t \t\t\t\t\t\telse\n\t\t\t             \t \t\t\t\t\t\t\tfalse\n\t\t\t             \t \t\t\t\t\t\tendif\n\t\t\t             \t \t\t\t\t\tendif\n\t\t\t             \t \t\t\t\telse\n\t\t\t             \t \t\t\t\t\tfalse\n\t\t\t             \t \t\t\t\tendif\n\t\t\t             \t \t\t\tendif\n\t\t\t             \t \t\tendif\n\t\t\t             \t \t\t\telse\n\t\t\t             \t \t\t\t\tfalse\n\t\t\t             \t \t\t\tendif\n\t\t\t             \t \t\tendif\n\t\t\t             \t \telse\n\t\t\t             \t \t\tfalse\n\t\t\t             \t \tendif\n\t\t\t             \tendif\n\t\t\t             else\n\t\t\t             \tfalse\n\t\t\t             endif\n\t\t\t      endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "OperationCallExpImpl": 11,
+          "VariableExpImpl": 22,
+          "IfExpImpl": 11,
+          "PropertyCallExpImpl": 22,
+          "BooleanLiteralExpImpl": 12
+        },
+        "properties": [
+          "gemRBAC::TimePoint::day",
+          "gemRBAC::TimePoint::second",
+          "gemRBAC::TimePoint::year",
+          "gemRBAC::TimePoint::month",
+          "gemRBAC::TimePoint::hour",
+          "gemRBAC::TimePoint::minute"
+        ]
+      }
+    ],
+    "properties": [
+      "second",
+      "day",
+      "year",
+      "month",
+      "hour",
+      "PeriodicTime",
+      "TimeInterval",
+      "Root",
+      "RBACUtility",
+      "minute",
+      "TimeInterval"
+    ]
+  },
+  {
+    "name": "QualitativeDirection",
+    "expressions": [],
+    "properties": ["direction"]
+  },
+  {
+    "name": "CardinalType",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Delegation",
+    "expressions": [],
+    "properties": [
+      "Delegation",
+      "delegatedRole",
+      "delegatedPermissions",
+      "isRevoked",
+      "isTotal",
+      "delegateUser",
+      "endDate",
+      "delegatorUser",
+      "maxDepth",
+      "Root",
+      "isTransfer",
+      "idDelegation",
+      "startDate",
+      "delegatedDelegation",
+      "revokingUser"
+    ]
+  },
+  {
+    "name": "Permission",
+    "expressions": [],
+    "properties": [
+      "object",
+      "idPermission",
+      "operations",
+      "logPermission",
+      "roles",
+      "permissionContextAssignment",
+      "delegation",
+      "RBACUtility",
+      "permissionContextEnabling",
+      "Root",
+      "rolesE"
+    ]
+  },
+  {
+    "name": "Object",
+    "expressions": [],
+    "properties": [
+      "idObject",
+      "Root",
+      "permissions",
+      "logObject"
+    ]
+  },
+  {
+    "name": "Role",
+    "expressions": [
+      {
+        "operations": {
+          "getAlljuniors": 1,
+          "union": 1,
+          "asSet": 4,
+          "notEmpty": 1
+        },
+        "name": "getAlljuniors",
+        "body": "\n\t\t\n\t\t\tif self.juniors -> notEmpty() then\n\t             self.juniors-> asSet() -> union (self.juniors-> asSet()-> collect (r:Role| r.getAlljuniors()-> asSet())->asSet())\n\t            \n\t             else  \n\t              self.juniors\n\t             endif ",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 5,
+          "OperationCallExpImpl": 7,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": ["gemRBAC::Role::juniors"]
+      },
+      {
+        "operations": {
+          "flatten": 1,
+          "isContained": 1,
+          "getCurrentTime": 1,
+          "asSet": 1,
+          "=": 1,
+          "oclAsType": 2
+        },
+        "name": "getCurrentAbsoluteTE",
+        "body": "self.roleContextEnabling.oclAsType(TemporalContext).timeexpression.absolute->flatten()->asSet() \n\t\t\t-> select (i:AbsoluteTE| u.getCurrentTime().isContained(i.oclAsType(TimeInterval))= true) -> any (true) ",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 5,
+          "VariableExpImpl": 6,
+          "OperationCallExpImpl": 7,
+          "TypeExpImpl": 2,
+          "PropertyCallExpImpl": 3,
+          "BooleanLiteralExpImpl": 2
+        },
+        "properties": [
+          "gemRBAC::TimeExpression::absolute",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::Role::roleContextEnabling"
+        ]
+      }
+    ],
+    "properties": [
+      "delegation",
+      "roleContextAssignment",
+      "isStrong",
+      "sessionsA",
+      "enabledPermissions",
+      "users",
+      "Root",
+      "isDependent",
+      "sessionsE",
+      "isCascading",
+      "permissions",
+      "idRole",
+      "juniors",
+      "seniors",
+      "user",
+      "logRole",
+      "roleContextEnabling"
+    ]
+  },
+  {
+    "name": "DayOfMonth",
+    "expressions": [],
+    "properties": [
+      "day",
+      "month"
+    ]
+  },
+  {
+    "name": "Location",
+    "expressions": [
+      {
+        "operations": {
+          "allInstances": 2,
+          "=": 4
+        },
+        "name": "computeRelative",
+        "body": "\n\t\t\t      /*Location.allInstances()->select(l|l.label = 'zone3')->any(true);*/\n\t\t\t      \n\t\t\t      if self.locationID = 'LLAgencyAdmin' then\n\t\t\t        Location.allInstances()->select(l|l.label = 'outsideDarfurZone1')->any(true)  \n\t\t\t      else\n\t\t\t        if self.locationID = 'LLMisionAdmin' then\n\t\t\t        Location.allInstances()->select(l|l.label = 'insideDarfurZone1')->any(true)\n\t\t\t      else\n\t\t\t         self\n\t\t\t      endif\n\t\t\t      endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 4,
+          "OperationCallExpImpl": 6,
+          "VariableExpImpl": 5,
+          "TypeExpImpl": 2,
+          "StringLiteralExpImpl": 4,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 4,
+          "BooleanLiteralExpImpl": 2
+        },
+        "properties": [
+          "gemRBAC::Location::locationID",
+          "gemRBAC::Location::label"
+        ]
+      },
+      {
+        "operations": {
+          "toInteger": 1,
+          "mod": 1,
+          "size": 2,
+          "=": 5,
+          "substring": 1
+        },
+        "name": "contains",
+        "body": "\n\t\t\t /* (self.label= 'zone1' and l.label = 'A') or\n\t\t\t  (self.label= 'zoneL1' and l.label = 'A') or\n\t\t\t  (self.label= 'zone3' and l.label = 'C'); */\n\t\t\t   if self.label= 'insideDarfurZone1' then\n\t\t\t       l.label = 'pJ'\n\t\t\t   else\n\t\t\t      if self.label= 'outsideDarfurZone1' then \n\t\t\t        l.label = 'pK'\n\t\t\t      else\n\t\t\t       let  a: String = self.locationID.substring(self.locationID.size(),self.locationID.size()),\n                     n: Integer = a.toInteger() in\n                     (n.mod(2)= 0)\n                 endif\n             endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 9,
+          "OperationCallExpImpl": 10,
+          "LetExpImpl": 2,
+          "IntegerLiteralExpImpl": 2,
+          "StringLiteralExpImpl": 4,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 7
+        },
+        "properties": [
+          "gemRBAC::Location::locationID",
+          "gemRBAC::Location::label"
+        ]
+      }
+    ],
+    "properties": [
+      "SpatialContext",
+      "relativelocation",
+      "Root",
+      "locationID",
+      "label"
+    ]
+  },
+  {
+    "name": "PeriodicTime",
+    "expressions": [],
+    "properties": [
+      "idPeriodicTime",
+      "frequency",
+      "timeUnit",
+      "Root",
+      "nextStart"
+    ]
+  },
+  {
+    "name": "RelativeTimePoint",
+    "expressions": [
+      {
+        "operations": {
+          "oclIsTypeOf": 1,
+          "<": 1,
+          "indexOf": 2,
+          "oclAsType": 2
+        },
+        "name": "isBefore",
+        "body": "if self.oclIsTypeOf(DayOfWeek) then\n\t\t\t             let Days: OrderedSet(DayType) =OrderedSet{DayType::Monday, DayType::Tuesday, \n\t\t\t\tDayType::Wednesday, DayType::Thursday, DayType::Friday, DayType::Saturday, DayType::Sunday}\n\t\t\t\t in   Days-> indexOf (self.oclAsType(DayOfWeek).day) < Days-> indexOf (t.oclAsType(DayOfWeek).day)\n\t\t\t      else\n\t\t\t          false\n\t\t\t      endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 5,
+          "OperationCallExpImpl": 6,
+          "LetExpImpl": 1,
+          "EnumLiteralExpImpl": 7,
+          "TypeExpImpl": 3,
+          "CollectionLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "BooleanLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": ["gemRBAC::DayOfWeek::day"]
+      },
+      {
+        "operations": {
+          "or": 2,
+          "oclIsTypeOf": 1,
+          "and": 1,
+          "equalTo": 2,
+          "isAfter": 1,
+          "isBefore": 1
+        },
+        "name": "isContained",
+        "body": "\n\t\t\t      if self.oclIsTypeOf(DayOfWeek)  then\n\t\t\t            /*self.isBefore (t.end) and (self.isAfter(t.start) or self.equalTo(t.start)) */ \n\t\t\t          self.equalTo(t.start) or ( t.start.isBefore (self) and (t.end.isAfter(self) or self.equalTo(t.end)))\n\t\t\t             \n\t\t\t      else\n\t\t\t          false\n\t\t\t      endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 9,
+          "OperationCallExpImpl": 8,
+          "TypeExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 4,
+          "BooleanLiteralExpImpl": 1
+        },
+        "properties": [
+          "gemRBAC::RelativeTimeInterval::start",
+          "gemRBAC::RelativeTimeInterval::end"
+        ]
+      },
+      {
+        "operations": {
+          "oclIsTypeOf": 1,
+          "oclAsType": 2,
+          "indexOf": 2,
+          ">": 1
+        },
+        "name": "isAfter",
+        "body": "if self.oclIsTypeOf(DayOfWeek) then\n\t\t\t            let Days: OrderedSet(DayType) =OrderedSet{DayType::Monday, DayType::Tuesday, \n\t\t\t\t          DayType::Wednesday, DayType::Thursday, DayType::Friday, DayType::Saturday, DayType::Sunday}\n\t\t\t\t         in   Days-> indexOf (self.oclAsType(DayOfWeek).day) > Days-> indexOf (t.oclAsType(DayOfWeek).day)\n\t\t\t      else\n\t\t\t          false\n\t\t\t      endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 5,
+          "OperationCallExpImpl": 6,
+          "LetExpImpl": 1,
+          "EnumLiteralExpImpl": 7,
+          "TypeExpImpl": 3,
+          "CollectionLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "BooleanLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": ["gemRBAC::DayOfWeek::day"]
+      },
+      {
+        "operations": {
+          "oclIsTypeOf": 1,
+          "=": 1,
+          "oclAsType": 2
+        },
+        "name": "equalTo",
+        "body": "if self.oclIsTypeOf(DayOfWeek) then \n\t\t\t             self.oclAsType(DayOfWeek).day = t.oclAsType(DayOfWeek).day\n\t\t\t             else\n\t\t\t             true\n\t\t\t             endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 4,
+          "TypeExpImpl": 3,
+          "IfExpImpl": 1,
+          "BooleanLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": ["gemRBAC::DayOfWeek::day"]
+      }
+    ],
+    "properties": [
+      "rank",
+      "RelativeTimeInterval",
+      "RBACUtility",
+      "RelativeTimeInterval"
+    ]
+  },
+  {
+    "name": "LogicalLocation",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "RelativeTE",
+    "expressions": [],
+    "properties": [
+      "d2",
+      "idRelativeTE",
+      "TimeExpression"
+    ]
+  },
+  {
+    "name": "RelativeTimeInterval",
+    "expressions": [],
+    "properties": [
+      "start",
+      "end"
+    ]
+  },
+  {
+    "name": "MonthOfYear",
+    "expressions": [],
+    "properties": ["month"]
+  },
+  {
+    "name": "UnitType",
+    "expressions": [],
+    "properties": []
+  }
+]

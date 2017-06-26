@@ -1,0 +1,140 @@
+[comment encoding = UTF-8 /]
+[module detail('http://www.eclipse.org/uml2/5.0.0/UML') extends frontend::entities::main ]
+[import ::utils /]
+
+[template public mainDetailState(c : Class, path : String)]
+[let filePath : String = path.concat(c.getInstanceStatesFolder()+'detail/')]
+    [c.genController(filePath)/]
+    [c.genTemplate(filePath)/]
+[/let]
+[/template]
+
+[**
+ * Generates a controller for the detail state
+ * @param c Class for which the controller is create
+ * @param path Parent folder in which the file should be created
+*/]
+[template private genController(c : Class, path : String)]
+[file (path.concat(c.getName()).concat('.detail.ctrl.js'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+(function (ng) {
+
+    var mod = ng.module("[c.getModule()/]");
+
+    mod.controller("[c.getDetailCtrlName()/]", ['['/]'$scope', "$state", "[c.getRecordName()/]",
+        function ($scope, $state, [c.getRecordName()/]) {
+            $scope.currentRecord = [c.getRecordName()/];
+            $scope.actions = {
+                create: {
+                    displayName: 'Create',
+                    icon: 'plus',
+                    fn: function () {
+                        $state.go('[c.getNewStateName()/]');
+                    }
+                },
+                edit: {
+                    displayName: 'Edit',
+                    icon: 'edit',
+                    fn: function () {
+                        $state.go('[c.getEditStateName()/]');
+                    }
+                },
+                delete: {
+                    displayName: 'Delete',
+                    icon: 'minus',
+                    fn: function () {
+                        $state.go('[c.getDeleteStateName()/]');
+                    }
+                },
+                refresh: {
+                    displayName: 'Refresh',
+                    icon: 'refresh',
+                    fn: function () {
+                        $state.reload();
+                    }
+                },
+                list: {
+                    displayName: 'List',
+                    icon: 'th-list',
+                    fn: function () {
+                        $state.go('[c.getListStateName()/]');
+                    }
+                }[if (c.isMaster())],
+                [for (a : Property | c.getCollectionAttributes()) separator(',\n')]
+                [a.name/]: {
+                    displayName: '[a.getDisplayName()/]',
+                    icon: 'link',
+                    fn: function () {
+                        [if (a.isComposite())]
+                        $state.go('[a.getClass().getListStateName()/]');
+                        [else]
+                        $state.go('[a.getSharedListState()/]');
+                        [/if]
+                    }
+                }[/for][/if][for (a : Property | c.getReferences(false)->select(isComposite())) separator('\n')]
+                ,[a.name/]: {
+                    displayName: '[a.getDisplayName()/]',
+                    icon: 'link',
+                    fn: function () {
+                        [if (a.isComposite())]
+                        $state.go('[a.getClass().getListStateName()/]');
+                        [else]
+                        $state.go('[a.getSharedListState()/]');
+                        [/if]
+                    }
+                }[/for]
+
+            };
+        }[']'/]);
+})(window.angular);
+[/file]
+[/template]
+
+[template private genTemplate(c : Class, path : String)]
+[file (path.concat(c.getName()).concat('.detail.tpl.html'), false, 'UTF-8')]
+<!--
+[c.getModel().license()/]
+-->
+<header>
+    <toolbar name="model.name" display-name="model.displayName" actions='actions'></toolbar>
+</header>
+<div  class="container-fluid well">
+    <div class="col-md-12">
+    [if(c.isGeneralization())]
+    [for (a : Property | c.getGeneralizationClass().allAttributes()->reject(isID()))]
+        [if (a.existAttribute(c)=false)]
+        <p>
+            <label><strong>[a.name.toUpperFirst()/]: </strong></label>
+            <span id="[a.name/]">{{currentRecord.[a.name.toLowerFirst()/][if (a.isDate())] | date[/if]}}</span>
+        </p>
+        [/if]
+    [/for]
+    [/if]
+    [for (a : Property | c.allAttributes()->reject(isID()))]
+        <p>
+            <label><strong>[a.name.toUpperFirst()/]: </strong></label>
+            <span id="[a.name/]">{{currentRecord.[a.name.toLowerFirst()/][if (a.isDate())] | date[/if]}}</span>
+        </p>
+    [/for]
+    [for (a : Property | c.getReferences(false))]
+        <p>
+            <label><strong>[a.name.toUpperFirst()/]: </strong></label>
+            <span id="[a.name/]">
+                {{currentRecord.[a.name.toLowerFirst()/].name}}
+            </span>
+        </p>
+    [/for]
+    </div>
+</div>
+[if(c.hasCompositeAssociations() or c.hasSharedAssociations() or c.hasOne2OneCompositeAssociations())]
+<div ui-view="[c.getName()/]ChieldView"></div>
+[/if]
+<!-- TODO -->
+[/file]
+[/template]
+
+[template private getFormName(c : Class)]
+[c.getName()/]Form
+[/template]

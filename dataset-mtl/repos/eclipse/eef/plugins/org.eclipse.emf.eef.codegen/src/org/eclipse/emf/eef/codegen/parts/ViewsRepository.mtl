@@ -1,0 +1,111 @@
+[comment encoding = UTF-8
+ *******************************************************************************
+ * Copyright (c) 2008-2009 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module ViewsRepository('http://www.eclipse.org/emf/eef/views/1.0.0','http://www.eclipse.org/emf/eef/components/1.0.0','http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/eef/generation/1.0.0')/]
+
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::naming /]
+
+[comment 
+ This template will generate a file for each ViewRepository in the EEF model.
+ /]
+[template public ViewsRepository(viewRepository : ViewsRepository)]
+[file (viewRepository.fullFilePath(), false)]
+[viewRepository.associatedGenModel().licenceText().trim()/]
+package [viewRepository.partsPackage()/];
+
+/**
+ * [viewRepository.associatedGenModel().authorText().trim()/]
+ * [viewRepository.associatedGenModel().generationMark()/]
+ */
+public class [viewRepository.vrClass()/] {
+
+	public static final int SWT_KIND = 0;
+
+	public static final int FORM_KIND = 1;
+
+[viewRepository.viewDescriptors()/]
+}
+[/file]
+[/template]
+
+[comment 
+ Template used to call recursively on the viewRepository to get views
+ /]
+[template public viewDescriptors(viewRepository : ViewsRepository)]
+[for (view : View | viewRepository.views) separator ('\n')]
+[view.viewDescriptor()/]
+[/for]
+[for (category : Category | viewRepository.eAllContents(views::Category)) separator ('\n')]
+[for (view : View |category.views )]
+[view.viewDescriptor()/]
+[/for]
+[/for]
+[/template]
+
+[comment Template used to generate code for each views /]
+[template public viewDescriptor(view : View)]
+
+	/**
+	 * [view.name/] view descriptor
+	 * [view.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	public static class [view.identifiedElementKey().toJavaClassifier()/] {
+[if (view.oclIsTypeOf(views::CustomView) and not view.owningViewsRepository().associatedGenModel().useJMergeForUserCode)]
+		// [protected ('for '.concat(view.name).concat(' keys'))]
+		
+		// [/protected]
+[else]
+[for (viewElement : ViewElement | view.elements)]
+	[viewElement.viewElementDescriptor()/]
+[/for]
+[/if]
+	}
+[/template]
+
+[comment 
+ Template used to generate code for each elementEditor. it calls recursively on the content of each viewElement
+ /]
+[template public viewElementDescriptor(viewElement : ViewElement)]
+[if (viewElement.oclIsTypeOf(ElementEditor))]
+[viewElement.owningViewsRepository().associatedGenModel().generationComment()/]
+public static String [viewElement.oclAsType(ElementEditor).identifiedElementKey().toJavaIdentifier()/] = "[viewElement.oclAsType(ElementEditor).qualifiedIdentifier/]";
+[elseif (viewElement.oclIsTypeOf(CustomElementEditor) and not viewElement.owningViewsRepository().associatedGenModel().useJMergeForUserCode)]
+// [protected ('for '.concat(viewElement.name).concat(' ElementEditor key'))]
+public static String [viewElement.oclAsType(CustomElementEditor).identifiedElementKey().toJavaIdentifier()/] = "[viewElement.oclAsType(CustomElementEditor).qualifiedIdentifier/]";
+// [/protected]
+[elseif (viewElement.oclIsTypeOf(views::Container))]
+	public static class [viewElement.oclAsType(views::Container).identifiedElementKey().toJavaClassifier()/] {
+
+	[for (ve : ViewElement | viewElement.oclAsType(views::Container).elements)]
+		[ve.viewElementDescriptor()/]
+	[/for]
+
+	}
+[elseif (viewElement.oclIsTypeOf(View))]
+[for (v : View | viewElement.oclAsType(View))]
+	[v.viewDescriptor()/]
+[/for]
+[elseif (viewElement.oclIsTypeOf(ViewReference))]
+[viewElement.owningViewsRepository().associatedGenModel().generationComment()/]
+public static String [viewElement.oclAsType(ViewReference).identifiedElementKey().toJavaIdentifier()/] = "[viewElement.oclAsType(ViewReference).qualifiedIdentifier/]";
+[else]
+	//TODO FIXME invalid case for template public viewElementDescriptor(viewElement : ViewElement) in module ViewsRepository.mtl, viewElement : [viewElement/]
+[/if]
+[/template]
+
+[comment 
+ Template used to determine the viewRepository's generated file full path
+ /]
+[template public fullFilePath(repository : ViewsRepository)]
+[repository.vrQualifiedClass().toPath()/].java
+[/template]

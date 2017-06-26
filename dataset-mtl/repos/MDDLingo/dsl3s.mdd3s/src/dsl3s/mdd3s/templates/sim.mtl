@@ -1,0 +1,378 @@
+[comment encoding = UTF-8 /]
+[module sim('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import dsl3s::mdd3s::templates::services/]
+[comment
+Date: 09-08-2012    Author: Luís de Sousa  (luis.a.de.sousa@gmail.com)
+Generates the main Simulation class inheriting from SimState.
+/]
+
+[template public sim(c : Class) ? (c.hasStereotype('Simulation'))]
+
+[file (c.name.concat('.java'), false, 'UTF-8')]
+import java.util.ArrayList;
+import java.util.List;
+
+import sim.engine.SimState;
+import sim.engine.Steppable;
+import sim.engine.Stoppable;
+import sim.util.geo.MasonGeometry;
+import sim.field.geo.GeomVectorField;
+
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Envelope;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+
+public class [c.name/] extends SimState 
+{
+	//Simulation space
+	public Integer spaceWidth = [c.getTaggedValue(c, 'Simulation', 'spaceWidth')/];
+	public Integer spaceHeight = [c.getTaggedValue(c, 'Simulation', 'spaceHeight')/];
+	public Double  widthInterval = 1.0; 
+	public Double  heightInterval = 1.0;
+	public Double  gridInterval = 1.0;
+    public Double  gridIntervalOpen = 1.0;
+	protected Integer displayFactor = 0;
+
+	[comment Arbitrary pixel height value, should be ok for non retina displays./]
+	protected void calcDisplayFactor() { while(spaceHeight * ++displayFactor < 500); }
+	
+	public Integer getDisplayFactor() { return displayFactor; } 
+
+	public Integer getDisplayWidth()
+	{
+		if(displayFactor == 0) calcDisplayFactor();
+		return spaceWidth * displayFactor;
+	}
+
+	public Integer getDisplayHeight()
+	{
+		if(displayFactor == 0) calcDisplayFactor();
+		return spaceHeight * displayFactor;
+	}
+
+	GeometryFactory geomFactory = new GeometryFactory();
+	Envelope globalMBR;
+
+[for (assA:Association | c.getAssociations())]
+ [for (a:Element | assA.relatedElement) ]
+  [let aClass: Class = a.oclAsType(Class)] 
+  [if (aClass.isNotNull())]
+   [if (aClass.hasStereotype('Animat'))]
+    [if (aClass.getTaggedValue(aClass, 'Animat', 'initNum').isNotNull())]
+
+	public Integer initNum[aClass.name/] = [aClass.getTaggedValue(aClass, 'Animat', 'initNum')/];
+	[/if]
+	[if (aClass.getTaggedValue(aClass, 'Animat', 'inputLayer').isNotNull())]
+	public String inputLayer[aClass.name/] = "[aClass.getTaggedValue(aClass, 'Animat', 'inputLayer')/]";
+	[/if]
+	public GeomVectorField space[aClass.name/] = new GeomVectorField(spaceWidth, spaceHeight);
+
+	protected ArrayList<MasonGeometry> garbage[aClass.name/] = new ArrayList<MasonGeometry>();
+	public void addTo[aClass.name/]Garbage(MasonGeometry anim) 
+    {
+		garbage[aClass.name/].add(anim);
+	}
+	protected void collect[aClass.name/]Garbage()  {
+		for (MasonGeometry anim : garbage[aClass.name/]) 
+       {
+			space[aClass.name/].removeGeometry(anim);
+			((Stoppable) anim).stop();
+		}
+		garbage[aClass.name/] = new ArrayList<MasonGeometry>();
+	}
+   [/if]
+   [if (aClass.hasStereotype('Spatial'))]
+
+	[if (aClass.getTaggedValue(aClass, 'Spatial', 'inputLayer').isNotNull())]
+	public String inputLayer[aClass.name/] = "[aClass.getTaggedValue(aClass, 'Spatial', 'inputLayer')/]";
+	[/if]
+	public GeomVectorField space[aClass.name/] = new GeomVectorField(spaceWidth, spaceHeight);
+
+   [/if]
+  [/if]
+  [/let]
+ [/for]	 
+[/for]
+
+	// Lists for new animats
+[for (assA:Association | c.getAssociations())]
+ [for (a:Element | assA.relatedElement) ]
+  [let aClass: Class = a.oclAsType(Class)] 
+  [if (aClass.isNotNull())]
+   [if (aClass.hasStereotype('Animat'))]
+	protected ArrayList<[aClass.name/]> newAnimats[aClass.name/] = new ArrayList<[aClass.name/]>();
+   [/if]
+  [/if]
+  [/let]
+ [/for]	 
+[/for]
+
+	// Global variables
+	int step = 0;
+
+[for (assG:Association | c.getAssociations())]
+ [for (g:Element | assG.relatedElement) ]
+  [let gClass: Class = g.oclAsType(Class)] 
+  [if (gClass.isNotNull())]
+   [if (gClass.hasStereotype('Global'))]
+	public Variable global[gClass.name/] = new Variable(
+		new Double([gClass.getTaggedValue(gClass, 'Global', 'initValue')/]),  // initial
+		new Double([gClass.getTaggedValue(gClass, 'Global', 'minValue')/]),  // minimum
+		new Double([gClass.getTaggedValue(gClass, 'Global', 'maxValue')/])); // maximum
+    [if (gClass. getTaggedValue(gClass,  'Global', 'inputFile').isNotNull())]
+	protected static List<Double> list[gClass.name/] = Factory.readGlobal("[gClass.getTaggedValue(gClass, 'Global', 'inputFile')/]");
+	[else]
+	protected static Double global[gClass.name/]Var = new Double([gClass.getTaggedValue(gClass, 'Global', 'stepVariation')/]);
+    [/if]
+
+   [/if]
+  [/if]
+  [/let]
+ [/for]	 
+[/for]
+	public [c.name/](long seed)
+	{
+		super(seed);
+	}
+	
+	public void start()
+	{
+		super.start();
+
+[for (assA:Association | c.getAssociations())]
+ [for (a:Element | assA.relatedElement) ]
+  [let aClass: Class = a.oclAsType(Class)] 
+   [if (aClass.isNotNull())]
+    [if (aClass.hasStereotype('Animat'))]
+		space[aClass.name/].clear();
+    [/if]
+   [/if]
+  [/let]
+ [/for]	 
+[/for]
+
+[for (assA:Association | c.getAssociations())]
+ [for (a:Element | assA.relatedElement) ]
+  [let aClass: Class = a.oclAsType(Class)] 
+  [if (aClass.isNotNull())]
+   [if (aClass.hasStereotype('Spatial'))]
+	 [if (aClass.getTaggedValue(aClass, 'Spatial', 'inputLayer').isNotNull())]
+		Factory.load[aClass.name/]FromLayer(inputLayer[aClass.name/], space[aClass.name/], schedule);
+		if(globalMBR == null) globalMBR = space[aClass.name/].getMBR();
+		else globalMBR.expandToInclude(space[aClass.name/].getMBR());
+     [/if]
+	[/if]
+    [if (aClass.hasStereotype('Animat'))]
+     [if (aClass. getTaggedValue(aClass,  'Animat', 'inputLayer').isNotNull())]
+		Factory.load[aClass.name/]FromLayer(inputLayer[aClass.name/], space[aClass.name/], schedule);
+		if(globalMBR == null) globalMBR = space[aClass.name/].getMBR();
+		else globalMBR.expandToInclude(space[aClass.name/].getMBR());
+     [/if]
+	[/if]
+   [/if]
+   [/let]
+  [/for]	 
+ [/for]
+
+		/**
+		 * . Update the space between spatial cells
+         * . init Animats with Double x,y
+		 */
+		if(globalMBR == null)
+			globalMBR = new Envelope(0, spaceWidth, 0, spaceHeight);
+
+		widthInterval = globalMBR.getWidth() / spaceWidth;
+		heightInterval = globalMBR.getWidth() / spaceHeight;
+
+		if(widthInterval > heightInterval) gridInterval = widthInterval;
+		else gridInterval = heightInterval;
+		[comment Why is this 100? /]
+		gridIntervalOpen = gridInterval - (gridInterval / 100); 
+
+ [for (assA:Association | c.getAssociations())]
+  [for (a:Element | assA.relatedElement) ]
+   [let aClass: Class = a.oclAsType(Class)] 
+    [if (aClass.isNotNull())]
+     [if (aClass.hasStereotype('Spatial'))]
+		space[aClass.name/].setMBR(globalMBR);
+     [/if]
+	 [if (aClass.hasStereotype('Animat'))]
+		space[aClass.name/].setMBR(globalMBR);
+     [/if]
+    [/if]
+   [/let]
+  [/for]	 
+ [/for]
+
+[for (assA:Association | c.getAssociations())]
+ [for (a:Element | assA.relatedElement) ]
+  [let aClass: Class = a.oclAsType(Class)] 
+   [if (aClass.isNotNull())]
+    [if (aClass.hasStereotype('Spatial'))]
+	 [if (aClass.getTaggedValue(aClass, 'Spatial', 'inputLayer').isNull())]
+		init[aClass.name/]Objects();
+
+     [/if]
+	[/if]
+    [if (aClass.hasStereotype('Animat'))]
+     [if (aClass.getTaggedValue(aClass, 'Animat', 'inputLayer').isNull())]
+		for(int i = 0; i < initNum[aClass.name/]; i++)
+			init[aClass.name/](
+				globalMBR.getMinX() + random.nextDouble() * globalMBR.getWidth(),  
+				globalMBR.getMinY() + random.nextDouble() * globalMBR.getHeight()); 
+
+     [/if]
+	 [if (aClass.hasLinkedStereotype('Emerge'))]
+		createEmerge[aClass.name/]();	
+	 [/if]
+    [/if]
+   [/if]
+  [/let]
+ [/for]	 
+[/for]
+
+		// Update spatial index at the start of each time step
+		schedule.scheduleRepeating(new Steppable()
+		{
+			public void step(SimState state) 
+			{ 
+ [for (assA:Association | c.getAssociations())]
+  [for (a:Element | assA.relatedElement) ]
+   [let aClass: Class = a.oclAsType(Class)] 
+    [if (aClass.isNotNull())]
+     [if (aClass.hasStereotype('Animat'))]
+				space[aClass.name/].updateSpatialIndex();
+     [/if]
+    [/if]
+   [/let]
+  [/for]	 
+ [/for]
+			}
+		},-1,1);
+
+
+		// Update global variables at the start of each time step
+		schedule.scheduleRepeating(new Steppable()
+		{
+			public void step(SimState state) 
+			{ 
+[for (assG:Association | c.getAssociations())]
+ [for (g:Element | assG.relatedElement) ]
+  [let gClass: Class = g.oclAsType(Class)] 
+  [if (gClass.isNotNull())]
+   [if (gClass.hasStereotype('Global'))]
+	[if (gClass.getTaggedValue(gClass,  'Global', 'inputFile').isNotNull())]
+				global[gClass.name/].setValue(list[gClass.name/].get(step));
+	[else]
+				global[gClass.name/].add(global[gClass.name/]Var);
+	[/if]
+   [/if]
+  [/if]
+  [/let]
+ [/for]	 
+[/for]	
+				step++;
+			}
+		});	
+
+		// Collect garbage at the end of each time step
+		schedule.scheduleRepeating(schedule.EPOCH, 1, new Steppable()
+		{
+			public void step(SimState state) 
+			{ 
+
+ [for (assA:Association | c.getAssociations())]
+  [for (a:Element | assA.relatedElement) ]
+   [let aClass: Class = a.oclAsType(Class)] 
+    [if (aClass.isNotNull())]
+     [if (aClass.hasStereotype('Animat'))]
+				collect[aClass.name/]Garbage();
+				castNew[aClass.name/]();
+     [/if]
+    [/if]
+   [/let]
+  [/for]	 
+ [/for]
+			}
+		});
+	}
+
+ [for (ass:Association | c.getAssociations())]
+  [for (p:Element | ass.relatedElement) ]
+   [let pClass: Class = p.oclAsType(Class)]
+    [if (pClass.isNotNull())]
+     [if (pClass.hasStereotype('Spatial'))]
+	  [if (pClass.getTaggedValue(pClass, 'Spatial', 'inputLayer').isNull())]
+	public void init[pClass.name/]Objects() 
+    {
+		for (int i=0; i < spaceWidth; i++)
+			for (int j=0; j < spaceHeight; j++)
+			{
+				Coordinate coord = new Coordinate(
+					globalMBR.getMinX() + widthInterval / 2 + new Double(i) * widthInterval, 
+					globalMBR.getMinY() + heightInterval / 2 + new Double(j) * heightInterval);
+				Geometry geom = geomFactory.createPoint(coord);
+			  [if (pClass.getTaggedValue(pClass, 'Spatial', 'initRandom') = 'true')]
+				[pClass.name/] obj = new [pClass.name/](random, geom);
+			  [else]
+				[pClass.name/] obj = new [pClass.name/](geom);
+			  [/if]
+				obj.setStopper(schedule.scheduleRepeating(obj));
+				space[pClass.name/].addGeometry(obj);
+			}
+	}
+	  [/if]
+     [/if]
+    [/if]
+   [/let]
+  [/for]	 
+ [/for]
+
+
+[for (assA:Association | c.getAssociations())]
+ [for (a:Element | assA.relatedElement) ]
+  [let aClass: Class = a.oclAsType(Class)] 
+  [if (aClass.isNotNull())]
+   [if (aClass.hasStereotype('Animat'))]
+
+	protected void init[aClass.name/](double x, double y) 
+	{
+		[aClass.name/] new[aClass.name/] = Factory.generate[aClass.name/](x, y, schedule);
+		space[aClass.name/].addGeometry(new[aClass.name/]);
+	}
+
+	public [aClass.name/] create[aClass.name/](double x, double y) 
+	{
+		[aClass.name/] new[aClass.name/] = Factory.generate[aClass.name/](x, y, schedule);
+		newAnimats[aClass.name/].add(new[aClass.name/]);
+		return new[aClass.name/];
+	}
+
+	protected void castNew[aClass.name/] () 
+	{	
+		for(int i = 0; i < newAnimats[aClass.name/].size(); i++) 
+		{
+			[aClass.name/] new[aClass.name/] = newAnimats[aClass.name/].get(i);
+			space[aClass.name/].addGeometry(new[aClass.name/]);
+		}
+		newAnimats[aClass.name/] = new ArrayList<[aClass.name/]>();
+	}
+
+	 [if (aClass.hasLinkedStereotype('Emerge'))]
+	public void createEmerge[aClass.name/]() 
+	{
+		[aClass.name/]Emerge emerge = new [aClass.name/]Emerge();
+		emerge.setStopper(schedule.scheduleRepeating(emerge));
+	}
+	 [/if]
+
+    [/if]
+   [/if]
+   [/let]
+  [/for]	 
+ [/for]
+
+}
+[/file]
+[/template]

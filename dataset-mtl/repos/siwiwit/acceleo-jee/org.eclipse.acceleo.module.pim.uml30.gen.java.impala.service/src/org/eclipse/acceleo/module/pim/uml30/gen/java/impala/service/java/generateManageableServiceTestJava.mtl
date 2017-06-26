@@ -1,0 +1,236 @@
+[comment encoding = UTF-8 /]
+[module generateManageableServiceTestJava('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::service::common::servicePathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::java::javaclass /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::structureUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::stringUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainCommon /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::service::common::serviceCommon /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::build::common::entityUtil /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::common::compositeUtil /]
+[template public generateManageableServiceTestJava(anEntity : Class) ? (anEntity.isManageableEntity())]
+	[file (anEntity.getModel().generateProjectFolder().concat(anEntity.getModel().pathToTestJava()).concat('/').concat(anEntity.generateJavaPackagePath()).concat('/crud/').concat(anEntity.name.toUpperFirst()).concat('ManageableServiceTest.java'), false, 'UTF-8')]
+package [anEntity.generateJavaPackage()/].crud;
+
+//[protected ('imports')]
+[comment][anEntity.generateImports()/][/comment]
+
+import java.util.Collection;
+import tests.integration.ServiceTestUtil;
+import tests.integration.AbstractServiceTest;
+
+import [if (anEntity.generateJavaPackage().size()>0)][anEntity.generateJavaPackage()/].[/if]crud.[anEntity.name.toUpperFirst()/]ValueObject;
+import org.impalaframework.facade.Impala;
+import org.impalaframework.interactive.InteractiveTestRunner;
+//[/protected]
+public class [anEntity.name.toUpperFirst()/]ManageableServiceTest extends AbstractServiceTest {
+
+    private [anEntity.name.toUpperFirst()/]ManageableService [anEntity.name.toLowerFirst()/]ManageableService  = null;
+	//Start of user code addition properties
+
+    //End of user code
+    public static void main(String['[]'/] args) {
+        InteractiveTestRunner.run([anEntity.name.toUpperFirst()/]ManageableServiceTest.class);
+    }
+
+    public void testMappings() throws Exception {
+        System.out.println("[anEntity.name.toLower()/]manageableservice bean: " + AbstractServiceTest.getBean("[anEntity.name.toLower()/]manageableservice", [anEntity.name.toUpperFirst()/]ManageableService.class));
+    }
+	
+	public static [anEntity.name.toUpperFirst()/]ManageableService get[anEntity.name.toUpperFirst()/]ManageableService() {
+		return ServiceTestUtil.getBean("[anEntity.name.toLower()/]manageableservice", [anEntity.name.toUpperFirst()/]ManageableService.class);
+	}
+
+	
+
+	@Override
+    public void setUp() throws Exception {
+        super.setUp();
+        this.[anEntity.name.toLowerFirst()/]ManageableService = [anEntity.name.toUpperFirst()/]ManageableServiceTest.get[anEntity.name.toUpperFirst()/]ManageableService();
+    }
+
+	public void testReadById() throws Exception {
+
+        // Use the inherited JdbcTemplate (from
+        // AbstractTransactionalDataSourceSpringContextTests)
+        // to verify the results of the query
+//        assertEquals("JDBC query must show the same number of [anEntity.name.toLowerFirst()/]s",
+//                jdbcTemplate.queryForInt("SELECT COUNT(0) FROM [anEntity.name.toLowerFirst()/]s"), [anEntity.name.toLowerFirst()/]s
+//                        .size());
+		[for (it : Integer | Sequence{1, 2, 3})]
+        [anEntity.name.toUpperFirst()/]ValueObject [anEntity.name.toLowerFirst()/][it/] = this.[anEntity.name.toLowerFirst()/]ManageableService.readById(Long.valueOf([it/]));
+			[let classStructures : Sequence(Class) = anEntity.getAllEntityParents()->including(anEntity)]
+				[for (aStructureClass : Class | classStructures)]
+					[if (aStructureClass.ownedAttribute->notEmpty())]
+						[for (aProperty : Property | aStructureClass.ownedAttribute)]
+							[if (aProperty.type.getProperty('java.typeconversion.' + aProperty.type.name) = 'Date')]
+        assertEquals([aProperty.type.generateSampleParameterValue(aProperty.name, it.toString())/].getTime(), [anEntity.name.toLowerFirst()/][it/].get[aProperty.name.toUpperFirst()/]().getTime());
+							[else]
+        assertEquals([aProperty.type.generateSampleParameterValue(aProperty.name, it.toString())/], [anEntity.name.toLowerFirst()/][it/].get[aProperty.name.toUpperFirst()/]());
+							[/if]
+						[/for]
+					[/if]
+				[/for]
+			[/let]
+		[/for]
+    }
+
+	public void testRead() throws Exception {
+
+        // Use the inherited JdbcTemplate (from
+        // AbstractTransactionalDataSourceSpringContextTests)
+        // to verify the results of the query
+//        assertEquals("JDBC query must show the same number of [anEntity.name.toLowerFirst()/]s",
+//                jdbcTemplate.queryForInt("SELECT COUNT(0) FROM [anEntity.name.toLowerFirst()/]s"), [anEntity.name.toLowerFirst()/]s
+//                        .size());
+		[for (it : Integer | Sequence{1, 2, 3})]
+		Collection<[anEntity.name.toUpperFirst()/]ValueObject> [anEntity.name.toLowerFirst()/]s[it/] = this.[anEntity.name.toLowerFirst()/]ManageableService.read(
+			[anEntity.generateSamplePKValue(it.toString(), true)/]
+			[anEntity.generateDaoManagerFunctionNoPKAndRefOnlyParamValues(it.toString())/]
+			);
+        [comment]Collection<[anEntity.name.toUpperFirst()/]> [anEntity.name.toLowerFirst()/]s = this.[anEntity.name.toLowerFirst()/]ManageableService.read(Long.valueOf([it/]), [aProperty.type.generateSampleParameterValue(aProperty.name, it.toString())/]);[/comment]
+        assertEquals(1, [anEntity.name.toLowerFirst()/]s[it/].size());
+		[/for]
+    }
+
+ 	public void testReadAll() throws Exception {
+        Collection<[anEntity.name.toUpperFirst()/]ValueObject> [anEntity.name.toLowerFirst()/]s = this.[anEntity.name.toLowerFirst()/]ManageableService.readAll();
+        assertEquals(3, [anEntity.name.toLowerFirst()/]s.size());
+    }
+
+
+    public void testCreate() throws Exception {
+        Collection<[anEntity.name.toUpperFirst()/]ValueObject> [anEntity.name.toLowerFirst()/]s = this.[anEntity.name.toLowerFirst()/]ManageableService.readAll();
+        int found = [anEntity.name.toLowerFirst()/]s.size();
+        [anEntity.name.toUpperFirst()/]ValueObject [anEntity.name.toLowerFirst()/] = this.[anEntity.name.toLowerFirst()/]ManageableService.create(
+			[anEntity.generateDaoManagerFunctionParamValuesForCreate('4', anEntity.name.toLowerFirst())/]
+			);
+        [anEntity.name.toLowerFirst()/]s = this.[anEntity.name.toLowerFirst()/]ManageableService.readAll();
+        assertEquals(found + 1, [anEntity.name.toLowerFirst()/]s.size());
+    }
+
+
+    public void testUpdate() throws Exception {
+        [anEntity.name.toUpperFirst()/]ValueObject [anEntity.name.toLowerFirst()/] = this.[anEntity.name.toLowerFirst()/]ManageableService.readById([anEntity.generateSamplePKValue('1', true)/]);
+		this.[anEntity.name.toLowerFirst()/]ManageableService.update(	
+				[anEntity.generateSamplePKValue('1', true)/]
+		[if (anEntity.getEntityDaoManagerProperties()->notEmpty())]
+				[anEntity.generateDaoManagerFunctionNoPKParamValuesForUpdate('4', anEntity.name.toLowerFirst())/] 
+		[/if]
+				);
+        [anEntity.name.toLowerFirst()/] = this.[anEntity.name.toLowerFirst()/]ManageableService.readById([anEntity.generateSamplePKValue('1', true)/]);
+		[for (aProp : Property | anEntity.getAllEntityParents().ownedAttribute)]
+		assertEquals([aProp.generateSampleParameterValue('4')/], [anEntity.name.toLowerFirst()/].get[aProp.name.toUpperFirst()/]());
+		[/for]
+        
+			
+    }
+
+	//Start of user code other unit tests
+
+	//End of user code
+	
+}
+
+	[/file]
+[/template]
+
+[template public generateDaoManagerFunctionParamValuesForCreate (anEntity : Class, indexName : String, ownerName : String) post (trim()) ]
+	[anEntity.generateSamplePKValue(indexName, true)/]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+, [aProperty.type.generateSampleParameterValue(aProperty.name, indexName)/]
+	[/for]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and not (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+		[if (aProperty.oppositeAttribute()=null)]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([indexName/]).getId()
+			[else]
+, new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['[]'/]{
+				[for (it : Integer | Sequence{1,2,3}) separator(', ')]
+		ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([it/]).getId()
+				[/for]
+	[comment]ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([indexName/]).getId()[/comment]
+	}
+			[/if]
+		[else]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([indexName/]).getId()
+			[else]
+, new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['[]'/]{
+				[for (it : Integer | Sequence{4,5,6}) separator(', ')]
+		ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([it/]).getId()
+				[/for]
+	[comment]ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([indexName/]).getId()[/comment]
+	}
+			[/if]
+		[/if]
+	[/for]
+
+[/template]
+
+
+
+[template public generateDaoManagerFunctionNoPKParamValuesForUpdate (anEntity : Class, indexName : String, ownerName : String) post (trim()) ]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+, [aProperty.type.generateSampleParameterValue(aProperty.name, indexName)/]
+	[/for]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and not (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+		[if (aProperty.oppositeAttribute()=null)]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([1/]).getId() 
+[comment]ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]ObjectRefTo[anEntity.name.toUpperFirst()/]OfField[aProperty.oppositeAttribute().name.toUpperFirst()/]([indexName/], [ownerName/]).getId()[/comment]
+			[else]
+, new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['[]'/]{
+				[for (it : Integer | Sequence{1,2,3}) separator(', ')]
+		ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([it/]).getId()
+				[/for]
+	[comment]ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]ObjectRefTo[anEntity.name.toUpperFirst()/]OfField[aProperty.oppositeAttribute().name.toUpperFirst()/]([indexName/], [ownerName/]).getId()[/comment]
+	}
+			[/if]
+		[else]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([1/]).getId()
+[comment]ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]ObjectRefTo[anEntity.name.toUpperFirst()/]OfField[aProperty.oppositeAttribute().name.toUpperFirst()/]([indexName/], [ownerName/]).getId()[/comment]
+			[else]
+, new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['[]'/]{
+	
+	[comment]ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]ObjectRefTo[anEntity.name.toUpperFirst()/]OfField[aProperty.oppositeAttribute().name.toUpperFirst()/]([indexName/], [ownerName/]).getId()[/comment]
+				[for (it : Integer | Sequence{1,2,3}) separator(', ')]
+		ServiceTestUtil.create[aProperty.type.name.toUpperFirst()/]Object([it/]).getId()
+				[/for]
+	}
+			[/if]
+		[/if]
+	[/for]
+
+[/template]
+
+[template public generateDaoManagerFunctionNoPKAndRefOnlyParamValues (anEntity : Class, indexName : String) post (trim()) ]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+, [aProperty.type.generateSampleParameterValue(aProperty.name, indexName)/]
+	[/for]
+	[for (aProperty : Property | anEntity.getEntityDaoManagerProperties()->select(aProp: Property|not aProp.isPK() and not (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration))))]
+		[if (aProperty.oppositeAttribute()=null)]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, [aProperty.type.oclAsType(Class).generateSamplePKValue(indexName, true)/]
+			[else]
+, new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['[]'/]{[aProperty.type.oclAsType(Class).generateSamplePKValue(indexName, true)/]}
+			[/if]
+		[else]
+			[if (aProperty.upper=0 or aProperty.upper=1)]
+, [aProperty.type.oclAsType(Class).generateSamplePKValue(indexName, true)/]
+			[else]
+, new [aProperty.type.oclAsType(Class).getPrimaryTypeName(true)/]['[]'/]{[aProperty.type.oclAsType(Class).generateSamplePKValue(indexName, true)/]}
+			[/if]
+		[/if]
+	[/for]
+
+[/template]
+

@@ -1,0 +1,92 @@
+[comment encoding = UTF-8 /]
+[module generate('http://www.lowcoupling.com/dotEditor/Dot')]
+
+[template public generateDirectedGraph(dg: DirectedGraph)]
+[for (node:String|(dg.edge.src.name->union(dg.edge.tgt.name))->asSet()->sortedBy(name))]
+	ListDigraph::Node [node/] = graph->addNode();
+[/for]
+[for (edge:DirectedEdge|dg.edge)]
+	[if edge.attributes->notEmpty()]
+	ListDigraph::Arc [edge.src.name/]_[edge.tgt.name/] = graph->addArc([edge.src.name/],[edge.tgt.name/]);
+	[else]
+	graph->addArc([edge.src.name/],[edge.tgt.name/]);
+	[/if]
+[/for]
+[if dg.edge->select(attributes->notEmpty())->notEmpty()]
+	//defining weights for edges
+	ListDigraph::ArcMap<int> lengths(*graph);
+	[for (edge:DirectedEdge|dg.edge)]
+	[if edge.attributes->notEmpty()]
+	lengths['['/][edge.src.name/]_[edge.tgt.name/][']'/]=[edge.attributes->any(true).weight/];
+	[/if]
+	[/for]
+[/if]
+[/template]
+
+[template public generateUndirectedGraph(ug:UndirectedGraph)]
+[for (node:String|(ug.edge.src.name->union(ug.edge.tgt.name))->asSet()->sortedBy(name))]
+	ListGraph::Node [node/] = graph->addNode();
+[/for]
+
+[for (edge:UnDirectedEdge|ug.edge)]
+	[if edge.attributes->notEmpty()]
+	ListGraph::Edge [edge.src.name/]_[edge.tgt.name/] = graph->addEdge([edge.src.name/],[edge.tgt.name/]);
+	[else]
+	graph->addEdge([edge.src.name/],[edge.tgt.name/]);
+	[/if]
+[/for]
+
+[if ug.edge->select(attributes->notEmpty())->notEmpty()]
+	//defining weights for edges
+	ListGraph::EdgeMap<int> lengths(*graph);
+	[for (edge:UnDirectedEdge|ug.edge)]
+	[if edge.attributes->notEmpty()]
+	lengths['['/][edge.src.name/]_[edge.tgt.name/][']'/]=[edge.attributes->any(true).weight/];
+	[/if]
+	[/for]
+[/if]
+[/template]
+
+[template public generateElement(model : GraphModel)]
+[comment @main/]
+[for (g:Graph|model.graph)]
+
+[file (g.name+'.h', false, 'UTF-8')]
+#ifndef [g.name.toUpperCase()/]
+#define [g.name.toUpperCase()/]
+#include <lemon/list_graph.h>
+using namespace lemon;
+[if g.oclIsTypeOf(DirectedGraph)]
+ListDigraph * create_[g.name/]();
+[else]
+ListGraph * create_[g.name/]();
+[/if]
+#endif
+[/file]
+
+[file (g.name+'.cpp', false, 'UTF-8')]
+#include "[g.name/].h"
+
+[if g.oclIsTypeOf(DirectedGraph)]
+	ListDigraph * create_[g.name/](){
+	ListDigraph *graph = new ListDigraph();
+[else]
+	ListGraph * create_[g.name/](){
+	ListGraph *graph = new ListGraph();
+[/if]
+[if g.oclIsTypeOf(DirectedGraph)]
+	[g.oclAsType(DirectedGraph).generateDirectedGraph()/]
+[/if]
+[if g.oclIsTypeOf(UndirectedGraph)]
+	[g.oclAsType(UndirectedGraph).generateUndirectedGraph()/]
+[/if]
+
+return graph;
+
+}
+
+[/file]
+
+[/for]
+
+[/template]

@@ -1,0 +1,38 @@
+[comment encoding = UTF-8 /]
+[module generateBusinessEntity('http://www.mis.ugent.be/rea_eml')]
+
+[template public generateElement(aBusinessEntity : BusinessEntity, businessPolicyModel : BusinessPolicyModel)]
+
+[if (aBusinessEntity.oclIsTypeOf(REA_EML_BPolM::PolicyEntityType)) ]
+ <owl:NamedIndividual rdf:about="&[businessPolicyModel.ontologyNS/];[aBusinessEntity.name/]">
+ 	<rdf:type rdf:resource="&REA-EMO;PolicyEntityType"/>
+[for (aBusinessRelationship : BusinessRelationship | businessPolicyModel.businessRelationships)]
+[if (aBusinessRelationship.oclIsTypeOf(Typification)) ]
+	[if (aBusinessRelationship.oclAsType(Typification).policyEntityType = aBusinessEntity)]
+	<REA-EMO:typification_BusinessEntity rdf:resource="&[businessPolicyModel.ontologyNS/];[aBusinessRelationship.oclAsType(Typification).businessEntity.name/]"/>
+	[/if]
+[/if]
+[/for]
+ </owl:NamedIndividual>
+[elseif (aBusinessEntity.oclIsTypeOf(REA_EML_BPolM::PolicyEntityGroup)) ]
+ <owl:NamedIndividual rdf:about="&[businessPolicyModel.ontologyNS/];[aBusinessEntity.name/]">
+ 	<rdf:type rdf:resource="&REA-EMO;PolicyEntityGroup"/>
+[for (aBusinessRelationship : BusinessRelationship | businessPolicyModel.businessRelationships)]
+[if (aBusinessRelationship.oclIsTypeOf(Typification)) ]
+	[if (aBusinessRelationship.oclAsType(Typification).policyEntityType = aBusinessEntity)]
+	<REA-EMO:grouping_BusinessEntity rdf:resource="&[businessPolicyModel.ontologyNS/];[aBusinessRelationship.oclAsType(Typification).businessEntity.name/]"/>
+	[/if]
+[/if]
+[/for]
+ </owl:NamedIndividual>
+[else]
+ <owl:NamedIndividual rdf:about="&[businessPolicyModel.ontologyNS/];[aBusinessEntity.name/]">
+ 	<rdf:type rdf:resource="&REA-EMO;BusinessEntity"/>
+[for (aBusinessRelationship : BusinessRelationship | businessPolicyModel.businessRelationships)]
+	[if (aBusinessRelationship.businessEntities->at(0) = aBusinessEntity)]
+	<REA-EMO:businessRelationship_BusinessEntity rdf:resource="&[businessPolicyModel.ontologyNS/];[aBusinessRelationship.businessEntities->at(1).name/]"/>
+	[/if]
+[/for]
+ </owl:NamedIndividual>
+[/if]
+[/template]

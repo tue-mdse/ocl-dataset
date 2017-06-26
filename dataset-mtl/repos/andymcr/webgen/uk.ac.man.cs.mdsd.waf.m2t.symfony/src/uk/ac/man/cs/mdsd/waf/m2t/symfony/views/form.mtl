@@ -1,0 +1,300 @@
+[comment encoding = UTF-8 /]
+[module form(
+	'http://www.eclipse.org/emf/2002/Ecore',
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::orm::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::translation/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::names/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::uriRoutes/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::views::accessor/]
+
+
+[template public unitContent(unit : ContentUnit, dummy : String, accessor : String)
+	? (unit.oclIsKindOf(EditUnit)) post(trim())]
+[let editUnit : EditUnit = unit.oclAsType(EditUnit)]
+[editUnit.formOpen(accessor)/]
+ [editUnit.formFields(accessor)/]
+[editUnit.formControlAndClose(accessor)/]
+[/let]
+[/template]
+
+[template private formOpen(unit : DynamicUnit, accessor : String) post(trim())]
+{% form_theme [accessor/] 'form/messages_on_fields.html.twig' %}
+{{ form_start([accessor/][if (not unit.contentClass.oclIsUndefined())], { 'attr': {'class': '[unit.contentClass/]'} }[/if]) }}
+[/template]
+
+[template private formFields(unit : EditUnit, accessor : String) post(trim())]
+[for (field : UnitField | unit.inputAndEmbeddedFields())]
+[field.formField(unit, accessor)/]
+[/for]
+[/template]
+
+[template private formControlAndClose(unit : DynamicUnit, accessor : String) post(trim())]
+ <div class="[unit.controlClass/]">
+  <input type="submit" name="save" value="[unit.submitLabel()/]"[unit.disable()/][if (unit.hasJQueryClasses())]
+ class="[unit.jQueryClass()/]"[/if]/>
+[if (unit.oclIsKindOf(EditUnit))]
+[let editUnit : EditUnit = unit.oclAsType(EditUnit)]
+	[if (editUnit.oclIsTypeOf(CreateUpdateUnit))]
+	[let createUpdateUnit : CreateUpdateUnit = editUnit.oclAsType(CreateUpdateUnit)]
+		[if (not createUpdateUnit.clearLabel.oclIsUndefined())]
+  <input type="reset" name="clear" value="[createUpdateUnit.clearLabel/]"[editUnit.disable()/][if (unit.hasJQueryClasses())]
+ class="[unit.jQueryClass()/]"[/if]/>
+		[/if]
+	[/let]
+	[/if]
+	[if (not editUnit.cancelDestination.oclIsUndefined())]
+  <input type="submit" name="cancel" value="[editUnit.cancelLabel/]"[editUnit.disable()/][if (unit.hasJQueryClasses())]
+ class="[unit.jQueryClass()/]"[/if]/>
+	[/if]
+[/let]
+[/if]
+ </div>
+{{ form_row([accessor/]._token) }}
+{{ form_end([accessor/], {'render_rest': false}) }}
+[/template]
+
+[template private disable(unit : DynamicUnit) post(trim())]
+[if (not unit.oclIsKindOf(EditUnit))]
+{% if [unit.instanceName()/].data.vars.id is null %} disabled="disabled"{% endif %}
+[else]
+[let editUnit : EditUnit = unit.oclAsType(EditUnit)]
+	[if (editUnit.enableWhen.oclIsUndefined())]
+		[if (editUnit.oclIsTypeOf(UpdateUnit))]
+{% if [editUnit.instanceName()/].vars.data.id is null %} disabled="disabled"{% endif %}
+		[/if]
+	[else] 
+		[if (editUnit.oclIsTypeOf(UpdateUnit))]
+{% if [editUnit.instanceName()/].vars.data.id is null or not [editUnit.instanceName()/]_enabled %} disabled="disabled"{% endif %}
+		[else]
+{% if not [editUnit.instanceName()/]_enabled %} disabled="disabled"{% endif %}
+		[/if]
+	[/if]
+[/let]
+[/if]
+[/template]
+
+[template private formField(field : UnitField, unit : DynamicUnit, parentAccessor : String)
+	? (not field.isContains() and not field.hasEmbedded()) post(trim())]
+{{ form_row([field.propertyAccessor(parentAccessor, null, true)/][if (field.hasClass() or field.hasPlaceholder() or field.hasTitle() or field.hasUnitTranslation())]
+, {[if (field.hasUnitTranslation())]
+ 'label': '[unit.containedId()/].labels.[field.id()/]',[/if]
+[if (field.hasClass() or field.hasPlaceholder() or field.hasTitle())]
+ 'attr': {[if (field.hasTitle())]
+ 'title': [field.title(unit)/][if (field.hasPlaceholder() or field.hasClass())],[/if][/if]
+[if (field.hasPlaceholder())]
+ 'placeholder': [field.placeholder(unit)/][if (field.hasClass())],[/if][/if]
+[if (field.hasClass())]
+ 'class': '[if (field.hasJQueryClasses())][field.jQueryClass()/][if (not field.inputClass().oclIsUndefined())] [/if][/if][field.inputClass()/]'[/if]
+ }[if (field.hasUnitTranslation())], [/if][/if]
+[if (field.hasUnitTranslation())]
+'translation_domain': '[unit.translationDomain()/]'[/if]}[/if]) }}
+[/template]
+
+[template private formField(field : UnitField, unit : DynamicUnit, parentAccessor : String)
+	? (field.hasEmbedded()) post(trim())]
+[let association : UnitAssociation = field.oclAsType(UnitAssociation)]
+[let embeddedUnit : EditUnit = association.units->first().oclAsType(EditUnit)]
+[if (association.isSingleton())]
+[embeddedUnit.formFields(association.accessor(parentAccessor, null, true))/]
+[else]
+[let elementAccessor : String = embeddedUnit.contentType().name]
+{% for [elementAccessor/] in [association.accessor(parentAccessor, null, true)/] %}
+[embeddedUnit.formFields(elementAccessor)/]
+{% endfor %}
+[/let]
+[/if]
+[/let]
+[/let]
+[/template]
+
+[template private placeholder(field : UnitField, unit : DynamicUnit) post(trim())]
+[if (field.hasCustomisedLabel() or field.hasCustomisedPlaceholder() or field.hasCustomisedTitle())]
+'[unit.containedId()/].placeholders.[field.id()/]'[else]
+'[unit.contentType().id()/].labels.[field.id()/]'[/if]
+[/template]
+
+[template private title(field : UnitField, unit : DynamicUnit) post(trim())]
+[if (field.hasUnitTranslation())]
+'[unit.containedId()/].titles.[field.id()/]'[else]
+'[unit.contentType().id()/].labels.[field.id()/]'[/if]
+[/template]
+
+[template public jQueryClass(eObject : EObject) post(trim())]
+ui-corner-all ui-widget ui-widget-content
+[/template]
+
+[template public map(unit : DynamicUnit)]
+[let mapUnit : MapUnit = unit.oclAsType(MapUnit)]
+<div id="[unit.uniqueName()/]">
+ <?php
+	echo Form::input('[mapUnit.uniqueName()/]_autocomplete', NULL,
+		array(
+			'id' => '[mapUnit.uniqueName()/]_autocomplete',
+//			'class' => 'field.styleClass()/] field.inputClass()/]',
+	)) . PHP_EOL;
+?>
+ <div id="[mapUnit.uniqueName()/]_map" class="map-canvas"></div>
+ <script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
+ <script>
+var map;
+[if (not mapUnit.readOnly)]
+var marker;
+var infoWindow;
+var autocomplete;
+var geocoder;
+[/if]
+
+function initialize() {
+	var mapOptions = {
+		zoom: 12
+	};
+	map = new google.maps.Map(document.getElementById('[unit.uniqueName()/]_map'), mapOptions);
+[if (mapUnit.readOnly)]
+[else]
+	input = document.getElementById('[unit.uniqueName()/]_autocomplete');
+	map.controls['['/]google.maps.ControlPosition.TOP_LEFT[']'/].push(input);
+	marker = new google.maps.Marker();
+	infoWindow = new google.maps.InfoWindow();
+	autocomplete = new google.maps.places.Autocomplete(input);
+	autocomplete.bindTo('bounds', map);
+	geocoder = new google.maps.Geocoder();
+
+	if(navigator.geolocation) {
+		navigator.geolocation.getCurrentPosition(
+			function(position) {
+				map.setCenter(new google.maps.LatLng(
+					position.coords.latitude, position.coords.longitude));
+			},
+			function() {
+				handleNoGeolocation(true);
+		});
+	} else {
+		handleNoGeolocation(false);
+	}
+
+	google.maps.event.addListener(map, 'click', function(event) {
+		geocoder.geocode({'latLng': event.latLng}, function(results, status) {
+			if (status == google.maps.GeocoderStatus.OK) {
+				if (results['['/]1[']'/]) {
+					var contentString = $('<div class="marker-info-win">' +
+						'<p class="place-address">' + results['['/]1[']'/].formatted_address + '</p>' +
+						'<?php
+							echo Form::button('[mapUnit.instanceName()/]', '[mapUnit.submitLabel()/]', array(
+								'type' => 'submit',
+								'class' => 'save-marker'
+							));
+						?></div>');    
+					showPlace(results['['/]1[']'/].formatted_address, event.latLng, contentString);
+ 				} else {
+					setMarker(event.latLng);
+				}
+			} else {
+				setMarker(event.latLng);
+			}
+		});
+	});
+
+	google.maps.event.addListener(autocomplete, 'place_changed', function() {
+		var place = autocomplete.getPlace();
+		if (place.geometry) {
+			var contentString = $('<div class="marker-info-win">' +
+				'<h2 class="place-name">' + place.name + '</h2>' +
+				'<p class="place-address">' + place.formatted_address + '</p>' +
+				'<?php
+					echo Form::button('[mapUnit.instanceName()/]', '[mapUnit.submitLabel()/]', array(
+						'type' => 'submit',
+						'class' => 'save-marker'
+					));
+				?></div>');    
+			showPlace(place.name, place.geometry.location, contentString);
+		} else {
+			document.getElementById('[mapUnit.uniqueName()/]_input').placeholder = 'Enter a location';
+		}
+	});
+}
+
+function setMarker(latLng) {
+	marker.setMap(map);
+	marker.setPosition(latLng);
+}
+
+function showPlace(name, latLng, contentString) {
+	infoWindow.setContent(contentString['['/]0[']'/]);
+	infoWindow.setPosition(latLng);
+	infoWindow.set('name', name);
+	infoWindow.open(map);
+  
+  	var saveBtn = contentString.find('button.save-marker')['['/]0[']'/];
+		
+	if(typeof saveBtn !== 'undefined') {
+		google.maps.event.addDomListener(saveBtn, 'click', function(event) {
+			saveMarker();
+		});
+	}
+}
+
+function saveMarker() {
+	var myData = {
+[if (not mapUnit.placeName.oclIsUndefined())]
+		[mapUnit.placeName.modelPropertyName()/]: infoWindow.get('name'),
+[/if]
+		[mapUnit.location.modelPropertyName()/]_latitude: infoWindow.getPosition().lat(),
+		[mapUnit.location.modelPropertyName()/]_longitude: infoWindow.getPosition().lng()
+	};
+	$.ajax({
+		type: "POST",
+		url: "<?php
+			echo Route::get('[comment mapUnit.displayedOn.oclAsType(Page).routeName()/]')->uri(array(
+				'action' => '[mapUnit.actionName()/]',
+				'param' => 'submit'
+			));
+?>",
+		data: myData,
+		success: function(data) {
+			marker.setMap(map);
+			marker.setPosition(infoWindow.getPosition());
+			infoWindow.close();
+		},
+		error: function(xhr, ajaxOptions, thrownError) {
+			alert(thrownError);
+		}
+	});
+}
+
+function handleNoGeolocation(errorFlag) {
+  if (errorFlag) {
+    var content = 'Error: The Geolocation service failed.';
+  } else {
+    var content = 'Error: Your browser doesn\'t support geolocation.';
+  }
+
+  var options = {
+    map: map,
+    position: new google.maps.LatLng(60, 105),
+    content: content
+  };
+
+  var infowindow = new google.maps.InfoWindow(options);
+  map.setCenter(options.position);
+[/if]
+}
+
+google.maps.event.addDomListener(window, 'load', initialize);
+ </script>
+</div>
+[/let]
+[/template]
+
+[template public formErrors(unit : DynamicUnit) post(trim())]
+<?php
+	if ( isset($[unit.fieldErrorsName()/])) {
+		foreach ($[unit.fieldErrorsName()/] AS $field => $message) {
+?>
+<p class="[unit.errorClass/]"><?php echo __($message); ?></p>
+<?php
+		}
+	} 
+?>
+[/template]

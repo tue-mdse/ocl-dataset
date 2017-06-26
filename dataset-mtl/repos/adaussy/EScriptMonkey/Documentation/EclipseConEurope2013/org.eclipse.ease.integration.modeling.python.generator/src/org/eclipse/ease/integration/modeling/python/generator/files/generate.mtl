@@ -1,0 +1,55 @@
+[comment encoding = UTF-8 /]
+[module generate('http://www.eclipse.org/emf/2002/GenModel','http://www.eclipse.org/emf/2002/Ecore')]
+[import org::topcased::uml::profile::generationtool::genmodeltemplates::emfcodegen::GenClassUtil/]
+[import org::topcased::uml::profile::generationtool::genmodeltemplates::emfcodegen::GenPackageUtil/]
+[import org::topcased::uml::profile::generationtool::genmodeltemplates::emfcodegen::GenFeatureUtil/]
+
+[template public generateElement(anEPackage : EPackage)]
+[comment @main /]
+
+[/template]
+
+
+[template public generateParameterSignature(eClass : EClass)][let features : OrderedSet(EStructuralFeature) = eClass.eAllStructuralFeatures->reject (e: EStructuralFeature | e.derived)]eObject[if (not features->isEmpty())],[/if][for (feature : EStructuralFeature | features)][feature.name/]=None[if (features->last() <> feature)],[/if][/for][/let][/template]
+[template public generateParameterCall(eClass : EClass)][let features : OrderedSet(EStructuralFeature) = eClass.eAllStructuralFeatures->reject (e: EStructuralFeature | e.derived)]eObject[if (not features->isEmpty())],[/if][for (feature : EStructuralFeature | features)][feature.name/][if (features->last() <> feature)],[/if][/for][/let][/template]
+
+
+
+
+[template public generateProfileUtilitaryClass(genModel : GenModel)]
+[comment @main/]
+[for (genPackage : GenPackage | genModel.genPackages)]
+
+[file ( genPackage.ecorePackage.name+'initHelper.py', false, 'UTF-8')]
+ 
+[for (genClass : GenClass | genPackage.genClasses)]
+[if ( not genClass.genFeatures->isEmpty())]
+# Init [genClass.getInterfaceName()/]
+# @generated 
+[let eClass : EClass = genClass.ecoreClass]
+def init[eClass.name/]([generateParameterSignature(genClass.ecoreClass)/]):
+	[for (superType : EClass | genClass.ecoreClass.eSuperTypes)]
+	[if ( not superType.eStructuralFeatures->isEmpty())]
+	init[superType.name/]([generateParameterCall(superType)/])
+	[/if]
+	[/for]
+	[for (feature : GenFeature | genClass.genFeatures)]
+	[if (not feature.ecoreFeature.derived)]
+	if not [feature.ecoreFeature.name/] is None:
+	[if (feature.getEcoreFeature().many)]
+		for a in [feature.ecoreFeature.name/]:
+			eObject.get[feature.getAccessorName()/]().add(a)
+	[else]
+		eObject.set[feature.getAccessorName()/]([feature.getEcoreFeature().name/])
+	[/if]
+	[/if]
+	[/for]
+[/let]
+[/if]
+
+[/for]
+[/file]
+[/for]
+
+[/template]
+

@@ -1,0 +1,87 @@
+[comment encoding = UTF-8 /]
+[module genValueObject('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::common::umlUtils /]
+[import com::mgs::uml::common::services /]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::gen::php::common::phpUtils /]
+
+
+[template public genValueObject(m : Model) post (trim())]
+
+[comment @main /]
+
+[for (c : Class | m.profile_getAllValueObjects())]
+[c.generateCompleteVO()/]
+[/for]
+
+	
+[/template]
+
+[template public voFilePath(c : Class) post (trim())]
+	[c.genFolderVO()/]/[c.genFilenameVO()/]
+[/template]
+
+[template private generateCompleteVO(c : Class)]
+
+[file (c.voFilePath(), false, 'UTF-8')]
+<?php
+
+[if (c.hasBaseClass())]
+require_once('[c.baseClass().voFilePath()/]');
+[/if]
+
+class [c.genNameVO()/] [c.genExtend()/] {
+[for (att : Property | c.properties())]
+	/**
+	 * @var [att.genTypeVoForComment()/]
+	 */
+	public $[att.genName()/];
+[/for]
+
+	public function __construct(){
+	}
+}
+?>
+[/file]
+
+[/template]
+
+[template public genTypeVoForComment(p : Property) post(trim())]
+[if (p.upper <> 1)]
+	array
+[elseif (p.type.oclIsKindOf(Class))]
+	[p.type.oclAsType(Class).genNameVO()/]
+[else]
+	[p.genTypeForComment()/]
+[/if]
+[/template]
+
+[comment generate a property name /]
+[template public genName(p : Property) post (trim())]
+	[p.name.toLowerFirst()/]
+[/template]
+
+[template private AbstractVOName() post (trim())]
+	AbstractVO
+[/template]
+
+[template public genExtend(c : Class) post (trim())]
+[if (c.hasBaseClass())] 
+extends [c.baseClass().genNameVO()/]
+[else]
+extends [AbstractVOName()/]
+[/if]
+[/template]
+
+[template public genFolderVO(c : Class) post (trim())]
+	vo/[c.genFolder()/]
+[/template]
+
+[template public genFilenameVO(c : Class) post (trim())]
+	[c.genNameVO()/].php
+[/template]
+
+[template public genFolder(c : Class) post (trim())]
+[for (s : String | c.getPackagesNames()) separator ('/')][s/][/for]
+[/template]
+

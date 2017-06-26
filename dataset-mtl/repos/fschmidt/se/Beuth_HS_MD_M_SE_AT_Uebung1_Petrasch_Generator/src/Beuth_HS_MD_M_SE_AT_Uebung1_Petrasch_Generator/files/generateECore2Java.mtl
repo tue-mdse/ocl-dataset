@@ -1,0 +1,103 @@
+[comment encoding = UTF-8 /]
+[module generateECore2Java('http://www.eclipse.org/emf/2002/Ecore')/]
+
+[template public generateJavaEnum(e : EEnum)]
+[comment @main /]
+[file (generateFullPathName(e), false)]
+package [e.containingPackages().name->sep('.')/];
+public enum [e.name/]{
+[for (attrib:EEnumLiteral | e.eLiterals) separator(',')]
+	[attrib.name.toUpper()/]
+[/for]
+}
+[/file]
+[/template]
+
+[template public generateJavaClass(c : EClass)]
+[comment @main /]
+[file (generateFullPathName(c), false)]
+package [c.containingPackages().name->sep('.')/];
+[if (c.interface)]
+	public interface [c.name/] 
+[else]
+	public class [c.name/] 
+[/if]
+
+[if (not c.eAllSuperTypes->select(not interface)->isEmpty())] [comment supertypes /]
+	    extends [c.eAllSuperTypes->select(not interface).name->sep(', ')/]
+[/if]
+
+[if (not c.eAllSuperTypes->select(interface)->isEmpty())] [comment interfaces /]
+		implements [c.eAllSuperTypes->select(interface).name->sep(', ')/]
+[/if]
+	{
+
+[for (p:EAttribute | c.eAllAttributes)]
+	private [p.eType.instanceTypeName/] [p.name/];
+[/for]
+	[if (not c.interface)]
+		public [c.name/] () {
+	}
+	[/if]
+[for (o:EOperation | c.eAllOperations) separator('\n')]
+	[operation(o)/]
+[/for]
+
+[for (p:EAttribute | c.eAllAttributes) separator('\n')]
+	[genGetterSetter(p)/]
+[/for]
+} 
+[/file]
+
+[comment @main /]
+[if (not (c.interface or c.abstract))]
+[file (c.containingPackages().name.replaceAll('\\.','/') + '/' + (c.name).concat('Builder').concat('.java'), false)]
+package [c.containingPackages().name->sep('.')/];
+public class [c.name.concat('Builder')/] {
+	private [c.name/] [c.name.toLowerFirst()/];
+	
+	public [c.name.concat('Builder')/] () {
+		this.[c.name.toLowerFirst()/] = new [c.name/]();
+	}
+[for (attribute:EAttribute | c.eAllAttributes)]
+	public [c.name.concat('Builder')/] [attribute.name/] ([attribute.eType.instanceTypeName/] [attribute.name/]) {
+		[c.name.toLowerFirst()/].set[attribute.name.toUpperFirst()/]([attribute.name/]);
+		return this;
+	}
+[/for]
+	public [c.name/] build() {
+		return [c.name.toLowerFirst()/];
+	}
+}
+[/file]
+[/if]
+[/template]
+
+[template public operation(o : EOperation)]
+public [o.eType.instanceTypeName/] [o.name/]() { [comment ToDo: Params/]
+	// [protected ('o.name')]
+	// TODO auto generated method stub
+	// [/protected]
+}
+[/template]
+
+[template public genGetterSetter(p : EAttribute)]
+public [p.eType.instanceTypeName/] get[ p.name.toString().toUpperFirst()/]() { [comment ToDo: Params/]
+	return this.[p.name/];
+}
+
+public void set[p.name.toString().toUpperFirst()/]([p.eType.instanceTypeName/] [p.name/]) { [comment ToDo: Params/]
+	this.[p.name/] = [p.name/];
+}
+[/template]
+
+[template public generateFullPathName(c : EClass)]
+	[c.containingPackages().name.replaceAll('\\.','/') + '/' + (c.name).concat('.java')/]
+[/template]
+
+[template public generateFullPathName(e : EEnum)]
+	[e.containingPackages().name.replaceAll('\\.','/') + '/' + (e.name).concat('.java')/]
+[/template]
+
+[query public containingPackages(c : EClass) : Sequence(EPackage) = c.ancestors(EPackage)->reject(oclIsKindOf(EClass))/]
+[query public containingPackages(e : EEnum) : Sequence(EPackage) = e.ancestors(EPackage)->reject(oclIsKindOf(EEnum))/]

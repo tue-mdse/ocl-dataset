@@ -1,0 +1,47 @@
+[comment encoding = UTF-8 /]
+[module generateMain('http://www.eclipse.org/uml2/2.1.0/UML')/]
+
+[template public generateJavaClass(c : Class)]
+[comment @main /]
+[file (c._package.name + '/Main.java', false)]
+package [c._package.name/];
+
+public class Main {
+	
+[for (e:Element | c._package.ownedElement -> select(e:Element | e.oclIsKindOf(Class)) -> sortedBy(oclAsType(Class).name))]
+	[if not (e.oclAsType(Class).isAbstract)][e.oclAsType(Class).visibility/] static [e.oclAsType(Class).name/] [e.oclAsType(Class).name.toLowerFirst()/] = new [e.oclAsType(Class).name/]();[/if]
+[/for]
+
+	public static void main(String ['['']'/]args) {
+	[for (e:Element | c._package.ownedElement -> select(e:Element | e.oclIsKindOf(Class)) -> sortedBy(oclAsType(Class).name))]
+	[if not (e.oclAsType(Class).isAbstract)]
+	[for (p:Property | e.oclAsType(Class).attribute -> sortedBy(oclAsType(Property).name))]
+		[if (p.getAppliedStereotypes() -> size() > 0)]
+		[if (p.getAppliedStereotype('Profile::property') <> null)][attributesGetterSetter(p, e.oclAsType(Class), i)/]
+		[/if][else][attributes(p, e.oclAsType(Class), i)/][/if]
+	[/for]
+	[/if]
+	[/for]
+	}
+	
+}
+[/file]
+[/template]
+
+[template public attributes(p:Property, c:Class, ii:Integer)]
+[if (p.type.name = 'String' and p.upper = 1)][c.name.toLowerFirst()/].[p.name.toLowerFirst()/] = ['"' + p.name.toLowerFirst() + '"'/];
+System.out.println([c.name.toLowerFirst()/].[p.name.toLowerFirst()/]);
+[elseif (p.type.name = 'Integer' and p.upper = 1)][c.name.toLowerFirst()/].[p.name.toLowerFirst()/] = [ii/];
+System.out.println([c.name.toLowerFirst()/].[p.name.toLowerFirst()/].toString());
+[elseif (p.type.name = 'Boolean' and p.upper = 1)][c.name.toLowerFirst()/].[p.name.toLowerFirst()/] = false;
+System.out.println([c.name.toLowerFirst()/].[p.name.toLowerFirst()/]);[/if]
+[/template]
+
+[template public attributesGetterSetter(p:Property, c:Class, ii:Integer)]
+[if (p.type.name = 'String' and p.upper = 1)][c.name.toLowerFirst()/].set[p.name.toUpperFirst()/](['"' + p.name.toLowerFirst() + '"'/]);
+System.out.println([c.name.toLowerFirst()/].get[p.name.toUpperFirst()/]());
+[elseif (p.type.name = 'Integer' and p.upper = 1)][c.name.toLowerFirst()/].set[p.name.toUpperFirst()/]([ii/]);
+System.out.println([c.name.toLowerFirst()/].get[p.name.toUpperFirst()/]().toString());
+[elseif (p.type.name = 'Boolean' and p.upper = 1)][c.name.toLowerFirst()/].set[p.name.toUpperFirst()/](false);
+System.out.println([c.name.toLowerFirst()/].get[p.name.toUpperFirst()/]());[/if]
+[/template]

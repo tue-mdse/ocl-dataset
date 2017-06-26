@@ -1,0 +1,282 @@
+[comment encoding = UTF-8
+ *******************************************************************************
+ * Copyright (c) 2008-2013 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module linkereferenceviewerControl('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/eef/components/1.0.0', 'http://www.eclipse.org/emf/eef/views/1.0.0', 'http://www.eclipse.org/emf/eef/mapping/1.0.0', 'http://www.eclipse.org/emf/eef/generation/1.0.0') extends org::eclipse::emf::eef::codegen::widgets::api::widgetControl/]
+
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::typeUtils /]
+[import org::eclipse::emf::eef::codegen::services::filters /]
+[import org::eclipse::emf::eef::codegen::services::imports/]
+[import org::eclipse::emf::eef::codegen::services::navigationStep /]
+
+[comment ===== Case : model = Reference(1) - view = LinkEReferenceViewer ===== /]
+[query public validCaseForSingleReference(editionElement : PropertiesEditionElement) : Boolean = 
+	(not editionElement.hasModelNavigation())
+	and editionElement.model.isReferenceSingle() 
+	and (editionElement.representationName('LinkEReferenceViewer'))/]
+
+[template public additionalComponentField(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides additionalComponentField ? (editionElement.validCaseForSingleReference())]
+
+/**
+ * Settings for [editionElement.name/] LinkEReferenceViewer
+ */
+private [include('org.eclipse.emf.eef.runtime.ui.widgets.eobjflatcombo.EObjectFlatComboSettings')/] [editionElement.name.toJavaIdentifier()/]Settings;
+
+/**
+ * Creation Settings for [editionElement.name/] LinkEReferenceViewer
+ */
+private [include('org.eclipse.emf.eef.runtime.ui.widgets.referencestable.ReferencesTableSettings')/] [editionElement.name.toJavaIdentifier()/]CreateSettings;
+
+[/template]
+
+[template public declareEObjectUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides declareEObjectUpdater ? (editionElement.validCaseForSingleReference())]
+if (event.getKind() == [include('org.eclipse.emf.eef.runtime.impl.notify.PropertiesEditionEvent')/].SET) {
+	[editionElement.name.toJavaIdentifier()/]Settings.setToReference(([include(editionElement.peeModelQualifiedClass())/])event.getNewValue());
+} else if (event.getKind() == PropertiesEditionEvent.EDIT) {
+	[include('org.eclipse.emf.eef.runtime.context.impl.EObjectPropertiesEditionContext')/] context = new EObjectPropertiesEditionContext(editingContext, this, (EObject) event.getNewValue(), editingContext.getAdapterFactory());
+	PropertiesEditingProvider provider = (PropertiesEditingProvider)editingContext.getAdapterFactory().adapt((EObject) event.getNewValue(), PropertiesEditingProvider.class);
+	if (provider != null) {
+		PropertiesEditingPolicy editionPolicy = provider.getPolicy(context);
+		if (editionPolicy != null) {
+			editionPolicy.execute();
+		}
+	}
+} else if (event.getKind() == PropertiesEditionEvent.ADD) {
+	[if (editionElement.model.eType.oclIsTypeOf(EClass))]
+		[if (not editionElement.model.eType.oclAsType(EClass).abstract)]
+	[include(editionElement.peeModelQualifiedClass())/] eObject = [editionElement.factoryCreator()/];
+	[include('org.eclipse.emf.eef.runtime.context.impl.EReferencePropertiesEditionContext')/] context = new EReferencePropertiesEditionContext(editingContext, this, [editionElement.name.toJavaIdentifier()/]CreateSettings, editingContext.getAdapterFactory());
+	context.addInstanciableTypeFilter(new [include('org.eclipse.emf.eef.runtime.context.impl.EReferencePropertiesEditionContext.InstanciableTypeFilter')/]() {
+		public boolean select([include('org.eclipse.emf.ecore.EClass')/] instanciableType) {
+			return [editionElement.metamodelTypeGetter()/] == instanciableType;
+		}
+	});
+	[include('org.eclipse.emf.eef.runtime.providers.PropertiesEditingProvider')/] provider = (PropertiesEditingProvider)editingContext.getAdapterFactory().adapt(eObject, PropertiesEditingProvider.class);
+	if (provider != null) {
+		[include('org.eclipse.emf.eef.runtime.policies.PropertiesEditingPolicy')/] policy = provider.getPolicy(context);
+		if (policy != null) {
+			policy.execute();
+		}
+	}
+	[editionElement.name.toJavaIdentifier()/]Settings.setToReference(context.getEObject());
+	(([view.pepInterface()/])editingPart).[editionElement.views->first().viewPackageSetter()/](context.getEObject());
+		[else]
+	[include('org.eclipse.emf.eef.runtime.context.impl.EReferencePropertiesEditionContext')/] context = new EReferencePropertiesEditionContext(editingContext, this, [editionElement.name.toJavaIdentifier()/]Settings, editingContext.getAdapterFactory());
+	[include('org.eclipse.emf.eef.runtime.providers.PropertiesEditingProvider')/] provider = (PropertiesEditingProvider)editingContext.getAdapterFactory().adapt(semanticObject, PropertiesEditingProvider.class);
+	if (provider != null) {
+		[include('org.eclipse.emf.eef.runtime.policies.PropertiesEditingPolicy')/] policy = provider.getPolicy(context);
+		if (policy instanceof [include('org.eclipse.emf.eef.runtime.policies.impl.CreateEditingPolicy')/]) {
+			policy.execute();
+		}
+	}
+		[/if]
+	[/if]
+}
+[/template]
+
+[template public liveUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides liveUpdater ? (editionElement.validCaseForSingleReference())]
+if ([editionElement.metamodelGetter()/].equals(msg.getFeature()) && [view.viewIdentifier(pec)/] != null && isAccessible([editionElement.views->first().editorID()/]))
+	[view.viewIdentifier(pec)/].[editionElement.views->first().viewPackageSetter()/](([editionElement.views->first().toJavaType().trim()/])msg.getNewValue());
+[/template]
+
+[template public updater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides updater ? (editionElement.validCaseForSingleReference()) ]
+if (isAccessible([editionElement.views->first().editorID()/])) {
+	// init part
+	[editionElement.name.toJavaIdentifier()/]Settings = new EObjectFlatComboSettings([pec.pecModelClass().toJavaIdentifier()/], [editionElement.metamodelGetter()/]);
+	[editionElement.name.toJavaIdentifier()/]CreateSettings = new ReferencesTableSettings(get[editionElement.name.toJavaIdentifier()/]CreateSettingsSource(), [if (not editionElement.editorSetting.oclIsUndefined())][editionElement.editorSetting.oclAsType(EReferenceViewerSettings).metamodelGetter()/][/if]);
+	[view.viewIdentifier(pec)/].init[editionElement.views->first().viewPackageSignature()/]([editionElement.name.toJavaIdentifier()/]Settings);
+	// set the button mode
+	[view.viewIdentifier(pec)/].[editionElement.views->first().viewPackageSetter()/]ButtonMode([include('org.eclipse.emf.eef.runtime.ui.widgets.ButtonsModeEnum')/].BROWSE);
+}
+[/template]
+
+[template public filterUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides filterUpdater ? (not editionElement.hasModelNavigation() and editionElement.model.isReferenceSingle() and (editionElement.representationName('LinkEReferenceViewer')))]
+[/template]
+
+[comment ===== Case : model = Simple Navigation A (0-1) -> B (0-1) -> C - view = LinkEReferenceViewer ===== /]
+[query public validCaseForContainmentNavigation(editionElement : PropertiesEditionElement) : Boolean = 
+	editionElement.hasModelNavigation()
+	and (editionElement.navigation.oclIsKindOf(navigation::SimpleModelNavigation) and (editionElement.navigation.oclAsType(navigation::SimpleModelNavigation).feature.isContainmentSingle() and editionElement.model.isReferenceSingle()))
+	and (editionElement.representationName('LinkEReferenceViewer')) /]
+
+[template public additionalComponentField(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides additionalComponentField ? (editionElement.validCaseForContainmentNavigation())]
+
+/**
+ * Settings for [editionElement.name/] LinkEReferenceViewer
+ */
+private [include('org.eclipse.emf.eef.runtime.ui.widgets.eobjflatcombo.EObjectFlatComboSettings')/] [editionElement.name.toJavaIdentifier()/]Settings;
+
+[/template]
+
+[template public declareEObjectUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides declareEObjectUpdater ? (editionElement.validCaseForContainmentNavigation())] 
+if (event.getKind() == [include('org.eclipse.emf.eef.runtime.impl.notify.PropertiesEditionEvent')/].SET) {
+	[editionElement.name.toJavaIdentifier()/]Settings.setToReference(([include(editionElement.peeModelQualifiedClass())/])event.getNewValue());
+} else if (event.getKind() == PropertiesEditionEvent.EDIT) {
+	[include('org.eclipse.emf.eef.runtime.context.impl.EObjectPropertiesEditionContext')/] context = new EObjectPropertiesEditionContext(editingContext, this, (EObject) event.getNewValue(), editingContext.getAdapterFactory());
+	PropertiesEditingProvider provider = (PropertiesEditingProvider)editingContext.getAdapterFactory().adapt((EObject) event.getNewValue(), PropertiesEditingProvider.class);
+	if (provider != null) {
+		PropertiesEditingPolicy editionPolicy = provider.getPolicy(context);
+		if (editionPolicy != null) {
+			editionPolicy.execute();
+		}
+	}
+} else if (event.getKind() == PropertiesEditionEvent.ADD) {
+	[if (editionElement.model.eType.oclIsTypeOf(EClass))]
+		[if (not editionElement.model.eType.oclAsType(EClass).abstract)]
+	[include(editionElement.peeModelQualifiedClass())/] eObject = [editionElement.factoryCreator()/];
+	[include('org.eclipse.emf.eef.runtime.context.impl.EReferencePropertiesEditionContext')/] context = new EReferencePropertiesEditionContext(editingContext, this, [editionElement.name.toJavaIdentifier()/]CreateSettings, editingContext.getAdapterFactory());
+	context.addInstanciableTypeFilter(new [include('org.eclipse.emf.eef.runtime.context.impl.EReferencePropertiesEditionContext.InstanciableTypeFilter')/]() {
+		public boolean select([include('org.eclipse.emf.ecore.EClass')/] instanciableType) {
+			return [editionElement.metamodelTypeGetter()/] == instanciableType;
+		}
+	});
+	[include('org.eclipse.emf.eef.runtime.providers.PropertiesEditingProvider')/] provider = (PropertiesEditingProvider)editingContext.getAdapterFactory().adapt(eObject, PropertiesEditingProvider.class);
+	if (provider != null) {
+		[include('org.eclipse.emf.eef.runtime.policies.PropertiesEditingPolicy')/] policy = provider.getPolicy(context);
+		if (policy != null) {
+			policy.execute();
+		}
+	}
+	[editionElement.name.toJavaIdentifier()/]Settings.setToReference(context.getEObject());
+	(([view.pepInterface()/])editingPart).[editionElement.views->first().viewPackageSetter()/](context.getEObject());
+		[else]
+	[include('org.eclipse.emf.eef.runtime.context.impl.EReferencePropertiesEditionContext')/] context = new EReferencePropertiesEditionContext(editingContext, this, [editionElement.name.toJavaIdentifier()/]Settings, editingContext.getAdapterFactory());
+	[include('org.eclipse.emf.eef.runtime.providers.PropertiesEditingProvider')/] provider = (PropertiesEditingProvider)editingContext.getAdapterFactory().adapt(semanticObject, PropertiesEditingProvider.class);
+	if (provider != null) {
+		[include('org.eclipse.emf.eef.runtime.policies.PropertiesEditingPolicy')/] policy = provider.getPolicy(context);
+		if (policy instanceof [include('org.eclipse.emf.eef.runtime.policies.impl.CreateEditingPolicy')/]) {
+			policy.execute();
+		}
+	}
+		[/if]
+	[/if]
+}
+[/template]
+
+[template public liveUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides liveUpdater ? (editionElement.validCaseForContainmentNavigation())]
+if ([editionElement.metamodelGetter()/].equals(msg.getFeature()) && [view.viewIdentifier(pec)/] != null && isAccessible([editionElement.views->first().editorID()/]))
+	[view.viewIdentifier(pec)/].[editionElement.views->first().viewPackageSetter()/](([editionElement.views->first().toJavaType().trim()/])msg.getNewValue());
+[/template]
+
+[template public updater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides updater ? (editionElement.validCaseForContainmentNavigation())]
+if (isAccessible([editionElement.views->first().editorID()/])) {
+	// init part
+	[editionElement.name.toJavaIdentifier()/]Settings = new EObjectFlatComboSettings([pec.pecModelClass().toJavaIdentifier()/], [editionElement.navigation.oclAsType(navigation::SimpleModelNavigation).metamodelGetter()/], [editionElement.metamodelGetter()/]);
+	[editionElement.name.toJavaIdentifier()/]CreateSettings = new ReferencesTableSettings([pec.pecModelClass().toJavaIdentifier()/], [editionElement.metamodelGetter()/]);
+	[view.viewIdentifier(pec)/].init[editionElement.views->first().viewPackageSignature()/]([editionElement.name.toJavaIdentifier()/]Settings);
+	// set the button mode
+	[view.viewIdentifier(pec)/].[editionElement.views->first().viewPackageSetter()/]ButtonMode([include('org.eclipse.emf.eef.runtime.ui.widgets.ButtonsModeEnum')/].BROWSE);
+}
+[/template]
+
+[template public filterUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides filterUpdater ? (editionElement.hasModelNavigation() and editionElement.navigation.oclIsKindOf(navigation::SimpleModelNavigation) and (editionElement.navigation.oclAsType(navigation::SimpleModelNavigation).feature.isContainmentSingle() and editionElement.model.isReferenceSingle() and (editionElement.representationName('LinkEReferenceViewer'))))]
+if (isAccessible([editionElement.views->first().editorID()/])) {
+	[view.viewIdentifier(pec)/].addFilterTo[editionElement.views->first().viewPackageSignature()/](new [include('org.eclipse.emf.eef.runtime.impl.filters.EObjectFilter')/]([editionElement.metamodelTypeGetter()/]));
+}
+[/template]
+
+[comment ===== Case : model = Containment(1), Simple navigation or not - view = LinkEReferenceViewer ===== /]
+[query public validCaseForContainment(editionElement : PropertiesEditionElement) : Boolean = 
+	editionElement.model.isContainmentSingle() 
+	and (editionElement.representationName('LinkEReferenceViewer')) /]
+
+[template public additionalComponentField(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides additionalComponentField ? (editionElement.validCaseForContainment())]
+
+/**
+ * Settings for [editionElement.name/] LinkEReferenceViewer
+ */
+private [include('org.eclipse.emf.eef.runtime.ui.widgets.eobjflatcombo.EObjectFlatComboSettings')/] [editionElement.name.toJavaIdentifier()/]Settings;
+
+/**
+ * Creation Settings for [editionElement.name/] LinkEReferenceViewer
+ */
+private [include('org.eclipse.emf.eef.runtime.ui.widgets.referencestable.ReferencesTableSettings')/] [editionElement.name.toJavaIdentifier()/]CreateSettings;
+
+[/template]
+
+[template public declareEObjectUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides declareEObjectUpdater ? (editionElement.validCaseForContainment())]
+if (event.getKind() == [include('org.eclipse.emf.eef.runtime.impl.notify.PropertiesEditionEvent')/].SET) {
+	[editionElement.name.toJavaIdentifier()/]Settings.setToReference(([include(editionElement.peeModelQualifiedClass())/])event.getNewValue());
+} else if (event.getKind() == PropertiesEditionEvent.EDIT) {
+	[include('org.eclipse.emf.eef.runtime.context.impl.EObjectPropertiesEditionContext')/] context = new EObjectPropertiesEditionContext(editingContext, this, (EObject) event.getNewValue(), editingContext.getAdapterFactory());
+	PropertiesEditingProvider provider = (PropertiesEditingProvider)editingContext.getAdapterFactory().adapt((EObject) event.getNewValue(), PropertiesEditingProvider.class);
+	if (provider != null) {
+		PropertiesEditingPolicy editionPolicy = provider.getPolicy(context);
+		if (editionPolicy != null) {
+			editionPolicy.execute();
+		}
+	}
+} else if (event.getKind() == PropertiesEditionEvent.ADD) {
+	[if (editionElement.model.eType.oclIsTypeOf(EClass))]
+		[if (not editionElement.model.eType.oclAsType(EClass).abstract)]
+	[include(editionElement.peeModelQualifiedClass())/] eObject = [editionElement.factoryCreator()/];
+	[include('org.eclipse.emf.eef.runtime.context.impl.EReferencePropertiesEditionContext')/] context = new EReferencePropertiesEditionContext(editingContext, this, [editionElement.name.toJavaIdentifier()/]CreateSettings, editingContext.getAdapterFactory());
+	context.addInstanciableTypeFilter(new [include('org.eclipse.emf.eef.runtime.context.impl.EReferencePropertiesEditionContext.InstanciableTypeFilter')/]() {
+		public boolean select([include('org.eclipse.emf.ecore.EClass')/] instanciableType) {
+			return [editionElement.metamodelTypeGetter()/] == instanciableType;
+		}
+	});
+	[include('org.eclipse.emf.eef.runtime.providers.PropertiesEditingProvider')/] provider = (PropertiesEditingProvider)editingContext.getAdapterFactory().adapt(eObject, PropertiesEditingProvider.class);
+	if (provider != null) {
+		[include('org.eclipse.emf.eef.runtime.policies.PropertiesEditingPolicy')/] policy = provider.getPolicy(context);
+		if (policy != null) {
+			policy.execute();
+		}
+	}
+	[editionElement.name.toJavaIdentifier()/]Settings.setToReference(context.getEObject());
+	(([view.pepInterface()/])editingPart).[editionElement.views->first().viewPackageSetter()/](context.getEObject());
+		[else]
+	[include('org.eclipse.emf.eef.runtime.context.impl.EReferencePropertiesEditionContext')/] context = new EReferencePropertiesEditionContext(editingContext, this, [editionElement.name.toJavaIdentifier()/]Settings, editingContext.getAdapterFactory());
+	[include('org.eclipse.emf.eef.runtime.providers.PropertiesEditingProvider')/] provider = (PropertiesEditingProvider)editingContext.getAdapterFactory().adapt(semanticObject, PropertiesEditingProvider.class);
+	if (provider != null) {
+		[include('org.eclipse.emf.eef.runtime.policies.PropertiesEditingPolicy')/] policy = provider.getPolicy(context);
+		if (policy instanceof [include('org.eclipse.emf.eef.runtime.policies.impl.CreateEditingPolicy')/]) {
+			policy.execute();
+		}
+	}
+		[/if]
+	[/if]
+}
+[/template]
+
+[template public liveUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides liveUpdater ? (editionElement.validCaseForContainment())]
+if ([editionElement.metamodelGetter()/].equals(msg.getFeature()) && [view.viewIdentifier(pec)/] != null && isAccessible([editionElement.views->first().editorID()/]))
+	[view.viewIdentifier(pec)/].[editionElement.views->first().viewPackageSetter()/](([editionElement.views->first().toJavaType().trim()/])msg.getNewValue());
+[/template]
+
+
+[template public updater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides updater ? (editionElement.validCaseForContainment() and not editionElement.hasModelNavigation())]
+if (isAccessible([editionElement.views->first().editorID()/])) {
+	// init part
+	[editionElement.name.toJavaIdentifier()/]Settings = new EObjectFlatComboSettings([pec.pecModelClass().toJavaIdentifier()/], [editionElement.metamodelGetter()/]);
+	[view.viewIdentifier(pec)/].init[editionElement.views->first().viewPackageSignature()/]([editionElement.name.toJavaIdentifier()/]Settings);
+	// set the button mode
+	[view.viewIdentifier(pec)/].[editionElement.views->first().viewPackageSetter()/]ButtonMode([include('org.eclipse.emf.eef.runtime.ui.widgets.ButtonsModeEnum')/].CREATE);
+}
+[/template]
+
+[template public filterUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides filterUpdater ? (editionElement.validCaseForContainment())]
+[comment no filters on creation/]
+[/template]
+
+[template public additionalComponentGetterForEditorSettings(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides additionalComponentGetterForEditorSettings ? (editionElement.validCaseForSingleReference())]
+[if (editionElement.canGenerateEditorSettings())]
+
+/**
+ * @ return source setting for [editionElement.name.toJavaIdentifier()/]CreateSettings
+ */
+public EObject get[editionElement.name.toJavaIdentifier()/]CreateSettingsSource() {
+	[if (not editionElement.editorSetting.oclIsUndefined())][editionElement.editorSetting.oclAsType(EReferenceViewerSettings).filter.filterBody()/][/if]
+}	
+[/if]
+[/template]

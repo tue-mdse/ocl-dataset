@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="manufacturingSystem" nsURI="com.chalmers.manufacturingSystem"
+    nsPrefix="com.chalmers">
+  <eAnnotations source="http://www.eclipse.org/OCL/Import">
+    <details key="ecore" value="http://www.eclipse.org/emf/2002/Ecore"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="invocationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="settingDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="WorkPiece">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="hasType" lowerBound="1"
+        eType="#//WorkPieceType"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ManufacturingStep" eSuperTypes="#//Step"/>
+  <eClassifiers xsi:type="ecore:EClass" name="ManufacturingSystem">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="threeThereShallNotExist fiveNoEndStorage"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="threeThereShallNotExist" value="&#xA;&#x9;&#x9;self.consistsOf->selectByKind(Step).oclAsType(ManufacturingSystemElement).responsible->excludes(self.responsible)"/>
+      <details key="fiveNoEndStorage" value="&#xA;&#x9;&#x9;self.consistsOf.transition-> forAll(m:ManufacturingSystemElement| m.transition &lt;> self.start)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="consistsOf" lowerBound="1"
+        upperBound="-1" eType="#//ManufacturingSystemElement" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="start" lowerBound="1" upperBound="-1"
+        eType="#//StoragePoint"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="end" lowerBound="1" upperBound="-1"
+        eType="#//StoragePoint"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="uses" upperBound="-1" eType="#//WorkPieceType"
+        containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="transforms" upperBound="-1"
+        eType="#//WorkPiece" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="responsible" eType="#//Responsible"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="staff" upperBound="-1"
+        eType="#//Responsible" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TransportStep" eSuperTypes="#//Step"/>
+  <eClassifiers xsi:type="ecore:EClass" name="QualityAssuranceStep" eSuperTypes="#//Step"/>
+  <eClassifiers xsi:type="ecore:EClass" name="Step" abstract="true" eSuperTypes="#//ManufacturingSystemElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="oneResponsible sevenOutputInputs nineForEachStep"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="oneResponsible" value="&#xA;&#x9;&#x9;self.responsible->size() = 1"/>
+      <details key="sevenOutputInputs" value="&#xA;&#x9;&#x9;Step.allInstances()->select(transition->includes(self))->forAll(output.outputTypes->excludesAll(self.input->selectByType(WorkPieceCondition).requiresType)=false)"/>
+      <details key="nineForEachStep" value="&#xA;&#x9;&#x9;Step.allInstances()->select(transition->includes(self))->selectByKind(Step)->forAll(speed&lt;=self.speed)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="speed" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        defaultValueLiteral="0"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="input" lowerBound="1" upperBound="-1"
+        eType="#//InputCondition" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="output" lowerBound="1"
+        upperBound="-1" eType="#//OutputDecision" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Responsible">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="secondEachResponsibleThree"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="secondEachResponsibleThree" value="&#xA;&#x9;&#x9;let ms:Integer = Step.allInstances()->select(responsible=self)->size() in ms>0 and ms&lt;4"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="BinaryType">
+    <eLiterals name="and"/>
+    <eLiterals name="or" value="1"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="InputCondition">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="StoragePoint" eSuperTypes="#//ManufacturingSystemElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="fourNoStartStorage"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="fourNoStartStorage" value="&#xA;&#x9;&#x9;ManufacturingSystem.allInstances()->collect(start)->includes(self) implies ManufacturingSystemElement.allInstances() -> collect(transition) -> excludes(self)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="stores" upperBound="-1"
+        eType="#//WorkPieceType"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ManufacturingSystemElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="fiveTransitionShallOnlyConnect"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="fiveTransitionShallOnlyConnect" value="&#xA;&#x9;&#x9;ManufacturingSystem.allInstances()->select(consistsOf->includes(self)).ManufacturingSystem::consistsOf->includesAll(self.transition)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="transition" upperBound="-1"
+        eType="#//ManufacturingSystemElement"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="responsible" eType="#//Responsible"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="CompositeStep" eSuperTypes="#//Step">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="eightForCompositeSteps"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="eightForCompositeSteps" value="&#xA;&#x9;&#x9;self.input->selectByKind(WorkPieceCondition).requiresType ->includesAll(self.contains.start.stores)&#xA;&#x9;&#x9;and self.output.outputTypes->includesAll(self.contains.end.stores)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="contains" lowerBound="1"
+        eType="#//ManufacturingSystem" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="WorkPieceType">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="OutputDecision">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="outputTypes" eType="#//WorkPieceType"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="input" lowerBound="1" upperBound="-1"
+        eType="#//InputCondition"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="WorkPieceCondition" eSuperTypes="#//InputCondition">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="requiresType" lowerBound="1"
+        eType="#//WorkPieceType"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="BinaryCondition" eSuperTypes="#//InputCondition">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="left" lowerBound="1" eType="#//InputCondition"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="right" lowerBound="1" eType="#//InputCondition"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" lowerBound="1" eType="#//BinaryType"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Negation" eSuperTypes="#//InputCondition">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="contains" lowerBound="1"
+        eType="#//InputCondition"/>
+  </eClassifiers>
+</ecore:EPackage>

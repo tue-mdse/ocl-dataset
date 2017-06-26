@@ -1,0 +1,75 @@
+[module gwtserviceasync('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template public fullFilePath(class : Class)]
+[if (class.isService() and class.ownedOperation->select(isRemote())->notEmpty())]
+[class.pathToMainJava()/]/[class.servicePackage().toPath()/]/IGwt[class.name.toUpperFirst()/]Async.java
+[/if]
+
+[/template][/comment]
+
+
+[template public generateGwtServiceAsync(class : Class)? (class.isService() and class.ownedOperation->select(isRemote())->notEmpty())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(), class.servicePackage().toPath(), 'IGwt'.concat(class.name.toUpperFirst()).concat('Async.java')), false))]
+package [class.servicePackage()/];
+
+// [protected ('imports')]  
+// for import
+[for (classifier:Classifier|class.operationsParametersTypes())]
+	[if (classifier.isEntity())]
+import [classifier.entityPackage()/].[classifier.name/];
+	[else]
+import [classifier.getCompleteName()/];
+	[/if]
+[/for]
+
+[class.genCollectionImports()/]
+
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().isService() and class.superClass->select(ownedOperation->select(isRemote())->notEmpty())->notEmpty())]
+import [class.superClass.servicePackage()/].I[class.superClass.name/];	
+[/if]
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import org.sharengo.exceptions.TechnicalException;
+
+import java.util.Collection;
+
+// [/protected] for import
+
+/**
+ * @see [class.servicePackage()/].I[class.name/]
+ */ 	
+public interface IGwt[class.name.toUpperFirst()/]Async[class.extensions()/] {
+[for (oper:Operation|class.ownedOperation->select(isRemote()))]
+	/**
+	 * @see [class.servicePackage()/].I[class.name/]#[oper.name/]
+ 	 */ 	 
+	public void [oper.name/]([oper.generateRawParameters()/][if (oper.getRealParameters()->notEmpty())],[/if] AsyncCallback<[oper.callBackType()/]> callback);
+[/for]
+}
+[/file]
+[/template]
+
+
+[template public callBackType(operation : Operation)]
+[if (operation.type = null)]?[else][operation.returnResult().convertToJavaType()/][/if]
+[/template]
+
+
+[template public extensions(class : Class)]
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().isService() and class.superClass.ownedOperation->select(isRemote())->notEmpty())] extends IGwt[class.superClass.name/]Async[/if]
+[/template]

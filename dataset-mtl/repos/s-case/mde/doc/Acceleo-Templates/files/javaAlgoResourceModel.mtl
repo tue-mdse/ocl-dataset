@@ -1,0 +1,97 @@
+[comment encoding = UTF-8 /]
+[module javaAlgoResourceModel('file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/AnnotationLayerStack/AnnotationLayerStack.ecore', 'file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/AuthenticationLayer/AuthenticationPSMMetamodel.ecore', 'file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/EMF_ATL_MDE_Engine/CIM_Ecore_metamodel/PSMMetamodel.ecore','file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/SearchLayer/SearchLayerPSMMetamodel.ecore')]
+
+
+[template public javaAlgoResourceModel(anAnnotationStack : AnnotationStack)]
+
+[for (jAlgoRM : JavaAlgoResourceModel | anAnnotationStack.hasCorePSM.hasJavaAlgoModel)]
+[file (anAnnotationStack.hasCorePSM.name + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/' + jAlgoRM.parentName + '/' + jAlgoRM.name + '.java', false, 'UTF-8')]
+/*
+ * ARISTOSTLE UNIVERSITY OF THESSALONIKI
+ * Copyright (C) 2015
+ * Aristotle University of Thessaloniki
+ * Department of Electrical & Computer Engineering
+ * Division of Electronics & Computer Engineering
+ * Intelligent Systems & Software Engineering Lab
+ *
+ * Project             : [anAnnotationStack.hasCorePSM.name/]
+ * WorkFile            : 
+ * Compiler            : 
+ * File Description    : 
+ * Document Description: 
+* Related Documents	   : 
+* Note				   : 
+* Programmer		   : RESTful MDE Engine created by Christoforos Zolotas
+* Contact			   : christopherzolotas@issel.ee.auth.gr
+*/
+
+
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[jAlgoRM.parentName/];
+
+import java.util.ArrayList;
+import java.util.List;
+import javax.persistence.Transient;
+[if (anAnnotationStack.bHasSearchLayer)]
+[if (jAlgoRM.isSearchResource(anAnnotationStack))]
+import javax.xml.bind.annotation.XmlRootElement;
+[/if]
+[/if]
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.HypermediaLink;
+
+//Please add any needed imports here.
+
+
+/* [jAlgoRM.name/] class is responsible to model any data the [jAlgoRM.parentName/] resource handles. Since this one 
+ is not automatable, the developer has to manually define it by providing its properties and setter/getter functions.*/
+[if (anAnnotationStack.bHasSearchLayer)]
+[if (jAlgoRM.isSearchResource(anAnnotationStack))]
+@XmlRootElement
+[/if]
+[/if]
+public class [jAlgoRM.name/]{
+
+    /* There follows a list with the properties that model the [jAlgoRM.parentName/] resource, as prescribed in the service CIM*/
+[for (jRMProperty : PSMComponentProperty | jAlgoRM.JavaAlgoModelHasProperty) separator('\n')]
+	[if (jRMProperty.PropertyHasHibernateAnnotation.HibernateAnnotationText->includes('@Transient'))]
+	// The Linklist property holds all the hypermedia links to be sent back to the client
+		[for (propertyHibernateAnnotation : HibernateAnnotation | jRMProperty.PropertyHasHibernateAnnotation)]
+	[propertyHibernateAnnotation.HibernateAnnotationText/]
+		[/for]
+	private List<[jRMProperty.type/]> [jRMProperty.name/] = new ArrayList<[jRMProperty.type/]>();
+	[/if]
+[/for]
+    //Please add any properties of this model here.
+
+    /* There follows a list of setter and getter functions.*/
+[for (javaSetterFunction : JavaSetterFunction | jAlgoRM.JavaAlgoModelHasSetterFunction)]
+	[if (javaSetterFunction.SetterFunctionHasJAXBAnnotation.oclIsUndefined() = false)]
+		[javaSetterFunction.SetterFunctionHasJAXBAnnotation.JAXBAnnotationText/]
+	[/if]
+	[if (javaSetterFunction.hasFunctionParameter->at(1).name = 'linklist')]
+	public void [javaSetterFunction.name/](List<[javaSetterFunction.hasFunctionParameter->at(1).type/]> [javaSetterFunction.hasFunctionParameter->at(1).name/]){
+        this.[javaSetterFunction.hasFunctionParameter->at(1).name/] = [javaSetterFunction.hasFunctionParameter->at(1).name/];
+    }
+	[/if]
+[/for]
+
+[for (javaGetterFunction : JavaGetterFunction | jAlgoRM.JavaAlgoModelHasGetterFunction)]
+	[if (javaGetterFunction.hasFunctionParameter->at(1).name = 'linklist')]
+	public List<[javaGetterFunction.hasFunctionParameter->at(1).type/]> [javaGetterFunction.name/](){
+        return this.[javaGetterFunction.hasFunctionParameter->at(1).name/];
+    }
+	[/if]
+[/for]
+    //Please add the constructors and any functions of this model here.
+
+}
+[/file]
+[/for]
+[/template]
+
+[query private isSearchResource(jAlgoRM : JavaAlgoResourceModel, anAnnotationStack : AnnotationStack) : Boolean =
+	anAnnotationStack.getSearchControllerAnnotations(anAnnotationStack)->exists(searchControllerAnnotation | searchControllerAnnotation.isSearchController.annotatesJavaAlgoController.hasAssociatedAlgoModel->includes(jAlgoRM)) 
+/]
+
+[query private getSearchControllerAnnotations(anAnnotationStack : AnnotationStack) : Sequence(SearchController) =
+	anAnnotationStack.hasSearchLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(SearchController))->asSequence()
+/]

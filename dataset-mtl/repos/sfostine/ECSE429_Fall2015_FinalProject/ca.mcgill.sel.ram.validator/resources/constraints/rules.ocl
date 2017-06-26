@@ -1,0 +1,672 @@
+import ram : 'platform:/plugin/ca.mcgill.sel.ram/model/RAM.ecore'
+import ecore : 'http://www.eclipse.org/emf/2002/Ecore#/'
+
+package ram
+
+    /* INFORMATION */
+    -- Here there are the properties that any constraint has to contain:
+        -- query : String. The OCL query string.
+        -- message : String. The error string to be displayed when the constraint does not match.
+        -- message_attributes : Sequence(String). The list of parameters for formatting the error message.
+        -- severity : Integer. 0 (Info), 1 (Warning), 2 (Error).
+    -- Optionnaly, we can add:
+        -- quickfixes : Sequence(String). The list of class names used to quick fix the error.
+    
+    -- To retrieve the container of any object, we have to process like this:
+        -- oclContainer().oclAsType(<container-type>)
+    
+    /* FUNCTIONS */
+    
+    context Aspect
+    def: containsTypeInEnums(type : Type) : Boolean
+    	= if structuralView.types->selectByKind(REnum)->includes(type)
+                then true
+          else let extendedAspects : OrderedSet(Aspect) = instantiations->select(
+                    i : Instantiation | i.type = InstantiationType::Extends
+                ).source
+                in
+                    extendedAspects.containsTypeInEnums(type)->includes(true)
+          endif
+          
+    def: containsTypeInEnumsOrClasses(type : Type) : Boolean
+        = if structuralView.types->selectByKind(REnum)->includes(type)
+            or structuralView.classes->includes(type)
+                then true
+          else 
+            if modelReuses->notEmpty() then
+             /* TODO: this check was added to disable this constraint
+              * whenever there are model reuses present in the current RAM model.
+              * This is, however, a hack, and should be replaced by OCL code that
+              * checks if "type" is part of the usage interface of any concerns
+              * that are reused by the current model
+              */
+              true
+            else                
+              let extendedAspects : OrderedSet(Aspect) = instantiations->select(
+                    i : Instantiation | i.type = InstantiationType::Extends
+                ).source
+                in
+                    extendedAspects.containsTypeInEnumsOrClasses(type)->includes(true)
+            endif
+          endif
+    
+    
+    
+    /* CONSTRAINTS */
+    
+    context Aspect
+    inv defaultName : Tuple { 
+        query : String =  name <> 'Untitled',
+        message : String = 'The name of the aspect is the default name',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 0
+    }
+    
+    /* ************************** */
+    
+    context Class   
+    
+    inv defaultClassName: Tuple { 
+        query : String = not name.toLowerCase().matches('unnamedclass[0-9]*$'),
+        message : String = 'The name of the class \'%s\' is the default name',
+        message_attributes : Sequence(String) = Sequence{name},
+        severity : Integer = 0
+    }
+
+    inv uniqueClassName: Tuple { 
+        query : String = not
+            (oclContainer().oclAsType(StructuralView).types->exists(
+                c | c.name.equalsIgnoreCase(self.name) and c <> self
+            ) or
+            oclContainer().oclAsType(StructuralView).classes->exists(
+                c | c.name.equalsIgnoreCase(self.name) and c <> self)),
+        message : String = 'The class \'%s\' must be unique',
+        message_attributes : Sequence(String) = Sequence{name},
+        severity : Integer = 2,
+        quickfixes : Sequence(String) = Sequence{'UniqueNameQuickfix'}
+    } 
+    
+    inv notSelfSuperType: Tuple { 
+        query : String = not self.superTypes->includes(self),
+        message : String = 'A class may not be it\'s own supertype',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    /* ************************** */
+    
+    context REnum   
+    
+    inv defaultEnumName: Tuple { 
+        query : String = not name.toLowerCase().matches('unnamedenum[0-9]*$'),
+        message : String = 'The name of the enum \'%s\' is the default name',
+        message_attributes : Sequence(String) = Sequence{name},
+        severity : Integer = 0
+    }
+
+    inv uniqueEnumName: Tuple { 
+        query : String = not 
+            (oclContainer().oclAsType(StructuralView).types->exists(
+                c | c.name.equalsIgnoreCase(self.name) and c <> self
+            ) or
+            oclContainer().oclAsType(StructuralView).classes->exists(
+                c | c.name.equalsIgnoreCase(self.name) and c <> self)),
+        message : String = 'The enum \'%s\' must be unique',
+        message_attributes : Sequence(String) = Sequence{name},
+        severity : Integer = 2,
+        quickfixes : Sequence(String) = Sequence{'UniqueNameQuickfix'}
+    } 
+    
+    /* ************************** */
+    
+    context AssociationEnd
+    inv uniqueAssociationEndName: Tuple { 
+        query : String = not
+            oclContainer().oclAsType(Classifier).associationEnds->select(
+                associationEnd : AssociationEnd | 
+                associationEnd.name <> null 
+                and associationEnd.name <> ''
+                and associationEnd.navigable <> false
+            )->exists(
+                c | c.name.equalsIgnoreCase(self.name) 
+                and c <> self
+                and self.navigable <> false
+            ),
+        message : String = 'The association end \'%s\' must be unique',
+        message_attributes : Sequence(String) = Sequence{name},
+        severity : Integer = 2
+    }
+    
+    /* ************************** */
+    
+    context NamedElement
+    inv validName: Tuple { 
+        query : String = 
+            if self.oclIsTypeOf(AssociationEnd) and self.oclAsType(AssociationEnd).navigable = false 
+            then true 
+            else self.name <> '' endif,
+        message : String = 'Name of RAM elements may not be empty',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    /* ************************** */
+    
+    context Instantiation
+    inv aspectCannotMapSelf: Tuple { 
+        query : String = 
+            if type = InstantiationType::Extends and (self.source = oclContainer().oclAsType(Aspect))
+            then false
+            else true
+            endif,
+        message : String = 'Aspect \'%s\' may not depend on itself',
+        message_attributes : Sequence(String) = Sequence{oclContainer().oclAsType(Aspect).name},
+        severity : Integer = 2
+    }
+    
+    /* ************************** */
+    
+    context Attribute 
+    inv typeDefined: Tuple {
+        query : String = 
+            if type.oclIsInvalid() or type.oclIsUndefined()
+                then false
+            else if oclContainer().oclIsKindOf(Classifier)
+                then let sv : StructuralView = oclContainer().oclAsType(Classifier).oclContainer().oclAsType(StructuralView)
+                in
+                sv.types->includes(type) or 
+                sv.oclContainer().oclAsType(Aspect).containsTypeInEnums(type)
+                else true
+                endif
+            endif,
+        message : String = 'The type is missing or undefined for the attribute \'%s\'',
+        message_attributes : Sequence(String) = Sequence{name},
+        severity : Integer = 2,
+        quickfixes : Sequence(String) = Sequence{'CreateEnumQuickfix(' + type.name +  ')', 'DeleteEObjectQuickfix'}
+    }   
+    
+    /* ************************** */
+    
+    context Operation
+    /* * /
+    inv messageViewDefined: Tuple { 
+        query : String = 
+            if visibility = Visibility::public and oclContainer().oclAsType(Classifier).oclIsTypeOf(Class) 
+            then oclContainer().oclAsType(Classifier)
+                .oclContainer().oclAsType(StructuralView)
+                .oclContainer().oclAsType(Aspect)
+                .messageViews->select(
+                        messageView : AbstractMessageView | messageView.oclIsTypeOf(MessageView)
+                    )->one(messageView : AbstractMessageView | messageView.oclAsType(MessageView).specifies = self) 
+            else true endif,
+        message : String = 'Sequence diagram missing for public operation \'%s()\'',
+        message_attributes : Sequence(String) = Sequence{name},
+        severity : Integer = 1
+    }
+    /* */
+    
+    inv returnTypeDefined: Tuple {
+        query : String = 
+            if returnType.oclIsInvalid() or returnType.oclIsUndefined()
+            then false
+            else let sv : StructuralView = oclContainer().oclAsType(Classifier).oclContainer().oclAsType(StructuralView)
+                in
+                sv.types->includes(returnType) or 
+                sv.oclContainer().oclAsType(Aspect).containsTypeInEnumsOrClasses(returnType)
+            endif,
+        message : String = 'The return type of the \'%s()\' operation is missing or undefined',
+        message_attributes : Sequence(String) = Sequence{name},
+        severity : Integer = 2,
+        quickfixes : Sequence(String) = 
+            Sequence{'CreateEnumQuickfix(' + returnType.name +  ')', 
+                    'CreateClassQuickfix(' + returnType.name +  ')',
+                    'DeleteEObjectQuickfix'}
+    }
+    
+    inv duplicateSignature: Tuple {
+        query : String = not (oclContainer().oclAsType(Classifier).operations->exists
+                (o | o.name.equalsIgnoreCase(self.name) and o <> self
+                    and o.parameters->size() = self.parameters->size()
+                    and o.parameters->forAll(p | self.parameters->at(o.parameters->indexOf(p)).type.name = p.type.name
+                    )
+                )),
+        message : String = 'The signature of the \'%s()\' operation must be unique',
+        message_attributes : Sequence(String) = Sequence{self.name}, 
+        severity : Integer = 2
+    }
+    
+    /* ************************** */
+    
+    context Parameter
+    inv notVoid: Tuple { 
+        query : String = not self.type.oclIsTypeOf(RVoid),
+        message : String = 'The type of the parameter \'%s\' may not be void',
+        message_attributes : Sequence(String) = Sequence{name},
+        severity : Integer = 2
+    }
+    
+    inv typeDefined: Tuple {
+        query : String = 
+            if type.oclIsInvalid() or type.oclIsUndefined()
+            then false
+            else let sv : StructuralView = oclContainer().oclAsType(Operation).oclContainer().oclAsType(Classifier).oclContainer().oclAsType(StructuralView)
+                in
+                sv.types->includes(type) or 
+                sv.oclContainer().oclAsType(Aspect).containsTypeInEnumsOrClasses(type)
+            endif,
+        message : String = 'The type of the parameter \'%s\' is missing or undefined',
+        message_attributes : Sequence(String) = Sequence{name},
+        severity : Integer = 2,
+        quickfixes : Sequence(String) = 
+            Sequence{'CreateEnumQuickfix(' + type.name +  ')', 
+                    'CreateClassQuickfix(' + type.name +  ')',
+                    'DeleteEObjectQuickfix'}
+    }
+    
+    inv uniqueParameterName: Tuple {
+        query : String = not
+            (oclContainer().oclAsType(Operation).parameters->exists
+                (p | p.name.equalsIgnoreCase(self.name) and p <> self)
+            ),
+        message : String = 'The parameter name \'%s\' must be unique',
+        message_attributes : Sequence(String) = Sequence{name},
+        severity : Integer = 2,
+        quickfixes : Sequence(String) = 
+            Sequence{'UniqueNameQuickfix'}
+    }
+    
+    context CombinedFragment
+    inv maxOneOperand: Tuple { 
+        query : String = 
+        if self.interactionOperator = InteractionOperatorKind::opt 
+            or self.interactionOperator = InteractionOperatorKind::loop 
+            or self.interactionOperator = InteractionOperatorKind::critical 
+        then self.operands->size() = 1 
+        else true endif,
+        message : String = 'The chosen operator kind \'%s\' may only have one operand.',
+        message_attributes : Sequence(String) = Sequence{self.interactionOperator.toString().substring(self.interactionOperator.toString().lastIndexOf(':') + 1, self.interactionOperator.toString().size())},
+        severity : Integer = 2
+    }
+    
+    inv validOperands: Tuple { 
+        query : String = 
+        if self.interactionOperator <> InteractionOperatorKind::opt 
+            and self.interactionOperator <> InteractionOperatorKind::loop 
+            and self.interactionOperator <> InteractionOperatorKind::critical 
+        then self.operands->size() > 1 
+        else true endif,
+        message : String = 'The chosen operator kind \'%s\' requires at least two operands.',
+        message_attributes : Sequence(String) = Sequence{
+            self.interactionOperator.toString().substring(
+                self.interactionOperator.toString().lastIndexOf(':') + 1,
+                self.interactionOperator.toString().size()
+            )
+        },
+        severity : Integer = 2
+    }
+
+    /* ************************** * /
+    
+    context MessageView
+    inv specifiesIsFirstMessage: Tuple { 
+        query : String = 
+        if not self.specification.oclIsUndefined() and self.specification.messages->size() > 0 
+        then self.specifies = self.specification.messages->select(
+            message : Message | not message.sendEvent.oclIsTypeOf(MessageOccurrenceSpecification)
+            )->asOrderedSet()->at(1).signature 
+        else true endif,
+        message : String = 'The first message in the MessageView must match specifies of the MessageView',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    inv specificationDefined: Tuple { 
+        query : String = 
+        if not self.specifies.oclIsUndefined() 
+        then if not self.specifies.partial 
+            then not self.specification.oclIsUndefined() 
+            else true endif
+        else true endif,
+        message : String = 'A MessageView for a non-partial operation must have a specification',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    inv isAffectedBy: Tuple { 
+        query : String = 
+        if self.specification.oclIsUndefined() and self.specifies.partial 
+        then self.affectedBy->notEmpty() 
+        else true endif,
+        message : String = 'An empty MessageView must have at least one affectedBy',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    /* ************************** * /
+    
+    context MessageViewReference
+    inv isAffectedBy: Tuple { 
+        query : String = self.affectedBy->size() > 0,
+        message : String = 'The MessageViewReference must have at least one affectedBy',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    /* ************************** * /
+    
+    context AspectMessageView
+    inv notAffectedBySelf: Tuple { 
+        query : String = not self.affectedBy->includes(self),
+        message : String = 'Message View may not be affected by itself',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    /* ************************** * /
+    
+    context Message
+    inv validSelfMessage: Tuple { 
+        query : String = 
+        if not self.receiveEvent.oclIsUndefined() 
+            and self.receiveEvent.oclIsKindOf(MessageOccurrenceSpecification) 
+            and not self.sendEvent.oclIsUndefined() 
+            and self.sendEvent.oclIsKindOf(MessageOccurrenceSpecification) 
+        then let sendEvent : InteractionFragment = self.sendEvent.oclAsType(InteractionFragment) in 
+            let receiveEvent : InteractionFragment = self.receiveEvent.oclAsType(InteractionFragment) in 
+                if sendEvent.covered->asOrderedSet()->at(1) = receiveEvent.covered->asOrderedSet()->at(1) 
+                then sendEvent.oclContainer().oclAsType(FragmentContainer).fragments->indexOf(self.sendEvent.oclAsType(InteractionFragment)) 
+                        < receiveEvent.oclContainer().oclAsType(FragmentContainer).fragments->indexOf(self.receiveEvent.oclAsType(InteractionFragment)) 
+                else true endif 
+        else true endif,
+        message : String = 'The received event of a self message may not come before the sent event',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    inv argumentSpecified: Tuple { 
+        query : String = 
+        if self.messageSort <> MessageSort::reply 
+            and not self.sendEvent.oclIsUndefined() 
+            and self.sendEvent.oclIsKindOf(MessageOccurrenceSpecification) 
+            and not self.signature.oclIsUndefined() 
+        then let container : FragmentContainer = self.sendEvent.oclAsType(MessageOccurrenceSpecification).oclContainer().oclAsType(FragmentContainer) in
+            if container.fragments->includes(self.sendEvent) 
+            then self.signature.parameters->size() = self.arguments->size() 
+                and self.signature.parameters->forAll(
+                    currentParameter : Parameter | self.arguments->one(
+                        argument : ParameterValueMapping | argument.parameter = currentParameter
+                    )
+                ) 
+            else true endif 
+        else true endif,
+        message : String = 'All arguments of the operation must be specified',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    inv createMessageIsFirst: Tuple { 
+        query : String = 
+        if self.messageSort = MessageSort::createMessage 
+        then if not self.receiveEvent.oclIsUndefined() 
+                and not self.receiveEvent.oclAsType(InteractionFragment).covered->isEmpty() 
+            then let event : InteractionFragment = self.receiveEvent.oclAsType(InteractionFragment) in 
+                event.covered->asOrderedSet()->at(1).coveredBy->forAll(
+                    fragment : InteractionFragment | if event.oclContainer().oclAsType(FragmentContainer).fragments->includes(fragment) 
+                    then event.oclContainer().oclAsType(FragmentContainer).fragments->indexOf(fragment) 
+                            >= event.oclContainer().oclAsType(FragmentContainer).fragments->indexOf(event) 
+                    else true endif
+                ) 
+            else true endif 
+        else true endif,
+        message : String = 'The create message occurrence may not come after any other occurrence on this lifeline',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    inv returnSpecified: Tuple { 
+        query : String = 
+        if self.messageSort = MessageSort::reply 
+        then if not self.signature.returnType.oclIsTypeOf(RVoid) 
+            then not self.returns.oclIsUndefined() 
+            else self.returns.oclIsUndefined() endif 
+        else true endif,
+        message : String = 'Reply message must have returns specified if return type is not void',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    inv boundariesNotCrossed: Tuple { 
+        query : String = 
+        let send : MessageOccurrenceSpecification = self.sendEvent in 
+            let receive : MessageOccurrenceSpecification = self.receiveEvent in 
+                if send.oclContainer().oclAsType(FragmentContainer).oclIsTypeOf(InteractionOperand) 
+                    and receive.oclContainer().oclAsType(FragmentContainer).oclIsTypeOf(InteractionOperand) 
+                then send.oclContainer().oclAsType(FragmentContainer).oclAsType(InteractionOperand).oclContainer().oclAsType(CombinedFragment).covered
+                    ->includes(send.covered->asOrderedSet()->at(1)) 
+                    and receive.oclContainer().oclAsType(FragmentContainer).oclAsType(InteractionOperand).oclContainer().oclAsType(CombinedFragment).covered
+                    ->includes(receive.covered->asOrderedSet()->at(1)) 
+                else true endif,
+        message : String = 'Messages may not cross boundaries of CombinedFragments or their operands',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    inv validReturns: Tuple { 
+        query : String = 
+        if not self.returns.oclIsUndefined() 
+        then self.messageSort = MessageSort::reply 
+        else true endif,
+        message : String = 'Returns may only be specified if message sort is reply message',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    inv validAssignTo: Tuple { 
+        query : String = 
+        if not self.assignTo.oclIsUndefined() 
+        then let type : Type = if self.assignTo.oclIsTypeOf(Attribute) 
+                                then self.assignTo.oclAsType(Attribute).type 
+                                else if self.assignTo.oclIsTypeOf(Reference) 
+                                    then self.assignTo.oclAsType(Reference).type 
+                                    else self.assignTo.oclAsType(AssociationEnd).getType() 
+                                endif 
+                            endif in 
+                type.oclIsKindOf(self.signature.returnType.oclType()) 
+        else true endif,
+        message : String = 'Return type of signature operation must match the type of assignTo',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }    
+    
+    inv deleteMessageIsLast: Tuple { 
+        query : String = 
+        if self.messageSort = MessageSort::deleteMessage 
+        then if not self.receiveEvent.oclIsUndefined() 
+            and not self.receiveEvent.oclAsType(InteractionFragment).covered->isEmpty() 
+            then let event : InteractionFragment = self.receiveEvent.oclAsType(InteractionFragment) in 
+                event.covered->asOrderedSet()->at(1).coveredBy->forAll(
+                    fragment : InteractionFragment | if event.oclContainer().oclAsType(FragmentContainer).fragments->includes(fragment) 
+                    then event.oclContainer().oclAsType(FragmentContainer).fragments->indexOf(fragment) 
+                        <= event.oclContainer().oclAsType(FragmentContainer).fragments->indexOf(event) 
+                    else true endif
+                ) 
+            else true endif 
+        else true endif,
+        message : String = 'The destruction occurrence may not come before any other occurrence on this lifeline',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+       
+    inv validReturnsValue: Tuple { 
+        query : String = 
+        if self.returns.oclIsTypeOf(StructuralFeatureValue) 
+        then let value : StructuralFeatureValue = self.returns.oclAsType(StructuralFeatureValue).value in 
+            if not value.oclIsUndefined() 
+            then let type : Type = if value.oclIsTypeOf(Attribute)
+                                 then value.oclAsType(Attribute).type 
+                                 else if value.oclIsTypeOf(Reference) 
+                                    then value.oclAsType(Reference).type 
+                                    else value.oclAsType(AssociationEnd).getType() 
+                                endif 
+                            endif in 
+                 type.oclIsTypeOf(self.signature.returnType.oclType()) 
+                 else true endif 
+        else if self.returns.oclIsKindOf(LiteralSpecification) 
+            then false else true 
+            endif 
+        endif,
+        message : String = 'Type of return value must match the type of the return',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    inv assignToAllowed: Tuple { 
+        query : String = 
+        if self.signature.returnType.oclIsTypeOf(RVoid) 
+        then self.assignTo = null 
+        else true endif,
+        message : String = 'assignTo may not be specified for operations whose return type is void',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    inv noCrossingMessages: Tuple { 
+        query : String = 
+        if not self.receiveEvent.oclIsUndefined() 
+            and self.receiveEvent.oclIsKindOf(MessageOccurrenceSpecification) 
+            and not self.sendEvent.oclIsUndefined() 
+            and self.sendEvent.oclIsKindOf(MessageOccurrenceSpecification) 
+        then let container : FragmentContainer = self.receiveEvent.oclAsType(MessageOccurrenceSpecification).oclContainer().oclAsType(FragmentContainer) in
+            let indexDifference : Integer = container.fragments->indexOf(self.receiveEvent.oclAsType(InteractionFragment))
+                                            - container.fragments->indexOf(self.sendEvent.oclAsType(InteractionFragment)) in 
+              indexDifference = 1 
+        else true endif,
+        message : String = 'Messages may not cross each other, MessageEnds of one message must come one after the other (also, send must come before receive)',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    /* * /
+    inv validSignature: Tuple { 
+        query : String = 
+        if self.messageSort <> MessageSort::reply 
+            and not self.receiveEvent.oclIsUndefined() 
+ 
+        then let typedElement : TypedElement = self.receiveEvent.oclAsType(InteractionFragment).covered->asOrderedSet()->at(1).represents in 
+            if not typedElement.oclIsUndefined() 
+            then let type : Type = if typedElement.oclIsTypeOf(Parameter) 
+                            then typedElement.oclAsType(Parameter).type 
+                            else if typedElement.oclIsTypeOf(Attribute) 
+                                then typedElement.oclAsType(Attribute).type 
+                                else if typedElement.oclIsTypeOf(Reference) 
+                                    then typedElement.oclAsType(Reference).type 
+                                    else typedElement.oclAsType(AssociationEnd).getType() endif 
+                                endif 
+                            endif in 
+                    if type.oclIsKindOf(Classifier) 
+                    then type.oclAsType(Classifier).operations->includes(self.signature)
+                    else true endif 
+            else true endif 
+        else true endif,
+        message : String = 'Message signature must be an operation of the classifier that is represented by the lifeline of the receive event',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    /* ************************** * /
+    
+    context InteractionFragment
+    inv validCoveredMultiplicity: Tuple { 
+        query : String = 
+        if not self.oclIsTypeOf(CombinedFragment) and covered->notEmpty() 
+        then covered->size() = 1 
+        else true endif,
+        message : String = 'InteractionFragment may only have one Lifeline it covers (except CombinedFragment)',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    /* ************************** * /
+    
+    context CombinedFragment
+    inv validOperands: Tuple { 
+        query : String = 
+        if self.interactionOperator = InteractionOperatorKind::opt 
+            or self.interactionOperator = InteractionOperatorKind::loop 
+            or self.interactionOperator = InteractionOperatorKind::critical 
+        then self.operands->size() = 1 
+        else true endif,
+        message : String = 'Opt and Loop fragments may only have one operand',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    /* ************************** * /
+    
+    context ParameterValueMapping
+    inv validParameterValue: Tuple { 
+        query : String = 
+        if self.value.oclIsTypeOf(StructuralFeatureValue) 
+        then let value : StructuralFeatureValue = self.value.oclAsType(StructuralFeatureValue).value in 
+            if not value.oclIsUndefined() 
+            then let type : Type = if value.oclIsTypeOf(Attribute) 
+                    then value.oclAsType(Attribute).type 
+                    else if value.oclIsTypeOf(Reference) 
+                        then value.oclAsType(Reference).type 
+                        else value.oclAsType(AssociationEnd).getType() endif 
+                    endif in 
+                type.oclIsTypeOf(self.parameter.type.oclType()) 
+            else true endif 
+        else if self.value.oclIsKindOf(LiteralSpecification) 
+            then false 
+            else true endif 
+        endif,
+        message : String = 'Type of value must match the type of the parameter',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    /* ************************** * /
+    
+    context ParameterValue
+    inv validValueType: Tuple { 
+        query : String = 
+        self.parameter.type.oclIsTypeOf(oclContainer().oclAsType(ParameterValueMapping).parameter.type.oclType()),
+        message : String = 'Type of value must match the type of the parameter',
+        message_attributes : Sequence(String) = Sequence{},
+        severity : Integer = 2
+    }
+    
+    /* ************************** * /
+
+    context Property
+    inv validUpperBound: Tuple { 
+        query : String = 
+        self.upperBound > 0 or self.upperBound = -1,
+        message : String = 'The upperbound (currently %s) must be greater than zero or -1 representing *',
+        message_attributes : Sequence(String) = Sequence{self.upperBound},
+        severity : Integer = 2
+    }
+    
+    inv validLowerBound: Tuple { 
+        query : String = 
+        self.lowerBound >= 0,
+        message : String = 'The lowerbound (currently %s) must be greater than or equal to zero',
+        message_attributes : Sequence(String) = Sequence{self.lowerBound},
+        severity : Integer = 2
+    }
+    
+    inv validMultiplicity: Tuple { 
+        query : String = 
+        self.lowerBound <= self.upperBound or self.upperBound = -1,
+        message : String = 'The lowerBound (%s) must be less than or equal to the upperBound (%s)',
+        message_attributes : Sequence(String) = Sequence{self.lowerBound, self.upperBound},
+        severity : Integer = 2
+    }
+
+    /* ************************** */
+
+endpackage
+
+
+

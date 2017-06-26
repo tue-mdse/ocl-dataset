@@ -1,0 +1,160 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2015 Spacebel SA.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Johan Hardy (Spacebel) - initial API and implementation
+[/comment]
+[module function('http://www.eclipse.org/uml2/5.0.0/UML')/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::operations/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::class/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::parameter/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::namedelement/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::typedelements/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::constraint/]
+[import org::eclipse::umlgen::gen::embedded::c::services::configuration/]
+[import org::eclipse::umlgen::gen::embedded::c::services::queries/]
+
+[query public getOperationParameters(operation : uml::Operation) : Sequence(uml::Parameter) = 
+ownedParameter->select(direction <> ParameterDirectionKind::return)->asSequence()/]
+
+[query public hasOperationParameters(operation : uml::Operation) : Boolean = 
+(ownedParameter->size() = 0) or (ownedParameter->size() = 1) and (ownedParameter->select(direction = ParameterDirectionKind::return)->notEmpty())/]
+
+[query public hasCInlineOperations(c : uml::Class) : Boolean = 
+not(getPrivate(getInline(getNotAbstract(getNotStatic(getOwnedOperations()))))->isEmpty())/]
+
+[query public hasHInlineOperations(c : uml::Class) : Boolean = 
+not(getPublic(getInline(getNotAbstract(getNotStatic(getOwnedOperations()))))->isEmpty())/]
+
+[query public hasCPrivateOperationsPrototypes(c : uml::Class) : Boolean = 
+not(getNotInline(getPrivate(getNotAbstract(getNotStatic(getOwnedOperations()))))->isEmpty())/]
+
+[query public hasHPublicOperationsPrototypes(c : uml::Class) : Boolean = 
+not(getNotInline(getNotPrivate(getNotAbstract(getNotStatic(getOwnedOperations()))))->isEmpty())/]
+
+[query public hasCOperationsDeclarations(c : uml::Class) : Boolean = 
+not(getNotInline(getNotAbstract(getNotStatic(getOwnedOperations())))->isEmpty())/]
+
+[template public genParameter(param : uml::Parameter) post(trim())]
+[if (isConstantData())]const [/if][getType()/][genPointer()/][if (isConstantPointer())] const[/if] [getName()/]
+[/template]
+
+[template private genOperationParametersDef(op : uml::Operation) ? ((hasOperationParameters())) post(trim())]
+void
+[/template]
+
+[template private genOperationParametersDef(op : uml::Operation) ? (not(hasOperationParameters())) post(trim())]
+[for (getOperationParameters(op)) separator(', ')][genParameter()/][/for]
+[/template]
+
+[template private genOperationHeader(operation : uml::Operation) post(trim())]
+[if operation.isInline()]
+/************************************** INLINE FUNCTION *************************************/
+[elseif operation.isAsm()]
+/**************************************** ASM FUNCTION **************************************/
+[else]
+/***************************************** FUNCTION *****************************************/
+[/if]
+/*!
+[if ownedComment->notEmpty()][ownedComment.format(' * \x5cbrief ', true, ' *        ', 84)/][else][' * \x5cbrief \n *'/][/if]
+[for (p : Parameter | ownedParameter)]
+[if (isNotReturnParam())]
+ * \param [name/] ['['/][genDirection()/][']'/]
+[if ownedComment->notEmpty()][ownedComment.format(' *        ', true, ' *        ', 84)/][else] *[/if]
+[/if]
+[/for]
+[for (p : Parameter | ownedParameter)]
+[if (isReturnParam()) and (not(p.ownedComment->isEmpty()))]
+[ownedComment.format(' * \x5creturn '.concat(getType()).concat(' : '), true, ' *        ', 84)/]
+[/if]
+[/for]
+[if (isTraceabilityEnabled())]
+[if (operation.isConstrained(operation.getModel().getAllConstraints()))]
+ * <b>Requirements traceability</b>
+ [operation.getRequirementList('*     ')/]
+ *
+[/if]
+[/if]
+ * <b>Function detailed processing extracted from source code</b>
+ *
+ ********************************************************************************************/
+[/template]
+
+[template public genHPublicOperationsPrototypes(cl : uml::Class) post(trim())]
+[let seqOp : Sequence(uml::Operation) = getNotInline(getNotPrivate(getNotAbstract(getNotStatic(getOwnedOperations(cl)))))]
+[for (o : uml::Operation | seqOp->sortedBy(name))]
+[genOperationHeader()/]
+/*## operation [name/]([genOperationParametersDef()/]) */
+[if getReturn(ownedParameter->asSequence())->isEmpty()]void[else][for (p : Parameter | getReturn(ownedParameter->asSequence()))][getType()/][genPointer()/][/for][/if] [name/]([genOperationParametersDef()/]);
+
+[/for]
+[/let]
+[/template]
+
+[template public genCPrivateOperationsPrototypes(cl : uml::Class) post(trim())]
+[let seqOp : Sequence(uml::Operation) = getNotInline(getPrivate(getNotAbstract(getNotStatic(getOwnedOperations(cl)))))]
+[for (o : uml::Operation | seqOp->sortedBy(name))]
+[genOperationHeader()/]
+/*## operation [name/]([genOperationParametersDef()/]) */
+static [if getReturn(ownedParameter->asSequence())->isEmpty()]void[else][for (p : Parameter | getReturn(ownedParameter->asSequence()))][getType()/][genPointer()/][/for][/if] [name/]([genOperationParametersDef()/]);
+
+[/for]
+[/let]
+[/template]
+
+[template public genCOperationsDeclarations(cl : uml::Class) post(trim())]
+[let seqOp : Sequence(uml::Operation) = getNotInline(getNotAbstract(getNotStatic(getOwnedOperations(cl))))]
+[for (o : uml::Operation | seqOp->sortedBy(name))]
+/*## operation [name/]([genOperationParametersDef()/]) */
+[if(isPrivate(o))]static [/if][if getReturn(ownedParameter->asSequence())->isEmpty()]void[else][for (p : Parameter | getReturn(ownedParameter->asSequence()))][getType()/][genPointer()/][/for][/if] [name/]([genOperationParametersDef()/])
+{
+    /* [protected('for ' + name + ' */')]
+    /* [/protected] for [name/] */
+}
+
+[/for]
+[/let]
+[/template]
+
+[template public genHInlineOperations(cl : uml::Class) post(trim())]
+[let seqOp : Sequence(uml::Operation) = getPublic(getInline(getNotAbstract(getNotStatic(getOwnedOperations(cl)))))]
+[for (o : uml::Operation | seqOp->sortedBy(name))]
+[genOperationHeader()/]
+/*## operation [name/]([for (p : uml::Parameter | getOperationParameters()) separator(', ')][name/][/for]) */
+[if(o.isConditional())]
+#[o.getInlineCondition()/] [o.getValueCondition()/]
+[/if]
+#define [name/]([for (p : uml::Parameter | getOperationParameters()) separator(', ')][name/][/for]) \
+/* [protected('for ' + name + ' */ \x5c')]
+/* [/protected] for [name/] */
+[if(o.isConditional())]
+#endif
+[/if]
+
+[/for]
+[/let]
+[/template]
+
+[template public genCInlineOperations(cl : uml::Class) post(trim())]
+[let seqOp : Sequence(uml::Operation) = getPrivate(getInline(getNotAbstract(getNotStatic(getOwnedOperations(cl)))))]
+[for (o : uml::Operation | seqOp->sortedBy(name))]
+[genOperationHeader()/]
+/*## operation [name/]([for (p : uml::Parameter | getOperationParameters()) separator(', ')][name/][/for]) */
+[if(o.isConditional())]
+#[o.getInlineCondition()/] [o.getValueCondition()/]
+[/if]
+#define [name/]([for (p : uml::Parameter | getOperationParameters()) separator(', ')][name/][/for]) \
+/* [protected('for ' + name + ' */ \x5c')]
+/* [/protected] for [name/] */
+[if(o.isConditional())]
+#endif
+[/if]
+
+[/for]
+[/let]
+[/template]

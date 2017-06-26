@@ -1,0 +1,66 @@
+[comment encoding = UTF-8 /]
+[module generateDialogs('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries/]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries/]
+[import com::thales::momoko2::pim::uml2::gen::common::components::compositeComponent/]
+
+[**
+ * This template generates the dialogs.
+ * @param aClass
+ * @param aClassName : the name of the feature class
+ */]
+[template public generateAllDialogs(aClass : Class, aClassName:String)]
+[generateDialogs(aClass, aClassName)/]
+[for (aProperty : Property | getOneAssociationObjectProperties(aClass))]
+[generateAllDialogs(getDestinationClass(aProperty, aProperty.getAssociation()), aClassName)/]
+[/for]
+[/template]
+
+[**
+ * This template generates the dialogs.
+ * @param aClass
+ * @param aClassName : the name of the feature class
+ */]
+[template private generateDialogs(aClass : Class, aClassName : String)]
+[for (aProperty : Property | getManyAssociationObjectProperties(aClass))]
+[let aDestinationClass : Class = getDestinationClass(aProperty, aProperty.association)]
+<p:dialog id="[aProperty.name/]CreateDialog" header="#{bundle.Create[aProperty.name.toUpperFirst()/]Title}" widgetVar="[aProperty.name/]CreateDlg" dynamic="true">
+    <h:form id="[aProperty.name/]CreateForm">
+[for (p: Property | aDestinationClass.getAllProperties()) ? (isAssociationAttribute(p)._not())]
+        [generateCompositeComponent(p, aDestinationClass.name.toLowerFirst().concat('Controller.selected.').concat(p.name), 'dialogPanelGrid')/]
+[/for] 
+        <p:commandButton ajax="true" icon="ui-icon-disk"
+                         update=":contentForm:[aProperty.name/]Fieldset, :[aProperty.name/]CreateForm" 
+                         actionListener="#{[aClassName.toLowerFirst()/]Controller.add[aProperty.name.toUpperFirst()/]()}"
+                         value="#{bundle.SaveLink}" oncomplete="handle[aProperty.name.toUpperFirst()/]CreateRequest(xhr, status, args)"/>
+    </h:form>
+</p:dialog>  
+<p:dialog id="[aProperty.name/]EditDialog" header="#{bundle.Edit[aProperty.name/]Title}" widgetVar="[aProperty.name/]EditDlg" dynamic="true">
+    <h:form id="[aProperty.name/]EditForm">
+[for (p: Property | aDestinationClass.getAllProperties()) ? (isAssociationAttribute(p)._not())]
+        [generateCompositeComponent(p, aDestinationClass.name.toLowerFirst().concat('Controller.selected.').concat(p.name),'dialogPanelGrid')/]
+[/for] 
+        <p:commandButton  update=":contentForm:[aProperty.name/]Fieldset, :[aProperty.name/]EditForm" 
+                          value="#{bundle.SaveLink}" icon="ui-icon-disk"
+                          oncomplete="handle[aProperty.name.toUpperFirst()/]EditRequest(xhr, status, args)"/>
+    </h:form>
+</p:dialog>
+<script type="text/javascript">  
+    function handle[aProperty.name.toUpperFirst()/]EditRequest(xhr, status, args) {  
+        if(args.validationFailed) {  
+            jQuery('#[aProperty.name/]EditDialog').effect("shake", { times:3 }, 100);  
+        } else {  
+            [aProperty.name/]EditDlg.hide();    
+        }  
+    }  
+    function handle[aProperty.name.toUpperFirst()/]CreateRequest(xhr, status, args) {  
+        if(args.validationFailed || !args.ok) {  
+            jQuery('#[aProperty.name/]CreateDialog').effect("shake", { times:3 }, 100);  
+        } else {  
+            [aProperty.name/]CreateDlg.hide();    
+        }  
+    } 
+</script>  
+[/let]
+[/for]
+[/template]

@@ -1,0 +1,103 @@
+[module daoimplhibernate('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(class : Class)]
+[if (class.isDao())][class.pathToMainJava()/]/[class.daoImplPackage().toPath()/]/[class.name/]Impl.java[/if]
+[/template][/comment]
+
+
+[template public generateDaoImplementHibernate(class : Class)? (class.isDao())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(), class.daoImplPackage().toPath(), class.name.concat('Impl.java')), false))]
+package [class.daoImplPackage()/];
+
+// [protected ('imports')] 
+// for import
+import java.io.Serializable;
+import java.util.Collection;
+
+import org.sharengo.exceptions.TechnicalException;
+import org.sharengo.orm.hibernate.AbstractHibernateDAO;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+[if (class.operationsParametersTypes()->isEmpty())]
+import [class.entityPackage()/].[class.name/];
+[else]
+	[for (classifier:Classifier|class.operationsParametersTypes())]
+		[if (classifier.hasStereotype(getProperty('Entity')))]
+import [class.entityPackage()/].[classifier.name/];
+		[else]
+import [classifier.getCompleteName()/];	
+		[/if]
+	[/for]
+[/if]
+
+[class.genCollectionImports()/]
+import [class.daoPackage()/].I[class.name/];
+
+[iocImport('Dao')/]
+
+// [/protected] for import
+
+public class [class.name/]Impl extends AbstractHibernateDAO<[class.name/]> implements I[class.name/] {
+
+	/**
+	 * class dedicated logger
+ 	 */
+	private static Log log = LogFactory.getLog([class.name/]Impl.class.getName()); 
+ 	
+ 	[iocAccessors('Dao')/] 
+ 	
+	// Custom operations
+[for (oper:Operation|class.ownedOperation)]
+[comment  generateJavadoc /]	
+	public [oper.generateReturn()/] [oper.name/]([oper.generateRawParameters()/]) throws TechnicalException{
+		// [protected ('implement')]	
+		// [oper.generateReturn()/] [oper.name/]([oper.generateRawParameters()/])	
+		return [oper.returnResult().getDefaultValue()/];
+		// [/protected]
+	}
+[/for]
+	
+ 	// Associations	
+	[class.getAssociationProperties(true).oclAsType(Property).genAssociations()/]
+	
+	// [protected ('others')] 
+	// of others
+	// [/protected] of others
+}
+[/file]
+[/template]
+
+
+[template public genAssociations(property : Property)]
+[if (property.type->select(oclIsTypeOf(Classifier) and oclAsType(Classifier).isDao())->notEmpty())]
+
+	[property.type.name/] [property.type.name.toLowerFirst()/]=null;
+	public [property.type.name/] get[property.type.name.toUpperFirst()/]() {
+ 		return [property.type.name.toLowerFirst()/];
+ 	}
+
+ 	public void set[property.type.name.toUpperFirst()/]([property.type.name/] [property.type.name.toLowerFirst()/]) {
+ 		this.[property.type.name.toLowerFirst()/] = [property.type.name.toLowerFirst()/];
+ 	} 	
+[/if]
+
+[/template]
+

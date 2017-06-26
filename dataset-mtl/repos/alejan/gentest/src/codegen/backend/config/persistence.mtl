@@ -1,0 +1,54 @@
+[comment encoding = UTF-8 /]
+[module persistence('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import ::utils /]
+
+[template public mainXML(m : Model)]
+[m.genTestPersistence(m.getTestMetaInfPath())/]
+[let metainf : String = m.getMetaInfPath()]
+    [m.genBeansXml(metainf)/]
+    [m.genPersistence(metainf)/]
+[/let]
+[/template]
+
+[template protected genPersistence(m : Model, path : String)]
+[file (path.concat('persistence.xml'), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="2.0" xmlns="http://java.sun.com/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
+  <persistence-unit name="[m.getPUName()/]" transaction-type="JTA">
+    <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+    <jta-data-source>[m.getJNDIName()/]</jta-data-source>
+    [for (c : Class | m.getClasses())]
+    <class>[m.baseGroup()/].entities.[c.getEntityName()/]</class>
+    [/for]
+    <properties>
+      <property name="eclipselink.logging.level" value="FINE"/>
+      <property name="eclipselink.ddl-generation" value="create-or-extend-tables"/>
+      <property name="eclipselink.cache.type.default" value="NONE" />
+    </properties>
+  </persistence-unit>
+</persistence>
+[/file]
+[/template]
+
+[template protected genTestPersistence(m : Model, path : String)]
+[file (path.concat('persistence.xml'), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="2.0" xmlns="http://java.sun.com/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
+    <persistence-unit name="[m.getPUName()/]" transaction-type="JTA">
+        <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+        <exclude-unlisted-classes>false</exclude-unlisted-classes>
+        <shared-cache-mode>NONE</shared-cache-mode>
+        <properties>
+            <property name="eclipselink.ddl-generation" value="drop-and-create-tables"/>
+            <property name="eclipselink.target-database" value="Derby"/>
+            <property name="javax.persistence.jdbc.driver" value="org.apache.derby.jdbc.ClientDriver"/>
+            <property name="javax.persistence.jdbc.url" value="jdbc:derby://localhost:1527/jdbc[m.name/]Test"/>
+            <property name="javax.persistence.jdbc.user" value="APP"/>
+            <property name="javax.persistence.jdbc.password" value="APP"/>
+            <property name="eclipselink.logging.level" value="FINE"/>
+            <property name="eclipselink.logging.parameters" value="true"/>
+        </properties>
+    </persistence-unit>
+</persistence>
+[/file]
+[/template]

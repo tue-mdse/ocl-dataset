@@ -1,0 +1,304 @@
+[comment encoding = UTF-8 /]
+[module javaRESTClientHTTPActivityHandler('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthenticationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/ExternalServiceLayerPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/SearchLayerPSMMetamodel.ecore')]
+
+
+[template public javaRESTClientHTTPActivityHandler(anAnnotationStack : AnnotationStack, jAlgoResourceController : JavaAlgoResourceController)]
+[file (anAnnotationStack.hasCorePSM.name + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/' + jAlgoResourceController.parentName.toLowerCase() + '/' + jAlgoResourceController.JavaAlgoRControllerHasHTTPActivity.ActivityHTTPVerb.toString().toLower().toUpperFirst()  + jAlgoResourceController.parentName + 'Handler.java', false, 'UTF-8')]
+/*
+ * ARISTOTLE UNIVERSITY OF THESSALONIKI
+ * Copyright (C) 2015
+ * Aristotle University of Thessaloniki
+ * Department of Electrical & Computer Engineering
+ * Division of Electronics & Computer Engineering
+ * Intelligent Systems & Software Engineering Lab
+ *
+ * Project             : [anAnnotationStack.hasCorePSM.name/]
+ * WorkFile            : 
+ * Compiler            : 
+ * File Description    : 
+ * Document Description: 
+* Related Documents	   : 
+* Note				   : 
+* Programmer		   : RESTful MDE Engine created by Christoforos Zolotas
+* Contact			   : christopherzolotas@issel.ee.auth.gr
+*/
+
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[jAlgoResourceController.parentName.toLowerCase()/];
+
+import java.util.Iterator;
+import java.util.List;
+import java.util.ArrayList;
+
+import javax.ws.rs.core.UriInfo;
+import javax.ws.rs.WebApplicationException;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.GenericType;
+import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.config.ClientConfig;
+import com.sun.jersey.api.client.config.DefaultClientConfig;
+import com.sun.jersey.api.json.JSONConfiguration;
+[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+[if (anAnnotationStack.hasGuestMode(jAlgoResourceController.parentName) = false)]
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
+import com.sun.jersey.core.util.Base64;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toLowerCase()/].[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/];
+[/if]
+[/if]
+
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.HypermediaLink;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.HibernateController;
+
+[if (jAlgoResourceController.hasNoOutputModel(anAnnotationStack) = false)]
+[if (jAlgoResourceController.hasExistentCRUDResourceOutputModel(anAnnotationStack))]
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[jAlgoResourceController.getExistentCRUDResourceOutputModel(anAnnotationStack).isExistentJavaModelPersistentOutput.annotatesJavaResourceModel.parentName.toLowerCase()/].[jAlgoResourceController.getExistentCRUDResourceOutputModelAsString(anAnnotationStack)/];
+[/if]
+[/if]
+
+
+/* 
+ *This class processes client requests for [jAlgoResourceController.parentName/] resource that are to be delegated to an existing 3rd party service. 
+ *Uppon its output receival, this class repackages the output and creates the hypermedia links with the search results to be returned to the client
+*/
+public class [jAlgoResourceController.JavaAlgoRControllerHasHTTPActivity.hasHTTPActivityHandler.name/]{
+
+    private HibernateController oHibernateController;
+    private UriInfo oApplicationUri; //Standard datatype that holds information on the URI info of this request
+	[if (jAlgoResourceController.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaInputModel.oclIsUndefined() = false)]
+    private [jAlgoResourceController.hasAssociatedAlgoModel.name/] o[jAlgoResourceController.hasAssociatedAlgoModel.name/];
+	[/if]
+	private [if (jAlgoResourceController.hasNoOutputModel(anAnnotationStack) = false)][if (jAlgoResourceController.hasExistentCRUDResourceOutputModel(anAnnotationStack))][jAlgoResourceController.getExistentCRUDResourceOutputModelAsString(anAnnotationStack)/][else]Java[jAlgoResourceController.parentName.toUpperFirst()/]OutputModel[/if][else]Java[jAlgoResourceController.parentName.toUpperFirst()/]OutputModel[/if] oOutputDataModel;
+	[for (queryParam : QueryParam | jAlgoResourceController.JavaAlgoRControllerHasHTTPActivity.getQueryParams(anAnnotationStack))] 
+	private String [queryParam.name/];
+	[/for]
+	[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+	[if (anAnnotationStack.hasGuestMode(jAlgoResourceController.parentName) = false)]
+	private String authHeader;
+	private [anAnnotationStack.getAuthenticationPerformer().authenticationModelName/] oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/];
+	[/if]
+	[/if]
+	private ClientConfig oClientConfiguration;
+
+    public [jAlgoResourceController.JavaAlgoRControllerHasHTTPActivity.hasHTTPActivityHandler.name/]([if (anAnnotationStack.bHasAuthenticationAnnotation)][if (jAlgoResourceController.JavaAlgoRControllerHasHTTPActivity.hasBothModeAuthentication(anAnnotationStack))]String authHeader, [elseif (jAlgoResourceController.JavaAlgoRControllerHasHTTPActivity.hasAuthenticationOnlyMode(anAnnotationStack))]String authHeader, [/if][/if][for (queryParam : QueryParam | jAlgoResourceController.JavaAlgoRControllerHasHTTPActivity.getQueryParams(anAnnotationStack))]String [queryParam.name/], [/for][if (jAlgoResourceController.hasNoIntputModel(anAnnotationStack) = false)][jAlgoResourceController.hasAssociatedAlgoModel.name/] oTemp[jAlgoResourceController.hasAssociatedAlgoModel.name/], [/if]UriInfo oApplicationUri){
+  		[if (jAlgoResourceController.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaInputModel.oclIsUndefined() = false)]
+        o[jAlgoResourceController.hasAssociatedAlgoModel.name/] = new [jAlgoResourceController.hasAssociatedAlgoModel.name/]();
+		[/if]
+        this.oHibernateController = HibernateController.getHibernateControllerHandle();
+        this.oApplicationUri = oApplicationUri;
+		[if (jAlgoResourceController.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaInputModel.oclIsUndefined() = false)]
+    	this.o[jAlgoResourceController.hasAssociatedAlgoModel.name/] = oTemp[jAlgoResourceController.hasAssociatedAlgoModel.name/];
+		[/if]
+		[for (queryParam : QueryParam | jAlgoResourceController.JavaAlgoRControllerHasHTTPActivity.getQueryParams(anAnnotationStack))] 
+		this.[queryParam.name/] = [queryParam.name/];
+		[/for]
+		[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+		[if (anAnnotationStack.hasGuestMode( jAlgoResourceController.parentName) = false)]
+		//initialize authentication variables
+		this.authHeader = authHeader;
+		this.oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/] = new [anAnnotationStack.getAuthenticationPerformer().authenticationModelName/](); 
+		[/if] 
+		[/if]
+
+		//initialize JAX-RS Client configuration 
+		this.oClientConfiguration = new DefaultClientConfig();
+		this.oClientConfiguration.getFeatures().put(JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE);
+    }
+
+    public [if (jAlgoResourceController.hasNoOutputModel(anAnnotationStack) = false)][if (jAlgoResourceController.hasExistentCRUDResourceOutputModel(anAnnotationStack))][jAlgoResourceController.getExistentCRUDResourceOutputModelAsString(anAnnotationStack)/][else]Java[jAlgoResourceController.parentName.toUpperFirst()/]OutputModel[/if][else]Java[jAlgoResourceController.parentName.toUpperFirst()/]OutputModel[/if] [jAlgoResourceController.JavaAlgoRControllerHasHTTPActivity.hasHTTPActivityHandler.HandlerHTTPVerb.toString().toLower()/][jAlgoResourceController.parentName.toLower()/](){
+
+		[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+		[if (anAnnotationStack.hasGuestMode(jAlgoResourceController.parentName) = false)]
+    	//check if there is a non null authentication header
+    	if(authHeader == null){
+    		throw new WebApplicationException(Response.Status.FORBIDDEN);
+    	}
+		[if (anAnnotationStack.hasBothModeAuthentication(jAlgoResourceController.parentName))]
+		else if(authHeader.equalsIgnoreCase("guest")){ //if guest and authentication mode are allowed, check if the request originates from a guest user
+			return interoperateWithExternalService();
+		}
+		[/if]
+		else{
+	    	//decode the auth header
+    		decodeAuthorizationHeader();
+
+        	//authenticate the user against the database
+        	oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/] = oHibernateController.authenticateUser(oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/]);
+
+			//check if the authentication failed
+			if(oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/] == null){
+        		throw new WebApplicationException(Response.Status.UNAUTHORIZED);
+        	}
+		}
+		[/if] 
+		[/if]
+
+		//Return any results in the hypermedia links form.
+        return interoperateWithExternalService();
+    }
+
+	[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+	[if (anAnnotationStack.hasGuestMode(jAlgoResourceController.parentName) = false)]
+	/* This function performs the decoding of the authentication header */
+    public void decodeAuthorizationHeader()
+    {
+    	//check if this request has basic authentication
+    	if( !authHeader.contains("Basic "))
+    	{
+    		throw new WebApplicationException(Response.Status.BAD_REQUEST);
+    	}
+    	
+        authHeader = authHeader.substring("Basic ".length());
+        String['['/][']'/] decodedHeader;
+        decodedHeader = Base64.base64Decode(authHeader).split(":");
+        
+        if( decodedHeader == null)
+        {
+        	throw new WebApplicationException(Response.Status.BAD_REQUEST);
+        }
+        
+        oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/].set[anAnnotationStack.getUsernameToken().name/](decodedHeader['['/]0[']'/]);
+        oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/].set[anAnnotationStack.getPasswordToken().name/](decodedHeader['['/]1[']'/]);
+    }
+	[/if]
+	[/if]
+
+    /* 
+	 * This function handles the interoperation with the existing 3rd party service. It calls the according functions to create the input 
+	 * to be sent to it, to receive its output and if necessary to persist the outcome in the database. 
+	 * Finally, the result is returned to the client.
+    */
+    public [if (jAlgoResourceController.hasNoOutputModel(anAnnotationStack) = false)][if (jAlgoResourceController.hasExistentCRUDResourceOutputModel(anAnnotationStack))][jAlgoResourceController.getExistentCRUDResourceOutputModelAsString(anAnnotationStack)/][else]Java[jAlgoResourceController.parentName.toUpperFirst()/]OutputModel[/if][else]Java[jAlgoResourceController.parentName.toUpperFirst()/]OutputModel[/if] interoperateWithExternalService(){
+		
+		//create a new JAX-RS client
+        Client oJAXRSRESTClient = Client.create(this.oClientConfiguration);
+
+		//construct the [jAlgoResourceController.getJavaRESTClientHTTPActivityHandler(anAnnotationStack).HTTPVerb/] query
+		WebResource oTargetResource = oJAXRSRESTClient.resource("[jAlgoResourceController.getJavaRESTClientHTTPActivityHandler(anAnnotationStack).targetServiceURL/]")[if (jAlgoResourceController.JavaAlgoRControllerHasHTTPActivity.getQueryParams(anAnnotationStack)->size() > 0)][for (queryParam : QueryParam | jAlgoResourceController.JavaAlgoRControllerHasHTTPActivity.getQueryParams(anAnnotationStack))].queryParam("[queryParam.name/]", this.[queryParam.name/])[/for];[else];[/if]
+        ClientResponse oResponse = oTargetResource[if (jAlgoResourceController.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaInputModel.oclIsUndefined() = false)].type(javax.ws.rs.core.MediaType.[jAlgoResourceController.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaInputModel.hasInputRepresentation.name/])[/if][if (jAlgoResourceController.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaOutputModel.oclIsUndefined() = false)].accept(javax.ws.rs.core.MediaType.[jAlgoResourceController.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaOutputModel.hasOutputRepresentation.name/])[/if].[jAlgoResourceController.getJavaRESTClientHTTPActivityHandler(anAnnotationStack).HTTPVerb.toLower()/](ClientResponse.class[if (jAlgoResourceController.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaInputModel.oclIsUndefined() = false)], this.o[jAlgoResourceController.hasAssociatedAlgoModel.name/][/if]);
+        this.oOutputDataModel = oResponse.getEntity([if (jAlgoResourceController.hasNoOutputModel(anAnnotationStack) = false)][if (jAlgoResourceController.hasExistentCRUDResourceOutputModel(anAnnotationStack))][jAlgoResourceController.getExistentCRUDResourceOutputModelAsString(anAnnotationStack)/][else]Java[jAlgoResourceController.parentName.toUpperFirst()/]OutputModel[/if][else]Java[jAlgoResourceController.parentName.toUpperFirst()/]OutputModel[/if].class);
+
+        if (isSuccessfullResponseCode(oResponse) == false) {
+            throw new WebApplicationException();
+        }	
+
+		return this.oOutputDataModel;
+	}
+
+	/*
+	 * This function checks the response code of the server reply against the known success codes. If the server response HTTP
+     * code is within the success code range, this functions returns true. Otherwise it returns false
+	*/
+	private boolean isSuccessfullResponseCode(ClientResponse oResponse){
+		if(oResponse.getStatus() == 200){ // Status OK
+			return true;
+		}
+		else if(oResponse.getStatus() == 201){ // Status CREATED
+			return true;
+		}
+		else if(oResponse.getStatus() == 202){ // Status Accepted
+			return true;
+		}
+		else if(oResponse.getStatus() == 203){ // Status NON-AUTHORITATIVE INFORMATION
+			return true;
+		}
+		else if(oResponse.getStatus() == 204){ // Status NO CONTENT
+			return true;
+		}
+		else if(oResponse.getStatus() == 205){ // Status RESET CONTENT
+			return true;
+		}
+		else if(oResponse.getStatus() == 206){ // Status PARTIAL CONTENT
+			return true;
+		}
+
+		return false;
+	}
+	
+}
+[/file]
+[/template]
+
+[query private hasBothModeAuthentication(anAnnotationStack : AnnotationStack, resourceName : String) : Boolean =
+	getAuthenticationLayerBothModeAnnotations(anAnnotationStack)->exists(bothModeAnnotation | bothModeAnnotation.HTTPActivityHandlerHasAuthenticationMode->exists(annHTTPActivityHandler | annHTTPActivityHandler.annotatesHTTPActivityHandler.name.toLower() = annHTTPActivityHandler.annotatesHTTPActivityHandler.HandlerHTTPVerb.toString().toLower() + resourceName.toLower() + 'Handler'.toLower()))
+/]
+
+[query private hasBothModeAuthentication(anHttpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Boolean =
+	getAuthenticationLayerBothModeAnnotations(anAnnotationStack)->exists(bothModeAnnotation | bothModeAnnotation.HTTPActivityHasAuthenticationMode->exists(annHTTPActivity | annHTTPActivity.annotatesHTTPActivity.name = anHttpActivity.name))
+/]
+
+[query private getAuthenticationLayerBothModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(BothMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(BothMode))->asSequence()
+/]
+
+[query private hasAuthenticationOnlyMode(anAnnotationStack : AnnotationStack, resourceName : String) : Boolean =
+	getAuthenticationLayerAuthenticationOnlyModeAnnotations(anAnnotationStack)->exists(authenticationOnlyMode | authenticationOnlyMode.HTTPActivityHandlerHasAuthenticationMode->exists(annHTTPActivityHandler | annHTTPActivityHandler.annotatesHTTPActivityHandler.name.toLower() = annHTTPActivityHandler.annotatesHTTPActivityHandler.HandlerHTTPVerb.toString().toLower() + resourceName.toLower() + 'Handler'.toLower()))
+/]
+
+[query private hasAuthenticationOnlyMode(anHttpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Boolean =
+	getAuthenticationLayerAuthenticationOnlyModeAnnotations(anAnnotationStack)->exists(authenticationOnlyMode | authenticationOnlyMode.HTTPActivityHasAuthenticationMode->exists(annHTTPActivity | annHTTPActivity.annotatesHTTPActivity.name = anHttpActivity.name))
+/]
+
+[query private getAuthenticationLayerAuthenticationOnlyModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(AuthenticationOnlyMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(AuthenticationOnlyMode))->asSequence()
+/]
+
+[query private hasGuestMode(anAnnotationStack : AnnotationStack, resourceName : String) : Boolean =
+	getAuthenticationLayerGuestModeAnnotations(anAnnotationStack)->exists(guestMode | guestMode.HTTPActivityHandlerHasAuthenticationMode->exists(annHTTPActivityHandler | annHTTPActivityHandler.annotatesHTTPActivityHandler.name.toLower() = annHTTPActivityHandler.annotatesHTTPActivityHandler.HandlerHTTPVerb.toString().toLower() + resourceName.toLower() + 'Handler'.toLower()))
+/]
+
+[query private getAuthenticationLayerGuestModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(GuestMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(GuestMode))->asSequence()
+/]
+
+[query private getAuthenticationPerformer(anAnnotationStack : AnnotationStack) : AuthenticationPerformer =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(AuthenticationPerformer))->at(1)
+/]
+
+[query private getPasswordToken(anAnnotationStack : AnnotationStack) : Password =
+	anAnnotationStack.getAuthenticationPerformer().hasAuthenticationToken->select(authenticationToken | authenticationToken.oclIsTypeOf(Password))->at(1)
+/]
+
+[query private getUsernameToken(anAnnotationStack : AnnotationStack) : AuthenticationToken =
+	anAnnotationStack.getAuthenticationPerformer().hasAuthenticationToken->select(authenticationToken | authenticationToken.oclIsTypeOf(Password) = false)->at(1)
+/]
+
+[query private hasNoOutputModel(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : Boolean =
+	anAnnotationStack.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaOutputModel.oclIsUndefined()
+/]
+
+[query private getJavaRESTClientControllerAnnotation(anAnnotationStack : AnnotationStack, jAlgoResourceController : JavaAlgoResourceController) : JavaRESTClientController =
+	jAlgoResourceController.getJavaRESTClientControllerAnnotations(anAnnotationStack)->select(javaRESTController | javaRESTController.isJavaRESTClientController.annotatesJavaAlgoController->includes(jAlgoResourceController))->at(1)
+/]
+
+[query private getJavaRESTClientControllerAnnotations(anAnnotationStack : AnnotationStack) : Sequence(JavaRESTClientController) =
+	anAnnotationStack.hasExternalServiceLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(JavaRESTClientController))->asSequence()
+/]
+
+[query private hasExistentCRUDResourceOutputModel(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : Boolean =
+	anAnnotationStack.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaOutputModel.oclIsTypeOf(ExistentJavaModelPersistentOutput)
+/]
+
+[query private getExistentCRUDResourceOutputModelAsString(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : String =
+	anAnnotationStack.getExistentCRUDResourceOutputModel(jAlgoResourceController, anAnnotationStack).isExistentJavaModelPersistentOutput.annotatesJavaResourceModel.name
+/] 
+
+[query private getExistentCRUDResourceOutputModel(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : ExistentJavaModelPersistentOutput =
+anAnnotationStack.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaOutputModel->select(outputModel | outputModel.oclIsTypeOf(ExistentJavaModelPersistentOutput))->asSequence()->at(1)
+/]
+
+[query private getQueryParams(httpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Sequence(QueryParam) =
+	anAnnotationStack.getJavaRESTClientHTTPActivity(anAnnotationStack, httpActivity).hasQueryParam->asSequence()
+/]
+
+[query private getJavaRESTClientHTTPActivity(anAnnotationStack : AnnotationStack, httpActivity : HTTPActivity) : JavaRESTClientHTTPActivity =
+	anAnnotationStack.getJavaRESTClientControllerAnnotations(anAnnotationStack).hasJavaRESTClientHTTPActivity->select( javaRESTClientHTTPActivity | javaRESTClientHTTPActivity.isJavaRESTClientHTTPActivity.annotatesHTTPActivity->includes(httpActivity))->at(1)
+/]
+
+[query private hasNoIntputModel(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : Boolean =
+	anAnnotationStack.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaInputModel.oclIsUndefined()
+/]
+
+[query private getJavaRESTClientHTTPActivityHandler(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : JavaRESTClientHTTPActivityHandler =
+	anAnnotationStack.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasJavaRESTClientHTTPActivity.hasJavaRESTClientHTTPActivityHandler
+/]

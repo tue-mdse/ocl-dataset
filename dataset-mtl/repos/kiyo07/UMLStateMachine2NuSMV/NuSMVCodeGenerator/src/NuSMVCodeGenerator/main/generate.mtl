@@ -1,0 +1,68 @@
+[comment encoding = UTF-8 /]
+[module generate('http://www.unibg.it/nuseen/nusmvlanguage/NuSMV')]
+
+[template public generateNuSMVCode(nusmv : NuSmvModel)]
+[comment @main/]
+[file ('NuSMVFromUMLSM.smv', false, 'UTF-8')]
+[for (m:Module| nusmv.modules)]
+MODULE [m.name/][for(fp1:FormalParameter|m.params) before('(') separator(',') after(')')][fp1.name/][/for]
+
+[for (var:VariableDeclaration |m.moduleElement)]
+VAR
+[for (varb : VarBody | var.vars)]
+	[varb.name/]:[for (et:EnumType| varb.type) separator (',')]{[for(eval:Val| et.val) separator(',')][eval.name/][/for]}[/for][for (mt: ModuleType| varb.type)][mt.module.name/]([for (fp:FormalParameter|mt.module.params) separator(',')][fp.name/][/for])[/for];
+[/for]
+[/for]
+[for (ass:AssignConstraintElement |m.moduleElement)]
+ASSIGN
+[for (ini : InitBody | ass.bodies)]
+[for (iniv:Var | ini.var)]
+[for (inis:ValueExpression|ini.initial)]
+	init([iniv.value.name/]) := [inis.value/];
+[/for]
+[/for]
+[/for]
+[for (nex: NextBody| ass.bodies)]
+[for (nexv:Var|nex.var)]
+	next([nexv.value.name/]):=
+[for (nexv: CaseSimpleExpression|nex.dotted)]
+		case
+[for (nexs:CaseSimpleAssignementExpression|nexv.branches)]
+[for (cas:BinaryExpression|nexs.case)]
+[for (casl: ValueExpression| cas.left)]
+[for (casr: ValueExpression| cas.right)]
+[for (casv:ValueExpression|nexs.assignment)]
+		 [casl.value/] [cas.operator/] [casr.value/] : [casv.value/];
+[/for][/for][/for][/for]
+[for (cas2: ValueExpression| nexs.case)]
+[for (casv2:ValueExpression|nexs.assignment)]
+		 [cas2.value/] : [casv2.value/];
+[/for][/for]
+[/for]
+		 esac;
+[/for][/for]
+[for (nexv2:FormalParameter|nex.var)]
+	next([nexv2.name/]):=
+[for (nexv: CaseSimpleExpression|nex.dotted)]
+		case
+[for (nexs:CaseSimpleAssignementExpression|nexv.branches)]
+[for (cas:BinaryExpression|nexs.case)]
+[for (casl: ValueExpression| cas.left)]
+[for (casr: ValueExpression| cas.right)]
+[for (casv:ValueExpression|nexs.assignment)]
+		 [casl.value/] [cas.operator/] [casr.value/] : [casv.value/] ;
+[/for][/for][/for][/for]
+[for (cas2: ValueExpression| nexs.case)]
+[for (casv2:ValueExpression|nexs.assignment)]
+		 [cas2.value/] : [casv2.value/];
+[/for][/for]
+[/for]
+		 esac;
+[/for][/for]
+[/for][/for]
+
+[/for]
+
+
+[/file]
+[/template]

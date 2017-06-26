@@ -1,0 +1,77 @@
+[comment encoding = UTF-8 /]
+[module genDispatcher('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::common::umlUtils /]
+[import com::mgs::uml::gen::as::common::asUtils /]
+[import com::mgs::uml::gen::as::common::asEventUtils /]
+
+
+[comment generate the AS3 business class file with dispatcher for a class /]
+[template public genDispatcher(c : Class)]
+
+[comment @main /]
+
+[file (c.genFolder() + '/impl/' + c.genDispatcherFilename(), false, 'UTF-8')]
+package [c.genPackage()/].impl
+{
+
+	[generateClass(c)/]
+
+}
+[/file]
+	
+[/template]
+
+[template public genDispatcherFilename(c : Class) post (trim())]
+	[c.genDispatcherName()/].as
+[/template]
+
+[template public genDispatcherName(c : Class) post (trim())]
+	[c.name.toUpperFirst()/]Dispatcher
+[/template]
+
+[comment generate the business class /]
+[template private generateClass(c : Class) post (trim())]
+public class [c.genDispatcherName()/] extends [c.genName()/] implements IEventDispatcher
+{
+	[generateBody(c)/]
+}
+[/template]
+
+[comment generate the business class body /]
+[template private generateBody(c : Class) post (trim())]
+
+[generateAttributes(c)/]
+
+[generateConstructor(c)/]
+
+[genEventDispatcherDelegateMethods()/]
+
+[generateSetters(c)/]
+
+[/template]
+
+
+[template private generateAttributes(c : Class) post (trim())]
+[genEventDispatcherAttributes()/]
+[/template]
+
+[template private generateConstructor(c : Class) post (trim())]
+
+public function [c.genDispatcherName()/](){
+	super();
+	[genEventDispatcherInitialisation()/]
+}
+
+[/template]
+
+[template private generateSetters(c : Class) post (trim())]
+
+[for (att : Property | c.properties())]
+override [att.genVisibility()/] function [att.genSetterName()/]([att.genName()/]:[att.genType()/]):void{
+	super.[att.genSetterName()/]([att.genName()/]);
+	dispatchEvent(new Event(Event.CHANGE));
+}
+
+[/for]
+
+[/template]

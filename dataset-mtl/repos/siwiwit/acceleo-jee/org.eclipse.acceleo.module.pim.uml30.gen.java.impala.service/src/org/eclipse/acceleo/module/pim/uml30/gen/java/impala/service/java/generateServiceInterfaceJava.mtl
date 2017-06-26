@@ -1,0 +1,146 @@
+[comment encoding = UTF-8 /]
+[module generateServiceInterfaceJava('http://www.eclipse.org/uml2/3.0.0/UML')]
+[import org::acceleo::module::pim::uml21::gen::java::common::common/]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests/]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics/]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes/]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure/]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::service::common::servicePathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::entityUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::build::common::entityUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::service::common::serviceCommon /]
+[template public generateServiceInterfaceJava(aService : Class)]
+[comment This template is called by the main module file /]
+	[file (aService.getModel().generateProjectFolder().concat(aService.getModel().pathToGeneratedMainJava()).concat('/').concat(aService.generateJavaPackagePath()).concat('/').concat(aService.name.toUpperFirst()).concat('.java'), false, 'UTF-8')]
+package [aService.generateJavaPackage()/];
+
+import java.io.Serializable;
+[aService.generateImports()/]
+
+[if (not (aService.superClass->isEmpty()))]
+	[if (aService.generateJavaPackage() <> aService.superClass->asSequence()->first().generateJavaPackage())]
+import [aService.superClass.generateJavaPackage()/].[aService.superClass.name/];
+	[/if]
+[/if]
+[for (aDaoClass : Class | aService.getRelatedDaos())]
+	[if (aService.generateJavaPackage() <> aDaoClass.generateJavaPackage())]
+import [aDaoClass.generateJavaPackage()/].[aDaoClass.name/]Dao;
+	[/if]
+[/for]
+
+/**
+[if (aService.ownedComment._body->size() > 0)]
+ * [aService.ownedComment._body.replaceAll('\n', '\n * ')/]
+[else]
+ * Warning: no comment in the model for interface [name/].
+[/if]
+ */
+public interface [aService.name/] extends Serializable[if (aService.interfaceRealization->size() > 0)], [aService.implementedInterfaces()/][/if] {
+
+[let props : Sequence(Property) = aService.classAttributes()]
+	[for (prop:Property|props)]
+    /**
+     * Returns [name/].
+		[if (prop.ownedComment._body->size() > 0)]
+     * @return [prop.ownedComment._body.replaceAll('\n', '\n     * ')/]
+		[else]
+     * @return Warning, no comment in the model.
+		[/if]
+     */
+    [prop.getterSignature()/];
+
+		[if (not (prop.isReadOnly) and not (prop.isDerived))]
+    /**
+     * Sets a value to parameter [prop.name/].
+     * @param [prop.paramName()/]
+			[if (prop.ownedComment._body->size() > 0)]
+     *            [prop.ownedComment._body.replaceAll('\n', '\n     *            ')/]
+			[else]
+     *            Warning, no comment in the model.
+			[/if]
+     */
+    [prop.setterSignature()/];
+		[/if]
+	[/for]
+	[for (aDaoClass : Class | aService.getRelatedDaos())]
+		[if (aService.generateJavaPackage() <> aDaoClass.generateJavaPackage())]
+	[aDaoClass.name/]Dao get[aDaoClass.name/]Dao();
+
+	void set[aDaoClass.name/]Dao([aDaoClass.name/]Dao the[aDaoClass.name/]Dao);
+		[/if]
+	[/for]
+
+[/let]
+
+[for (anSimpleOperation : Operation | aService.ownedOperation->select(oper:Operation|not oper.isFinder()))]
+	[anSimpleOperation.generateJavadoc()/]
+	[anSimpleOperation.generateReturn()/] [anSimpleOperation.name/]([anSimpleOperation.generateParameters()/]);
+[/for]
+
+
+[if (aService.interfaceRealization->notEmpty())]
+	[for (interface:Interface|aService.interfaceRealization.target->filter(Interface))]
+    /* Implementation of interface [aService.name/]: start */
+		[for (prop:Property|interface.itfAttributes())] 
+			[if (aService.attribute->select(name = prop.name)->notEmpty())]
+
+    /**
+     * Implementation of [interface.name/]'s [prop.name/] getter.
+				[if (prop.ownedComment._body->size() > 0)]
+     * @return [prop.ownedComment._body.replaceAll('\n', '\n     * ')/]
+				[else]
+     * @return Warning, no comment in the model.
+				[/if]
+     * @see [interface.name/].[prop.getterName()/]
+     */
+    [prop.getterSignature()/];
+
+    /**
+     * Implementation of [interface.name/]'s [prop.name/] setter.
+     * @param [prop.paramName()/]
+				[if (prop.ownedComment._body->size() > 0)]
+     *            [prop.ownedComment._body.replaceAll('\n', '\n     *            ')/]
+				[else]
+     *            Warning, no comment in the model.
+				[/if]
+     * @see [interface.name/].[prop.setterName()/]
+     */
+    [prop.setterSignature()/];
+
+			[/if]
+
+		[/for]
+    /* Implementation of interface [name/]: end */
+
+	[/for]
+[/if]
+
+}
+
+[/file]
+[/template]
+
+
+[comment][query public isSupperAsEntity(aService : Class) : Boolean = 
+aService.superClass->notEmpty() and aService.superClass->asSequence()->first().hasStereotype('Entity')/][/comment]
+
+
+[comment][template public extensions(aService:Class)]
+[if (not (aService.superClass->isEmpty()))] extends [aService.superClass.name/][/if]
+[/template][/comment]
+
+
+[template public asParameter(property:Property) ]
+[property.convertToJavaType()/] [property.paramName()/]
+[/template]
+
+
+[template public implementedInterfaces(aService:Class)]
+[aService.interfaceRealization.target->filter(Interface).name->sep(', ')/]
+[/template]
+

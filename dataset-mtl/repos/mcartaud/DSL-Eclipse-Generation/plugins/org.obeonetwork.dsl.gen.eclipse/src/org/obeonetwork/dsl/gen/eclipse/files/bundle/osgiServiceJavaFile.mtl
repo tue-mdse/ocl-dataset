@@ -1,0 +1,145 @@
+[comment encoding = UTF-8 
+
+Copyright (c) 2012 Obeo
+All rights reserved.  This program and the accompanying materials
+are made available under the terms of the Eclipse Public License 1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+You can apply any license to the files generated with this module and Acceleo.
+
+Contributors :
+	Mathieu Cartaud (Obeo) - initial API and implementation
+/]
+[module osgiServiceJavaFile('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel', 'http://www.obeonetwork.org/dsl/eclipse')]
+
+[import org::obeonetwork::dsl::gen::eclipse::common::normalizeName /]
+
+[template private osgiServiceJavaFile(aDeclarativeService : DeclarativeService)]
+[aDeclarativeService.eContainer(Bundle).genBundlePath()/]/src/[aDeclarativeService.genServicePackagePath()/]/[aDeclarativeService.serviceClassName.toUpperFirst()/].java
+[/template]
+
+[template public genOsgiServiceJavaFile(aDeclarativeService : DeclarativeService)]
+[file (aDeclarativeService.osgiServiceJavaFile(), false, 'UTF-8')]
+package [aDeclarativeService.genServicePackageName()/];
+
+[if (aDeclarativeService.requiredServices->size() > 0)]
+import [aDeclarativeService.delegatorClass.genPackage.basePackage/].[aDeclarativeService.delegatorClass.ecoreClass.ePackage.name/].impl.[aDeclarativeService.delegatorClass.ecoreClass.name/]Impl;
+[elseif (aDeclarativeService.providedServices->size() > 0)]
+import [aDeclarativeService.delegatorClass.genPackage.basePackage/].[aDeclarativeService.delegatorClass.ecoreClass.ePackage.name/].[aDeclarativeService.delegatorClass.ecoreClass.name/];
+[/if]
+[if (aDeclarativeService.providedServices->size() > 0)]import [aDeclarativeService.genImplementationID()/];
+[/if][if (aDeclarativeService.requiredServices->size() > 0)][for (aRequiredService : RequiredService | aDeclarativeService.requiredServices)][aRequiredService.interfaceID()/][/for][/if]
+//[protected (': add declarative service imports for ' + aDeclarativeService.serviceClassName.toUpperFirst())]
+//[/protected]
+
+
+/**
+ * referenced in [aDeclarativeService.serviceClassName.toLowerFirst()/].xml.
+[aDeclarativeService.eContainer(Bundle).genMail()/]
+ * @generated
+ */
+public class [aDeclarativeService.serviceClassName.toUpperFirst()/][aDeclarativeService.monitorSuperType()/] {
+
+//[protected (': add declarative service attributes for ' + aDeclarativeService.serviceClassName.toUpperFirst())]
+//[/protected]
+
+[if (aDeclarativeService.providedServices.interface.ecoreClass.eAllOperations->size() > 0)]
+	// Provided Services
+[for (anEOperation : EOperation | aDeclarativeService.providedServices.interface.ecoreClass.eAllOperations)]
+	/**
+	 * 
+	 * @generated
+	 */
+	public [anEOperation.genReturn()/] [anEOperation.name.toLowerFirst()/]([anEOperation.eParameters.genDeclaration()->sep(', ')/]) {
+		this.a[aDeclarativeService.delegatorClass.ecoreClass.name.toUpperFirst()/].[anEOperation.name/]();
+	}
+[/for]
+[/if]
+
+[if (aDeclarativeService.requiredServices->size() > 0)]
+	/**
+	 * the constructor.
+	 * @generated
+	 */
+	public [aDeclarativeService.serviceClassName.toUpperFirst()/]() {
+		super();
+	}
+
+
+	// Required Services
+[for (aRequiredService : RequiredService | aDeclarativeService.requiredServices)]
+	/**
+	 * add the required service.
+	 * @param a[aRequiredService.reference.eType.name.toUpperFirst()/] the attribute
+	 * @generated
+	 */
+	public void add[aRequiredService.reference.name.toUpperFirst()/]([aRequiredService.reference.eType.name.toUpperFirst()/] a[aRequiredService.reference.eType.name.toUpperFirst()/]) {
+		[aRequiredService.addMethodBody()/]
+	}
+
+	/**
+	 * remove the required service.
+	 * @param a[aRequiredService.reference.eType.name.toUpperFirst()/] the attribute
+	 * @generated
+	 */
+	public void remove[aRequiredService.reference.name.toUpperFirst()/]([aRequiredService.reference.eType.name.toUpperFirst()/] a[aRequiredService.reference.eType.name.toUpperFirst()/]) {
+		[aRequiredService.removeMethodBody()/]
+	}
+[/for]
+[/if]
+
+//[protected (': add declarative service methods for ' + aDeclarativeService.serviceClassName.toUpperFirst())]
+//[/protected]
+
+}
+[/file]
+[/template]
+
+[template private monitorSuperType(aDeclarativeService : DeclarativeService)]
+[if (aDeclarativeService.providedServices->size() > 0)][for (aProvidedService : ProvidedService 
+| aDeclarativeService.providedServices)][aProvidedService.superType()/][/for][elseif (aDeclarativeService.
+requiredServices->size() > 0)] extends [aDeclarativeService.delegatorClass.ecoreClass.name.toUpperFirst()/]Impl[/if]
+[/template]
+
+
+[template private superType(aProvidedService : ProvidedService)]
+[if (aProvidedService.interface.ecoreClass.abstract and not(aProvidedService.interface.ecoreClass.interface))]
+ extends [for (aGenClass : GenClass | aProvidedService.interface) separator (', ')][aGenClass.genSuperType()/][/for][/if]
+[if (aProvidedService.interface.ecoreClass.abstract and aProvidedService.interface.ecoreClass.interface)]
+ implements [for (aGenClass : GenClass | aProvidedService.interface) separator (', ')][aGenClass.genSuperType()/][/for][/if]
+[/template]
+
+[template private genSuperType(aGenClass : GenClass)]
+[aGenClass.ecoreClass.name.toUpperFirst()/]
+[/template]
+
+[template private genReturn(anEOperation : EOperation)]
+[if (anEOperation.eType.oclIsUndefined())]
+void[else][anEOperation.eType.name.toUpperFirst()/]
+[/if]
+[/template]
+
+[template private genDeclaration(anEParameters : EParameter)]
+[anEParameters.eType.name.toUpperFirst()/] [anEParameters.name.toLowerFirst()/]
+[/template]
+
+[template private addMethodBody(aRequiredService : RequiredService)]
+[if (aRequiredService.reference.upperBound = 1)]
+set[aRequiredService.reference.name.toUpperFirst()/](a[aRequiredService.reference.eType.name.toUpperFirst()/]);
+[else]
+get[aRequiredService.reference.name.toUpperFirst()/]().add(a[aRequiredService.reference.eType.name.toUpperFirst()/]);
+[/if]
+[/template]
+
+[template private removeMethodBody(aRequiredService : RequiredService)]
+[if (aRequiredService.reference.upperBound = 1)]
+set[aRequiredService.reference.name.toUpperFirst()/](null);
+[else]
+get[aRequiredService.reference.name.toUpperFirst()/]().remove(a[aRequiredService.reference.eType.name.toUpperFirst()/]);
+[/if]
+[/template]
+
+[template private interfaceID(aRequiredService : RequiredService)]
+import [aRequiredService.genInterfaceID()/];
+[/template]

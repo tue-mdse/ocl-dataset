@@ -1,0 +1,83 @@
+[module php('http://www.eclipse.org/uml2/2.0.0/UML')/]
+
+[import uml2services /]
+
+[template public entity(class : uml::Class) ? (hasStereotype(class, 'Entity')) post (trim())]
+[comment @main /]
+[file (getFileName(class), false, 'UTF-8')]
+<?php
+namespace [class.getEntityNamespace()/];
+
+/**
+[class.doctrineComment()/] 
+ */
+class [class.name/] extends \tv\vial\acceleo\php\framework\PersistedEntity{
+
+	[for (p : Property | class.attribute)]
+	    /** 
+	     * [class.ownedComment.body/] 
+		 [p.doctrineComment()/]
+	     */
+	    private $[p.getAttributName()/];
+	            
+	    public function get[p.getAttributName().toUpperFirst()/](){
+	    	return $this->[p.getAttributName()/];
+	    }
+	    
+	    public function set[p.getAttributName().toUpperFirst()/]($[p.getAttributName()/]){
+	    	$this->[p.getAttributName()/] = $[p.getAttributName()/];
+	    }
+	    	
+	[/for]
+}
+?>
+[/file]
+[/template]
+
+[comment genere le commentaire de classe pour doctrine/]
+[template public doctrineComment(class : uml::Class)]
+ * @Entity 
+ * @Table(name="[class.name.toLower()/]")
+ * @author Vincent
+[/template]
+
+[comment genere le commentaire de propriete pour doctrine/]
+[template public doctrineComment(property : uml::Property) post (trim())]
+[if (not property.isMultivalued())]
+	[if (not property.isAssociation())]
+* @Column(type="[property.type.name/]")
+	[else]
+* @ManyToOne(targetEntity="[property.type.name/]")			
+	[/if]
+[else]
+* @ManyToMany(targetEntity="[property.type.name/]",cascade={"persist"})
+* @JoinTable(name="MEMBERS_REPONSES",
+*   joinColumns={@JoinColumn(name="[property.class.name/]_id", referencedColumnName="id")},
+*   inverseJoinColumns={@JoinColumn(name="[property.type.name/]_id", referencedColumnName="id")}
+* )
+[/if]
+[/template]
+
+[template public getAttributName(property : uml::Property) post (trim())]
+[if (property.name.equalsIgnoreCase(''))]
+[property.type.name.toLower()/]
+[else]
+[property.name/]
+[/if]
+[/template]
+
+[template public getEntityNamespace(class : uml::Class) post (trim())]
+[class._package.qualifiedName.replaceAll('\\.','::').replaceAll('::', '\\\\@').replaceAll('@','')/]\Entity
+[/template]
+
+[template public getEntityClassName(class : uml::Class) post (trim())]
+[class.name.toUpperFirst()/]
+[/template]
+
+[template public getEntityClassNameWithNamespace(class : uml::Class) post (trim())]
+[getEntityNamespace(class)/]\[class.name.toUpperFirst()/]
+[/template]
+
+[template public getFileName(class : uml::Class) post(trim())]
+[class._package.qualifiedName.replaceAll('\\.', '::').replaceAll('::','/')/]/Entity/[getEntityClassName(class)/].php
+[/template]

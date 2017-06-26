@@ -1,0 +1,171 @@
+[comment encoding = UTF-8 /]
+[module generateEndpoint('http://thoughtress.com/WebService')/]
+[import com::thoughtress::web_service::acceleo::files::generateGenericMF/]
+[import com::thoughtress::web_service::acceleo::files::generateGenericFP/]
+[import com::thoughtress::web_service::acceleo::files::generateGenericDR/]
+
+[template public generateEndpoint(aEndpoint : Endpoint)]
+[file (aEndpoint.name+'.java', false, 'UTF-8')]
+package com.thoughtress.jsp.gen;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ * The Endpoint/Servlet entry point for the named Web Service
+ * 
+ */
+@WebServlet("/[aEndpoint.name/]/*")
+public class [aEndpoint.name/] extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Handle GET requests to the service
+     * 
+     * @param request HttpServletRequest object representing all request attributes
+     * @param response HttpServletResponse to be used in the construction of a response
+     */
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) {
+        handleRequest(null, request, response);
+    }
+
+    /**
+     * Handle POST requests to the service
+     * 
+     * @param request HttpServletRequest object representing all request attributes
+     * @param response HttpServletResponse to be used in the construction of a response
+     */
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) {
+        StringBuffer data = new StringBuffer();
+        String line = null;
+        try {
+            BufferedReader reader = request.getReader();
+            while ((line = reader.readLine()) != null)
+                data.append(line);
+        } catch (Exception e) {
+            sendHTTPError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Server Error Whilst Reading Request");
+        }
+        handleRequest(data.toString(), request, response);
+    }
+
+    /**
+     * Handle POST and GET requests
+     * 
+     * @param data A String containing any POST data. Use null for GET requests.
+     * @param request HttpServletRequest object representing all request attributes
+     * @param response HttpServletResponse to be used in the construction of a response
+     */
+    private void handleRequest(String data, HttpServletRequest request, HttpServletResponse response) {
+        String ret;
+        MessageFormatter mf = null;
+        try {
+            mf = getFormatter(request);
+            MessagePart req = mf.parseToRequest(data, request);
+            req = recogniseData(req);
+            FunctionProvider func = getFunctionProvider(req);
+            
+            MessagePart resp = func.process(req);
+            ret = mf.parseToFormat(resp);
+        } catch (UserServiceException e) {
+            try {
+                e.printStackTrace();
+                if (mf != null) {
+                    ret = mf.buildError(e);
+                } else {
+                    ret = getDefaultFormatter().buildError(e);
+                }
+            } catch (Exception ohdear) {
+                ohdear.printStackTrace();
+                sendHTTPError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        ohdear.getMessage());
+                return;
+            }
+        }
+        PrintWriter pw = null;
+        response.setCharacterEncoding("utf-8");
+        try {
+            pw = response.getWriter();
+            pw.println(ret);
+        } catch (IOException e) {
+            e.printStackTrace();
+            sendHTTPError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Server Error Whilst Sending Response");
+        }
+    }
+
+    public void sendHTTPError(HttpServletResponse response, int code, String message) {
+        try {
+            response.sendError(code, message);
+            return;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private MessageFormatter getDefaultFormatter(){
+        return new SOAPFormatter();
+    }
+    
+    private MessagePart recogniseData(MessagePart req){
+    	[for (dr : DataRecogniser | aEndpoint.recognisers)]
+		req = [dr.name/].recognise(req);	
+		[/for]
+        return req;
+    }
+
+    private MessageFormatter getFormatter(HttpServletRequest request) throws UserServiceException {
+        MessageFormatter mf;
+        if (SOAPFormatter.match(request)){
+			mf = new SOAPFormatter();	
+		} else if (GetFormatter.match(request)){
+			mf = new GetFormatter();	
+		}
+        [for (mf : MessageFormatter | aEndpoint.formatters)]
+		else if ([mf.name/].match(request)){
+			mf = new [mf.name/]();	
+		}
+		[/for]
+		else {
+            throw new UserServiceException(400, "Unsupported Content Type");
+        }
+        return mf;
+    }
+
+    private FunctionProvider getFunctionProvider(MessagePart req) throws UserServiceException {
+    	FunctionProvider func;
+    	[for (fp : FunctionProvider | aEndpoint.functions)]
+		[if (i = 1)]
+		if ([fp.name/].match(req)){
+	    	func = new [fp.name/]();
+	    }
+		[else]
+		else if ([fp.name/].match(req)){
+	    	func = new [fp.name/]();
+	    }
+		[/if][/for]
+		else {
+            throw new UserServiceException(404, "Requested Method Not Found");
+        }
+        return func;
+    }
+}
+
+[/file]
+[for (aFormatter : GenericMessageFormatter | aEndpoint.formatters)]
+		[aFormatter.generateGenericMF() /]
+[/for]
+[for (aFunctionProvider : FunctionProvider | aEndpoint.functions)]
+		[aFunctionProvider.generateGenericFP() /]
+[/for]
+[for (aDataRecogniser : DataRecogniser | aEndpoint.recognisers)]
+		[aDataRecogniser.generateGenericDR() /]
+[/for]
+	
+[/template]

@@ -1,0 +1,33 @@
+[comment encoding = UTF-8 /]
+[module App('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthenticationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+[template public App(anAnnotationStack : AnnotationStack)]
+
+[file ('/' + anAnnotationStack.hasCorePSM.name + 'Client/js/app.js', false, 'UTF-8')]
+angular.module('[anAnnotationStack.hasCorePSM.name/]', ['['/]'ngResource','ngRoute', '[anAnnotationStack.hasCorePSM.name/].controllers','[anAnnotationStack.hasCorePSM.name/].services']);
+    [anAnnotationStack.hasCorePSM.name/].config(['['/]'$routeProvider', function ($routeProvider) {
+	[for (p: JavaResourceControllerManager | anAnnotationStack.hasCorePSM.hasJavaRCManager)][if (anAnnotationStack.topLayer().parentName->includes(p.parentName))]
+	$routeProvider.when('/[p.parentName.toLower()/]',[if (anAnnotationStack.topLayer()->size()<>1)] {templateUrl: 'views/front.html', controller: 'frontCtrl',  caseInsensitiveMatch: true});[else]{templateUrl: 'views/[p.parentName/].html', controller: '[p.parentName/]Ctrl',  caseInsensitiveMatch: true });[/if]
+	$routeProvider.when('/[p.parentName.toLower()/]/:[p.parentName/]Id',[if (anAnnotationStack.topLayer()->size()<>1)] {templateUrl: 'views/front.html', controller: 'frontCtrl',  caseInsensitiveMatch: true});[else]{templateUrl: 'views/[p.parentName/].html', controller: '[p.parentName/]Ctrl',  caseInsensitiveMatch: true });[/if]
+	[/if]
+	[if (p.setIds(anAnnotationStack)->size()=2 and anAnnotationStack.topLayer().parentName->excludes(p.parentName))]
+	$routeProvider.when('[p.controllerURI.substituteAll('{', ':').substituteAll('}','')/]', {templateUrl: 'views/[p.parentName/].html', controller: '[p.parentName/]Ctrl',  caseInsensitiveMatch: true });
+	$routeProvider.when('[p.controllerURI.substituteAll('{', ':').substituteAll('}','')/]/:[p.parentName/]Id',{templateUrl: 'views/[p.parentName/].html', controller: '[p.parentName/]Ctrl',  caseInsensitiveMatch: true });
+	[/if]
+	[for (c: String | p.setIds(anAnnotationStack))][if (not(c=p.parentName) and p.setIds(anAnnotationStack)->size()>2)]
+	$routeProvider.when('/[c/]/:[c/]Id/[p.parentName/]', {templateUrl: 'views/[p.parentName/].html' , controller: '[p.parentName/]Ctrl',  caseInsensitiveMatch: true });
+	$routeProvider.when('/[c/]/:[c/]Id/[p.parentName/]/:[p.parentName/]Id', {templateUrl: 'views/[p.parentName/].html' , controller: '[p.parentName/]Ctrl',  caseInsensitiveMatch: true });
+	[/if][/for]
+	[/for]
+	[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]$routeProvider.when('/SignIn', {templateUrl: 'views/SignIn.html', controller: 'LoginCtrl',  caseInsensitiveMatch: true });[/if]
+	[if (anAnnotationStack.topLayer(anAnnotationStack)->size()>1)]
+	$routeProvider.when('/front', {templateUrl: 'views/front.html', controller: 'frontCtrl'});
+	[/if]
+	$routeProvider.otherwise({redirectTo: '/[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]SignIn[else][if (anAnnotationStack.topLayer()->size()>1)]front[else][anAnnotationStack.topLayer().parentName/][/if][/if]',  caseInsensitiveMatch: true });
+	
+  }])
+[/file]
+[/template]
+
+[query public setIds(p: JavaResourceControllerManager,anAnnotationStack: AnnotationStack): OrderedSet(String) =  p.JavaRCManagerHasHTTPActivity.hasHTTPActivityParameter.name.substitute('Id', '')->asOrderedSet()->intersection(anAnnotationStack.hasCorePSM.hasJavaRCManager.parentName->asOrderedSet())->including(p.parentName)->asOrderedSet()/]
+[query public topLayer(anAnnotationStack: AnnotationStack): OrderedSet(JavaResourceModelManager) = (anAnnotationStack.hasCorePSM.hasJavaRMManager-anAnnotationStack.hasCorePSM.hasJavaRMManager->intersection(anAnnotationStack.hasCorePSM.hasJavaRModel.hasRelatedJavaRMManager->asOrderedSet()))->asOrderedSet()/]

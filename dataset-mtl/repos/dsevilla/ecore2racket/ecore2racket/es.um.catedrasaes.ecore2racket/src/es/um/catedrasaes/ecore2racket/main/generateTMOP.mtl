@@ -1,0 +1,93 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generate.
+ */]
+[module generateTMOP('http://www.eclipse.org/emf/2002/Ecore')]
+
+
+[**
+ * The documentation of the template generateRacket.
+ * @param anOclAny
+ */]
+[template public generateRacket(anEPackage : EPackage)]
+[comment @main/]
+[file (anEPackage.name+'-tmop.rkt', false, 'UTF-8')]
+#lang racket/base
+
+[generate_provides(anEPackage)/]
+
+[for (klass : EClass | anEPackage.eClassifiers->filter(EClass))]
+[generate_EClass(klass)/]
+
+[/for]
+[/file]
+[/template]
+
+[template private generate_provides (anEPackage : EPackage) ]
+(provide
+	[for (klass : EClass | anEPackage.eClassifiers->filter(EClass))]
+		[eclass_to_mop_class_name(klass)/]
+	[/for]
+	)
+[/template]
+
+[template private generate_EClass(klass: EClass)]
+[let cname:String = eclass_to_mop_class_name(klass)] 
+;; Class [klass.name + ' "' + cname + '"'/]
+(define [cname/] 
+  (make-class (list [superclass_spec(klass)/]) [comment Optional superstruct/]
+    ;; slots (features)
+	[generate_slots(klass)/]
+
+  )
+[/let]
+[/template]
+
+[template private generate_slots(klass : EClass)]
+(list 
+[gen_attributes(klass)/]
+[gen_references(klass)/]
+)
+[/template]
+
+[template private gen_attributes(klass : EClass)]
+[for (sf: EAttribute | klass.eStructuralFeatures->filter(EAttribute))]
+[let dec : String = decamel(sf.name)]
+; attribute [dec/]
+'[dec/]
+[/let]
+[/for]
+[/template]
+
+[template private gen_references(klass : EClass)]
+[for (ref: EReference | klass.eStructuralFeatures->filter(EReference))]
+[let dec : String = decamel(ref.name)]
+; reference [dec/]
+'[dec/]
+[/let]
+[/for]
+[/template]
+
+
+[template private eclass_to_racket_name(klass: EClass)]
+[decamel(klass.name)/]
+[/template]
+
+[template private eclass_to_mop_class_name(klass: EClass)]
+<[eclass_to_racket_name(klass)/]>
+[/template]
+
+
+[template private superclass_spec(klass : EClass)]
+[let superclasses : OrderedSet(EClass) = klass.eSuperTypes]
+[if superclasses->size() <> 0]
+[eclass_to_mop_class_name(superclasses->first())/]
+[else]
+<object>
+[/if]
+[/let]	
+[/template]
+
+[template private decamel(name : EString)]
+[name.replaceAll('([a-z])([A-Z][a-z])', '$1-$2').toLowerCase()/]
+[/template]

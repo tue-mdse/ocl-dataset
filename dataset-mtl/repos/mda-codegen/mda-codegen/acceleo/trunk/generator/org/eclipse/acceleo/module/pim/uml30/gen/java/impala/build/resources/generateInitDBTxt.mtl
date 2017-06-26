@@ -1,0 +1,246 @@
+[comment encoding = UTF-8 /]
+[module generateInitDBTxt('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::build::common::buildPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::stringUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::build::common::entityUtil /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[template public generateInitDBTxt(aModel : Model)]
+	[file (aModel.generateProjectFolder().concat(aModel.pathToMainResources()).concat('/db/initDB.txt'), false, 'UTF-8')]
+[let entities : Sequence(Class) = aModel.eAllContents(Class)->select(aClass:Class|aClass.isEntity())->sortedBy(aClass:Class|aClass.entityRate())]
+	[comment][for (anEntity:Class| sortByRef(entities))][/comment]
+    [for (anEntity:Class| aModel.eAllContents(Class)->select(aClass:Class|aClass.isEntity()))]
+CREATE TABLE [anEntity.name.toLower().convertSingularToPlural()/] (
+	[anEntity.generatePrimaryKeys()/]
+	[anEntity.generateFields()/]
+	[anEntity.generateForeignKeys()/]
+);
+	[/for]
+[/let]	
+
+		[comment][for (anEntity:Class| sortByRef(aModel.eAllContents(Class)->select(aClass:Class|aClass.isEntity())))]
+CREATE TABLE [anEntity.name.toLower().convertSingularToPlural()/] (
+	[anEntity.generatePrimaryKeys()/]
+	[anEntity.generateFields()/]
+	[anEntity.generateForeignKeys()/]
+);
+		[/for][/comment]
+[aModel.generateAsociationTables()/]	
+	[/file]
+[/template]
+
+
+[template public generatePrimaryKeys(anEntity : Class)]
+	[let highestEntity : Class = anEntity.getHighestEntity()]
+		[if (highestEntity.hasPrimaryKey())]
+			[for (aPK : Property | highestEntity.getPrimaryProperties(Sequence{})) separator (',')]
+				[if (aPK.type.oclIsTypeOf(Enumeration))]
+[aPK.owner.oclAsType(Class).name.toLower()/]_[aPK.name.toLower()/]_id ['String'.simpleMySQLType()/]
+				[else]
+[aPK.owner.oclAsType(Class).name.toLower()/]_[aPK.name.toLower()/]_id [aPK.simpleMySQLType()/] NOT NULL AUTO_INCREMENT PRIMARY KEY
+				[/if]
+			[/for]
+		[else]
+[highestEntity.name.toLower()/]_id [highestEntity.defaultPKType().simpleMySQLType()/] NOT NULL AUTO_INCREMENT PRIMARY KEY
+		[/if]
+	[/let]				
+[/template]
+
+[comment][query public getEnumerationFields(anEntity : Class) : Set(Property) = 
+anEntity.ownedAttribute->select(aProperty:Property|not aProperty.isPK() and aProperty.type.oclIsTypeOf(Enumeration)) 
+/][/comment]
+
+
+[template public generateFields(anEntity : Class)]
+	[if (anEntity.getSimpleFields()->notEmpty())]
+		[for (prop:Property|anEntity.getSimpleFields()) before (',') separator (',')]
+			[if (prop.type.oclIsTypeOf(Enumeration))]
+[prop.name/] ['String'.simpleMySQLType()/]
+			[else]
+[prop.name/] [prop.simpleMySQLType()/]
+			[/if]
+		[/for]
+	[/if]
+[/template]
+
+[template public generateForeignKeys(anEntity : Class) post (trim())]
+[for (anAssociation : Association | anEntity.getAssociations()->select(anAss:Association|anAss.memberEnd->forAll(aProp:Property|aProp.upper<=1)))]
+	[if (anAssociation.memberEnd->select(aProp:Property|aProp.type=anEntity)->notEmpty())]
+		[let ownedEnd : Property = anAssociation.memberEnd->select(aProp:Property|aProp.type=anEntity)->first()]
+			[if (anAssociation.memberEnd->select(aProp:Property|aProp.type<>anEntity)->notEmpty())]
+				[let otherEnd : Property = anAssociation.memberEnd->select(aProp:Property|aProp.type<>anEntity)->first()]
+					[if (not otherEnd.type.isSimpleType())]
+						[if ((ownedEnd.upper>=0 and ownedEnd.upper<=1) and (otherEnd.upper>=0 and otherEnd.upper<=1))] [comment] 1-1[/comment]
+							[if (otherEnd.isNavigable() and not ownedEnd.isNavigable())]
+								[if (otherEnd.type.oclAsType(Class).hasPrimaryKey())]
+									[if (not otherEnd.type.oclAsType(Class).isCirclePKReferece(Set{}))]
+										[for (aPK : Property | otherEnd.type.oclAsType(Class).getPrimaryProperties(Sequence{})) separator (',')]
+,[otherEnd.type.oclAsType(Class).name.toLower()/]_[otherEnd.name.toLower()/] [otherEnd.simpleMySQLType()/] [if (otherEnd.lower<>0)]NOT NULL [/if] [if (otherEnd.isUnique or otherEnd.upper=0 or otherEnd.upper=1)]UNIQUE [/if]REFERENCES [otherEnd.type.name.convertSingularToPlural().toLower()/]([otherEnd.type.name.toLower()/]_id)
+										[/for]
+									[/if]
+								[else]
+,[otherEnd.type.oclAsType(Class).name.toLower()/]_[otherEnd.name.toLower()/] [anEntity.defaultPKType().simpleMySQLType()/] [if (otherEnd.lower<>0)]NOT NULL [/if] [if (otherEnd.isUnique or otherEnd.upper=0 or otherEnd.upper=1)]UNIQUE [/if]REFERENCES [otherEnd.type.name.convertSingularToPlural().toLower()/]([otherEnd.type.name.toLower()/]_id)
+								[/if]
+							[/if]
+						[elseif ((ownedEnd.upper>1 or ownedEnd.upper<0) and (otherEnd.upper>=0 and otherEnd.upper<=1))] [comment] *-1[/comment]
+								[if (otherEnd.type.oclAsType(Class).hasPrimaryKey())]
+									[if (not otherEnd.type.oclAsType(Class).isCirclePKReferece(Set{}))]
+										[for (aPK : Property | otherEnd.type.oclAsType(Class).getPrimaryProperties(Sequence{})) separator (',')]
+,[otherEnd.type.oclAsType(Class).name.toLower()/]_[otherEnd.getReferenceColumnName()/] [otherEnd.simpleMySQLType()/] [if (otherEnd.lower<>0)]NOT NULL [/if]REFERENCES [otherEnd.type.name.convertSingularToPlural().toLower()/]([otherEnd.type.name.toLower()/]_id)  
+										[/for]
+									[/if]
+								[else]
+,[otherEnd.type.oclAsType(Class).name.toLower()/]_[otherEnd.getReferenceColumnName()/] [anEntity.defaultPKType().simpleMySQLType()/] [if (otherEnd.lower<>0)]NOT NULL [/if]REFERENCES [otherEnd.type.name.convertSingularToPlural().toLower()/]([otherEnd.type.name.toLower()/]_id)
+								[/if]
+						[/if]
+					[/if]
+				[/let]
+			[/if]		
+		[/let]
+	[/if]
+[/for]	
+
+	[comment][if (anEntity.getReferenceFields()->notEmpty())]
+		[for (prop:Property|anEntity.getReferenceFields()->select(aProperty:Property|aProperty.upper=1)) before (',') separator (',')]
+			[if (prop.type.oclAsType(Class).hasPrimaryKey())]
+				[if (not prop.type.oclAsType(Class).isCirclePKReferece(Set{}))]
+					[for (aPK : Property | prop.type.oclAsType(Class).getPrimaryProperties(Sequence{})) separator (',')]
+[prop.type.oclAsType(Class).name.toLower()/]_[aPK.getReferenceColumnName()/] [aPK.simpleMySQLType()/] NOT NULL REFERENCES [prop.type.name.convertSingularToPlural()/]([prop.type.name.toLower()/]_[aPK.name/]_id)
+					[/for]
+				[/if]
+			[else]
+[prop.type.oclAsType(Class).name.toLower()/]_[prop.getReferenceColumnName()/] [anEntity.defaultPKType().simpleMySQLType()/] NOT NULL REFERENCES [prop.type.name.convertSingularToPlural().toLower()/]([prop.type.name.toLower()/]_id)
+			[/if]
+		[/for]
+	[/if][/comment]
+[comment][anEntity.generateFields()/][/comment]
+[/template]
+
+[comment][template public generateInheritances(anEntity : Class)]
+[filterWithStereotype(anEntity.subClass(), getProperty('Entity'))->filter(Class).generateInheritance(anEntity)/]
+[/template]
+
+[template public generateInheritance(anEntity : Class)]
+	[if (anEntity.hasPrimaryKey())]
+		[for (aPK : Property | anEntity.getPrimaryProperties(Sequence{})) separator (',')]
+			[if (not aPK.type.oclAsType(Class).isCirclePKReferece(Set{}))]
+				[for (aPK : Property | anEntity.getPrimaryProperties(Sequence{})) separator (',')]
+[anEntity.name.toLower()/]_[aPK.name.toLower()/]_id [aPK.simpleMySQLType()/] NOT NULL REFERENCES [anEntity.name.convertSingularToPlural()/]([anEntity.name.toLower()/]_[aPK.name.toLower()/]_id)	
+				[/for]
+			[/if]
+		[/for]
+	[else]
+[anEntity.name.toLower()/]_[anEntity.name.toLower()/]_id [anEntity.defaultPKType().simpleMySQLType()/] NOT NULL REFERENCES [anEntity.name.convertSingularToPlural()/]([anEntity.name.toLower()/]_id)
+	[/if]
+	
+[/template][/comment]
+
+
+[template public generateAsociationTable(anAssociation : Association)]
+		[comment  primary keys/]
+		[for (aProperty : Property | anAssociation.memberEnd)]
+			[let anEntity : Class  = aProperty.type->asSequence()->first().oclAsType(Class)]
+				[if (anEntity.hasPrimaryKey())]
+					[for (aPK : Property | anEntity.getPrimaryProperties(Sequence{})) separator (',')]
+						[if (aPK.type.oclIsTypeOf(Enumeration))]
+[aPK.owner.oclAsType(Class).name.toLower()/]_[aPK.name.toLower()/]_id ['String'.simpleMySQLType()/] NOT NULL AUTO_INCREMENT PRIMARY KEY
+						[else]
+[aPK.owner.oclAsType(Class).name.toLower()/]_[aPK.name.toLower()/]_id [aPK.simpleMySQLType()/] NOT NULL AUTO_INCREMENT PRIMARY KEY
+						[/if]
+					[/for]
+				[else]
+[anEntity.name.toLower()/]_[aProperty.getReferenceColumnName()/] [anEntity.defaultPKType().simpleMySQLType()/] NOT NULL AUTO_INCREMENT PRIMARY KEY
+				[/if]
+			[/let]
+		[/for]
+		[if (anAssociation.oclIsTypeOf(AssociationClass))]
+			[comment  properties/]
+			[for (prop:Property|anAssociation.oclAsType(AssociationClass).classAttributes()->filter(Property)->select(aProperty:Property|aProperty.type.oclIsTypeOf(Enumeration) or aProperty.type.isSimpleType())) before (',') separator (',')]
+				[if (prop.type.oclIsTypeOf(Enumeration))]
+[prop.name/] ['String'.simpleMySQLType()/]
+				[else]
+[prop.name/] [prop.simpleMySQLType()/]
+				[/if]
+			[/for]
+			[comment  foreign keys/]
+			[for (prop:Property|anAssociation.oclAsType(AssociationClass).getOppositeAttributes()->filter(Property)->select(aProperty:Property|not aProperty.type.oclIsTypeOf(Enumeration) and not aProperty.type.isSimpleType() and aProperty.upper=1)) before (',') separator (',')]
+				[if (prop.type.oclAsType(Class).hasPrimaryKey())]
+					[if (not prop.type.oclAsType(Class).isCirclePKReferece(Set{}))]
+						[for (aPK : Property | prop.type.oclAsType(Class).getPrimaryProperties(Sequence{})) separator (',')]
+[prop.type.oclAsType(Class).name.toLower()/]_[prop.getReferenceColumnName()/] [prop.simpleMySQLType()/]	NOT NULL REFERENCES [prop.type.oclAsType(Class).name.convertSingularToPlural()/]([prop.type.oclAsType(Class).name.toLower()/]_[prop.name/]_id)	
+						[/for]
+					[/if]
+				[else]
+[prop.type.oclAsType(Class).name.toLower()/]_[prop.getReferenceColumnName()/] [prop.type.defaultPKType().simpleMySQLType()/] NOT NULL REFERENCES [prop.type.oclAsType(Class).name.convertSingularToPlural()/]([prop.type.oclAsType(Class).name.toLower()/]_id)	
+				[/if]
+			[/for]
+		[/if]
+[/template]
+
+
+
+
+[template public generateAsociationTables(aModel : Model) ]
+	[for (anAssociation : Association | aModel.eAllContents(Association))]
+		[if (anAssociation.memberEnd->asSequence()->forAll(aProperty:Property|aProperty.upper=-1 and aProperty.type->notEmpty() and aProperty.type.oclIsTypeOf(Class) and aProperty.type.oclAsType(Class).isEntity()))]
+			[if (anAssociation.memberEnd.type->size()=2)]
+CREATE TABLE [anAssociation.memberEnd.type.name->asOrderedSet()->sep('_')/] (
+[anAssociation.memberEnd.type->asOrderedSet()->sep('\n')/]
+[anAssociation.generateAsociationTable()/]
+);
+			[/if]
+		[/if]
+	[/for]
+[/template]
+
+
+[comment][template public generateAsociationTable(anAssociation : Association)]
+	[if (anAssociation.memberEnd->asSequence()->forAll(aProperty:Property|aProperty.upper=-1 and aProperty.type->notEmpty() and aProperty.type.oclIsTypeOf(Class) and aProperty.type.oclAsType(Class).isEntity()))]
+CREATE TABLE [anAssociation.memberEnd.type.name->asOrderedSet()->sep('_')/] (
+		[-comment-  primary keys/]
+		[for (aProperty : Property | anAssociation.memberEnd)]
+			[let anEntity : Class  = aProperty.type->asSequence()->first().oclAsType(Class)]
+				[if (anEntity.hasPrimaryKey())]
+					[for (aPK : Property | anEntity.getPrimaryProperties(Set{})) separator (',')]
+						[if (aPK.type.oclIsTypeOf(Enumeration))]
+[aPK.owner.oclAsType(Class).name.toLower()/]_[aPK.name.toLower()/]_id ['String'.simpleMySQLType()/] NOT NULL AUTO_INCREMENT PRIMARY KEY
+						[else]
+[aPK.owner.oclAsType(Class).name.toLower()/]_[aPK.name.toLower()/]_id [aPK.simpleMySQLType()/] NOT NULL AUTO_INCREMENT PRIMARY KEY
+						[/if]
+					[/for]
+				[else]
+[anEntity.name.toLower()/]_[aProperty.getReferenceColumnName()/] [anEntity.defaultPKType().simpleMySQLType()/] NOT NULL AUTO_INCREMENT PRIMARY KEY
+				[/if]
+			[/let]
+		[/for]
+		[if (anAssociation.oclIsTypeOf(AssociationClass))]
+			[-comment-  properties/]
+			[for (prop:Property|anAssociation.oclAsType(AssociationClass).classAttributes()->filter(Property)->select(aProperty:Property|aProperty.type.oclIsTypeOf(Enumeration) or aProperty.type.isSimpleType())) before (',') separator (',')]
+				[if (prop.type.oclIsTypeOf(Enumeration))]
+[prop.name/] ['String'.simpleMySQLType()/]
+				[else]
+[prop.name/] [prop.simpleMySQLType()/]
+				[/if]
+			[/for]
+			[-comment-  foreign keys/]
+			[for (prop:Property|anAssociation.oclAsType(AssociationClass).classAttributes()->filter(Property)->select(aProperty:Property|not aProperty.type.oclIsTypeOf(Enumeration) and not aProperty.type.isSimpleType() and aProperty.upper=1)) before (',') separator (',')]
+				[if (prop.type.oclAsType(Class).hasPrimaryKey())]
+					[if (not prop.type.oclAsType(Class).isCirclePKReferece(Set{}))]
+						[for (aPK : Property | prop.type.oclAsType(Class).getPrimaryProperties(Set{})) separator (',')]
+[prop.type.oclAsType(Class).name.toLower()/]_[prop.getReferenceColumnName()/] [prop.simpleMySQLType()/]	NOT NULL REFERENCES [prop.type.oclAsType(Class).name.convertSingularToPlural()/]([prop.type.oclAsType(Class).name.toLower()/]_[prop.name/]_id)	
+						[/for]
+					[/if]
+				[else]
+[prop.type.oclAsType(Class).name.toLower()/]_[prop.getReferenceColumnName()/] [prop.type.defaultPKType().simpleMySQLType()/] NOT NULL REFERENCES [prop.type.oclAsType(Class).name.convertSingularToPlural()/]([prop.type.oclAsType(Class).name.toLower()/]_id)	
+				[/if]
+			[/for]
+		[/if]
+);
+	[/if]
+[/template][/comment]

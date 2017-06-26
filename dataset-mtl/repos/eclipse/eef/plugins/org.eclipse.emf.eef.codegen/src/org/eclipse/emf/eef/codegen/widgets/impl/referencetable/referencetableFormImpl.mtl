@@ -1,0 +1,374 @@
+[comment encoding = UTF-8
+ *******************************************************************************
+ * Copyright (c) 2008-2009 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module referencetableFormImpl('http://www.eclipse.org/emf/eef/views/1.0.0', 'http://www.eclipse.org/emf/eef/components/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/eef/generation/1.0.0') extends org::eclipse::emf::eef::codegen::widgets::api::widgetFormImpl/]
+
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::services::viewCommon /]
+[import org::eclipse::emf::eef::codegen::services::imports/]
+
+[comment ===== Case Widget = ReferencesTable ===== /]
+[template public manageImports(widget : Widget, pec : PropertiesEditionComponent, view : View, basePackage : String) overrides manageImports ? (widget.name = 'ReferencesTable')]
+[pec.addImports(Sequence{
+	'java.util.Iterator',
+	'org.eclipse.ui.forms.widgets.FormToolkit',
+	'org.eclipse.emf.eef.runtime.ui.utils.EditingUtils',
+	'org.eclipse.emf.ecore.EObject',
+	'org.eclipse.emf.common.notify.AdapterFactory',
+	'org.eclipse.emf.edit.ui.provider.AdapterFactoryLabelProvider',
+	'org.eclipse.emf.eef.runtime.impl.notify.PropertiesEditionEvent',
+	'org.eclipse.emf.eef.runtime.ui.widgets.EMFModelViewerDialog',
+	'org.eclipse.jface.viewers.ILabelProviderListener',
+	'org.eclipse.jface.viewers.ITableLabelProvider',
+	'org.eclipse.jface.viewers.TableViewer',
+	'org.eclipse.jface.viewers.IStructuredSelection',
+	'org.eclipse.swt.graphics.Image',
+	'org.eclipse.swt.widgets.Label',
+	'org.eclipse.swt.widgets.TableColumn',
+	'org.eclipse.swt.widgets.Composite',
+	'org.eclipse.swt.SWT',
+	'org.eclipse.swt.events.SelectionEvent',
+	'org.eclipse.swt.events.SelectionAdapter',
+	'org.eclipse.swt.layout.GridData'})/]
+[/template]
+
+[template public widgetDeclaration(editor : ElementEditor) overrides widgetDeclaration ? (editor.representation.name = 'ReferencesTable')]
+	protected [include('org.eclipse.jface.viewers.TableViewer')/] [editor.elementEditorName()/];
+	protected [include('org.eclipse.swt.widgets.Button')/] add[editor.name.toJavaClassifier()/];
+	protected Button remove[editor.name.toJavaClassifier()/];
+	protected [include('java.util.List')/]<[include('org.eclipse.jface.viewers.ViewerFilter')/]> [editor.elementEditorName()/]BusinessFilters = new [include('java.util.ArrayList')/]<ViewerFilter>();
+	protected List<ViewerFilter> [editor.elementEditorName()/]Filters = new ArrayList<ViewerFilter>();
+[/template]
+
+[template public implementation(editor : ElementEditor) overrides implementation ? (editor.representation.name = 'ReferencesTable')]
+return create[editor.name.toJavaClassifier()/]ReferencesTable(widgetFactory, parent);
+[/template]
+
+[template public additionalImplementation(editor : ElementEditor, pec : PropertiesEditionComponent, inputPEC: PropertiesEditionComponent) overrides additionalImplementation ? (editor.representation.name = 'ReferencesTable')]
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected Composite create[editor.name.toJavaClassifier()/]ReferencesTable(FormToolkit widgetFactory, Composite parent) {
+		[if (editor.nameAsLabel)]
+		Label [editor.elementEditorName()/]Label = [include('org.eclipse.emf.eef.runtime.ui.widgets.FormUtils')/].createPartLabel(widgetFactory, parent, [include(editor.owningViewsRepository().qualifiedMessagesProvider())/].[editor.editorKey(editor.owningView())/], propertiesEditionComponent.isRequired([editor.editorID()/], [editor.owningViewsRepository().vrClass()/].FORM_KIND));
+		[else]
+		Label [editor.elementEditorName()/]Label = createDescription(parent, [editor.editorID()/], [include(editor.owningViewsRepository().qualifiedMessagesProvider())/].[editor.editorKey(editor.owningView())/]);
+		[/if]
+		GridData [editor.elementEditorName()/]LabelData = new GridData();
+		[editor.elementEditorName()/]LabelData.horizontalSpan = 3;
+		[editor.elementEditorName()/]Label.setLayoutData([editor.elementEditorName()/]LabelData);
+		[editor.elementEditorName()/] = create[editor.name.toJavaClassifier()/]Viewer(parent, widgetFactory, adapterFactory);
+		GridData [editor.elementEditorName()/]Data = new GridData(GridData.FILL_HORIZONTAL);
+		[editor.elementEditorName()/]Data.horizontalSpan = 2;
+		[editor.elementEditorName()/]Data.minimumHeight = 120;
+		[editor.elementEditorName()/]Data.heightHint = 120;
+		[editor.elementEditorName()/].getTable().setLayoutData([editor.elementEditorName()/]Data);
+		EditingUtils.setID([editor.elementEditorName()/].getTable(), [editor.editorID()/]);
+		EditingUtils.setEEFtype([editor.elementEditorName()/].getTable(), "eef::[editor.representation.name/]::field"); //$NON-NLS-1$
+		create[editor.name.toJavaClassifier()/]ControlPanel(parent, widgetFactory);
+		// [protected ('for create'.concat(editor.name.toJavaClassifier()).concat('ReferencesTable'))]
+
+		// [/protected]
+		return parent;
+	}
+
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected TableViewer create[editor.name.toJavaClassifier()/]Viewer(Composite container, FormToolkit widgetFactory, AdapterFactory adapter) {
+		org.eclipse.swt.widgets.Table table = widgetFactory.createTable(container, SWT.FULL_SELECTION);
+		table.setHeaderVisible(true);
+		GridData gd = new GridData();
+		gd.grabExcessHorizontalSpace = true;
+		gd.horizontalAlignment = GridData.FILL;
+		gd.grabExcessVerticalSpace = true;
+		gd.verticalAlignment = GridData.FILL;
+		table.setLayoutData(gd);
+		table.setLinesVisible(true);
+		[if (editor.owningViewsRepository().associatedGenModel().useJMergeForUserCode)]
+		[editor.defaultColumnInitialisation()/]
+		[else]
+		// [protected ('for table '.concat(editor.name).concat(' s columns definition'))]
+		[editor.defaultColumnInitialisation()/]
+		// [/protected]
+		[/if]
+
+		TableViewer result = new TableViewer(table);
+		result.setLabelProvider(new ITableLabelProvider() {
+
+		[if (editor.owningViewsRepository().associatedGenModel().useJMergeForUserCode)]
+			[editor.defaultLabelProviderInitialisation()/]
+		[else]
+			// [protected ('for table '.concat(editor.name).concat(' label provider'))]
+			[editor.defaultLabelProviderInitialisation()/]
+			
+			// [/protected]
+		[/if]
+
+			public Image getColumnImage(Object element, int columnIndex) {
+				return null;
+			}
+
+			public void addListener(ILabelProviderListener listener) {
+			}
+
+			public void dispose() {
+			}
+
+			public boolean isLabelProperty(Object element, String property) {
+				return false;
+			}
+
+			public void removeListener(ILabelProviderListener listener) {
+			}
+
+		});
+		return result;
+	}
+
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected void create[editor.name.toJavaClassifier()/]ControlPanel(Composite container, FormToolkit widgetFactory) {
+		Composite result = widgetFactory.createComposite(container, SWT.NONE);
+		GridLayout layout = new GridLayout();
+		layout.numColumns = 1;
+		result.setLayout(layout);
+		add[editor.name.toJavaClassifier()/] = widgetFactory.createButton(result, [editor.owningViewsRepository().messagesProvider()/].PropertiesEditionPart_AddListViewerLabel, SWT.NONE);
+		GridData addData = new GridData(GridData.FILL_HORIZONTAL);
+		add[editor.name.toJavaClassifier()/].setLayoutData(addData);
+		add[editor.name.toJavaClassifier()/].addSelectionListener(new SelectionAdapter() {
+
+			/**
+			 * {@inheritDoc}
+			 * 
+			 * @see org.eclipse.swt.events.SelectionAdapter#widgetSelected(org.eclipse.swt.events.SelectionEvent)
+			 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+			 */
+			public void widgetSelected(SelectionEvent e) {
+				add[editor.name.toJavaClassifier()/]();
+			}
+
+		});
+		EditingUtils.setID(add[editor.name.toJavaClassifier()/], [editor.editorID()/]);
+		EditingUtils.setEEFtype(add[editor.name.toJavaClassifier()/], "eef::[editor.representation.name/]::addbutton"); //$NON-NLS-1$
+		remove[editor.name.toJavaClassifier()/] = widgetFactory.createButton(result, [editor.owningViewsRepository().messagesProvider()/].PropertiesEditionPart_RemoveListViewerLabel, SWT.NONE);
+		GridData removeData = new GridData(GridData.FILL_HORIZONTAL);
+		remove[editor.name.toJavaClassifier()/].setLayoutData(removeData);
+		remove[editor.name.toJavaClassifier()/].addSelectionListener(new SelectionAdapter() {
+
+			/**
+			 * {@inheritDoc}
+			 * 
+			 * @see org.eclipse.swt.events.SelectionAdapter#widgetSelected(org.eclipse.swt.events.SelectionEvent)
+			 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+			 */
+			public void widgetSelected(SelectionEvent e) {
+				if ([editor.elementEditorName()/].getSelection() instanceof IStructuredSelection) {
+					remove[editor.name.toJavaClassifier()/]((IStructuredSelection) [editor.elementEditorName()/].getSelection());
+				}
+			}
+
+		});
+		EditingUtils.setID(remove[editor.name.toJavaClassifier()/], [editor.editorID()/]);
+		EditingUtils.setEEFtype(remove[editor.name.toJavaClassifier()/], "eef::[editor.representation.name/]::removebutton"); //$NON-NLS-1$
+		// [protected ('for create'.concat(editor.name.toJavaClassifier()).concat('ControlPanel'))]
+
+		// [/protected]
+	}
+
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected void add[editor.name.toJavaClassifier()/]() {
+
+		EMFModelViewerDialog dialog = new EMFModelViewerDialog(new AdapterFactoryLabelProvider(adapterFactory), [editor.elementEditorName()/].getInput(), [editor.elementEditorName()/]Filters, [editor.elementEditorName()/]BusinessFilters, false, true) {
+			public void process(IStructuredSelection selection) {
+				for (Iterator iter = selection.iterator(); iter.hasNext();) {
+					EObject elem = (EObject) iter.next();
+					propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/], PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.ADD, null, elem));
+				}
+			}
+
+		};
+		// [protected ('for add'.concat(editor.name.toJavaClassifier()))]
+
+		// [/protected]
+		dialog.open();
+		[editor.elementEditorName()/].refresh();
+	}
+
+	/**
+	 * @param selection the [editor.name/] to remove
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected void remove[editor.name.toJavaClassifier()/](IStructuredSelection selection) {
+		for (Iterator iter = selection.iterator(); iter.hasNext();) {
+			EObject elem = (EObject) iter.next();
+			propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/], PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.REMOVE, null, elem));
+		}
+		[editor.elementEditorName()/].refresh();
+	}
+[/template]
+
+[template private defaultLabelProviderInitialisation (editor : ElementEditor) ]
+			public String getColumnText(Object object, int columnIndex) {
+				AdapterFactoryLabelProvider labelProvider = new AdapterFactoryLabelProvider(adapterFactory);
+				if (object instanceof EObject) {
+					switch (columnIndex) {
+					case 0:
+						return labelProvider.getText(object);
+					}
+				}
+				return ""; //$NON-NLS-1$
+			}
+
+[/template]
+
+[template private defaultColumnInitialisation (editor : ElementEditor) ]
+		TableColumn name = new TableColumn(table, SWT.NONE);
+		name.setWidth(80);
+		name.setText("Label"); //$NON-NLS-1$
+
+[/template]
+
+[comment ===== Case Widget = AdvancedReferencesTable ===== /]
+[template public manageImports(widget : Widget, pec : PropertiesEditionComponent, view : View, basePackage : String) overrides manageImports ? (widget.name = 'AdvancedReferencesTable')]
+[pec.addImports(Sequence{
+	'org.eclipse.swt.widgets.Composite',
+	'org.eclipse.ui.forms.widgets.FormToolkit',
+	'java.util.Iterator',
+	'org.eclipse.emf.ecore.EObject',
+	'org.eclipse.emf.eef.runtime.impl.notify.PropertiesEditionEvent',
+	'org.eclipse.jface.viewers.IStructuredSelection',
+	'org.eclipse.swt.layout.GridData',
+	'org.eclipse.swt.events.SelectionEvent',
+	'org.eclipse.swt.events.SelectionAdapter',
+	'org.eclipse.emf.eef.runtime.context.impl.EObjectPropertiesEditionContext',
+	'org.eclipse.emf.eef.runtime.providers.PropertiesEditingProvider',
+	'org.eclipse.emf.eef.runtime.policies.PropertiesEditingPolicy',
+	'org.eclipse.emf.eef.runtime.ui.widgets.TabElementTreeSelectionDialog',
+	'org.eclipse.emf.eef.runtime.ui.widgets.ReferencesTable.ReferencesTableListener'})/]
+[/template]
+
+[template public widgetDeclaration(editor : ElementEditor) overrides widgetDeclaration ? (editor.representation.name = 'AdvancedReferencesTable')]
+	protected [include('org.eclipse.emf.eef.runtime.ui.widgets.ReferencesTable')/] [editor.elementEditorName()/];
+	protected [include('java.util.List')/]<[include('org.eclipse.jface.viewers.ViewerFilter')/]> [editor.elementEditorName()/]BusinessFilters = new [include('java.util.ArrayList')/]<ViewerFilter>();
+	protected List<ViewerFilter> [editor.elementEditorName()/]Filters = new ArrayList<ViewerFilter>();
+[/template]
+
+[template public implementation(editor : ElementEditor) overrides implementation ? (editor.representation.name = 'AdvancedReferencesTable')]
+return create[editor.name.toJavaClassifier()/]ReferencesTable(widgetFactory, parent);
+[/template]
+
+[template public additionalImplementation(editor : ElementEditor, pec : PropertiesEditionComponent, inputPEC: PropertiesEditionComponent) overrides additionalImplementation ? (editor.representation.name = 'AdvancedReferencesTable')]
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected Composite create[editor.name.toJavaClassifier()/]ReferencesTable(FormToolkit widgetFactory, Composite parent) {
+		this.[editor.elementEditorName()/] = new ReferencesTable(getDescription([editor.editorID()/], [include(editor.owningViewsRepository().qualifiedMessagesProvider())/].[editor.editorKey(editor.owningView())/]), new ReferencesTableListener	() {
+			public void handleAdd() { add[editor.name.toJavaClassifier()/](); }
+			public void handleEdit(EObject element) { edit[editor.name.toJavaClassifier()/](element); }
+			public void handleMove(EObject element, int oldIndex, int newIndex) { move[editor.name.toJavaClassifier()/](element, oldIndex, newIndex); }
+			public void handleRemove(EObject element) { removeFrom[editor.name.toJavaClassifier()/](element); }
+			public void navigateTo(EObject element) { }
+		});
+		this.[editor.elementEditorName()/].setHelpText(propertiesEditionComponent.getHelpContent([editor.editorID()/], [editor.owningViewsRepository().vrClass()/].FORM_KIND));
+		this.[editor.elementEditorName()/].createControls(parent, widgetFactory);
+		this.[editor.elementEditorName()/].addSelectionListener(new SelectionAdapter() {
+			
+			public void widgetSelected(SelectionEvent e) {
+				if (e.item != null && e.item.getData() instanceof EObject) {
+					propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/], PropertiesEditionEvent.CHANGE, PropertiesEditionEvent.SELECTION_CHANGED, null, e.item.getData()));
+				}
+			}
+			
+		});
+		GridData [editor.elementEditorName()/]Data = new GridData(GridData.FILL_HORIZONTAL);
+		[editor.elementEditorName()/]Data.horizontalSpan = 3;
+		this.[editor.elementEditorName()/].setLayoutData([editor.elementEditorName()/]Data);
+		this.[editor.elementEditorName()/].disableMove();
+		[editor.elementEditorName()/].setID([editor.editorID()/]);
+		[editor.elementEditorName()/].setEEFType("eef::[editor.representation.name/]"); //$NON-NLS-1$
+		// [protected ('for create'.concat(editor.name.toJavaClassifier()).concat('ReferencesTable'))]
+
+		// [/protected]
+		return parent;
+	}
+
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected void add[editor.name.toJavaClassifier()/]() {
+		[editor.defaultAddOperation()/]
+	}
+
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected void move[editor.name.toJavaClassifier()/](EObject element, int oldIndex, int newIndex) {
+		[editor.defaultMoveOperation()/]
+	}
+
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected void removeFrom[editor.name.toJavaClassifier()/](EObject element) {
+		[editor.defaultRemoveOperation()/]
+	}
+
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected void edit[editor.name.toJavaClassifier()/](EObject element) {
+		[editor.defaultEditOperation()/]
+	}
+[/template]
+
+[template public defaultAddOperation (editor : ElementEditor) ]
+TabElementTreeSelectionDialog dialog = new TabElementTreeSelectionDialog([editor.elementEditorName()/].getInput(), [editor.elementEditorName()/]Filters, [editor.elementEditorName()/]BusinessFilters,
+"[editor.name/]", propertiesEditionComponent.getEditingContext().getAdapterFactory(), current.eResource()) {
+	@Override
+	public void process(IStructuredSelection selection) {
+		for (Iterator<?> iter = selection.iterator(); iter.hasNext();) {
+			EObject elem = (EObject) iter.next();
+			propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/],
+				PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.ADD, null, elem));
+		}
+		[editor.elementEditorName()/].refresh();
+	}
+};
+dialog.open();
+[/template]
+
+[template public defaultMoveOperation (editor : ElementEditor) ]
+propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/], PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.MOVE, element, newIndex));
+[editor.elementEditorName()/].refresh();
+[/template]
+
+[template public defaultEditOperation (editor : ElementEditor)]
+EObjectPropertiesEditionContext context = new EObjectPropertiesEditionContext(propertiesEditionComponent.getEditingContext(), propertiesEditionComponent, element, adapterFactory);
+PropertiesEditingProvider provider = (PropertiesEditingProvider)adapterFactory.adapt(element, PropertiesEditingProvider.class);
+if (provider != null) {
+	PropertiesEditingPolicy policy = provider.getPolicy(context);
+	if (policy != null) {
+		policy.execute();
+		[editor.elementEditorName()/].refresh();
+	}
+}
+[/template]
+
+[template public defaultRemoveOperation (editor : ElementEditor) ]
+propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/], PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.REMOVE, null, element));
+[editor.elementEditorName()/].refresh();
+[/template]

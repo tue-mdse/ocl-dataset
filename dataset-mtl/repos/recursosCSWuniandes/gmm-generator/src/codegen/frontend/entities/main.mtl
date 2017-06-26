@@ -1,0 +1,419 @@
+[comment encoding = UTF-8 /]
+[module main('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import ::utils /]
+
+[template public moduleMain(c : Class, path : String)]
+[c.genModule(path)/]
+[c.genCtrl(path)/]
+[c.genTemplate(path)/]
+[/template]
+
+[template private genModule(c : Class, path : String)]
+[file (path.concat(c.getName()) + '.mod.js', false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+(function (ng) {
+    var mod = ng.module('[c.getModule() /]', ['['/]'ngCrud', 'ui.router'[']'/]);
+
+    mod.constant('[c.getEntityModel()/]', {
+        name: '[c.getName()/]',
+        displayName: '[c.getDisplayName()/]',
+        url: '[c.getURI()/]',
+        fields: {
+            [for (a : Property | c.getAllAttribs()) separator(',\n')]
+            [a.name/]: {
+                displayName: '[a.getDisplayName()/]',
+                type: '[a.type.name/]',
+                required: [a.isRequired()/]
+            }[/for][if(c.isGeneralization())][if(c.getAllAttribs()->notEmpty())],[/if][for (a : Property | c.getGeneralizationClass().getAllAttribs()) separator(',\n')]
+            [if (a.existAttribute(c)=false)]
+            [a.name/]: {
+                displayName: '[a.getDisplayName()/]',
+                type: '[a.type.name/]',
+                required: [a.isRequired()/]
+            }[/if][/for][/if][for (a : Property | c.getReferences(false)->reject(isComposite()))],
+            [a.name/]: {
+                displayName: '[a.getDisplayName()/]',
+                type: 'Reference',
+                model: '[a.getClass().getEntityModel()/]',
+                options: ['[]'/],
+                required: [a.isRequired()/]
+            }[/for]
+        }
+    });
+
+    mod.config(['['/]'$stateProvider',
+        function($sp){
+            var basePath = 'src/modules/[c.getName()/]/';
+            var baseInstancePath = basePath + '[c.getInstanceStatesFolder()/]';
+
+            $sp.state('[c.getMainStateName()/]', {
+                url: '/[c.getURI()/]?page&limit',
+                abstract: true,
+                [if (c.isChild())]parent: '[c.getParentAttribute().getClass().getDetailStateName()/]',[/if]
+                views: {
+                     [if(c.isChild())][c.getParentAttribute().getClass().getDetailChieldView()/][else]mainView[/if]: {
+                        templateUrl: basePath + '[c.getName()/].tpl.html',
+                        controller: '[c.getCtrl()/]'
+                    }
+                },
+                resolve: {
+                    [if (c.hasReferences(false))]
+                    references: ['['/]'$q', 'Restangular', function ($q, r) {
+                            return $q.all({
+                             [for (a : Property | c.getReferences(false)->reject(isComposite())) separator(', ')]
+                                [a.name/]: r.all('[a.getClass().getURI()/]').getList()
+                            [/for]
+                            });
+                        }[']'/],
+                    [/if]
+                    model: '[c.getEntityModel()/]',
+                    [if (c.isChild())]
+                    [let parent : String = c.getParentAttribute().getClass().getRecordName()]
+                    [c.getRecordsName()/]: ['['/]'[parent/]', '$stateParams', 'model', function ([parent/], $params, model) {
+                            return [parent/].getList(model.url, $params);
+                        }[']'/][/let]
+                    [else]
+                    [c.getRecordsName()/]: ['['/]'Restangular', 'model', '$stateParams', function (r, model, $params) {
+                            return r.all(model.url).getList($params);
+                        }[']'/]
+                    [/if]
+                }
+            });
+            $sp.state('[c.getListStateName()/]', {
+                url: '/list',
+                parent: '[c.getMainStateName()/]',
+                views: {
+                    [c.getMainView()/]: {
+                        templateUrl: basePath + 'list/[c.getName()/].list.tpl.html',
+                        controller: '[c.getListCtrlName()/]',
+                        controllerAs: 'ctrl'
+                    }
+                }
+            });
+            $sp.state('[c.getNewStateName()/]', {
+                url: '/new',
+                parent: '[c.getMainStateName()/]',
+                views: {
+                    [c.getMainView()/]: {
+                        templateUrl: basePath + 'new/[c.getName()/].new.tpl.html',
+                        controller: '[c.getNewCtrlName()/]',
+                        controllerAs: 'ctrl'
+                    }
+                }
+            });
+            $sp.state('[c.getInstanceStateName()/]', {
+                url: '/{[c.getIdParamName()/]:int}',
+                abstract: true,
+                parent: '[c.getMainStateName()/]',
+                views: {
+                    [c.getMainView()/]: {
+                        template: '<div ui-view="[c.getInstanceView()/]"></div>'
+                    }
+                },
+                resolve: {
+                    [c.getRecordName()/]: ['['/]'[c.getRecordsName()/]', '$stateParams', function ([c.getRecordsName()/], $params) {
+                            return [c.getRecordsName()/].get($params.[c.getIdParamName()/]);
+                        }[']'/]
+                }
+            });
+            $sp.state('[c.getDetailStateName()/]', {
+                url: '/details',
+                parent: '[c.getInstanceStateName()/]',
+                views: {
+                    [c.getInstanceView()/]: {
+                        templateUrl: baseInstancePath + 'detail/[c.getName()/].detail.tpl.html',
+                        controller: '[c.getDetailCtrlName()/]'
+                    }
+                }
+            });
+            $sp.state('[c.getEditStateName()/]', {
+                url: '/edit',
+                sticky: true,
+                parent: '[c.getInstanceStateName()/]',
+                views: {
+                    [c.getInstanceView()/]: {
+                        templateUrl: baseInstancePath + 'edit/[c.getName()/].edit.tpl.html',
+                        controller: '[c.getEditCtrlName()/]',
+                        controllerAs: 'ctrl'
+                    }
+                }
+            });
+            $sp.state('[c.getDeleteStateName()/]', {
+                url: '/delete',
+                parent: '[c.getInstanceStateName()/]',
+                views: {
+                    [c.getInstanceView()/]: {
+                        templateUrl: baseInstancePath + 'delete/[c.getName()/].delete.tpl.html',
+                        controller: '[c.getDeleteCtrlName()/]',
+                        controllerAs: 'ctrl'
+                    }
+                }
+            });
+            [for (a : Property | c.getNonCompositeCollectionAttributes())]
+            $sp.state('[a.getSharedAbstractState()/]', {
+                url: '/[a.name/]',
+                parent: '[c.getDetailStateName()/]',
+                abstract: true,
+                views: {
+                    [c.getDetailChieldView()/]: {
+                        template: '<div ui-view="[a.getSharedAbstractView()/]"></div>'
+                    }
+                },
+                resolve: {
+                    [a.name/]: ['['/]'[c.getRecordName()/]', function ([c.getRecordName()/]) {
+                            return [c.getRecordName()/].getList('[a.name/]');
+                        }[']'/],
+                    model: '[a.getClass().getEntityModel()/]'
+                }
+            });
+            $sp.state('[a.getSharedListState()/]', {
+                url: '/list',
+                parent: '[a.getSharedAbstractState()/]',
+                views: {
+                    [a.getSharedAbstractView()/]: {
+                        templateUrl: baseInstancePath + '[a.name/]/list/[c.getName()/].[a.name/].list.tpl.html',
+                        controller: '[a.getSharedListCtrlName()/]'
+                    }
+                }
+            });
+            $sp.state('[a.getSharedEditState()/]', {
+                url: '/edit',
+                parent: '[a.getSharedAbstractState()/]',
+                views: {
+                    [a.getSharedAbstractView()/]: {
+                        templateUrl: baseInstancePath + '[a.name/]/edit/[c.getName()/].[a.name/].edit.tpl.html',
+                        controller: '[a.getSharedEditCtrlName()/]',
+                        controllerAs: 'ctrl'
+                    }
+                },
+                resolve: {
+                    pool: ['['/]'Restangular', 'model', function (r, model) {
+                            return r.all(model.url).getList();
+                        }[']'/]
+                }
+            });
+            [/for]
+	}[']'/]);
+})(window.angular);
+[/file]
+[/template]
+
+[template private genCtrl(c : Class, path : String)]
+[file (path.concat(c.getName()) + '.ctrl.js', false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+(function (ng) {
+    var mod = ng.module('[c.getModule() /]');
+
+    mod.controller('[c.getCtrl()/]', ['['/]'$scope', 'model','Restangular',[if(c.hasReferences(false))] 'references',[/if]
+        function ($scope, model,Restangular[if(c.hasReferences(false))], references[/if]) {
+            [if(c.hasReferences(false))]
+            $scope.references = references;
+            [/if]
+            $scope.model = model;
+            //Alertas
+            $scope.alerts = ['[]'/];
+            this.closeAlert = function (index) {
+                $scope.alerts.splice(index, 1);
+            };
+
+            Restangular.setErrorInterceptor(function(response, deferred, responseHandler) {
+                switch(response.status) {
+                    case 400:
+                        $scope.showError('Error 400: La solicitud contiene sintaxis errónea.');
+                        return false; 
+                        break;
+                    case 401:
+                        $scope.showError('Error 401: No autorizado.');
+                        return false; 
+                        break;
+                    case 403:
+                        $scope.showError('Error 403: No autorizado.');
+                        return false; 
+                        break;
+                    case 404:
+                        $scope.showError('Error 404: Recurso no encontrado.');
+                        return false; 
+                        break;
+                    case 413:
+                        $scope.showError('Error 413: Petición demasiado grande.');
+                        return false; 
+                        break;
+                    case 500:
+                        $scope.showError('Error 500: Error interno del servidor.');
+                        return false; 
+                        break;
+                    case 503:
+                        $scope.showError('Error 503: Servicio no disponible.');
+                        return false; 
+                        break;  
+                }
+
+                return true; // error not handled
+            });
+
+            /* Función showMessage: Recibe el mensaje en String y
+             * su tipo con el fin de almacenarlo en el array $scope.alerts.
+             */
+            function showMessage(msg, type) {
+                var types = ['["info", "danger", "warning", "success"]'/];
+                if (types.some(function (rc) {
+                    return type === rc;
+                })) {
+                    $scope.alerts.push({type: type, msg: msg});
+                }
+            }
+
+            $scope.showError = function (msg) {
+                showMessage(msg, "danger");
+            };
+
+            $scope.showSuccess = function (msg) {
+                showMessage(msg, "success");
+            };
+        }[']'/]);
+
+})(window.angular);
+[/file]
+[/template]
+
+[template private genTemplate(c : Class, path : String)]
+[file (path.concat(c.getName()).concat('.tpl.html'), false, 'UTF-8')]
+<!--
+[c.getModel().license()/]
+-->
+<alert ng-repeat="alert in alerts" type="{{alert.type}}" close="ctrl.closeAlert($index)">{{alert.msg}} </alert>
+<div ui-view="[c.getMainView()/]"></div>
+[/file]
+[/template]
+
+[template protected getDisplayName(a : Property)]
+[a.name.asDisplayName()/]
+[/template]
+
+[template protected getDisplayName(c : Class)]
+[c.name.asDisplayName()/]
+[/template]
+[**
+ * Wrappers for view names
+*/]
+[template protected getMainView(c : Class)]
+[c.getName()/]View
+[/template]
+
+[template protected getInstanceView(c : Class)]
+[c.getName()/]InstanceView
+[/template]
+
+[template protected getDetailChieldView(c : Class)]
+[c.getName()/]ChieldView
+[/template]
+
+[**
+ * Wrappers for state names
+*/]
+[template protected getMainStateName(c : Class)]
+[c.getName()/]
+[/template]
+
+[template public getListStateName(c : Class)]
+[c.getMainStateName()/]List
+[/template]
+
+[template protected getNewStateName(c : Class)]
+[c.getMainStateName()/]New
+[/template]
+
+[template protected getInstanceStateName(c : Class)]
+[c.getMainStateName()/]Instance
+[/template]
+
+[template protected getDetailStateName(c : Class)]
+[c.getMainStateName()/]Detail
+[/template]
+
+[template protected getEditStateName(c : Class)]
+[c.getMainStateName()/]Edit
+[/template]
+
+[template protected getDeleteStateName(c : Class)]
+[c.getMainStateName()/]Delete
+[/template]
+
+[**
+ * Wrapper for URL ID param name
+*/]
+[template protected getIdParamName(c : Class)]
+[c.getName()/]Id
+[/template]
+
+[template protected getRecordName(c : Class)]
+[c.getName()/]
+[/template]
+
+[template protected getRecordsName(c : Class)]
+[c.getRecordName()/]s
+[/template]
+[**
+ * Wrappers for controller names 
+*/]
+
+[template protected getListCtrlName(c : Class)]
+[c.getListStateName()/]Ctrl
+[/template]
+
+[template protected getNewCtrlName(c : Class)]
+[c.getNewStateName()/]Ctrl
+[/template]
+
+[template protected getDetailCtrlName(c : Class)]
+[c.getDetailStateName()/]Ctrl
+[/template]
+
+[template protected getEditCtrlName(c : Class)]
+[c.getEditStateName()/]Ctrl
+[/template]
+
+[template protected getDeleteCtrlName(c : Class)]
+[c.getDeleteStateName()/]Ctrl
+[/template]
+
+[template public getInstanceStatesFolder(c : Class)]
+instance/
+[/template]
+
+[comment Shared Utils /]
+[template protected getSharedAbstractState(a : Property)]
+[a.getOwner().getName()/][a.name.toUpperFirst()/]
+[/template]
+
+[template protected getSharedAbstractView(a : Property)]
+[a.getSharedAbstractState()/]View
+[/template]
+
+[template protected getSharedEditState(a : Property)]
+[a.getSharedAbstractState()/]Edit
+[/template]
+
+[template protected getSharedListState(a : Property)]
+[a.getSharedAbstractState()/]List
+[/template]
+
+[template protected getSharedListCtrlName(a : Property)]
+[a.getSharedListState()/]Ctrl
+[/template]
+
+[template protected getSharedEditCtrlName(a : Property)]
+[a.getSharedEditState()/]Ctrl
+[/template]
+
+[query protected getOwner(a : Property) : Class = 
+a.getOtherEnd().getClass()
+/]
+
+[query public existAttribute(a : Property, cl : Class) : Boolean = 
+cl.allAttributes()->select(a1 | a1.name=a.name)->notEmpty()
+/]

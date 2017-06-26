@@ -1,0 +1,206 @@
+[comment encoding = UTF-8 /]
+[module umlUtils('http://www.eclipse.org/uml2/3.0.0/UML')/]
+
+[comment
+
+UML Utils : uml_*
+
+/]
+
+[query public getDocumentation(e : Element) : String =
+	if e.getEAnnotation('http://www.topcased.org/documentation').oclIsUndefined() 
+	or e.getEAnnotation('http://www.topcased.org/documentation').details->select(key = 'documentation')->isEmpty()
+	then ''
+	else e.getEAnnotation('http://www.topcased.org/documentation').details->select(key = 'documentation')->first().value.toString()
+	endif
+/]
+
+[query public getOppositeProperty(p : Property) : Property =
+	p.association.memberEnd->excluding(p)->asSequence()->first()
+/]
+[query public hasOppositeProperty(p : Property) : Boolean =
+	not p.association.oclIsUndefined() and not p.getOppositeProperty().oclIsInvalid()
+/]
+
+[query public hasChildClass(c : Class) : Boolean =
+	c.getModel().eAllContents(Class)->exists(oneClass : Class | oneClass.baseClass() = c)
+/]
+
+[query public getChildClasses(c : Class) : Sequence(Class) =
+	c.getModel().eAllContents(Class)->select(oneClass : Class | oneClass.baseClass() = c)
+/]
+
+[query public getAllFinalClass(m : Model) : OrderedSet(Class) = 
+	m.eAllContents(Class)->select(c : Class | not c.hasChildClass())->asOrderedSet()
+/]
+
+[query public getClassesOrdreByDependency(classes : OrderedSet(Class)) : OrderedSet(Class) =
+	classes->asOrderedSet()->union(
+		classes->select(hasBaseClass())->collect(baseClass())->asOrderedSet()->getClassesOrdreByDependency()
+	)
+/]
+
+[query public getBaseClasses(classes : Sequence(Class)) : Sequence(Class) =
+	classes->select(hasBaseClass())->collect(baseClass())->asOrderedSet()->asSequence()
+/]
+
+[query public hasBaseClasses(classes : Sequence(Class)) : Boolean =
+	classes->exists(hasBaseClass())
+/]
+
+[query public getChildClassesRecursive(classes : Sequence(Class)) : Sequence(Class) =
+	if classes->size() > 0 then
+		let children:Sequence(Class) = classes.getChildClasses()->flatten() in
+		classes->union(children->getChildClassesRecursive())
+	else
+		classes
+	endif
+/]
+
+[comment return all the bases classes, that is all the classes which
+doesn't have base class. /]
+[query public getAllBaseClasses(m : Model) : Sequence(Class) =
+	m.eAllContents(Class)->select(not hasBaseClass())
+/]
+
+[comment return all classes ordered hierarchically inversed, that is
+the more specific in first, the more generic in last. It can be used
+in a switch of instanceof to find the right type. /]
+[query public getAllClassesChildToRoot(m : Model) : Sequence(Class) =  
+	getChildClassesRecursive(m.getAllBaseClasses())->reverse()
+/]
+
+[query public getChildClassesChildToRoot(c : Class) : Sequence(Class) =  
+	getChildClassesRecursive(c->asSequence())->reverse()->excluding(c)
+/]
+
+[query public getAllClassesOrdreByDependency(m : Model) : Sequence(Class) =  
+	m.eAllContents(Class)->asSequence()
+/]
+
+[query public baseClass(c : Class) : Class = 
+	c.general->select(cl : Classifier | cl.oclIsTypeOf(Class))->asSequence()->first()
+/]
+
+[query public rootClass(c : Class) : Class = 
+	if c.hasBaseClass() then
+		c.baseClass().rootClass()
+	else
+		c
+	endif
+/]
+
+[query public baseClasses(c : Class) : Sequence(Class) = 
+	if c.hasBaseClass() then
+		c.baseClass().baseClasses()->union(c.baseClass()->asSequence())
+	else
+		Sequence(Class){}
+	endif
+/]
+
+[query public hasBaseClass(c : Class) : Boolean = 
+	not c.general->isEmpty()
+/]
+
+[query public getManyToManyAssociations(m : Model) : Sequence(Association) =
+	m.eAllContents(Association)->select(a : Association | a.isManyToManyRelation())
+/]
+
+[query public isManyToManyRelation(a : Association) : Boolean = 
+	a.memberEnd->forAll(p : Property | p.upper <> 1)
+/]
+
+[query public isOneToOneRelation(p : Property) : Boolean = 
+	p.upper = 1 and p.opposite.upper = 1
+/]
+
+[query public isOneToManyRelation(p : Property) : Boolean = 
+	p.upper = 1 and p.opposite.upper <> 1
+/]
+
+[query public isManyToOneRelation(p : Property) : Boolean = 
+	p.upper <> 1 and p.opposite.upper = 1
+/]
+
+[query public isManyToManyRelation(p : Property) : Boolean = 
+	p.association.memberEnd->forAll(upper <> 1)
+/]
+
+[query public isSimplePrimitive(p : Property) : Boolean =  
+	p.type.oclIsKindOf(PrimitiveType) and p.upper = 1
+/]
+
+[query public isSimplePrimitive(p : Parameter) : Boolean =  
+	p.type.oclIsKindOf(PrimitiveType) and p.upper = 1
+/]
+
+[query public simplePrimitiveAttributes(c : Class) : Sequence(Property) =
+	c.properties()->select(p : Property | p.isSimplePrimitive())
+/]
+
+[query public allSimplePrimitiveAttributes(c : Class) : Sequence(Property) =
+	if c.hasBaseClass() then
+		c.baseClass().allSimplePrimitiveAttributes()->union(c.simplePrimitiveAttributes())
+	else
+		c.simplePrimitiveAttributes()
+	endif
+/]
+
+[query public complexProperties(c : Class) : Sequence(Property) =
+	c.properties()->select(p : Property | not p.isSimplePrimitive())
+/]
+
+[query public allComplexProperties(c : Class) : Sequence(Property) =
+	if c.hasBaseClass() then
+		c.baseClass().allComplexProperties()->union(c.complexProperties())
+	else
+		c.complexProperties()
+	endif
+/]
+
+[query public hasServices(c : Class) : Boolean = not c.ownedOperation->isEmpty() /]
+
+[query public getInputParameters(op : Operation) : Collection(Parameter) = 
+	op.ownedParameter->select(param : Parameter | param.direction <> ParameterDirectionKind::return)
+	->asSequence()->sortedBy(name) 
+/]
+
+[comment query class attributes ordered by name useful for deterministic generation. /]
+[comment query public properties(c : Class) : Collection(Property) = 
+c.attribute->union(
+	c.getAssociations()->select(a : Association | a.memberEnd->first().type = c)->collect(a : Association | a.memberEnd->last())->union(
+		c.getAssociations()->select(a : Association | a.memberEnd->last().type = c)->collect(a : Association | a.memberEnd->first())
+	)
+)->asOrderedSet()->asSequence()->sortedBy(name) 
+/]
+
+[query public properties(c : Class) : Sequence(Property) = 
+c.attribute->union(
+	c.getAssociations()->select(a : Association | a.memberEnd->first().type = c)->collect(a : Association | a.memberEnd->last())->union(
+	c.getAssociations()->select(a : Association | a.memberEnd->last().type = c)->collect(a : Association | a.memberEnd->first())
+	)
+)->asOrderedSet()->asSequence()->sortedBy(name) 
+/]
+
+[comment return all class properties including inherit ones/]
+[query public allProperties(c : Class) : Sequence(Property) =
+	if c.hasBaseClass() then 
+		c.baseClass().properties()->union(c.properties())
+	else
+		c.properties()
+	endif
+/]
+
+
+[comment query the packages chain names for a packageable element, all in lower case. /]
+[query public getPackagesNames(e : PackageableElement) : Sequence(String) = 
+	e.ancestors(Package)->select(not oclIsTypeOf(Model))->collect(name.toLower())->reverse()->sep('.').toString().tokenize('.')
+/]
+
+[query private getAssociationsEndTypes(c : Class) : Bag(Type) =  
+	c.getAssociations()->collect(a : Association | a.memberEnd.type)->flatten()
+/]
+
+[query public getAllImportedClass(c : Class) : Sequence(Class) = 
+	 c.getAssociationsEndTypes()->select(e : Type | e.owner <> c.owner)->union(c.general->select(base : Classifier | base.owner <> c.owner)->asSet())
+/]

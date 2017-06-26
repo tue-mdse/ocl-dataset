@@ -1,0 +1,99 @@
+[module partial('http://www.eclipse.org/uml2/4.0.0/UML')/]
+
+[template public generate(c : Class)]
+[comment @main/]
+[file ('/src/main/webapp/partials/'+c.name+'.html', false, 'UTF-8')]
+<div class="btn-group">
+	<button type="button" class="btn btn-default" ng-click="nuevo()">Nuevo [c.name/]</button>
+	<button type="button" class="btn btn-default" ng-click="cancelar()">Listar [c.name/]</button>
+	<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" ng-click="">Reporte [c.name/]</button>
+</div>
+				
+<div class="panel panel-primary" ng-hide="panelEditar">
+    <div class="panel-title principal-title">Parametrizaci&oacute;n de [c.name/]</div>
+    <div class="panel-body">
+        <table class="resultados table table-striped">
+            <tr>
+                [c.attribute.headerTable()/]
+				<th>
+                    &nbsp;
+                </th>
+            </tr>
+            <tr ng-repeat="row in lista">
+                [c.attribute.dataTable()/]
+				<td class="row">
+                    <button type="button" class="btn btn-default" ng-click="editar(row)">
+                        <span class="glyphicon glyphicon-pencil"></span>Editar
+                    </button>
+					<button type="button" class="btn btn-default" ng-click="eliminar(row)">
+                        <span class="glyphicon glyphicon-remove"></span>Eliminar
+                    </button>
+                </td>
+            </tr>
+        </table>
+        <br/>
+    </div>
+</div>
+
+<div class="panel panel-primary" ng-show="panelEditar">
+    <div class="panel-title principal-title">Parametrizaci&oacute;n de [c.name/]</div>
+    <div class="panel-body">
+        <form role="form" id="formularioEditar">
+            [c.attribute.fieldDef()/]
+            <div class="btn-group">
+				<button type="button" class="btn btn-default" ng-click="guardar()" ng-show="nuevoRegistro">Guardar</button>
+                <button type="button" class="btn btn-default" ng-click="guardar()" ng-show="!nuevoRegistro">Aceptar</button>
+                <button type="button" class="btn btn-default" ng-click="cancelar()">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+[/file]
+[/template]
+
+[template public headerTable(a : Property)]
+				<th>
+                    [a.name/]
+                </th>
+[/template]
+
+[template public dataTable(a : Property)]
+	[if(a.type.name.equalsIgnoreCase('Date'))]
+		<td class="row">{{row.[a.name/]| date: 'dd/MM/yyyy'}}</td>
+	[else]
+		<td class="row">{{row.[a.name/]}}</td>
+	[/if]                
+[/template]
+
+[template public fieldDef(a : Property)]
+				<div class="row">
+                    <div class="form-group col-md-6" ng-class="errores.idAseg?'error':''">
+                        <label>[a.name/]</label>
+[if(a.type.name.equalsIgnoreCase('Date'))]
+						<input id="[a.name/]" 
+                               class="form-control datepicker" 
+                               type="text" 
+                               ng-model="datosFormulario.[a.name/]"/>
+                        <script>
+                                    var dp_[a.name/] = $('#[a.name/]').datepicker({format: 'dd/mm/yyyy'}).on('changeDate', function (ev) {
+                                        dp_[a.name/].hide();
+                                    }).data('datepicker');
+                        </script>
+[elseif(a.type.name.equalsIgnoreCase('Boolean'))]
+						<input id="[a.name/]" 
+							   type="check"
+                               class="form-control" 
+                               ng-model="datosFormulario.[a.name/]"/>
+
+[else]
+                        <input id="[a.name/]" 
+                               class="form-control" 
+							   type="text"
+                               ng-model="datosFormulario.[a.name/]"/>
+
+[/if]
+                        <div ng-show="errores.[a.name/]">{{errores.[a.name/]}}</div>
+                    </div>
+                </div>
+[/template]

@@ -1,0 +1,146 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2012, 2014 CNES and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Cedric Notot (Obeo) - initial API and implementation
+[/comment]
+
+[module rtsjRules('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import org::eclipse::umlgen::gen::autojava::validation::validator /]
+[import org::eclipse::umlgen::gen::autojava::specific::lib::requests::common /]
+[import org::eclipse::umlgen::gen::autojava::services::utilServices /]
+[import org::eclipse::umlgen::gen::autojava::services::umlServices /]
+[import org::eclipse::umlgen::gen::autojava::requests::common /]
+[import org::eclipse::umlgen::gen::autojava::common::common /]
+
+[template public checkDefaultValue(aModel : Model) post (trim())]
+[for (eAllContents(Property)->select(eClass().name.index('Property') <> -1 and (default = null or default = '')))]
+[warning(genDefaultValueMessage())/]
+[/for]
+[/template]
+
+[template public checkArraySize(aModel : Model) post (trim())]
+[for (eAllContents(Property)->select(upper = -1))]
+[error('The size of an array has to be finite')/]
+[/for]
+[/template]
+
+[template public checkEmptyStereotype(aModel : Model) post (trim())]
+[for (anElement : NamedElement | eAllContents(NamedElement))]
+	[for (getEmptyStereotypeAttribute()->filter(NamedElement))]
+[error(genEmptyStereotypeMessage(anElement))/]
+	[/for]
+[/for]
+[/template]
+
+[template public checkAsynchronousPort(aModel : Model) post (trim())]
+[for (aPort : Port | eAllContents(Port))]
+	[for (getAllInterfaces()->select(isAsynchronous()))]
+		[if (not aPort.isPortInfo())]
+[aModel.error('A port has to be stereotyped with PortInfo when its interface is stereotyped Asynchronous')/]
+		[/if]
+	[/for]
+[/for]
+[/template]
+
+[template public checkAperiodicAndSporadicInfo(aModel : Model) post (trim())]
+[for (eAllContents(Class)->select(isAperiodic() or isSporadic()))]
+	[if (not isBufferInfo() and ownedPort->select(not isPortInfo())->notEmpty())]
+[error('A sporadic or aperiodic class must have a stereotype BufferInfo and at least a port stereotyped PortInfo')/]
+	[/if]
+[/for]
+[/template]
+
+[template public checkMessageForAsynchronousInterface(aModel : Model) post (trim())]
+[for (eAllContents(Interface)->select(isAsynchronous()).attribute.type->filter(Class)->select(not isMessage()))]
+[error('A class referenced in an asynchronous interface has to be stereotyped Message')/]
+[/for]
+[/template]
+
+[template public checkRoot(aModel : Model) post (trim())]
+[if (eAllContents(Class)->select(isRoot())->size() <> 1)]
+[error('The model must have one and only one class stereotyped Root')/]
+[/if]
+[/template]
+
+[template public checkExclusiveThreadInfo(aModel : Model) post (trim())]
+[for (eAllContents(Class)->select(isThreadInfo()))]
+	[if (getAppliedStereotypes()->select(isThreadInfoStereotype())->size() > 1)]
+[error('The ThreadInfo stereotypes are exclusive')/]
+	[/if]
+[/for]
+[/template]
+
+[template public checkExclusivePortInfo(aModel : Model) post (trim())]
+[for (eAllContents(Port)->select(isPortInfo()))]
+	[if (getAppliedStereotypes()->select(isPortInfoStereotype())->size() > 1)]
+[error('The PortInfo stereotypes are exclusive')/]
+	[/if]
+[/for]
+[/template]
+
+[template public checkExclusiveBufferInfo(aModel : Model) post (trim())]
+[for (eAllContents(Class)->select(isBufferInfo()))]
+	[if (getAppliedStereotypes()->select(isBufferInfoStereotype())->size() > 1)]
+[error('The BufferInfo stereotypes are exclusive')/]
+	[/if]
+[/for]
+[/template]
+
+[template public checkPortConnection(aModel : Model) post (trim())]
+[for (eAllContents(Port))]
+	[if (end->isEmpty() or end.owner->filter(Connector).end->size() <> 2 or end.owner->filter(Connector).end->select(partWithPort = null)->notEmpty())]
+[warning('A port has to be connected to another port')/]
+	[/if]
+[/for]
+[/template]
+
+[template public checkPortInterface(aModel : Model) post (trim())]
+[for (eAllContents(Port))]
+	[if (clientDependency.supplier->union(provided)->size() = 0)]
+[warning('The port must require or provide an interface')/]
+	[/if]
+[/for]
+[/template]
+
+[template public checkExclusivePseudostate(aModel : Model) post (trim())]
+[for (choice : Pseudostate | eAllContents(Pseudostate)->select(kind = PseudostateKind::choice))]
+	[if (not exclusiveChoice(minimize(eContainer(Region).eAllContents(Transition)->select(source = choice))))]
+[error(genExclusivePseudostateMessage())/]
+	[/if]
+[/for]
+[/template]
+
+[template public checkPortInfoWithAsynchronousInterface(aModel : Model) post (trim())]
+[for (eAllContents(Port)->select(isPortInfo()))]
+	[if (getAllInterfaces()->select(not isAsynchronous())->notEmpty())]
+[error('A port stereotypes PortInfo must require or provide an interface stereotypes Asynchronous')/]
+	[/if]
+[/for]
+[/template]
+
+[template public checkAsynchronousInterfaceWithSignal(aModel : Model) post (trim())]
+[for (eAllContents(Interface)->select(isAsynchronous()))]
+	[if (nestedClassifier->filter(Signal)->size() = 0 or ownedOperation->size() > 0)]
+[error('An interface port stereotyped Asynchronous requires at least one signal and should define any operation')/]
+	[/if]
+[/for]
+[/template]
+
+[template protected genDefaultValueMessage(aProperty : Property)]
+The variable is not instantiated, it has no default value (type: [type.name/])
+[/template]
+
+[template protected genEmptyStereotypeMessage(aProperty : Element, anElement : NamedElement) post(trim())]
+The class [anElement.genName()/] has empty attribute
+[/template]
+
+[template protected genExclusivePseudostateMessage(anElement : Element)]
+Pseudosate Choice requires exclusive guards and the default case guard in State Machine Diagram [eContainer(StateMachine).genName()/]
+[/template]

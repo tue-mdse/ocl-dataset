@@ -1,0 +1,126 @@
+[comment encoding = UTF-8 /]
+[module javaResourceController('file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/AnnotationLayerStack/AnnotationLayerStack.ecore', 'file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/AuthenticationLayer/AuthenticationPSMMetamodel.ecore', 'file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/EMF_ATL_MDE_Engine/CIM_Ecore_metamodel/PSMMetamodel.ecore')]
+
+
+[template public javaResourceController(anAnnotationStack : AnnotationStack)]
+
+[for (jRController : JavaResourceController | anAnnotationStack.hasCorePSM.hasJavaRController)]
+[file (anAnnotationStack.hasCorePSM.name + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/' + jRController.parentName + '/' + jRController.name + '.java', false, 'UTF-8')]
+/*
+ * ARISTOSTLE UNIVERSITY OF THESSALONIKI
+ * Copyright (C) 2015
+ * Aristotle University of Thessaloniki
+ * Department of Electrical & Computer Engineering
+ * Division of Electronics & Computer Engineering
+ * Intelligent Systems & Software Engineering Lab
+ *
+ * Project             : [anAnnotationStack.hasCorePSM.name/]
+ * WorkFile            : 
+ * Compiler            : 
+ * File Description    : 
+ * Document Description: 
+* Related Documents	   : 
+* Note				   : 
+* Programmer		   : RESTful MDE Engine created by Christoforos Zolotas
+* Contact			   : christopherzolotas@issel.ee.auth.gr
+*/
+
+
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[jRController.parentName/];
+
+[if (jRController.JavaRControllerHasHTTPActivity->select(httpActivity : HTTPActivity | httpActivity.ActivityHTTPVerb = HTTPVerb::PUT)->size() > 0)]
+import javax.ws.rs.Consumes;
+[/if]
+[if (jRController.JavaRControllerHasHTTPActivity->select(httpActivity : HTTPActivity | httpActivity.ActivityHTTPVerb = HTTPVerb::DELETE)->size() > 0)]
+import javax.ws.rs.DELETE;
+[/if]
+[if (jRController.JavaRControllerHasHTTPActivity->select(httpActivity : HTTPActivity | httpActivity.ActivityHTTPVerb = HTTPVerb::GET)->size() > 0)]
+import javax.ws.rs.GET;
+[/if]
+[if (jRController.JavaRControllerHasHTTPActivity->select(httpActivity : HTTPActivity | httpActivity.ActivityHTTPVerb = HTTPVerb::PUT)->size() > 0)]
+import javax.ws.rs.PUT;
+[/if]
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.UriInfo;
+[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+import javax.ws.rs.HeaderParam;
+import javax.ws.rs.DefaultValue;
+[/if]
+
+
+/* This class defines the web API of the individual [jRController.parentName/] resource. It may handle PUT, GET and/or DELETE requests 
+   depending on the specific CIM of the service.*/
+
+[jRController.JavaRControllerHasJAXRSAnnotation.JAXRSAnnotationText/]
+public class [jRController.name/]{
+
+    @Context
+    private UriInfo oApplicationUri;
+
+[for (httpActivity : HTTPActivity | jRController.JavaRControllerHasHTTPActivity->select(activity : HTTPActivity | activity.ActivityHTTPVerb = HTTPVerb::GET)) separator('\n')] 
+	/* This function handles http GET requests  
+    and returns any response formatted as stated in the @Produces JAX-RS annotation below.*/
+    [for (activityJAXRSAnnotation : JAXRSAnnotation | httpActivity.HTTPActivityHasJAXRSAnnotation)]
+	[activityJAXRSAnnotation.JAXRSAnnotationText/]
+	[/for]
+    public [jRController.hasAssociatedJavaRModel.name/] [httpActivity.name.toLowerFirst()/]([if (anAnnotationStack.bHasAuthenticationAnnotation)][if (httpActivity.hasBothModeAuthentication(anAnnotationStack))]@DefaultValue("guest") @HeaderParam("authorization") String authHeader, [elseif (httpActivity.hasAuthenticationOnlyMode(anAnnotationStack))]@HeaderParam("authorization") String authHeader, [/if][/if][for (httpActivityParam : HTTPActivityFunctionParameter | httpActivity.hasHTTPActivityParameter) separator(', ')][httpActivityParam.HTTPFunctionParameterHasJAXRSAnnotation.JAXRSAnnotationText/] [httpActivityParam.type/] [httpActivityParam.name/][/for]){
+        [httpActivity.hasHTTPActivityHandler.name/] o[httpActivity.hasHTTPActivityHandler.name/] = new [httpActivity.hasHTTPActivityHandler.name/]([if (anAnnotationStack.bHasAuthenticationAnnotation)][if(httpActivity.hasGuestMode(anAnnotationStack) = false)]authHeader, [/if][/if][httpActivity.hasHTTPActivityParameter.name/], oApplicationUri);
+        return o[httpActivity.hasHTTPActivityHandler.name/].get[jRController.hasAssociatedJavaRModel.name/]();
+    }
+[/for]
+
+[for (httpActivity : HTTPActivity | jRController.JavaRControllerHasHTTPActivity->select(activity : HTTPActivity | activity.ActivityHTTPVerb = HTTPVerb::PUT)) separator('\n')]
+	/* This function handles http PUT requests that are sent with any media type stated in the @Consumes JAX-RS annotation below 
+    and returns any response formatted as stated in the @Produces JAX-RS annotation below.*/
+    [for (activityJAXRSAnnotation : JAXRSAnnotation | httpActivity.HTTPActivityHasJAXRSAnnotation)]
+	[activityJAXRSAnnotation.JAXRSAnnotationText/]
+	[/for]
+    public [jRController.hasAssociatedJavaRModel.name/] [httpActivity.name.toLowerFirst()/]([if (anAnnotationStack.bHasAuthenticationAnnotation)][if (httpActivity.hasBothModeAuthentication(anAnnotationStack))]@DefaultValue("guest") @HeaderParam("authorization") String authHeader, [elseif (httpActivity.hasAuthenticationOnlyMode(anAnnotationStack))]@HeaderParam("authorization") String authHeader, [/if][/if][for (httpActivityParam : HTTPActivityFunctionParameter | httpActivity.hasHTTPActivityParameter) separator(', ')][if (httpActivityParam.HTTPFunctionParameterHasJAXRSAnnotation.oclIsUndefined() =false)][httpActivityParam.HTTPFunctionParameterHasJAXRSAnnotation.JAXRSAnnotationText/][/if] [httpActivityParam.type/] [httpActivityParam.name/][/for]){
+        [httpActivity.hasHTTPActivityHandler.name/] o[httpActivity.hasHTTPActivityHandler.name/] = new [httpActivity.hasHTTPActivityHandler.name/]([if (anAnnotationStack.bHasAuthenticationAnnotation)][if(httpActivity.hasGuestMode(anAnnotationStack) = false)]authHeader, [/if][/if][if (anAnnotationStack.hasCorePSM.hasJavaRModel->select(parentRM : JavaResourceModel | parentRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRController.hasAssociatedJavaRModel))->size() = 1)][anAnnotationStack.hasCorePSM.hasJavaRModel->select(javaPRM : JavaResourceModel | javaPRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRController.hasAssociatedJavaRModel))->at(1).parentName/]Id, [elseif (anAnnotationStack.hasCorePSM.hasJavaRModel->select(jPRM : JavaResourceModel | jPRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRController.hasAssociatedJavaRModel))->size() > 1)][anAnnotationStack.hasCorePSM.hasJavaRModel->select(jPRM : JavaResourceModel | jPRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRController.hasAssociatedJavaRModel) and ('Put' + jPRM.parentName + jRController.parentName = httpActivity.name))->at(1).parentName/]Id, [/if][if (anAnnotationStack.hasCorePSM.hasJavaRModel->select(jPRM : JavaResourceModel | jPRM.hasRelatedJavaRMManager.hasRelatedJavaRModel->includes(jRController.hasAssociatedJavaRModel) and (jPRM = jRController.hasAssociatedJavaRModel) and ('Put' + jPRM.parentName + jRController.parentName = httpActivity.name))->size() = 1)]target[/if][jRController.parentName/]Id, o[jRController.hasAssociatedJavaRModel.name/], oApplicationUri);
+        return o[httpActivity.hasHTTPActivityHandler.name/].put[jRController.hasAssociatedJavaRModel.name/]();
+    }
+[/for]
+
+[for (httpActivity : HTTPActivity | jRController.JavaRControllerHasHTTPActivity->select(activity : HTTPActivity | activity.ActivityHTTPVerb = HTTPVerb::DELETE)) separator('\n')] 
+    /* This function handles http DELETE requests  
+    and returns any response formatted as stated in the @Produces JAX-RS annotation below.*/
+    [for (activityJAXRSAnnotation : JAXRSAnnotation | httpActivity.HTTPActivityHasJAXRSAnnotation)]
+	[activityJAXRSAnnotation.JAXRSAnnotationText/]
+	[/for]
+    public [jRController.hasAssociatedJavaRModel.name/] [httpActivity.name.toLowerFirst()/]([if (anAnnotationStack.bHasAuthenticationAnnotation)][if (httpActivity.hasBothModeAuthentication(anAnnotationStack))]@DefaultValue("guest") @HeaderParam("authorization") String authHeader, [elseif (httpActivity.hasAuthenticationOnlyMode(anAnnotationStack))]@HeaderParam("authorization") String authHeader, [/if][/if][for (httpActivityParam : HTTPActivityFunctionParameter | httpActivity.hasHTTPActivityParameter) separator(', ')][httpActivityParam.HTTPFunctionParameterHasJAXRSAnnotation.JAXRSAnnotationText/] [httpActivityParam.type/] [httpActivityParam.name/][/for]){
+        [httpActivity.hasHTTPActivityHandler.name/] o[httpActivity.hasHTTPActivityHandler.name/] = new [httpActivity.hasHTTPActivityHandler.name/]([if (anAnnotationStack.bHasAuthenticationAnnotation)][if(httpActivity.hasGuestMode(anAnnotationStack) = false)]authHeader, [/if][/if][httpActivity.hasHTTPActivityParameter.name/], oApplicationUri);
+        return o[httpActivity.hasHTTPActivityHandler.name/].delete[jRController.hasAssociatedJavaRModel.name/]();
+    }
+[/for]
+}
+
+[/file]
+[/for]
+[/template]
+
+[query private hasBothModeAuthentication(anHttpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Boolean =
+	getAuthenticationLayerBothModeAnnotations(anAnnotationStack)->exists(bothModeAnnotation | bothModeAnnotation.HTTPActivityHasAuthenticationMode->exists(annHTTPActivity | annHTTPActivity.annotatesHTTPActivity.name = anHttpActivity.name))
+/]
+
+[query private getAuthenticationLayerBothModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(BothMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(BothMode))->asSequence()
+/]
+
+[query private hasAuthenticationOnlyMode(anHttpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Boolean =
+	getAuthenticationLayerAuthenticationOnlyModeAnnotations(anAnnotationStack)->exists(authenticationOnlyMode | authenticationOnlyMode.HTTPActivityHasAuthenticationMode->exists(annHTTPActivity | annHTTPActivity.annotatesHTTPActivity.name = anHttpActivity.name))
+/]
+
+[query private getAuthenticationLayerAuthenticationOnlyModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(AuthenticationOnlyMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(AuthenticationOnlyMode))->asSequence()
+/]
+
+[query private hasGuestMode(anHttpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Boolean =
+	getAuthenticationLayerGuestModeAnnotations(anAnnotationStack)->exists(guestMode | guestMode.HTTPActivityHasAuthenticationMode->exists( annHTTPActivity | annHTTPActivity.annotatesHTTPActivity.name = anHttpActivity.name))
+/]
+
+[query private getAuthenticationLayerGuestModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(GuestMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(GuestMode))->asSequence()
+/]

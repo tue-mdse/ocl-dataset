@@ -1,0 +1,70 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2012, 2014 CNES and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Cedric Notot (Obeo) - initial API and implementation
+[/comment]
+
+[module eventDataEmitterFile('http://www.eclipse.org/uml2/5.0.0/UML','http://www.eclipse.org/umlgen/dsl/asl','http://www.eclipse.org/umlgen/dsl/eth')]
+
+[import org::eclipse::umlgen::gen::autojava::specific::port /]
+[import org::eclipse::umlgen::gen::autojava::specific::lib::type /]
+[import org::eclipse::umlgen::gen::autojava::requests::common/]
+[import org::eclipse::umlgen::gen::autojava::requests::port /]
+[import org::eclipse::umlgen::gen::autojava::services::rtsjServices /]
+[import org::eclipse::umlgen::gen::autojava::services::utilServices /]
+[import org::eclipse::umlgen::gen::autojava::common::common /]
+
+[template public genEventDataEmitterBody(anInterface : Interface, aPort : Port)]
+[aPort.genFilePath().genPackageDeclaration()/]
+
+import org.eclipse.umlgen.rtsj.framework.*;
+import org.eclipse.umlgen.rtsj.framework.types.*;
+import [anInterface.genPackagePath()/].[anInterface.name/];
+[for (aType : Type | minimize(get('ownedReception')->filter(Reception).get('ownedElement')->filter(TypedElement)->select(itT : TypedElement | not itT.type.isJavaPrimitive() and not itT.type.oclIsKindOf(Enumeration)).type)->filter(Type))]
+import [aType.genDecoratorPackagePath() + '.' + aType.genName()/];
+[/for]
+[for (anOperation : Reception | anInterface.getAllReceptions()->select(aReception : Reception | aReception.signal <> null))]
+	[for (aProperty : Property | anOperation.signal.get('ownedAttribute')->filter(Property)->select(aProp : Property | not aProp.type.isJavaPrimitive() and not aProp.type.oclIsKindOf(Enumeration)))]
+import [aProperty.type.genDecoratorPackagePath() + '.' + aProperty.genType()/];
+	[/for]
+[/for]
+
+public class [aPort.genClassPortName(anInterface, 'Emitter','EventData')/] {
+
+	String ident;
+	String sender;
+	ArgsBuffer argsBuffer = new ArgsBuffer([if (aPort.isLossyBuffer())][aPort.getPortSize()/][else][computePortSize(0, anInterface)/][/if]);
+	CommunicationLayer communicationLayer;
+
+	public [aPort.genClassPortName(anInterface, 'Emitter','EventData')/](String ident, String sender, CommunicationLayer communicationLayer) {
+		this.ident = ident;
+		this.sender = sender;
+		this.communicationLayer = communicationLayer;
+	}
+
+[for (anOperation : Reception | anInterface.getAllReceptions()->select(aReception : Reception | aReception.signal <> null))]
+	[anOperation.genMethod(aPort)/]
+		
+[/for]
+}
+[/template]
+
+[template protected genMethod(anOperation : Reception, aPort : Port) ]
+public void [anOperation.genName()/]([anOperation.signal.get('ownedAttribute')->filter(Property)->first().genType()/] params) throws ServiceNotFoundException {
+[if (anOperation.signal.get('ownedAttribute')->filter(Property)->size() > 0)]
+	argsBuffer.dequeue(argsBuffer.getUsed());
+	[if (anOperation.signal.get('ownedAttribute')->filter(Property)->first().type.genBufferType() = 'Object')]
+	params.writeObject(argsBuffer);
+	[else]
+	argsBuffer.write[anOperation.signal.get('ownedAttribute')->filter(Property)->first().type.genBufferType()/](params);
+	[/if]	
+[/if]
+	communicationLayer.sendEventData("[anOperation.signal.genName()/]", ident, sender, argsBuffer);
+}
+[/template]

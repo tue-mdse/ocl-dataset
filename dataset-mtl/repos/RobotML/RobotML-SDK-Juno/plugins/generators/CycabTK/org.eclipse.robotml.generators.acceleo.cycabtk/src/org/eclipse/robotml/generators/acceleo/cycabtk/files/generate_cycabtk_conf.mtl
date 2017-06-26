@@ -1,0 +1,39 @@
+[comment encoding = UTF-8 /]
+[module generate_cycabtk_conf('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[comment][import org::eclipse::proteus::generators::acceleo::mmqueries::MMQueries /][/comment]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+
+[template public generateCycabtkConf(model : Model)]
+
+[file (model.name + '.conf', false, 'UTF-8')]
+['['/]data path[']'/] "[getProperty('targetFolder')/]"
+['['/]configuration path[']'/] "$(configuration path);$(data path)/data/configuration"
+['['/]lua path[']'/] "$(lua path);$(data path)/scripts/?.lua"
+[/file]
+
+
+[comment][file ('run_' + model.name + '.sh', false, 'UTF-8')]
+#!/bin/bash
+#
+# run script for [model.name/] simulation with CycabTKSimulator
+#
+
+target Folder : [getProperty('targetFolder')/]
+
+FILE_CONF=$HOME/.config/mgengine/conf.d/[model.name/].conf
+
+SCRIPT=`readlink -f $0`
+SCRIPT_PATH=`dirname $SCRIPT`
+
+echo "['['/]data path[']'/]  \"$SCRIPT_PATH\"" > $FILE_CONF
+echo "['['/]configuration path[']'/] \"\$(configuration path);\$(data path)/data/configuration\"" >> $FILE_CONF
+echo "['['/]lua path[']'/] \"\$(lua path);\$(data path)/scripts/?.lua\"" >> $FILE_CONF
+
+echo "require \"[model.name/]\"" | mgengine 
+
+rm $FILE_CONF
+[/file][/comment]
+
+[/template]

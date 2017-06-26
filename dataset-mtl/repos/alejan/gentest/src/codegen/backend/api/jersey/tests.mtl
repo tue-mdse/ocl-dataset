@@ -1,0 +1,652 @@
+[comment encoding = UTF-8 /]
+[module tests('http://www.eclipse.org/uml2/5.0.0/UML') extends backend::api::jersey::services ]
+[import ::utils /]
+
+[template public mainTests(c : Class, path : String)]
+[let genPath : String = path.concat('tests/rest/')]
+    [c.genTests(genPath)/]
+    [for (a : Property | c.getNonCompositeCollectionAttributes())]
+        [a.genTestsNonComposite(genPath)/]
+    [/for]
+[/let]
+[/template]
+
+[template private genTests(c : Class, path : String) {className : String = c.getTestName();}]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].tests.rest;
+
+import co.edu.uniandes.csw.auth.model.UserDTO;
+import co.edu.uniandes.csw.auth.security.JWT;
+[for (cl : Class | c.getHierarchy())]
+import [cl.getModel().baseGroup()/].entities.[cl.getEntityName()/];
+[/for]
+import [c.getModel().baseGroup()/].dtos.detail.[c.getBasicDTOName()/];
+import [c.getModel().baseGroup()/].resources.[c.getJaxRsName()/];
+import [c.getModel().baseGroup()/].tests.Utils;
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import javax.inject.Inject;
+import javax.transaction.UserTransaction;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Cookie;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.arquillian.junit.InSequence;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.jboss.shrinkwrap.resolver.api.maven.Maven;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import uk.co.jemos.podam.api.PodamFactory;
+import uk.co.jemos.podam.api.PodamFactoryImpl;
+
+/*
+ * Testing URI: [c.getFullURI()/]
+ */
+@RunWith(Arquillian.class)
+public class [className/] {
+
+    private WebTarget target;
+    private final String apiPath = Utils.apiPath;
+    private final String username = Utils.username;
+    private final String password = Utils.password;
+    PodamFactory factory = new PodamFactoryImpl();
+
+    private final int Ok = Status.OK.getStatusCode();
+    private final int Created = Status.CREATED.getStatusCode();
+    private final int OkWithoutContent = Status.NO_CONTENT.getStatusCode();
+
+    private final static List<[c.getEntityName()/]> oraculo = new ArrayList<>();
+
+    [for (cl : Class | c.getHierarchy()->reverse())]
+    private final String [cl.testPath()/] = "[cl.getURI()/]";
+    [/for]
+
+    [for (cl : Class | c.getHierarchy()->reverse()->reject(name = c.name))]
+    [cl.getEntityName()/] [cl.getFatherEntity()/];
+    [/for]
+
+    @ArquillianResource
+    private URL deploymentURL;
+
+    @Deployment
+    public static WebArchive createDeployment() {
+        return ShrinkWrap.create(WebArchive.class)
+                // Se agrega las dependencias
+                .addAsLibraries(Maven.resolver().loadPomFromFile("pom.xml")
+                        .importRuntimeDependencies().resolve()
+                        .withTransitivity().asFile())
+                // Se agregan los compilados de los paquetes de servicios
+                .addPackage([c.getJaxRsName()/].class.getPackage())
+                // El archivo que contiene la configuracion a la base de datos.
+                .addAsResource("META-INF/persistence.xml", "META-INF/persistence.xml")
+                // El archivo beans.xml es necesario para injeccion de dependencias.
+                .addAsWebInfResource(new File("src/main/webapp/WEB-INF/beans.xml"))
+                // El archivo shiro.ini es necesario para injeccion de dependencias
+                .addAsWebInfResource(new File("src/main/webapp/WEB-INF/shiro.ini"))
+                // El archivo web.xml es necesario para el despliegue de los servlets
+                .setWebXML(new File("src/main/webapp/WEB-INF/web.xml"));
+    }
+
+    private WebTarget createWebTarget() {
+        return ClientBuilder.newClient().target(deploymentURL.toString()).path(apiPath);
+    }
+
+    @PersistenceContext(unitName = "[c.getModel().getPUName()/]")
+    private EntityManager em;
+
+    @Inject
+    private UserTransaction utx;
+
+    private void clearData() {
+        [for (cl : Class | c.getHierarchy())]
+        em.createQuery("delete from [cl.getEntityName()/]").executeUpdate();
+        [/for]
+        oraculo.clear();
+    }
+
+   /**
+     * Datos iniciales para el correcto funcionamiento de las pruebas.
+     *
+     * @generated
+     */
+    public void insertData() {
+        [for (cl : Class | c.getHierarchy()->reverse()->reject(name = c.name))]
+        [cl.getFatherEntity()/] = factory.manufacturePojo([cl.getEntityName()/].class);
+        [cl.getFatherEntity()/].setId(1L);
+        [if (cl.isChild())]
+        [cl.getFatherEntity()/].[cl.getParentAttribute().setter()/]([cl.getParentAttribute().getClass().getFatherEntity()/]);
+        [/if]
+        em.persist([cl.getFatherEntity()/]);
+
+        [/for]
+        [if (c.isChild() and c.getParentAttribute().isOne2One())]        
+            [c.getEntityName()/] [c.getName()/] = factory.manufacturePojo([c.getEntityName()/].class);
+            [c.getName()/].setId(1L);
+            [if (c.isChild())]
+            [c.getName()/].[c.getParentAttribute().setter()/]([c.getParentAttribute().getClass().getFatherEntity()/]);
+            [/if]
+            em.persist([c.getName()/]);
+            oraculo.add([c.getName()/]);
+        [else]
+        for (int i = 0; i < 3; i++) {            
+            [c.getEntityName()/] [c.getName()/] = factory.manufacturePojo([c.getEntityName()/].class);
+            [c.getName()/].setId(i + 1L);
+            [if (c.isChild())]
+            [c.getName()/].[c.getParentAttribute().setter()/]([c.getParentAttribute().getClass().getFatherEntity()/]);
+            [/if]
+            em.persist([c.getName()/]);
+            oraculo.add([c.getName()/]);
+        }
+        [/if]
+    }
+
+    /**
+     * Configuración inicial de la prueba.
+     *
+     * @generated
+     */
+    @Before
+    public void setUpTest() {
+        try {
+            utx.begin();
+            clearData();
+            insertData();
+            utx.commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                utx.rollback();
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        }
+        target = createWebTarget()
+            [for (cl : Class | c.getHierarchy()->reverse()->reject(c1 | c1.name = c.name))]
+                .path([cl.testPath()/])
+                .path([cl.getFatherEntity()/].getId().toString())
+            [/for]
+                .path([c.testPath()/]);
+    }
+
+    /**
+     * Login para poder consultar los diferentes servicios
+     *
+     * @param username Nombre de usuario
+     * @param password Clave del usuario
+     * @return Cookie con información de la sesión del usuario
+     * @generated
+     */
+    public Cookie login(String username, String password) {
+        UserDTO user = new UserDTO();
+        user.setUserName(username);
+        user.setPassword(password);
+        user.setRememberMe(true);
+        Response response = createWebTarget().path("users").path("login").request()
+                .post(Entity.entity(user, MediaType.APPLICATION_JSON));
+        if (response.getStatus() == Ok) {
+            return response.getCookies().get(JWT.cookieName);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Prueba para crear un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void create[c.name/]Test() throws IOException {
+        [c.getBasicDTOName()/] [c.getName()/] = factory.manufacturePojo([c.getBasicDTOName()/].class);
+        Cookie cookieSessionId = login(username, password);
+
+        Response response = target
+            .request().cookie(cookieSessionId)
+            .post(Entity.entity([c.getName()/], MediaType.APPLICATION_JSON));
+
+        [c.getBasicDTOName()/]  [c.testName()/] = ([c.getBasicDTOName()/]) response.readEntity([c.getBasicDTOName()/].class);
+
+        Assert.assertEquals(Created, response.getStatus());
+
+        [for (prop : Property | c.attribute->reject(isID()))]
+        Assert.assertEquals([c.getName()/].[prop.getter()/](), [c.testName()/].[prop.getter()/]());
+        [/for]
+
+        [c.getEntityName()/] entity = em.find([c.getEntityName()/].class, [c.testName()/].getId());
+        Assert.assertNotNull(entity);
+    }
+
+    /**
+     * Prueba para consultar un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void get[c.name/]ByIdTest() {
+        Cookie cookieSessionId = login(username, password);
+
+        [c.getBasicDTOName()/] [c.testName()/] = target
+            .path(oraculo.get(0).getId().toString())
+            .request().cookie(cookieSessionId).get([c.getBasicDTOName()/].class);
+        
+        [for (prop : Property | c.attribute)]
+        Assert.assertEquals([c.testName()/].[prop.getter()/](), oraculo.get(0).[prop.getter()/]());
+        [/for]
+    }
+
+    /**
+     * Prueba para consultar la lista de [c.name/]s
+     *
+     * @generated
+     */
+    @Test
+    public void list[c.name/]Test() throws IOException {
+        Cookie cookieSessionId = login(username, password);
+
+        Response response = target
+            .request().cookie(cookieSessionId).get();
+
+        String list[c.name/] = response.readEntity(String.class);
+        List<[c.getBasicDTOName()/]> list[c.name/]Test = new ObjectMapper().readValue(list[c.name/], List.class);
+        Assert.assertEquals(Ok, response.getStatus());
+        Assert.assertEquals(oraculo.size(), list[c.name/]Test.size());
+    }
+
+    /**
+     * Prueba para actualizar un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void update[c.name/]Test() throws IOException {
+        Cookie cookieSessionId = login(username, password);
+        [c.getBasicDTOName()/] [c.getName()/] = new [c.getBasicDTOName()/](oraculo.get(0));
+
+        [c.getBasicDTOName()/] [c.getName()/]Changed = factory.manufacturePojo([c.getBasicDTOName()/].class);
+
+        [for (prop : Property | c.attribute->reject(isID()))]
+        [c.getName()/].[prop.setter()/]([c.getName()/]Changed.[prop.getter()/]());
+        [/for]
+
+        Response response = target
+            .path([c.getName()/].getId().toString())
+            .request().cookie(cookieSessionId)
+            .put(Entity.entity([c.getName()/], MediaType.APPLICATION_JSON));
+
+        [c.getBasicDTOName()/] [c.testName()/] = ([c.getBasicDTOName()/]) response.readEntity([c.getBasicDTOName()/].class);
+
+        Assert.assertEquals(Ok, response.getStatus());
+        [for (prop : Property | c.attribute->reject(isID()))]
+        Assert.assertEquals([c.getName()/].[prop.getter()/](), [c.testName()/].[prop.getter()/]());
+        [/for]
+    }
+
+    /**
+     * Prueba para eliminar un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void delete[c.name/]Test() {
+        Cookie cookieSessionId = login(username, password);
+        [c.getBasicDTOName()/] [c.getName()/] = new [c.getBasicDTOName()/](oraculo.get(0));
+        Response response = target
+            .path([c.getName()/].getId().toString())
+            .request().cookie(cookieSessionId).delete();
+
+        Assert.assertEquals(OkWithoutContent, response.getStatus());
+    }
+}
+[/file]
+[/template]
+
+[template private genTestsNonComposite(a : Property, path : String) {
+    className   : String    = a.getTestName();
+    c           : Class     = a.getOwner();
+}]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].tests.rest;
+
+import co.edu.uniandes.csw.auth.model.UserDTO;
+import co.edu.uniandes.csw.auth.security.JWT;
+[for (cl : Class | c.getHierarchy())]
+import [cl.getModel().baseGroup()/].entities.[cl.getEntityName()/];
+[/for]
+[if (c.getEntityName() <> a.getClass().getEntityName())]
+import [c.getModel().baseGroup()/].entities.[a.getClass().getEntityName()/];
+[/if]
+import [c.getModel().baseGroup()/].dtos.detail.[c.getBasicDTOName()/];
+[if (c.getBasicDTOName() <> a.getDTOName())]
+import [c.getModel().baseGroup()/].dtos.detail.[a.getDTOName()/];
+[/if]
+import [c.getModel().baseGroup()/].resources.[c.getJaxRsName()/];
+import [c.getModel().baseGroup()/].tests.Utils;
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import javax.inject.Inject;
+import javax.transaction.UserTransaction;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Cookie;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.jboss.shrinkwrap.resolver.api.maven.Maven;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import uk.co.jemos.podam.api.PodamFactory;
+import uk.co.jemos.podam.api.PodamFactoryImpl;
+
+/*
+ * Testing URI: [c.getFullURI()/]
+ */
+@RunWith(Arquillian.class)
+public class [className/] {
+
+    private WebTarget target;
+    private PodamFactory factory = new PodamFactoryImpl();
+    private final String apiPath = Utils.apiPath;
+    private final String username = Utils.username;
+    private final String password = Utils.password;
+
+    private final int Ok = Status.OK.getStatusCode();
+    private final int OkWithoutContent = Status.NO_CONTENT.getStatusCode();
+
+    private final static List<[a.getClass().getEntityName()/]> oraculo = new ArrayList<>();
+
+    [for (cl : Class | c.getHierarchy()->reverse())]
+    private final String [cl.testPath()/] = "[cl.getURI()/]";
+    [/for]
+    private final String [a.testPath()/] = "[a.getURI()/]";
+
+    [for (cl : Class | c.getHierarchy()->reverse())]
+    private [cl.getEntityName()/] [cl.getFatherEntity()/];
+    [/for]
+
+    @ArquillianResource
+    private URL deploymentURL;
+
+    @Deployment
+    public static WebArchive createDeployment() {
+        return ShrinkWrap.create(WebArchive.class)
+                // Se agrega las dependencias
+                .addAsLibraries(Maven.resolver().loadPomFromFile("pom.xml")
+                        .importRuntimeDependencies().resolve()
+                        .withTransitivity().asFile())
+                // Se agregan los compilados de los paquetes de servicios
+                .addPackage([c.getJaxRsName()/].class.getPackage())
+                // El archivo que contiene la configuracion a la base de datos.
+                .addAsResource("META-INF/persistence.xml", "META-INF/persistence.xml")
+                // El archivo beans.xml es necesario para injeccion de dependencias.
+                .addAsWebInfResource(new File("src/main/webapp/WEB-INF/beans.xml"))
+                // El archivo shiro.ini es necesario para injeccion de dependencias
+                .addAsWebInfResource(new File("src/main/webapp/WEB-INF/shiro.ini"))
+                // El archivo web.xml es necesario para el despliegue de los servlets
+                .setWebXML(new File("src/main/webapp/WEB-INF/web.xml"));
+    }
+
+    private WebTarget createWebTarget() {
+        return ClientBuilder.newClient().target(deploymentURL.toString()).path(apiPath);
+    }
+
+    @PersistenceContext(unitName = "[c.getModel().getPUName()/]")
+    private EntityManager em;
+
+    @Inject
+    private UserTransaction utx;
+
+    private void clearData() {
+        [if (a.isRelationshipOwner())]
+        List<[c.getEntityName()/]> records = em.createQuery("SELECT u FROM [c.getEntityName()/] u").getResultList();
+        for ([c.getEntityName()/] record : records) {
+            em.remove(record);
+        }
+        em.createQuery("delete from [a.getClass().getEntityName()/]").executeUpdate();
+        [for (cl : Class | c.getHierarchy()->reject(class | class=c))]
+        em.createQuery("delete from [cl.getEntityName()/]").executeUpdate();
+        [/for]
+        [else]
+        List<[a.getClass().getEntityName()/]> records = em.createQuery("SELECT u FROM [a.getClass().getEntityName()/] u").getResultList();
+        for ([a.getClass().getEntityName()/] record : records) {
+            em.remove(record);
+        }
+        em.createQuery("delete from [c.getEntityName()/]").executeUpdate();
+        [for (cl : Class | c.getHierarchy()->reject(class | class=c))]
+        em.createQuery("delete from [cl.getEntityName()/]").executeUpdate();
+        [/for]
+        [/if]
+        oraculo.clear();
+    }
+
+   /**
+     * Datos iniciales para el correcto funcionamiento de las pruebas.
+     *
+     * @generated
+     */
+    private void insertData() {
+            [for (cl : Class | c.getHierarchy()->reverse())]
+            [cl.getFatherEntity()/] = factory.manufacturePojo([cl.getEntityName()/].class);
+            [if (cl.isChild())]
+            [cl.getFatherEntity()/].[cl.getParentAttribute().setter()/]([cl.getParentAttribute().getClass().getFatherEntity()/]);
+            [/if]
+            em.persist([cl.getFatherEntity()/]);
+            [/for]
+
+            for (int i = 0; i < 3; i++) {
+                [a.getClass().getEntityName()/] [a.name/] = factory.manufacturePojo([a.getClass().getEntityName()/].class);
+                em.persist([a.name/]);
+                if(i<2){                
+                [if (a.isRelationshipOwner())]
+                    [c.getFatherEntity()/].[a.getter()/]().add([a.name/]);
+                [else]
+                [if (a.getOtherEnd().getUpper() = 1)]
+                    [a.name/].[a.getOtherEnd().setter()/]([c.getFatherEntity()/]);
+                [else]
+                    [a.name/].[a.getOtherEnd().getter()/]().add([c.getFatherEntity()/] );
+                [/if]
+                [/if]
+                }
+                oraculo.add([a.name/]);
+            }
+    }
+
+    /**
+     * Configuración inicial de la prueba.
+     *
+     * @generated
+     */
+    @Before
+    public void setUpTest() {
+        try {
+            utx.begin();
+            clearData();
+            insertData();
+            utx.commit();            
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                utx.rollback();
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        }
+        target = createWebTarget()
+        [for (cl : Class | c.getHierarchy()->reverse())]
+                .path([cl.testPath()/])
+                .path([cl.getFatherEntity()/].getId().toString())
+        [/for]
+                .path([a.testPath()/]);
+    }
+
+    /**
+     * Login para poder consultar los diferentes servicios
+     *
+     * @param username Nombre de usuario
+     * @param password Clave del usuario
+     * @return Cookie con información de la sesión del usuario
+     * @generated
+     */
+    public Cookie login(String username, String password) {
+        UserDTO user = new UserDTO();
+        user.setUserName(username);
+        user.setPassword(password);
+        user.setRememberMe(true);
+        Response response = createWebTarget()
+                .path("users")
+                .path("login")
+                .request()
+                .post(Entity.entity(user, MediaType.APPLICATION_JSON));
+        if (response.getStatus() == Ok) {
+            return response.getCookies().get(JWT.cookieName);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     *Prueba para asociar un [a.name.toUpperFirst()/] existente a un [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void add[a.getTestSuffix()/]() {
+        Cookie cookieSessionId = login(username, password);
+
+        [a.getDTOName()/] [a.name/] = new [a.getDTOName()/](oraculo.get(2));
+
+        Response response = target.path([a.name/].getId().toString())
+                .request().cookie(cookieSessionId)
+                .post(Entity.entity([a.name/], MediaType.APPLICATION_JSON));
+
+        [a.getDTOName()/] [a.getResponseVarName()/] = ([a.getDTOName()/]) response.readEntity([a.getDTOName()/].class);
+        Assert.assertEquals(Ok, response.getStatus());
+        Assert.assertEquals([a.name/].getId(), [a.getResponseVarName()/].getId());
+    }
+
+    /**
+     * Prueba para obtener una colección de instancias de [a.name.toUpperFirst()/] asociadas a una instancia [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void list[a.getTestSuffix()/]() throws IOException {
+        Cookie cookieSessionId = login(username, password);
+
+        Response response = target
+                .request().cookie(cookieSessionId).get();
+
+        String [a.name/]List = response.readEntity(String.class);
+        List<[a.getDTOName()/]> [a.name/]ListTest = new ObjectMapper().readValue([a.name/]List, List.class);
+        Assert.assertEquals(Ok, response.getStatus());
+        Assert.assertEquals(2, [a.name/]ListTest.size());
+    }
+
+    /**
+     * Prueba para obtener una instancia de [a.name.toUpperFirst()/] asociada a una instancia [c.name/]
+     *
+     * @generated
+     */
+    @Test
+    public void get[a.getTestSuffix()/]() throws IOException {
+        Cookie cookieSessionId = login(username, password);
+        [a.getDTOName()/] [a.name/] = new [a.getDTOName()/](oraculo.get(0));
+
+        [a.getDTOName()/] [a.getResponseVarName()/] = target.path([a.name/].getId().toString())
+                .request().cookie(cookieSessionId).get([a.getDTOName()/].class);
+
+        [for (prop : Property | a.getClass().attribute)]
+        Assert.assertEquals([a.name/].[prop.getter()/](), [a.getResponseVarName()/].[prop.getter()/]());
+        [/for]
+    }
+
+    /**
+     * Prueba para desasociar un [a.name.toUpperFirst()/] existente de un [c.name/] existente
+     *
+     * @generated
+     */
+    @Test
+    public void remove[a.getTestSuffix()/]() {
+        Cookie cookieSessionId = login(username, password);
+
+        [a.getDTOName()/] [a.name/] = new [a.getDTOName()/](oraculo.get(0));
+
+        Response response = target.path([a.name/].getId().toString())
+                .request().cookie(cookieSessionId).delete();
+        Assert.assertEquals(OkWithoutContent, response.getStatus());
+    }
+}
+[/file]
+[/template]
+
+
+[template private getTestName(c : Class)]
+[c.name/]Test
+[/template]
+
+[template private getTestName(a : Property)]
+[a.getOwner().name/][a.name.toUpperFirst()/]Test
+[/template]
+
+[template private getFatherEntity(c : Class)]
+father[c.name/]Entity
+[/template]
+
+[template private testPath(a : Property)]
+[a.name.toLowerFirst()/]Path
+[/template]
+
+[template private testPath(c : Class)]
+[c.getName()/]Path
+[/template]
+
+[template private getTestSuffix(a : Property)]
+[a.name.toUpperFirst()/]Test
+[/template]
+
+[template private getResponseVarName(a : Property)]
+[a.name.toLower()/]Test
+[/template]
+
+[template private getDTOName(a : Property)]
+[a.getClass().getBasicDTOName()/]
+[/template]
+
+[template private testName(c : Class)]
+[c.name.toLower().concat('Test')/]
+[/template]

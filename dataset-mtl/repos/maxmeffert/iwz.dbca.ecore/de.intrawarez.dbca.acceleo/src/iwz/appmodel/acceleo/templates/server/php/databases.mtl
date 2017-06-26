@@ -1,0 +1,245 @@
+[comment efinal ncoding = UTF-8 /]
+[module databases('http://iwz/appmodel')]
+
+
+[import iwz::appmodel::acceleo::templates::common/]
+[import iwz::appmodel::acceleo::templates::database::names/]
+[import iwz::appmodel::acceleo::templates::database::accessors/]
+[import iwz::appmodel::acceleo::templates::server::php::names/]
+
+[comment 
+===================================================================================
+Abstract Database
+===================================================================================
+/]
+
+[template private generateAbstractAccessorDeclaration(db : Database, name : String)]
+abstract public function [name/] ();
+[/template]
+
+[template private generateAbstractAccessorDeclaration(db : Database, name : String, parameters : Collection(Property))]
+abstract public function [name/] ([parameters.phpVarName()->sep(',')/]);
+[/template]
+
+[template private generateAbstractAccessorDeclarations(db : Database)]
+[for (e : Entity | db.selectEntities())]
+//======================================================================
+// Entity [e.name/]
+//======================================================================
+[db.generateAbstractAccessorDeclaration(e.accessorNameSelectAll())/]
+[db.generateAbstractAccessorDeclaration(e.accessorNameSelectOne(),e.accessorParametersSelectOne())/]
+[db.generateAbstractAccessorDeclaration(e.accessorNameInsert(),e.accessorParametersInsert())/]
+[db.generateAbstractAccessorDeclaration(e.accessorNameUpdate(),e.accessorParametersUpdate())/]
+[db.generateAbstractAccessorDeclaration(e.accessorNameDelete(),e.accessorParametersDelete())/]
+[/for]
+[for (r : Relation | db.selectRelations())]
+//======================================================================
+// [r.type/] Relation [r.name/] ([r.getSource().name/] -> [r.getTarget().name/])
+//======================================================================
+[db.generateAbstractAccessorDeclaration(r.accessorNameSelectAllSources(),r.accessorParametersSelectAllSources())/]
+[db.generateAbstractAccessorDeclaration(r.accessorNameSelectOneSource(),r.accessorParametersSelectOneSource())/]
+[db.generateAbstractAccessorDeclaration(r.accessorNameSelectAllTargets(),r.accessorParametersSelectAllTargets())/]
+[db.generateAbstractAccessorDeclaration(r.accessorNameSelectOneTarget(),r.accessorParametersSelectOneTarget())/]
+[db.generateAbstractAccessorDeclaration(r.accessorNameInsert(),r.accessorParametersInsert())/]
+[db.generateAbstractAccessorDeclaration(r.accessorNameUpdate(),r.accessorParametersUpdate())/]
+[db.generateAbstractAccessorDeclaration(r.accessorNameSave(),r.accessorParametersSave())/]
+[db.generateAbstractAccessorDeclaration(r.accessorNameDelete(),r.accessorParametersDelete())/]
+[/for]
+[/template]
+
+[template private generateAbstractDatabase(db : Database)]
+[file ('/server/php/src/Database.php', false, 'UTF-8')]
+<?php
+
+abstract class Database {
+	
+	[db.generateAbstractAccessorDeclarations()/]
+
+	/**
+	 * @var \PDO
+	 */
+	private $pdo;
+
+	public function __construct (\PDO $pdo) {
+
+		$this->pdo = $pdo;
+
+	}
+	
+	/**
+	 * @returns \PDO
+	 */
+	final protected function getPDO () {
+
+		return $this->pdo;
+
+	}
+
+	final protected function execute (\PDOStatement $stmt) {
+
+		$success = $stmt->execute();
+
+		if (!$success) {
+
+			$error = $stmt->errorInfo();
+
+			$msg = implode(", ",$error);
+
+			throw new \Exception($msg);
+
+		}
+
+		//var_dump($stmt->errorInfo());
+		
+		$results = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+		
+		$stmt->closeCursor();
+		
+		return $results;
+
+	}
+
+}
+
+?>
+[/file]
+[/template]
+
+[comment 
+===================================================================================
+MYSQL
+===================================================================================
+/]
+
+[template private generateMYSQLAccessorImpl(db : Database, name : String)]
+public function [name/] () {
+	
+	$sql = "call [name/]()";
+
+	$stmt = $this->getPDO()->prepare($sql);
+	
+	return $this->execute($stmt);
+
+}
+[/template]
+
+[template private generateMYSQLAccessorImpl(db : Database, name : String, parameters : Collection(Property))]
+public function [name/] ([parameters.phpVarName()->sep(',')/]) {
+	
+	$sql = "call [name/]([parameters.phpPDOName()->sep(',')/])";
+
+	$stmt = $this->getPDO()->prepare($sql);
+	[for (p : Property | parameters)]
+	$stmt->bindValue("[p.phpPDOName()/]",[p.phpVarName()/]);
+	[/for]
+	
+	return $this->execute($stmt);	
+
+}
+[/template]
+
+[template private generateMYSQLAccessorImpls(db : Database)]
+[for (e : Entity | db.selectEntities())]
+//======================================================================
+// Entity [e.name/]
+//======================================================================
+[db.generateMYSQLAccessorImpl(e.accessorNameSelectAll())/]
+[db.generateMYSQLAccessorImpl(e.accessorNameSelectOne(),e.accessorParametersSelectOne())/]
+[db.generateMYSQLAccessorImpl(e.accessorNameInsert(),e.accessorParametersInsert())/]
+[db.generateMYSQLAccessorImpl(e.accessorNameUpdate(),e.accessorParametersUpdate())/]
+[db.generateMYSQLAccessorImpl(e.accessorNameDelete(),e.accessorParametersDelete())/]
+[/for]
+[for (r : Relation | db.selectRelations())]
+//======================================================================
+// [r.type/] Relation [r.name/] ([r.getSource().name/] -> [r.getTarget().name/])
+//======================================================================
+[db.generateMYSQLAccessorImpl(r.accessorNameSelectAllSources(),r.accessorParametersSelectAllSources())/]
+[db.generateMYSQLAccessorImpl(r.accessorNameSelectOneSource(),r.accessorParametersSelectOneSource())/]
+[db.generateMYSQLAccessorImpl(r.accessorNameSelectAllTargets(),r.accessorParametersSelectAllTargets())/]
+[db.generateMYSQLAccessorImpl(r.accessorNameSelectOneTarget(),r.accessorParametersSelectOneTarget())/]
+[db.generateMYSQLAccessorImpl(r.accessorNameInsert(),r.accessorParametersInsert())/]
+[db.generateMYSQLAccessorImpl(r.accessorNameUpdate(),r.accessorParametersUpdate())/]
+[db.generateMYSQLAccessorImpl(r.accessorNameSave(),r.accessorParametersSave())/]
+[db.generateMYSQLAccessorImpl(r.accessorNameDelete(),r.accessorParametersDelete())/]
+[/for]
+[/template]
+
+[template private generateMYSQLDatabaseImpl(db : Database)]
+[file ('/server/php/src/databases/MYSQLDatabaseImpl.php', false, 'UTF-8')]
+<?php
+
+namespace databases {
+
+	class MYSQLDatabaseImpl extends \Database {
+
+		[db.generateMYSQLAccessorImpls()/]
+
+	}
+
+}
+
+?>
+[/file]
+[/template]
+
+[comment 
+===================================================================================
+Database Factory
+===================================================================================
+/]
+
+[template private generateDatabaseFactory(db : Database)]
+[file ('/server/php/src/DatabaseFactory.php', false, 'UTF-8')]
+<?php
+
+abstract class DatabaseFactory {
+	
+	static private $CONFIG_FILE = "./config/database.json";
+
+	static private $DB;
+
+	final static public function create () {
+		
+		if (is_null(self::$DB)) {
+
+			if (file_exists(self::$CONFIG_FILE)) {
+	
+				$json = file_get_contents(self::$CONFIG_FILE);
+				$conf = json_decode($json);
+				
+				$host = isset($conf->host) ? $conf->host : "localhost";
+				$port = isset($conf->port) ? $conf->port : null;
+				$name = isset($conf->name) ? $conf->name : null;
+				$user = isset($conf->user) ? $conf->user : null;
+				$pass = isset($conf->pass) ? $conf->pass : null;
+				$type = isset($conf->type) ? $conf->type : null;
+	
+				$dsn = "$type:host=$host;dbname=$name";
+				$pdo = new \PDO($dsn, $user, $pass);
+	
+	
+				if ($type == "mysql") {
+		
+					self::$DB = new \databases\MYSQLDatabaseImpl($pdo);
+		
+				}
+							
+			}
+
+		}
+		
+		return self::$DB;
+
+	}
+
+}
+
+?>
+[/file]
+[/template]
+
+[template public generateDatabase(db : Database)]
+[db.generateAbstractDatabase()/]
+[db.generateMYSQLDatabaseImpl()/]
+[db.generateDatabaseFactory()/]
+[/template]

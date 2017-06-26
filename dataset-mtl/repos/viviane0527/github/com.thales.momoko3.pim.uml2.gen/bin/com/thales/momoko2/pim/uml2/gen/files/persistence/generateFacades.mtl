@@ -1,0 +1,98 @@
+[comment encoding = UTF-8 /]
+[module generateFacades('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::name::fileNameQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::imports::classImports/]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+
+[**
+ * This template generates the facade for a class.
+ * @param aClass
+ */]
+[template public generateFacades(aClass : Class) ? (isFeatureClass(aClass) or isObjectClass(aClass))]
+[if aClass.isAbstract._not()]
+[file (getPersistenceFileName(aClass), false, 'UTF-8')]
+package [aClass.getModel().name.toLower()/].persistence;
+
+import javax.ejb.Stateless;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
+import javax.ejb.EJB;
+import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Predicate;
+import javax.persistence.criteria.Root;
+import org.primefaces.model.SortOrder;
+[generateModelElementImport(aClass)/]
+import [aClass.getModel().name.toLower()/].annotations.Facade;
+import [aClass.getModel().name.toLower()/].annotations.FeatureType;
+
+
+[if aClass.isFeatureClass()]@Facade(FeatureType.[aClass.name/])[/if]
+@Stateless
+public class [aClass.name/]Facade extends AbstractFacade<[aClass.name/]> implements Serializable
+{
+	//@Inject @MomokoDatabase
+	// change with your persistence unit name here:
+	@PersistenceContext(unitName="com.thales.[aClass.getModel().name.toLowerFirst()/]PU")
+	private EntityManager em;
+    
+	@EJB
+    private [aClass.name/]Facade [aClass.name.toLowerFirst()/]Facade;
+
+	@Override
+	protected EntityManager getEntityManager() 
+	{
+    	return em;
+	}
+
+	public [aClass.name/]Facade() 
+	{
+    	super([aClass.name/].class);
+	}
+
+	private Predicate getFilterCondition(CriteriaBuilder cb, Root<[aClass.name/]> [aClass.name.toLowerFirst()/], Map<String, String> filters) {
+        Predicate filterCondition = cb.conjunction();
+        String wildCard = "%";
+
+        for (Map.Entry<String, String> filter : filters.entrySet()) {
+            String value = wildCard + filter.getValue() + wildCard;
+            if (!filter.getValue().equals("")) {
+                javax.persistence.criteria.Path<String> path = [aClass.name.toLowerFirst()/].get(filter.getKey());
+                filterCondition = cb.and(filterCondition, cb.like(path, value));
+            }
+        }
+        return filterCondition;
+    }	
+
+	@Override
+    public int count(Map<String, String> filters) {
+        CriteriaBuilder cb = getEntityManager().getCriteriaBuilder();
+        CriteriaQuery<Long> cq = cb.createQuery(Long.class);
+        Root<[aClass.name/]> myObj = cq.from([aClass.name/].class);
+        cq.where([aClass.name.toLowerFirst()/]Facade.getFilterCondition(cb, myObj, filters));
+        cq.select(cb.count(myObj));
+        return em.createQuery(cq).getSingleResult().intValue();
+    }
+
+    public List<[aClass.name/]> getResultList(int first, int pageSize, String sortField, SortOrder sortOrder, Map<String, String> filters) {
+        CriteriaBuilder cb = getEntityManager().getCriteriaBuilder();
+        CriteriaQuery<[aClass.name/]> cq = cb.createQuery([aClass.name/].class);
+        Root<[aClass.name/]> myObj = cq.from([aClass.name/].class);
+        cq.where([aClass.name.toLowerFirst()/]Facade.getFilterCondition(cb, myObj, filters));
+        if (sortField != null) {
+            if (sortOrder == SortOrder.ASCENDING) {
+                cq.orderBy(cb.asc(myObj.get(sortField)));
+            } else if (sortOrder == SortOrder.DESCENDING) {
+                cq.orderBy(cb.desc(myObj.get(sortField)));
+            }
+        }
+        return em.createQuery(cq).setFirstResult(first).setMaxResults(pageSize).getResultList();
+    }
+
+}
+[/file]
+[/if]
+[/template]

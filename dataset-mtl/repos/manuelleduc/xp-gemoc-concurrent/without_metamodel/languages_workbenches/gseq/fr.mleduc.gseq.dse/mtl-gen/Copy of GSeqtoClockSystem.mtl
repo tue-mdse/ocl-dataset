@@ -1,0 +1,108 @@
+[comment encoding = UTF-8 /]
+
+[module generate('http://fr.inria.aoste.timemodel.ccslmodel.clockexpressionandrelation', 
+	'http://www.eclipse.org/emf/2002/Ecore', 
+	'http://org.gemoc.moccml/1.0', 
+	'http://fr.inria.aoste.timemodel',
+	'http://org.gemoc.moccml.fsmmodel/1.0',
+	'http://mleduc.fr/gseq') ]
+
+[template public generate(aProgram : Program)]
+[comment @main/]
+[file (aProgram.name+'_withMoC-.clocksystem', false, 'UTF-8')]
+
+"Some global constants"
+|system moccmllibs ccsllibs|
+"MoCCML librairies specifications" 
+
+	"CCSL librairies specifications"
+
+
+"Instanciation" 
+
+
+system := ClockSystem named: '[aProgram.name/]_withMoC-'.
+system addLibrary:moccmllibs asDictionary.
+"system addLibs:ccsllibs asDictionary."
+
+[for (element : gseq::Program| aProgram.eAllContents(gseq::Program))]
+"clocks for Program [element.name/]" 
+system addClocks: #(start[element.name/]).
+
+"internal clocks for gseq::Program [element.name/]" 
+	
+[/for]
+[for (element : gseq::Method| aProgram.eAllContents(gseq::Method))]
+"clocks for Method [element.name/]" 
+system addClocks: #(callIt[element.name/]).
+
+"internal clocks for gseq::Method [element.name/]" 
+	[if ( element.calledBy.methods.operations->select(eo|eo.oclIsKindOf(gseq::MethodCall).and(eo.oclAsType(gseq::MethodCall).methodToCall.=(self)))->size()>1) ]system addInternalClocks: #(unionOfMethodCall[element.name/]).[/if]
+
+[/for]
+[for (element : gseq::Operation| aProgram.eAllContents(gseq::Operation))]
+"clocks for Operation [element.name/]" 
+system addClocks: #(execute[element.name/]).
+
+[/for]
+
+[for (element : gseq::Program| aProgram.eAllContents(gseq::Program))]
+"expressions used by  Program [element.name/]" 
+
+	[if ( ) ]
+	system allUnion: #() named: #allOpExec[element.name/]. 
+	[/if]
+ 
+
+	[if ( ->size()>1) ]
+	system allOneTickAndNoMore: #(start[element.name/]) named: #oneStartOnly[element.name/]. 
+	[/if]
+ 
+"relations for Program [element.name/]" 
+	"initBeforeAll in Program [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(start[element.name/]  callIt[element.startMethod.name/])  constants:{-1} .
+		[/if]
+	"startMethodBeforeAll in Program [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(callIt[element.startMethod.name/]  allOpExec[element.name/])  constants:{-1} .
+		[/if]
+	"initOnlyOnce in Program [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Coincides clocks: #(start[element.name/]  oneStartOnly[element.name/]) .
+		[/if]
+[/for]
+[for (element : gseq::Method| aProgram.eAllContents(gseq::Method))]
+"expressions used by  Method [element.name/]" 
+
+	[if ( element.calledBy.methods.operations->select(eo|eo.oclIsKindOf(gseq::MethodCall).and(eo.oclAsType(gseq::MethodCall).methodToCall.=(self)))->size()>1) ]
+	system allUnion: #([for (ne : gseq::MethodCall | element.calledBy.methods.operations->select(eo|eo.oclIsKindOf(gseq::MethodCall).and(eo.oclAsType(gseq::MethodCall).methodToCall.=(self))))]execute[ne.name/] [/for]) named: #unionOfMethodCall[element.name/]. 
+	[/if]
+ 
+"relations for Method [element.name/]" 
+	"exp in Method [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #()  constants:{-1} .
+		[/if]
+	"exp2 in Method [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(callIt[element.name/]  execute[element.operations->first().name/])  constants:{-1} .
+		[/if]
+	"startWhenCalled in Method [element.name/]"
+		[if ( ( self <> self.calledBy.startMethod) ) ]
+	system library: #Kernel relation: #Precedes clocks: #(callIt[element.name/]  unionOfMethodCall[element.name/])  constants:{-1} .
+		[/if]
+[/for]
+[for (element : gseq::Operation| aProgram.eAllContents(gseq::Operation))]
+"relations for Operation [element.name/]" 
+[/for]
+[/file]
+[file ('ClkSysFunctionTest.clocksystem', false, 'UTF-8')]
+SimpleSDF example1 system
+[/file]
+
+
+[/template]
+
+
+

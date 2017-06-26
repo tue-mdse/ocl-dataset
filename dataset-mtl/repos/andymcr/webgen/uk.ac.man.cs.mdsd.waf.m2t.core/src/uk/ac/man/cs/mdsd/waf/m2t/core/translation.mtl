@@ -1,0 +1,87 @@
+[comment encoding = UTF-8 /]
+[module translation(
+	'http://cs.manchester.ac.uk/mdsd/ObjectRelationalMapping',
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::orm::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::featureProperties/]
+
+
+[query public validXML(string : String) : String
+	= string.replaceAll('&', '&amp;')
+/]
+
+
+[query private entityId(field : UnitField) : String
+	= if field.oclIsKindOf(UnitAttribute) then
+			field.oclAsType(UnitAttribute).attribute.partOf.id()
+		else if field.oclIsKindOf(UnitAssociation) then
+			field.oclAsType(UnitAssociation).association.partOf.id()
+		else if field.oclIsKindOf(InterfaceField) then
+			'Unexpected'
+		else
+			'Unhandled'
+		endif endif endif
+/]
+
+[query private fieldId(field : UnitField) : String
+	= if field.oclIsKindOf(UnitAttribute) then
+			field.oclAsType(UnitAttribute).name.asId()
+		else if field.oclIsKindOf(UnitAssociation) then
+			field.oclAsType(UnitAssociation).id()
+		else if field.oclIsKindOf(InterfaceField) then
+			field.oclAsType(InterfaceField).name.asId()
+		else
+			'Unhandled'
+		endif endif endif
+/]
+
+[query public hasCustomisedLabel(field : UnitField) : Boolean
+	= if field.oclIsTypeOf(UnitAttribute) then
+			field.displayLabel <> field.oclAsType(UnitAttribute).attribute.displayLabel
+		else if field.oclIsTypeOf(UnitAssociation) then
+			field.displayLabel <> field.oclAsType(UnitAssociation).association.displayLabel
+				or not field.oclAsType(UnitAssociation).childFeature.oclIsUndefined()
+		else
+			field.oclIsKindOf(InterfaceField)
+		endif endif
+/]
+
+[query public hasCustomisedPlaceholder(field : UnitField) : Boolean
+	= if field.oclIsTypeOf(UnitAttribute) then
+			field.oclAsType(UnitAttribute).placeholder <> field.oclAsType(UnitAttribute).attribute.displayLabel
+		else if field.oclIsTypeOf(UnitAssociation) then
+			false
+		else
+			field.oclIsKindOf(InterfaceField)
+		endif endif
+/]
+
+[query public hasCustomisedTitle(field : UnitField) : Boolean
+	= if field.oclIsTypeOf(UnitAttribute) then
+			field.title <> field.oclAsType(UnitAttribute).attribute.displayLabel
+		else if field.oclIsTypeOf(UnitAssociation) then
+			field.title <> field.oclAsType(UnitAssociation).association.displayLabel
+				or not field.oclAsType(UnitAssociation).childFeature.oclIsUndefined()
+		else
+			field.oclIsKindOf(InterfaceField)
+		endif endif
+/]
+
+[query public hasUnitTranslation(field : UnitField) : Boolean
+	= field.hasCustomisedLabel()
+		or (field.hasPlaceholder() and field.hasCustomisedPlaceholder())
+		or (field.hasTitle() and field.hasCustomisedTitle())
+/]
+
+[query public id(field : UnitField) : String
+	= let fieldsWithName : OrderedSet(UnitField)
+		= field.displayedOn.displayFields
+			->select(f | f.hasCustomisedLabel())
+			->select(f | f.fieldId() = field.fieldId())
+		in if fieldsWithName->size() < 2 then
+				field.fieldId()
+			else
+				field.entityId().concat('_').concat(field.fieldId())
+			endif			
+/]
+

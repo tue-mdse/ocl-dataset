@@ -1,0 +1,72 @@
+MainModel : /Models/PetriNet.ecore
+
+
+context PetriNet
+inv nameIsDefined:
+    if  self.name.oclIsUndefined() then
+		false
+    else
+		self.name <> ''
+    endif
+
+inv placeDiffName :
+	self.nodes->forAll(p1,p2 | p1<>p2 implies p1.oclAsType(Place).name<>p2.oclAsType(Place).name)
+
+inv transitionDiffName :
+	self.nodes->forAll(t1,t2 | t1<>t2 implies t1.oclAsType(Transition).name<>t2.oclAsType(Transition).name)
+
+inv nameSize :
+	self->forAll(e|e.name.size()>0)
+
+inv containmentConsistency:
+  let nodes : Set(Node) = self.nodes in
+    let arcs: Set(Arc) = self.arcs in
+        nodes->forAll(n: Node |
+            arcs->includesAll(n.oclAsType(Node).incomings)
+            and arcs->includesAll(n.oclAsType(Node).outgoings))
+        and arcs->forAll(a: Arc |
+            nodes->includes(a.oclAsType(Arc).source)
+            and nodes->includes(a.oclAsType(Arc).target))
+
+inv netEquals:
+	self.nodes->forAll(p | p.oclAsType(Node).net = self)
+		and self.arcs->forAll(a | a.oclAsType(Arc).net = self)
+
+context Node
+inv nameIsDefined:
+    if  self.name.oclIsUndefined() then
+		false
+    else
+		self.name <> ''
+    endif
+
+context Transition
+inv min_timeMax_timeAreDefined:
+    if  self.min_time.oclIsUndefined() or self.max_time.oclIsUndefined() then
+		false
+    else
+		self.min_time >= 0 and self.max_time >= self.min_time
+    endif
+
+context Place
+inv markingIsDefined:
+    if  self.marking.oclIsUndefined() then
+		false
+    else
+		self.marking >= 0
+    endif
+
+context Arc
+inv weightIsDefined:
+    if  self.weight.oclIsUndefined() then
+		false
+    else
+		self.weight >= 0
+    endif
+    
+inv PlaceTransition:
+	if self.source.oclIsTypeOf(Place) then
+		self.target.oclIsTypeOf(Transition)
+	else 
+		self.target.oclIsTypeOf(Place)
+	endif

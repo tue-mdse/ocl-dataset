@@ -1,0 +1,51 @@
+[comment encoding = UTF-8 /]
+[module generateMavenWebContext('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::webPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[template public generateMavenWebContext(aModel : Model)]
+	[file (aModel.generateProjectFolder().concat(aModel.pathToMainResources()).concat('/').concat(aModel.generateProjectFolder().concat('-context.xml')), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:web="http://www.impalaframework.org/schema/web"
+       xmlns:service="http://www.impalaframework.org/schema/service"
+       xsi:schemaLocation="
+http://www.springframework.org/schema/beans 
+http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+http://www.impalaframework.org/schema/web 
+http://impala.googlecode.com/svn/schema/web.xsd
+http://www.impalaframework.org/schema/service 
+http://impala.googlecode.com/svn/schema/service-registry.xsd">
+
+    [comment]LD<service:import id="messageService" exportName="messageService" proxyTypes="org.impalaframework.samples.maven.MessageService"/>[/comment]
+
+    <web:mapping>
+        <web:to-module prefix = "/[aModel.generateSpecificProjectFolder('')/]" setContextPath="true"/> 
+        <web:to-handler extension="htm" servletName="[aModel.generateSpecificProjectFolder('-web')/]"/>
+        <web:to-handler extension="jsp" servletName="[aModel.generateSpecificProjectFolder('-jsp')/]"/>
+    </web:mapping>    
+       
+    <web:servlet id = "[aModel.generateSpecificProjectFolder('-web')/]" 
+        servletClass = "org.impalaframework.web.spring.servlet.InternalModuleServlet"/>
+       
+    <bean id="[aModel.generateSpecificProjectFolder('-jsp')/]" class="org.impalaframework.web.jsp.JspServletFactoryBean">
+    	<property name="servletName" value = "[aModel.generateSpecificProjectFolder('-jsp')/]"/>
+    </bean>
+    
+    <bean id="jspViewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+          <property name="suffix" value=".jsp"/>
+          <property name="prefix" value="/"/>
+    </bean>
+    
+    [comment]LD<bean class="org.impalaframework.samples.[aModel.generateSpecificProjectFolder('')/].web.MessageController">
+        <property name = "messageService" ref = "messageService"/>
+    </bean>[/comment] 
+    
+    <bean class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter"/>
+    
+    <bean class="org.springframework.web.servlet.mvc.annotation.DefaultAnnotationHandlerMapping"/>
+    
+</beans>
+	[/file]
+[/template]

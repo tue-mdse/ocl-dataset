@@ -1,0 +1,165 @@
+[module config('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+
+[comment][template private fullFilePath(class : Class)]
+[if (class.isConfig())][class.pathToMainJava()/]/[class.configPackage().toPath()/]/[class.name/].java[/if]
+[/template][/comment]
+
+
+[template public generateConfig(class : Class)? (class.isConfig())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(),class.configPackage().toPath(), class.name.concat('.java')), false))]
+package [class.configPackage()/];
+
+// [protected ('import')]  
+// for import
+import java.io.Serializable;
+import java.util.*;
+// [/protected]  for import
+
+[class.generateJavadoc()/]
+public class [class.name/] implements Serializable {
+
+	// serialVersionUID is used for serialization.
+	private static final long serialVersionUID = 1L;
+
+[comment  Generate attributes /]
+[for (class.attribute)]
+	protected [convertDtoToJavaType()/] [name/];
+[/for]
+
+	/**
+	 * Default constructor 
+	 */
+	public [class.name/]() {
+		super();
+	}
+
+[if (class.attribute->notEmpty())]
+	/**
+	 * Constructor with all parameters initialized
+	[for (prop:Property|class.attribute)]
+	 * @param [prop.name/] [prop.ownedComment._body/]
+	[/for]
+	 */
+	public [class.name/]([class.attribute.asParameter()->sep(', ')/]) {
+	[for (prop:Property|class.attribute)]
+		this.[prop.name/] = [prop.name/];
+	[/for]
+	}	
+[/if]
+
+[comment  Generate getters and setters /]
+[for (prop:Property|class.attribute)]
+
+[comment  Deals with Lists /]
+	[if (prop.upper = -1)]
+		[prop.generateOpForList()/]
+	[else]
+		[prop.generateOp()/]
+	[/if]
+	
+[/for]
+
+}
+[/file]
+[/template]
+
+
+[template public asParameter(property : Property)]
+[property.convertDtoToJavaType()/] [property.name/]
+[/template]
+
+
+[template public generateOp(property : Property)]
+	/**
+	 * Return [property.name/]
+	 * @return [property.ownedComment._body/]
+	 */
+	public [property.convertDtoToJavaType()/] get[property.name.toUpperFirst()/]() {
+		return [property.name/];
+	}
+
+	/**
+	 * Set a value to parameter [property.name/].
+	 * @param [property.name/] [property.ownedComment._body/]
+	 */
+	public void set[property.name.toUpperFirst()/]([property.convertDtoToJavaType()/] [property.name/]) {
+		this.[property.name/] = [property.name/];
+[if (property.opposite <> null)]
+		this.[property.name/].set[property.featuringClassifier.name/](this);
+[/if]
+	}
+[/template]
+
+
+[template public generateOpForList(property : Property)]
+	/**
+	 * Return [property.name/]
+	 * @return A list of [property.type/]. [property.ownedComment._body/]
+	 */
+	public [property.convertDtoToJavaType()/] get[property.name.toUpperFirst()/]() {
+		return Collections.unmodifiableList([property.name/]);
+	}
+
+	/**
+	 * Set a value to parameter [property.name/].
+	 * @param [property.name/] A list of [property.type/]. [property.ownedComment._body/]
+	 */
+	public void set[property.name.toUpperFirst()/]([property.convertDtoToJavaType()/] [property.name/]) {
+		this.[property.name/] = [property.name/];
+	}
+	
+	/**
+	 * Add an element to the list [property.name/].
+	 * @param elementToAdd Element of type [property.type/] to add
+	 */
+	public void add[property.name.toUpperFirst()/]([property.type.convertDtoToJavaType()/] elementToAdd) {
+		this.[name/].add(elementToAdd);
+[if (property.opposite <> null)]
+	[if (property.upper <> 1)]
+		elementToAdd.add[property.owner/](this);
+	[else]
+		elementToAdd.set[property.owner/](this);
+	[/if]
+[/if]
+	}
+	
+	/**
+	 * Remove an element to the list [name/].
+	 * @param elementToRevmoe Element of type [type/] to add
+	 */
+	public void remove[property.name.toUpperFirst()/]([property.type.convertDtoToJavaType()/] elementToRemove) {
+		this.[property.name/].remove(elementToRemove);
+[if (property.opposite <> null)]
+	[if (property.upper <> 1)]
+		elementToAdd.remove[property.owner/](this);
+	[else]
+		elementToAdd.set[property.owner/](null);
+	[/if]
+[/if]
+	}
+[/template]
+
+
+[template public convertDtoToJavaType(property : Property)]
+[if (property.upper = -1)]List<[property.type.convertDtoToJavaType()/]>[else][property.type.convertDtoToJavaType()/][/if]
+[/template]
+
+
+[template public convertDtoToJavaType(type : Type)]
+[if (type.hasStereotype('Dto'))][type.name/]Dto[else][type.convertToJavaType()/][/if]
+[/template]
+

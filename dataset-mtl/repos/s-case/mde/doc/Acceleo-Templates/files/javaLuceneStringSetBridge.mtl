@@ -1,0 +1,85 @@
+[comment encoding = UTF-8 /]
+[module javaLuceneStringSetBridge('file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/AnnotationLayerStack/AnnotationLayerStack.ecore', 'file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/AuthenticationLayer/AuthenticationPSMMetamodel.ecore', 'file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/EMF_ATL_MDE_Engine/CIM_Ecore_metamodel/PSMMetamodel.ecore', 'file:/Users/IMG/Desktop/Dropbox/S-CASE-Int/Work/WP2/Task_2.2-2.3/SearchLayer/SearchLayerPSMMetamodel.ecore')]
+
+
+[template public javaLuceneStringSetBridge(anAnnotationStack : AnnotationStack)]
+
+[file (anAnnotationStack.hasCorePSM.name  + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/utilities/SetStringFieldBridge.java', false, 'UTF-8')]
+/*
+ * ARISTOSTLE UNIVERSITY OF THESSALONIKI
+ * Copyright (C) 2015
+ * Aristotle University of Thessaloniki
+ * Department of Electrical & Computer Engineering
+ * Division of Electronics & Computer Engineering
+ * Intelligent Systems & Software Engineering Lab
+ *
+ * Project             : [anAnnotationStack.hasCorePSM.name/]
+ * WorkFile            : 
+ * Compiler            : 
+ * File Description    : 
+ * Document Description: 
+* Related Documents	   : 
+* Note				   : 
+* Programmer		   : RESTful MDE Engine created by Christoforos Zolotas
+* Contact			   : christopherzolotas@issel.ee.auth.gr
+*/
+
+
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.hibernate.search.bridge.LuceneOptions;
+import org.hibernate.search.bridge.TwoWayFieldBridge;
+
+public class SetStringFieldBridge implements TwoWayFieldBridge {
+   
+   @Override
+   public void set(String name, Object value, Document document, LuceneOptions luceneOptions) {
+      
+      if ( value == null ) {
+         return;
+      }
+      
+      // we expect a Set<String> here. checking for Set for simplicity
+      if ( ! (value instanceof Set )) {
+         throw new IllegalArgumentException("support limited to Set<String>");
+      }
+      
+      @SuppressWarnings("unchecked")
+      Set<String> set = (Set<String>)value;
+      
+      for (String string : set) {
+         Field field = new Field(name, string, luceneOptions.getStore(), luceneOptions.getIndex(), luceneOptions.getTermVector());
+         field.setBoost(luceneOptions.getBoost());
+         document.add(field);
+      }
+      
+   }
+
+   @Override
+   public Object get(String name, Document document) {
+      Field['['/][']'/] fields = document.getFields(name);
+      Set<String> set = new HashSet<String>();
+      for (Field field : fields) {
+         set.add(field.stringValue());
+      }
+      return set;
+   }
+
+   @Override
+   public String objectToString(Object value) {
+      if ( value == null ) {
+         return "";
+      } else if ( value instanceof String ) {
+         return (String) value;
+      } else {
+         return String.valueOf(value);
+      }
+   }
+}
+[/file]
+[/template]

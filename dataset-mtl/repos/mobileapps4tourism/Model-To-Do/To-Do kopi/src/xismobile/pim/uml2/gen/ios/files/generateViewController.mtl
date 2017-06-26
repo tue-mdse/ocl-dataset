@@ -1,0 +1,290 @@
+[comment encoding = UTF-8 /]
+[module generateViewController('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import xismobile::pim::uml2::gen::ios::common::xisMobileUtils /]
+[import xismobile::pim::uml2::gen::ios::services::services /]
+[import xismobile::pim::uml2::gen::ios::files::widget /]
+[import xismobile::pim::uml2::gen::ios::files::table /]
+
+[template public generateControllerHeader(c : Class, entities: Sequence(Class))]
+[file (c.name.toUpperFirst()+'ViewController.h', false, 'US-ASCII')]
+#import <UIKit/UIKit.h>
+
+[for (entity : Class | entities)]
+#import "[entity.name.toUpperFirst()/].h"
+[/for]
+#import "ViewTaskController.h"
+#import "NewTaskViewController.h"
+[let dbNeeded : Boolean = entities->needsDbHelper()]
+[let managerNeeded : Boolean = entities->needsEntityManager()]
+[if (dbNeeded)]
+#import "DBManager.h"
+[elseif (managerNeeded)]
+//import manager.h
+[/if]
+
+@interface [c.name.toUpperFirst()/]ViewController : UIViewController <[c.writeTableView()/], NewTaskViewControllerDelegate>
+
+[for (widget : Class | c.getXisWidgets())]
+[widget.writeWidgetTypeAndName()/]
+[/for]
+
+//TODO Domain binding
+@property (nonatomic, retain) NSMutableArray *tasks;
+@property (nonatomic, retain) Task *task;
+
+[if (dbNeeded)]
+@property (nonatomic, retain) DBManager *dbManager;
+[elseif (managerNeeded)]
+//@property for Manager;
+[/if]
+[/let]
+[/let]
+
+@end		
+[/file]
+[/template]
+
+[template public generateViewController(c : Class, entities: Sequence(Class))]
+[file (c.name.toUpperFirst()+'ViewController.m', false, 'US-ASCII')]
+#import "[c.name.toUpperFirst()/]ViewController.h"
+
+@interface [c.name.toUpperFirst()/]ViewController ()
+
+@end
+
+@implementation [c.name.toUpperFirst()/]ViewController
+
+- (void)viewDidLoad{
+    ['['/]super viewDidLoad[']'/];
+    CGRect screenRect = ['['/]['['/]UIScreen mainScreen[']'/] bounds[']'/];
+    CGFloat screenWidth = screenRect.size.width;
+    CGFloat screenHeight = screenRect.size.height;
+	    
+[let dbNeeded : Boolean = entities->needsDbHelper()]
+[let managerNeeded : Boolean = entities->needsEntityManager()]
+[if (dbNeeded)]
+	 self.dbManager = ['['/]['['/]DBManager alloc[']'/]init[']'/];
+    ['['/]self.dbManager initDatabase[']'/];
+[elseif (managerNeeded)]
+ // TODO!!
+[/if]
+[/let]
+[/let]
+
+    self.tasks = ['['/]self.dbManager getAllTasks[']'/];
+[if (c.hasTitle())]
+	self.title = @"[c.getTitle()/]";
+[/if]
+
+[for (widget : Class | c.getXisWidgets())]
+	[widget.initializeWidget()/]
+[/for]
+	//TODO change!
+    self.tableView = ['['/]['['/]UITableView alloc[']'/] initWithFrame:CGRectMake(0, 0, screenWidth, screenHeight) style:UITableViewStylePlain[']'/];
+    self.tableView.rowHeight = 50;
+    self.tableView.delegate = self;
+    self.tableView.dataSource = self;
+    ['['/]self.view addSubview:self.tableView[']'/];
+[let m : Class = c.getOptionsMenu()]
+	NSMutableArray *barButtons = ['['/]['['/]NSMutableArray alloc[']'/]init[']'/];
+[for (item : Class | m.getXisMenuItems())]
+	UIBarButtonItem *[item.name.toLowerFirst()/]Button = ['['/]['['/]UIBarButtonItem alloc[']'/] initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh target:self action:@selector([item.getXisAction().name.toLowerFirst()/]:)];    
+    ['['/]barButtons addObject:[item.name.toLowerFirst()/]Button[']'/];
+    self.navigationItem.leftBarButtonItem = self.editButtonItem;
+[/for]
+	self.navigationItem.rightBarButtonItems = barButtons;
+[/let]
+}
+
+- (void)reloadTableData:(NewTaskViewController *)controller{
+    self.tasks = ['['/]self.dbManager getAllTasks[']'/];
+    ['['/]self.tableView reloadData[']'/];
+}
+
+[comment]- (IBAction)syncClicked:(id)sender{
+    //PUSH TO SERVER
+    LogManager *logMan = [[LogManager alloc]init];
+    if ([logMan logFileHasContent]) {
+        [logMan readLog];
+    }
+    NSData *dataFromServer = [[NSData alloc] initWithContentsOfURL:
+                              [NSURL URLWithString:@"http://demo--1.azurewebsites.net/JSON.php?f=getToDo"]];
+    NSError *error;
+    NSMutableArray *arrayJson = [NSJSONSerialization JSONObjectWithData:dataFromServer options:NSJSONReadingMutableContainers|NSJSONReadingMutableLeaves error:&error];
+    if(error){
+        NSLog(@"%@", [error localizedDescription]);
+    }
+    else {
+        [self.tasks removeAllObjects];
+        [self.dbManager deleteAllTasks];
+        for (NSDictionary *data in arrayJson) {
+            Task *newTask = [[Task alloc] init];
+            newTask.name = [data objectForKey:@"Title"];
+            newTask.description = [data objectForKey:@"Description"];
+            newTask.date = [data objectForKey:@"Date"];
+            newTask.externalTaskID = [NSString stringWithFormat:@"%@",[data objectForKey:@"id"]].intValue;
+            newTask.taskID = [self.dbManager insertTask:newTask];
+        }
+    }
+    self.tasks = [self.dbManager getAllTasks];
+    [self.tableView reloadData];
+}[/comment]
+
+[if (c.hasOptionsMenu())]
+[for (item : Class | c.getOptionsMenu().getXisMenuItems())]
+- (IBAction)[item.getXisAction().name.toLowerFirst()/]:(id)sender {
+    Check for all actions!! TODO --> template, webservice, cancel, all actions
+	NewTaskViewController *newTaskView = ['['/]['['/]NewTaskViewController alloc[']'/] init[']'/];
+    newTaskView.delegate = self;
+    ['['/]self.navigationController pushViewController:newTaskView animated:YES[']'/];
+	
+	[comment]NSString *alertTitle = [[NSString alloc]initWithFormat:@"Are you sure you want to delete all tasks?"];
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:alertTitle message:nil delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Delete Tasks", nil ];
+    [alert show];[/comment]
+}
+[/for]
+[/if]
+
+[comment not implemented/]
+[comment]- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex{
+    if (buttonIndex == 1) {
+        [self.dbManager deleteAllTasks];
+        self.tasks = [self.dbManager getAllTasks];
+        [self.tableView reloadData];
+    }
+}[/comment]
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView{
+[if (c.getXisListGroups()->size() > 0)]
+    return [c.getXisListGroups()->size()/];
+[else]
+	return 1;
+[/if]
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section{
+    //TODO Domain binding
+	NSInteger count = self.tasks.count;
+    if(self.editing) {
+        count = count + 1;
+    }
+    return count;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath{
+    static NSString *CellIdentifier = @"Cell";
+    UITableViewCell *cell = ['['/]self.tableView dequeueReusableCellWithIdentifier:CellIdentifier[']'/];
+    if (cell == nil){
+        cell = ['['/]['['/]UITableViewCell alloc[']'/] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:CellIdentifier[']'/];
+    }
+    if (indexPath.row < self.tasks.count ) {
+        self.task= ['['/]self.tasks objectAtIndex:indexPath.row[']'/];
+        cell.textLabel.text = self.task.name;
+        cell.detailTextLabel.text = self.task.date;
+
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    } else {
+        cell.textLabel.text = @"Add New Task";
+        cell.detailTextLabel.text = @"";
+        cell.editingAccessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
+    return cell;
+}
+
+- (void) tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
+    ['['/]self.tableView deselectRowAtIndexPath:indexPath animated:YES[']'/];
+    
+	[comment]if ((indexPath.row < self.tasks.count) && !self.editing) {
+		ViewTaskController *viewTask = [[ViewTaskController alloc] init];
+        viewTask.task = [self.tasks objectAtIndex:indexPath.row];
+        [self.navigationController pushViewController:viewTask animated:YES];
+    }else if ((indexPath.row == self.tasks.count) && self.editing){
+        NewTaskViewController *newTaskView = [[NewTaskViewController alloc] init];
+        newTaskView.delegate = self;
+        [self.navigationController pushViewController:newTaskView animated:YES];
+    }[/comment]
+}
+
+[comment]- (UITableViewCellEditingStyle)tableView:(UITableView *)tableView editingStyleForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.row < self.tasks.count ) {
+        return UITableViewCellEditingStyleDelete;
+    } else {
+        return UITableViewCellEditingStyleInsert;
+    }
+}
+
+-(void)setEditing:(BOOL)editing animated:(BOOL) animated {
+    if( editing != self.editing ) {
+        [super setEditing:editing animated:animated];
+        [self.tableView setEditing:editing animated:animated];
+        NSArray *indexes = [NSArray arrayWithObject:[NSIndexPath indexPathForRow:self.tasks.count inSection:0]];
+        if (editing == YES ) {
+            [self.tableView insertRowsAtIndexPaths:indexes withRowAnimation:UITableViewRowAnimationLeft];
+        } else {
+            [self.tableView deleteRowsAtIndexPaths:indexes withRowAnimation:UITableViewRowAnimationLeft];
+        }
+    }
+}
+
+- (void) tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle) editing
+ forRowAtIndexPath:(NSIndexPath *)indexPath {
+    if(editing == UITableViewCellEditingStyleDelete) {
+        [self.dbManager deleteAllNotesToTask:[self.tasks objectAtIndex:indexPath.row]];
+        [self.dbManager deleteTask:[self.tasks objectAtIndex:indexPath.row]];
+        LogManager *logMan = [[LogManager alloc]init];
+        [logMan writeToLog:DeleteTask :[self.tasks objectAtIndex:indexPath.row]];
+        
+        [self.tasks removeObjectAtIndex:indexPath.row];
+        [tableView deleteRowsAtIndexPaths:[NSArray arrayWithObject:indexPath] withRowAnimation:UITableViewRowAnimationLeft];
+    }else{
+        NewTaskViewController *newTaskView = [[NewTaskViewController alloc] init];
+        self.editing = NO;
+        newTaskView.delegate = self;
+        [self.navigationController pushViewController:newTaskView animated:YES];
+    }
+}[/comment]
+[/file]
+[/template]
+
+[template private writeTableView(c : Class) post (trim())]
+[let lists : Sequence(Class) = getXisLists(null, c)]
+[if (lists->select(l : Class | l.xisListIsSearchable())->size() > 0)]
+UITableViewDataSource, UITableViewDelegate, UISearchDisplayDelegate, UISearchBarDelegate
+[else]
+UITableViewDataSource, UITableViewDelegate
+[/if]
+[/let]
+[/template]
+
+[template public writeWidgetTypeAndName(c : Class) post (trim())]
+[if (c.isXisLabel())]
+UILabel *mLabel[c.name.toUpperFirst()/]
+[comment TODO, define tableview, IBOulet for textbox osv, property!!/]
+[elseif (c.isXisTextBox())]
+XisTextBox mTextBox[c.name.toUpperFirst()/]
+[elseif (c.isXisCheckBox())]
+XisCheckBox mCheckBox[c.name.toUpperFirst()/]
+[elseif (c.isXisButton())]
+XisButton mButton[c.name.toUpperFirst()/]
+[elseif (c.isXisLink())]
+XisLink mLink[c.name.toUpperFirst()/]
+[elseif (c.isXisImage())]
+XisImage mImage[c.name.toUpperFirst()/]
+[elseif (c.isXisDatePicker())]
+XisDatePicker mDatePicker[c.name.toUpperFirst()/]
+[elseif (c.isXisTimePicker())]
+XisTimePicker mTimePicker[c.name.toUpperFirst()/]
+[elseif (c.isXisWebView())]
+XisWebView mWeb[c.name.toUpperFirst()/]
+[elseif (c.isXisMapView())]
+XisMapView mMap[c.name.toUpperFirst()/]
+[elseif (c.isXisList())]
+[if (c.xisListIsSearchable())]
+@property (nonatomic, retain) UISearchBar *searchBar[c.name.toUpperFirst()/];
+[/if]
+@property (nonatomic, retain) UITableView *tableView[c.name.toUpperFirst()/];
+[elseif (c.isXisDropdown())]
+XisDropdown mDropdown[c.name.toUpperFirst()/]
+[/if]
+[/template]
+

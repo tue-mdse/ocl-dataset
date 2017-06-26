@@ -1,0 +1,753 @@
+[
+  {
+    "name": "Reference",
+    "expressions": [
+      {
+        "operations": {"matches": 1},
+        "name": "ProperReferenceName",
+        "body": "name.matches('[A-Za-z_$][A-Za-z0-9_$]*')",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 1,
+          "OperationCallExpImpl": 1,
+          "StringLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["ActivityDiagram::Reference::name"]
+      },
+      {
+        "operations": {
+          "<=": 1,
+          "not": 1,
+          "size": 1,
+          "oclIsKindOf": 1,
+          "and": 1,
+          "allInstances": 1,
+          "=": 1
+        },
+        "name": "UniqueReferenceName",
+        "body": "Reference.allInstances()->select(r | r.name = name and not r.oclIsKindOf(NestedThread))->size() <= 1",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 7,
+          "IntegerLiteralExpImpl": 1,
+          "TypeExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": ["ActivityDiagram::Reference::name"]
+      }
+    ],
+    "properties": [
+      "Activity",
+      "name"
+    ]
+  },
+  {
+    "name": "NestedThread",
+    "expressions": [],
+    "properties": ["NestedActivity"]
+  },
+  {
+    "name": "Branch",
+    "expressions": [{
+      "operations": {},
+      "name": "ValidBranchCondition",
+      "body": "true",
+      "type": "ConstraintImpl",
+      "constructs": {"BooleanLiteralExpImpl": 1},
+      "properties": []
+    }],
+    "properties": [
+      "nextActivity",
+      "condition",
+      "Decision"
+    ]
+  },
+  {
+    "name": "SimpleActivity",
+    "expressions": [{
+      "operations": {
+        "including": 1,
+        "GetAccessedReferences": 1,
+        "union": 1
+      },
+      "name": "GetSuccessorReferences",
+      "body": "nextActivity.GetAccessedReferences(soFar->union(sharedResources), beenHere->including(self))",
+      "type": "OperationImpl",
+      "constructs": {
+        "VariableExpImpl": 5,
+        "OperationCallExpImpl": 3,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": [
+        "ActivityDiagram::SimpleActivity::sharedResources",
+        "ActivityDiagram::LinearActivity::nextActivity"
+      ]
+    }],
+    "properties": ["sharedResources"]
+  },
+  {
+    "name": "End",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "ForkedThread",
+    "expressions": [],
+    "properties": [
+      "daemon",
+      "Fork"
+    ]
+  },
+  {
+    "name": "InstanceType",
+    "expressions": [],
+    "properties": [
+      "name",
+      "BasicModel",
+      "Instance"
+    ]
+  },
+  {
+    "name": "Fork",
+    "expressions": [
+      {
+        "operations": {
+          "including": 1,
+          "union": 1,
+          "JoinsCorrectly": 1,
+          "=": 1,
+          "append": 1
+        },
+        "name": "JoinsCorrectly",
+        "body": "if beenHere->exists(e | e = self) -- Fork has already been checked\n\t\t\t      then beenHere\n\t\t\t      else let bh: Set(Activity) = beenHere->including(self) in\n\t\t\t           forkedThreads->iterate(t; result: Set(Activity) = Set{} | result->union(t.startActivity.JoinsCorrectly(threadStack->append(t), bh)))\n\t\t\t      endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 5,
+          "VariableExpImpl": 12,
+          "LetExpImpl": 1,
+          "IterateExpImpl": 1,
+          "CollectionLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "ActivityDiagram::Thread::startActivity",
+          "ActivityDiagram::Fork::forkedThreads"
+        ]
+      },
+      {
+        "operations": {
+          "including": 1,
+          "GetAccessedReferences": 1,
+          "union": 1,
+          "-": 1
+        },
+        "name": "GetSuccessorReferences",
+        "body": "let bh: Set(Activity) = beenHere->including(self) in\n\t\t\t      let successorRefs: Set(Reference) = forkedThreads->iterate(t; result: Set(Reference) = Set{} | result->union(t.startActivity.GetAccessedReferences(soFar, bh))) in\n\t\t\t          successorRefs - forkedThreads",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 9,
+          "OperationCallExpImpl": 4,
+          "LetExpImpl": 2,
+          "IterateExpImpl": 1,
+          "CollectionLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "ActivityDiagram::Thread::startActivity",
+          "ActivityDiagram::Fork::forkedThreads"
+        ]
+      },
+      {
+        "operations": {"UsesDifferentThread": 1},
+        "name": "ThreadIndependence",
+        "body": "forkedThreads->forAll(t | self.UsesDifferentThread(t.startActivity))",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "ActivityDiagram::Thread::startActivity",
+          "ActivityDiagram::Fork::forkedThreads"
+        ]
+      },
+      {
+        "operations": {"JoinsCorrectly": 1},
+        "name": "JoinsCorrectly",
+        "body": "JoinsCorrectly(Sequence{self.thread}, Set{})",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 1,
+          "CollectionLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["ActivityDiagram::Activity::thread"]
+      },
+      {
+        "operations": {">=": 1},
+        "name": "NonNegativeMaxThreadCount",
+        "body": "maxThreadCount >= 0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["ActivityDiagram::Fork::maxThreadCount"]
+      }
+    ],
+    "properties": [
+      "maxThreadCount",
+      "forkedThreads"
+    ]
+  },
+  {
+    "name": "BasicModel",
+    "expressions": [
+      {
+        "operations": {
+          "includesAll": 1,
+          "allInstances": 1,
+          "asSet": 1,
+          "JoinsCorrectly": 1
+        },
+        "name": "ValidForkJoinNesting",
+        "body": "startActivity.JoinsCorrectly(Sequence{self}, Set{})->includesAll(Activity.allInstances()->asSet())",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 4,
+          "TypeExpImpl": 1,
+          "CollectionLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["ActivityDiagram::Thread::startActivity"]
+      },
+      {
+        "operations": {
+          "intersection": 1,
+          "allInstances": 2,
+          "asBag": 2,
+          "=": 1
+        },
+        "name": "MatchingForkForEveryJoin",
+        "body": "\n\t\t\tlet forkThreads: Bag(Thread) = Fork.allInstances()->collect(thread)->asBag() in\n\t\t\tlet joinThreads: Bag(Thread) = Join.allInstances()->collect(thread)->asBag() in\n\t\t\t\tforkThreads->intersection(joinThreads) = joinThreads",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "VariableExpImpl": 5,
+          "OperationCallExpImpl": 6,
+          "LetExpImpl": 2,
+          "TypeExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": ["ActivityDiagram::Activity::thread"]
+      }
+    ],
+    "properties": [
+      "instances",
+      "instanceTypes",
+      "resources"
+    ]
+  },
+  {
+    "name": "Join",
+    "expressions": [{
+      "operations": {
+        "including": 1,
+        "last": 1,
+        "size": 1,
+        "subSequence": 1,
+        "-": 1,
+        "=": 2,
+        "JoinsCorrectly": 1
+      },
+      "name": "JoinsCorrectly",
+      "body": "if beenHere->exists(e | e = self) -- Activity has already been checked\n\t\t\t      then beenHere\n\t\t\t      else let newThreadStack: Sequence(Thread) = threadStack->subSequence(1, threadStack->size() - 1) in\n\t\t\t               if newThreadStack->last() = thread -- This join completes the most recent fork\n\t\t\t               then nextActivity.JoinsCorrectly(newThreadStack, beenHere->including(self)) -- Check successor\n\t\t\t               else Set{}\n\t\t\t               endif\n\t\t\t      endif",
+      "type": "OperationImpl",
+      "constructs": {
+        "IteratorExpImpl": 1,
+        "OperationCallExpImpl": 8,
+        "VariableExpImpl": 12,
+        "LetExpImpl": 1,
+        "IntegerLiteralExpImpl": 2,
+        "CollectionLiteralExpImpl": 1,
+        "IfExpImpl": 2,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": [
+        "ActivityDiagram::LinearActivity::nextActivity",
+        "ActivityDiagram::Activity::thread"
+      ]
+    }],
+    "properties": []
+  },
+  {
+    "name": "Activity",
+    "expressions": [
+      {
+        "operations": {
+          "<>": 1,
+          "or": 1,
+          "oclIsKindOf": 1,
+          "oclIsTypeOf": 1,
+          "=": 1
+        },
+        "name": "UsesSameThread",
+        "body": "((thread = a.thread) <> a.oclIsTypeOf(Join)) or a.oclIsKindOf(FinalActivity)",
+        "type": "OperationImpl",
+        "constructs": {
+          "OperationCallExpImpl": 5,
+          "VariableExpImpl": 4,
+          "TypeExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": ["ActivityDiagram::Activity::thread"]
+      },
+      {
+        "operations": {"GetAccessedReferences": 1},
+        "name": "accessedReferences",
+        "body": "GetAccessedReferences(Set{}, Set{})",
+        "type": "PropertyImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 1,
+          "CollectionLiteralExpImpl": 2
+        },
+        "properties": []
+      },
+      {
+        "operations": {
+          "allInstances": 1,
+          "=": 1,
+          "JoinsCorrectly": 1,
+          "first": 1,
+          "asSequence": 1
+        },
+        "name": "Reachability",
+        "body": "let basicModel: BasicModel = BasicModel.allInstances()->asSequence()->first() in\n\t\t                        let reachableActivities: Set(Activity) = basicModel.startActivity.JoinsCorrectly(Sequence{basicModel}, Set{}) in\n\t\t                            reachableActivities->exists(a | a = self)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 5,
+          "VariableExpImpl": 5,
+          "LetExpImpl": 2,
+          "TypeExpImpl": 1,
+          "CollectionLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["ActivityDiagram::Thread::startActivity"]
+      },
+      {
+        "operations": {
+          "size": 1,
+          "asOrderedSet": 1,
+          "allInstances": 1,
+          "=": 2,
+          "first": 1
+        },
+        "name": "thread",
+        "body": "let temp: Set(Thread) = Thread.allInstances()->select(t | t.activities->exists(a | a = self))\n\t\t\t            in if temp->size() = 1 then temp->asOrderedSet()->first() else null endif",
+        "type": "PropertyImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "OperationCallExpImpl": 6,
+          "VariableExpImpl": 5,
+          "LetExpImpl": 1,
+          "NullLiteralExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "TypeExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["ActivityDiagram::Thread::activities"]
+      },
+      {
+        "operations": {
+          "<>": 1,
+          "including": 1,
+          "GetSuccessorReferences": 2,
+          "=": 1
+        },
+        "name": "GetAccessedReferences",
+        "body": "if beenHere->exists(e | e = self) -- Activity has already been checked\n\t\t\t      then soFar\n\t\t\t      else if instance <> null\n\t\t\t           then GetSuccessorReferences(soFar->including(instance), beenHere)\n\t\t\t           else GetSuccessorReferences(soFar, beenHere)\n\t\t\t           endif\n\t\t\t      endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 12,
+          "OperationCallExpImpl": 5,
+          "NullLiteralExpImpl": 1,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": ["ActivityDiagram::Activity::instance"]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "oclIsTypeOf": 1,
+          "oclIsKindOf": 1,
+          "=": 2
+        },
+        "name": "UsesDifferentThread",
+        "body": "((thread = a.thread) = a.oclIsTypeOf(Join)) or a.oclIsKindOf(FinalActivity)",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 4,
+          "OperationCallExpImpl": 5,
+          "TypeExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": ["ActivityDiagram::Activity::thread"]
+      }
+    ],
+    "properties": [
+      "LinearActivity",
+      "Thread",
+      "Thread",
+      "instance",
+      "thread",
+      "accessedReferences",
+      "name",
+      "Branch"
+    ]
+  },
+  {
+    "name": "Yield",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "SharedResource",
+    "expressions": [],
+    "properties": [
+      "BasicModel",
+      "SimpleActivity"
+    ]
+  },
+  {
+    "name": "LinearActivity",
+    "expressions": [
+      {
+        "operations": {
+          "including": 1,
+          "JoinsCorrectly": 1,
+          "=": 1
+        },
+        "name": "JoinsCorrectly",
+        "body": "if beenHere->exists(e | e = self) -- Activity has already been checked\n\t\t\t      then beenHere\n\t\t\t      else nextActivity.JoinsCorrectly(threadStack, beenHere->including(self)) -- Check successor\n\t\t\t      endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 3,
+          "VariableExpImpl": 8,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["ActivityDiagram::LinearActivity::nextActivity"]
+      },
+      {
+        "operations": {"UsesSameThread": 1},
+        "name": "ThreadIndependence",
+        "body": "self.UsesSameThread(nextActivity)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["ActivityDiagram::LinearActivity::nextActivity"]
+      },
+      {
+        "operations": {
+          "including": 1,
+          "GetAccessedReferences": 1
+        },
+        "name": "GetSuccessorReferences",
+        "body": "nextActivity.GetAccessedReferences(soFar, beenHere->including(self))",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 4,
+          "OperationCallExpImpl": 2,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["ActivityDiagram::LinearActivity::nextActivity"]
+      }
+    ],
+    "properties": ["nextActivity"]
+  },
+  {
+    "name": "Interrupt",
+    "expressions": [{
+      "operations": {
+        "including": 2,
+        "GetAccessedReferences": 1
+      },
+      "name": "GetSuccessorReferences",
+      "body": "nextActivity.GetAccessedReferences(soFar->including(interruptedThread), beenHere->including(self))",
+      "type": "OperationImpl",
+      "constructs": {
+        "OperationCallExpImpl": 3,
+        "VariableExpImpl": 5,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": [
+        "ActivityDiagram::LinearActivity::nextActivity",
+        "ActivityDiagram::Interrupt::interruptedThread"
+      ]
+    }],
+    "properties": ["interruptedThread"]
+  },
+  {
+    "name": "Sleep",
+    "expressions": [{
+      "operations": {">=": 1},
+      "name": "PositiveSleepDuration",
+      "body": "duration >= 1",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "VariableExpImpl": 1,
+        "OperationCallExpImpl": 1,
+        "IntegerLiteralExpImpl": 1,
+        "PropertyCallExpImpl": 1
+      },
+      "properties": ["ActivityDiagram::Sleep::duration"]
+    }],
+    "properties": ["duration"]
+  },
+  {
+    "name": "NamedActivity",
+    "expressions": [
+      {
+        "operations": {"matches": 1},
+        "name": "ProperNamedActivityName",
+        "body": "activityName.matches('[A-Za-z_$][A-Za-z0-9_$]*')",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 1,
+          "StringLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["ActivityDiagram::NamedActivity::activityName"]
+      },
+      {
+        "operations": {
+          "not": 1,
+          "oclIsKindOf": 1,
+          "and": 1,
+          "isEmpty": 1,
+          "allInstances": 1,
+          "=": 1
+        },
+        "name": "UniqueNamedActivityName",
+        "body": "Reference.allInstances()->select(r | r.name = activityName and not r.oclIsKindOf(NestedThread))->isEmpty()",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 6,
+          "VariableExpImpl": 3,
+          "TypeExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "ActivityDiagram::NamedActivity::activityName",
+          "ActivityDiagram::Reference::name"
+        ]
+      }
+    ],
+    "properties": ["activityName"]
+  },
+  {
+    "name": "FinalActivity",
+    "expressions": [
+      {
+        "operations": {"including": 1},
+        "name": "JoinsCorrectly",
+        "body": "beenHere->including(self)",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 1
+        },
+        "properties": []
+      },
+      {
+        "operations": {},
+        "name": "GetSuccessorReferences",
+        "body": "soFar",
+        "type": "OperationImpl",
+        "constructs": {"VariableExpImpl": 1},
+        "properties": []
+      }
+    ],
+    "properties": []
+  },
+  {
+    "name": "Thread",
+    "expressions": [{
+      "operations": {
+        "or": 2,
+        "oclIsKindOf": 2,
+        "=": 1
+      },
+      "name": "ValidStartActivityThread",
+      "body": "startActivity.thread = self or startActivity.oclIsKindOf(Join) or startActivity.oclIsKindOf(FinalActivity)",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "OperationCallExpImpl": 5,
+        "VariableExpImpl": 4,
+        "TypeExpImpl": 2,
+        "PropertyCallExpImpl": 4
+      },
+      "properties": [
+        "ActivityDiagram::Thread::startActivity",
+        "ActivityDiagram::Activity::thread"
+      ]
+    }],
+    "properties": [
+      "startActivity",
+      "Interrupt",
+      "activities",
+      "Activity"
+    ]
+  },
+  {
+    "name": "Decision",
+    "expressions": [
+      {
+        "operations": {
+          "including": 1,
+          "union": 2,
+          "JoinsCorrectly": 2,
+          "=": 1
+        },
+        "name": "JoinsCorrectly",
+        "body": "if beenHere->exists(e | e = self) -- Activity has already been checked\n\t\t\t      then beenHere\n\t\t\t      else let bh: Set(Activity) = beenHere->including(self) in\n\t\t\t               nextActivity.JoinsCorrectly(threadStack, bh)->union(branches->iterate(b; result: Set(Activity) = Set{} | result->union(b.nextActivity.JoinsCorrectly(threadStack, bh)))) -- Check all branches\n\t\t\t      endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 14,
+          "OperationCallExpImpl": 6,
+          "LetExpImpl": 1,
+          "CollectionLiteralExpImpl": 1,
+          "IterateExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "ActivityDiagram::Branch::nextActivity",
+          "ActivityDiagram::LinearActivity::nextActivity",
+          "ActivityDiagram::Decision::branches"
+        ]
+      },
+      {
+        "operations": {"UsesSameThread": 1},
+        "name": "ThreadIndependence",
+        "body": "branches->forAll(b | self.UsesSameThread(b.nextActivity))",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "ActivityDiagram::Branch::nextActivity",
+          "ActivityDiagram::Decision::branches"
+        ]
+      },
+      {
+        "operations": {
+          "including": 2,
+          "GetAccessedReferences": 2,
+          "union": 2
+        },
+        "name": "GetSuccessorReferences",
+        "body": "let bh: Set(Activity) = beenHere->including(self) in\n\t\t\t      let elseResult: Set(Reference) = nextActivity.GetAccessedReferences(soFar, beenHere->including(self)) in\n\t\t\t      let branchesResult: Set(Reference) = branches->iterate(b; result: Set(Reference) = Set{} | result->union(b.nextActivity.GetAccessedReferences(soFar, bh))) in\n\t\t\t          elseResult->union(branchesResult)",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 13,
+          "OperationCallExpImpl": 6,
+          "LetExpImpl": 3,
+          "CollectionLiteralExpImpl": 1,
+          "IterateExpImpl": 1,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "ActivityDiagram::Branch::nextActivity",
+          "ActivityDiagram::LinearActivity::nextActivity",
+          "ActivityDiagram::Decision::branches"
+        ]
+      }
+    ],
+    "properties": ["branches"]
+  },
+  {
+    "name": "Instance",
+    "expressions": [],
+    "properties": [
+      "Activity",
+      "BasicModel",
+      "instanceType"
+    ]
+  },
+  {
+    "name": "NestedActivity",
+    "expressions": [
+      {
+        "operations": {
+          "including": 1,
+          "union": 1,
+          "=": 1,
+          "JoinsCorrectly": 2
+        },
+        "name": "JoinsCorrectly",
+        "body": "if beenHere->exists(e | e = self) -- Activity has already been checked\n\t\t\t      then beenHere\n\t\t\t      else let bh: Set(Activity) = beenHere->including(self) in\n\t\t\t           let internalActivities: Set(Activity) = nestedThread.startActivity.JoinsCorrectly(Sequence{nestedThread}, bh) in -- Check internal activities\n\t\t\t           let nextActivities: Set(Activity) = nextActivity.JoinsCorrectly(threadStack, bh) in -- Check successor\n\t\t\t               internalActivities->union(nextActivities)\n\t\t\t      endif",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 14,
+          "OperationCallExpImpl": 5,
+          "LetExpImpl": 3,
+          "CollectionLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "ActivityDiagram::Thread::startActivity",
+          "ActivityDiagram::LinearActivity::nextActivity",
+          "ActivityDiagram::NestedActivity::nestedThread"
+        ]
+      },
+      {
+        "operations": {
+          "including": 1,
+          "GetAccessedReferences": 1
+        },
+        "name": "GetAccessedReferences",
+        "body": "nestedThread.startActivity.GetAccessedReferences(soFar, beenHere->including(self))",
+        "type": "OperationImpl",
+        "constructs": {
+          "OperationCallExpImpl": 2,
+          "VariableExpImpl": 4,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "ActivityDiagram::Thread::startActivity",
+          "ActivityDiagram::NestedActivity::nestedThread"
+        ]
+      }
+    ],
+    "properties": ["nestedThread"]
+  }
+]

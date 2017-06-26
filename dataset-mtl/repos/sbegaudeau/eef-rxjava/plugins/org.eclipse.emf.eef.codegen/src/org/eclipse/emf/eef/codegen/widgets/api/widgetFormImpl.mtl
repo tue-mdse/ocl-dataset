@@ -1,0 +1,90 @@
+[comment encoding = UTF-8
+ *******************************************************************************
+ * Copyright (c) 2008-2009 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module widgetFormImpl('http://www.eclipse.org/emf/eef/views/1.0.0', 'http://www.eclipse.org/emf/eef/components/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore')/]
+
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::services::viewCommon /]
+[import org::eclipse::emf::eef::codegen::services::imports /]
+
+[comment ===== Case DEFAULT = NEED TO BE THE LAST CHOICE ===== /]
+[template public manageImports(widget : Widget, pec : PropertiesEditionComponent, view : View, basePackage : String) /]
+
+[template public widgetDeclaration(editor : ElementEditor)]
+//FIXME INVALID CASE INTO template public widgetDeclaration(editor : ElementEditor) in Form Impl for ElementEditor [editor.name/]
+[/template]
+
+[template public implementation(editor : ViewElement)]
+//FIXME INVALID CASE INTO template public implementation(editor : ViewElement) in Form Impl for ViewElement [editor.name/]
+[/template]
+
+[template public additionalImplementation(editor : ViewElement, pec : PropertiesEditionComponent, inputPEC : PropertiesEditionComponent)]
+//FIXME INVALID CASE INTO template public additionalImplementation(editor : ViewElement, pec : PropertiesEditionComponent, inputPEC : PropertiesEditionComponent) in Form Impl for ViewElement [editor.name/]
+[/template]
+
+[comment ===== ViewReference support ===== /]
+[template public widgetDeclaration(reference : ViewReference)]
+	private [include(reference.view.oclAsType(View).pepQualifiedInterface())/] [reference.view.oclAsType(View).pepInterface().toLowerFirst()/];
+[/template]
+
+[template public implementation(reference : ViewReference)]
+return create[reference.view.name.toJavaClassifier()/](widgetFactory, parent);
+[/template]
+
+[template public additionalImplementation(reference : ViewReference, pec : PropertiesEditionComponent, inputPEC: PropertiesEditionComponent)][let referencedView : View = reference.view.oclAsType(View)]
+	protected Composite create[reference.view.name.toJavaClassifier()/](FormToolkit widgetFactory, Composite container) {
+		[include('org.eclipse.emf.eef.runtime.api.providers.IPropertiesEditionPartProvider')/] provider = [include('org.eclipse.emf.eef.runtime.impl.services.PropertiesEditionPartProviderService')/].getInstance().getProvider([include(referencedView.owningViewsRepository().vrQualifiedClass())/].class);
+		[referencedView.pepInterface().toLowerFirst()/] = ([referencedView.pepInterface()/])provider.getPropertiesEditionPart([referencedView.editorID()/].class, [referencedView.owningViewsRepository().vrClass()/].FORM_KIND, propertiesEditionComponent);
+		((IFormPropertiesEditionPart)[referencedView.pepInterface().toLowerFirst()/]).createControls(widgetFactory, container);
+		return container;
+	}
+[/let]
+[/template]
+
+[template public widgetDeclarationForViewReference(view : View)]
+[for (element : ViewReference | view.eAllContents(ViewReference))]
+[element.widgetDeclaration()/]
+[/for]
+[/template]
+
+[comment ===== SubView support ===== /]
+[template public widgetDeclaration(subView : View)]
+	private [include(subView.pepQualifiedInterface())/] [subView.pepInterface().toLowerFirst()/];
+[/template]
+
+[template public implementation(view : View)]
+		if (propertiesEditionComponent.mustBeComposed([view.editorID()/].class, [view.owningViewsRepository().vrClass()/].FORM_KIND))
+			return create[view.name.toJavaClassifier()/]SubView(widgetFactory, parent);
+[/template]
+
+[template public additionalImplementation(view : View, pec : PropertiesEditionComponent, inputPEC: PropertiesEditionComponent)]
+	protected Composite create[view.name.toJavaClassifier()/]SubView(FormToolkit widgetFactory, Composite container) {
+		[include('org.eclipse.emf.eef.runtime.api.providers.IPropertiesEditionPartProvider')/] provider = [include('org.eclipse.emf.eef.runtime.impl.services.PropertiesEditionPartProviderService')/].getInstance().getProvider([include(view.owningViewsRepository().vrQualifiedClass())/].class);
+		[view.pepInterface().toLowerFirst()/] = ([view.pepInterface()/])provider.getPropertiesEditionPart([view.editorID()/].class, [view.owningViewsRepository().vrClass()/].FORM_KIND, propertiesEditionComponent);
+		((IFormPropertiesEditionPart)[view.pepInterface().toLowerFirst()/]).createControls(widgetFactory, container);
+		return container;
+	}
+[/template]
+
+[template public widgetDeclarationForSubViews(view : View)]
+[for (element : View | view.elements->filter(View))]
+[element.widgetDeclaration()/]
+[/for]
+[/template]
+
+[comment --------------- Views related queries --------------- /]
+
+[query public editionPart(editor : ViewElement) : String =
+	if editor.container.oclIsTypeOf(Container) then editor.container.editionPart()
+	else editor.container.oclAsType(View).pepFormClass()
+	endif/]

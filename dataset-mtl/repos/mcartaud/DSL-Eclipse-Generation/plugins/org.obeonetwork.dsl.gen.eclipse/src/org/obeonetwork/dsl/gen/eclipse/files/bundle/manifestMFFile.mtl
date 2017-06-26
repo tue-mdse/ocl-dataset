@@ -1,0 +1,295 @@
+[comment encoding = UTF-8 
+
+Copyright (c) 2012 Obeo
+All rights reserved.  This program and the accompanying materials
+are made available under the terms of the Eclipse Public License 1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+You can apply any license to the files generated with this module and Acceleo.
+
+Contributors :
+	Mathieu Cartaud (Obeo) - initial API and implementation
+/]
+[module manifestMFFile('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel', 'http://www.obeonetwork.org/dsl/eclipse')]
+
+[import org::obeonetwork::dsl::gen::eclipse::common::normalizeName /]
+[import org::obeonetwork::dsl::gen::eclipse::services::findPlatform /]
+
+
+[template private manifestMFFile(aBundle : Bundle)]
+[aBundle.genBundlePath()/]/META-INF/MANIFEST.MF
+[/template]
+
+[template public genManifestMFFile(aBundle : Bundle)]
+[file (aBundle.manifestMFFile(), false, 'UTF-8')]
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-RequiredExecutionEnvironment: [aBundle.javaVersion()/]
+Bundle-Name: %Bundle-Name
+Bundle-SymbolicName: [aBundle.genBundleID()/];singleton:=true
+Bundle-Version: [aBundle.bundleVersion()/]
+Bundle-Vendor: %Provider-Name
+Bundle-ClassPath: .
+Bundle-ActivationPolicy: lazy
+Bundle-Localization: plugin
+Bundle-Activator: [aBundle.genBundleID()/].Activator
+[aBundle.exteriorRelations()/][if (aBundle.declarativeServices->size() > 0)]Service-Component: OSGI-INF/*.xml
+[/if]
+[/file]
+[/template]
+
+
+[template private exteriorRelations(aBundle : Bundle)]
+[if (aBundle.findPlatform().toString().toLower() = 'linux')]
+[if (aBundle.allImportPackages()->size() > 0)]Import-Package: [aBundle.allImportPackages()->sep(',' + '\n' + ' ')/]
+[/if][if (aBundle.allRequiredBundles()->size() > 0)]Require-Bundle: [aBundle.allRequiredBundles()->sep(',' + '\n' + ' ')/]
+[/if][if (aBundle.allExportPackages()->size() > 0)]Export-Package: [aBundle.allExportPackages()->sep(',' + '\n' + ' ')/]
+[/if]
+[elseif (aBundle.findPlatform().toString().toLower() = 'windows')]
+[if (aBundle.allImportPackages()->size() > 0)]Import-Package: [aBundle.allImportPackages()->sep(',' + '\r\n' + ' ')/]
+[/if][if (aBundle.allRequiredBundles()->size() > 0)]Require-Bundle: [aBundle.allRequiredBundles()->sep(',' + '\r\n' + ' ')/]
+[/if][if (aBundle.allExportPackages()->size() > 0)]Export-Package: [aBundle.allExportPackages()->sep(',' + '\r\n' + ' ')/]
+[/if]
+[else]
+[if (aBundle.allImportPackages()->size() > 0)]Import-Package: [aBundle.allImportPackages()->sep(',' + '\r' + ' ')/]
+[/if][if (aBundle.allRequiredBundles()->size() > 0)]Require-Bundle: [aBundle.allRequiredBundles()->sep(',' + '\r' + ' ')/]
+[/if][if (aBundle.allExportPackages()->size() > 0)]Export-Package: [aBundle.allExportPackages()->sep(',' + '\r' + ' ')/]
+[/if]
+[/if]
+[/template]
+
+
+
+[query private allRequiredBundles(aBundle : Bundle) : OrderedSet(String) = aBundle.defaultRequireBundle()->union(aBundle.defaultUIRequireBundle())
+->union(aBundle.myRequiredBundles())->union(aBundle.viewRequiredBundles())->union(aBundle.viewWizardRequiredBundles())->union(aBundle.wizardRequiredBundles())
+->union(aBundle.emfEditorRequiredBundles())->union(aBundle.textEditorRequiredBundles())
+->union(aBundle.perspectiveRequiredBundles())->asOrderedSet() /]
+
+[query private allImportPackages(aBundle : Bundle) : OrderedSet(String) = aBundle.myImportPackages()->union(aBundle.declarativeServiceDefaultImportPackages())
+->union(aBundle.declarativeServiceImportPackages())->union(aBundle.editorImportPackages())->union(aBundle.extensionPointClient())
+->asOrderedSet() /]
+
+[query private allExportPackages(aBundle : Bundle) : OrderedSet(String) = aBundle.userExportedPackages()
+->union(aBundle.exportedPackages())->union(aBundle.extensionExportedPackages())->union(aBundle.ecoreExportedPackages())
+->union(aBundle.ecoreDSPackages())->asOrderedSet() /]
+
+
+
+
+[query private ecoreExportedPackages(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.exportedPackages->size() > 0) then
+	aBundle.exportedPackages.genModel.ecorePackage()->union(aBundle.exportedPackages.genModel.ecorePackageUtil())
+else
+	Sequence {}
+endif  /]
+
+[query private ecoreDSPackages(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.declarativeServices->size() > 0) then
+	aBundle.declarativeServices.delegatorClass.genPackage.genModel.ecorePackage()->union(aBundle.declarativeServices.delegatorClass.genPackage.genModel.ecorePackageUtil())
+else
+	Sequence {}
+endif  /]
+
+[query private ecorePackage(aGenModel : GenModel) : OrderedSet(String) = 
+	aGenModel.eAllContents(GenClassifier).eContainer(GenPackage).ecorePackageName()->asOrderedSet()
+ /]
+
+[query private ecorePackageUtil(aGenModel : GenModel) : OrderedSet(String) = 
+	aGenModel.eAllContents(GenClassifier).eContainer(GenPackage).ecorePackageNameUtil()->asOrderedSet()
+ /]
+
+[template private ecorePackageName(aGenPackage : GenPackage)]
+[aGenPackage.basePackage/].[aGenPackage.ecorePackage.name/]
+[/template]
+
+[template private ecorePackageNameUtil(aGenPackage : GenPackage)]
+[aGenPackage.basePackage/].[aGenPackage.ecorePackage.name/].util
+[/template]
+
+[query private userExportedPackages(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.exportedPackages->size() > 0) then
+	aBundle.bundleExportedPackages().tokenize(',')
+else
+	Sequence {}
+endif  /]
+
+[query private exportedPackages(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.declarativeServices.providedServices->size() > 0) then
+	aBundle.genDSExportPackage().tokenize(',')
+else
+	Sequence {}
+endif  /]
+
+[query private extensionExportedPackages(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.extensionPointProvider->size() > 0) then
+	aBundle.genExtensionExport().tokenize(',')
+else
+	Sequence {}
+endif  /]
+
+[template private genExtensionExport(aBundle : Bundle)]
+[for (anExtensionPoint : ExtensionPointProvider | aBundle.extensionPointProvider)]
+[aBundle.genBundleID()/].extension.[anExtensionPoint.genExtensionName().toLowerFirst()/],[/for]
+[/template]
+
+[template private bundleExportedPackages(aBundle : Bundle)]
+[for (aGenPackage : GenPackage | aBundle.exportedPackages)]
+[if(aGenPackage.ancestors(GenPackage)->size() > 0)][aGenPackage.basePackage/].[/if][aGenPackage.ecorePackage.name/],[/for]
+[/template]
+
+[template private genDSExportPackage(aBundle : Bundle)]
+[for (aProvidedService : ProvidedService | aBundle.declarativeServices.providedServices)]
+[aProvidedService.exportPackageProvidedID()/].[aProvidedService.interface.genPackage.ecorePackage.name/],[/for]
+[/template]
+
+[query private exportPackageProvidedID(aProvidedService : ProvidedService) : Sequence(EPackage) = 
+		Sequence{(aProvidedService.interface.genPackage.ecorePackage.ancestors(EPackage).name)->reverse()->sep('.')} /]
+
+[query private exportView(aMenu : MenuContribution) : Sequence(String) =  
+if (aMenu.eContainer(Bundle).ID = aMenu.views.eContainer(Bundle).ID) then
+	Sequence {}
+else
+	Sequence {}
+endif
+/]
+
+
+
+
+
+[query private declarativeServiceDefaultImportPackages(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.declarativeServices->size() > 0) then
+	Sequence {'org.eclipse.osgi.framework.console;version="1.1.0"'}
+else
+	Sequence {}
+endif  /]
+
+[query private myImportPackages(aBundle : Bundle) : Sequence(String) = aBundle.importDeclarations->select
+(importType = ImportType::Package).packageDeclarationManifestImport() /]
+
+[query private declarativeServiceImportPackages(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.declarativeServices.requiredServices->size() > 0) then
+	Sequence {aBundle.genDSImportPackage()}
+else
+	Sequence {}
+endif  /]
+
+[template private genDSImportPackage(aBundle : Bundle)]
+[for (aRequiredService : RequiredService | aBundle.declarativeServices.requiredServices)]
+[aRequiredService.genImportPackageRequiredID()/][/for]
+[/template]
+
+[template private genImportPackageRequiredID(aRequiredService : RequiredService)]
+[aRequiredService.importPackageRequiredID()/].[aRequiredService.reference.eType.ePackage.name/]
+[/template]
+
+[query private importPackageRequiredID(aRequiredService : RequiredService) : Sequence(EPackage) = 
+		Sequence{(aRequiredService.reference.eType.ePackage.ancestors(EPackage).name)->reverse()->sep('.')} /]
+
+
+
+
+
+
+[query private defaultRequireBundle(aBundle : Bundle) : Sequence(String) =
+if (aBundle.basedOn.toString().matches('Ecore') or aBundle.declarativeServices.requiredServices->size() > 0) then
+	Sequence {'org.eclipse.emf.ecore;visibility:=reexport'}
+else
+	Sequence {}
+endif 
+/]
+
+[query private viewRequiredBundles(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.eAllContents(View)->size() > 0 and aBundle.eAllContents(Wizard)->size() = 0 and (aBundle.basedOn.toString().matches('Ecore'))) then
+	Sequence {'org.eclipse.emf.edit;bundle-version="2.3.0"', 'org.eclipse.emf.edit.ui;bundle-version="2.3.0"'}
+else
+	Sequence {}
+endif  /]
+
+[query private viewWizardRequiredBundles(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.eAllContents(Wizard)->size() > 0 and aBundle.eAllContents(View)->size() > 0) then
+	Sequence {'org.eclipse.jface;bundle-version="3.7.0"', 'org.eclipse.core.resources;bundle-version="3.7.101"',
+'org.eclipse.ui.ide;bundle-version="3.7.0"'}
+else
+	Sequence {}
+endif  /]
+
+[query private wizardRequiredBundles(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.eAllContents(Wizard)->size() > 0 and aBundle.eAllContents(View)->size() = 0) then
+	Sequence {'org.eclipse.core.resources;bundle-version="3.7.101"', 'org.eclipse.ui.ide;bundle-version="3.7.0"'}
+else
+	Sequence {}
+endif  /]
+
+[query private emfEditorRequiredBundles(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.eAllContents(Editor).editorType.toString().matches('MultiPages')->size() > 0) then
+	Sequence {'org.eclipse.core.runtime;bundle-version="3.7.0"', 'org.eclipse.core.resources;visibility:=reexport',
+ 'org.eclipse.emf.codegen.ecore', 'org.eclipse.emf.codegen.ecore.ui'}
+else
+	Sequence {}
+endif  /]
+
+[query private textEditorRequiredBundles(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.eAllContents(Editor).editorType.toString().matches('Text')->size() > 0) then
+	Sequence {'org.eclipse.ui.editors'}
+else
+	Sequence {}
+endif  /]
+
+[query private editorImportPackages(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.eAllContents(Editor)->size() > 0) then
+	Sequence {'org.eclipse.jface.text'}
+else
+	Sequence {}
+endif  /]
+
+[query private extensionPointClient(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.extensionPointClient->size() > 0) then
+	aBundle.genExtensionImportPackage().tokenize(',')
+else
+	Sequence {}
+endif  /]
+
+[template private genExtensionImportPackage(aBundle : Bundle)]
+[for (anExtensionPoint : ExtensionPointClient | aBundle.extensionPointClient)]
+[anExtensionPoint.provider.eContainer(Bundle).genBundleID()/].extension.[anExtensionPoint.provider.genExtensionName().toLowerFirst()/],[/for]
+[/template]
+
+
+
+
+
+
+[query private perspectiveRequiredBundles(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.eAllContents(Perspective)->size() > 0) then
+	Sequence {'org.eclipse.ui.console', 'org.eclipse.jdt.ui'}
+else
+	Sequence {}
+endif  /]
+
+[query private defaultUIRequireBundle(aBundle : Bundle) : Sequence(String) = 
+if ((aBundle.wizards->size() > 0 or aBundle.views->size() > 0 or aBundle.editors->size() > 0 
+or aBundle.perspectives->size() > 0 or aBundle.commands.defaultHandler->size() > 0 or aBundle.contextualHandlers->size() > 0
+or aBundle.commands->size() > 0 or aBundle.helpContents->size() > 0)->size() > 0) then
+	Sequence {'org.eclipse.ui;bundle-version="3.7.0"', 'org.eclipse.core.runtime;bundle-version="3.7.0"'}
+else
+	Sequence {}
+endif  /]
+
+[query private myRequiredBundles(aBundle : Bundle) : Sequence(String) = aBundle.importDeclarations->select
+(importType = ImportType::Bundle).packageDeclarationManifestImport() /]
+
+
+
+
+[template private javaVersion(aBundle : Bundle)]
+[if (aBundle.requiredEnvironment.toString().endsWith('5'))]J2SE-1.5[elseif 
+(aBundle.requiredEnvironment.toString().endsWith('4'))]J2SE-1.4[elseif 
+(aBundle.requiredEnvironment.toString().endsWith('6'))]JavaSE-1.6[elseif 
+(aBundle.requiredEnvironment.toString().endsWith('7'))]JavaSE-1.7[/if]
+[/template]
+
+[template private packageDeclarationManifestImport(anImportDeclaration : ImportDeclaration) post (trim())]
+[if (packageVersion = '')][anImportDeclaration.packageName/][else][anImportDeclaration.packageName/];bundle-version="[anImportDeclaration.packageVersion/]"[/if]
+[/template]

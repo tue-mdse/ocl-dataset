@@ -1,0 +1,260 @@
+[comment encoding = UTF-8 /]
+[module implementService('http://www.businessdecision.fr/Generator')]
+[import org::bd::pfe::generator::persistance::packagePath /]
+[import org::bd::pfe::generator::service::implementServicePermission /]
+[import org::bd::pfe::generator::service::implementServicePrivilege /]
+[import org::bd::pfe::generator::service::implementServiceRole/]
+
+[template public generateImplement(persistance :PersistanceObject){packageName : String = persistance.eContainer(Application)._package;}]
+
+
+[file(persistance.eContainer(Application).name.concat('-service/src/main/java/').concat(packageName.convertPackageToPath() .concat('/implement/')).concat(persistance.name.toUpperFirst().concat('ServiceImplement')).concat('.java'),false,'UTF-8')]
+package [packageName.concat('.implement')/];
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import [packageName.concat('.service')/].[persistance.name.toUpperFirst().concat('Service')/];
+import [packageName .concat('.repository')/].[persistance.name.toUpperFirst().concat('Repository')/];
+import [packageName .concat('.persistance')/].[persistance.name/];
+import [packageName.concat('.exception')/].BDException;
+[if(persistance.isAuthentification)]
+import [packageName .concat('.repository')/].VerificationTokenRepository;
+import [packageName.concat('.repository')/].PasswordResetTokenRepository;
+import [packageName.concat('.persistance')/].VerificationToken;
+import [packageName.concat('.persistance')/].PasswordResetToken;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+[/if]
+@Service 
+public class [persistance.name.toUpperFirst().concat('ServiceImplement')/] implements [persistance.name.toUpperFirst().concat('Service')/]{
+@Autowired
+	[persistance.name.toUpperFirst().concat('Repository')/] [persistance.name.toLowerFirst().concat('Repository')/];
+
+[if(persistance.isAuthentification)]
+@Autowired
+private VerificationTokenRepository tokenRepository;
+
+@Autowired
+private PasswordResetTokenRepository passwordTokenRepository;
+
+@Autowired
+private  PasswordEncoder passwordEncoder ;
+
+[/if]
+
+
+	public [persistance.name.toUpperFirst().concat('ServiceImplement')/] () {
+		super();
+	}
+	@Transactional
+	public Boolean create[persistance.name.toUpperFirst()/]([persistance.name.toUpperFirst()/] [persistance.name.toLowerFirst()/])throws  BDException{
+		if([persistance.name.toLowerFirst().concat('Repository')/].save([persistance.name.toLowerFirst()/])!=null){
+		return true;
+	}else{
+         throw new BDException("");
+         }
+	}
+	@Transactional
+	public Boolean update[persistance.name.toUpperFirst()/]([persistance.name.toUpperFirst()/] [persistance.name.toLowerFirst()/])throws  BDException{
+		if([persistance.name.toLowerFirst().concat('Repository')/].save([persistance.name.toLowerFirst()/])!=null){
+		return true;
+	}else{
+         throw new BDException("");
+         }
+	}
+	
+	@Transactional
+	 public Boolean delete[persistance.name.toUpperFirst()/]([persistance.name.toUpperFirst()/] [persistance.name.toLowerFirst()/]){
+		[persistance.name.toLowerFirst().concat('Repository')/].delete([persistance.name.toLowerFirst()/]);
+		return true;
+	}
+	@Transactional
+	public List<[persistance.name.toUpperFirst()/]> findAll(){
+		return [persistance.name.toLowerFirst().concat('Repository')/].findAll();
+	}
+	@Transactional
+	public [persistance.name.toUpperFirst()/] find[persistance.name.toUpperFirst()/]ById (Long id) throws  BDException{
+		if([persistance.name.toLowerFirst().concat('Repository')/].findOne(id)!=null){
+         return [persistance.name.toLowerFirst().concat('Repository')/].findOne(id);
+	}else
+         throw new BDException("");
+    }
+	
+	[if(persistance.isAuthentification)]
+    public User findUserByLogin(String login){
+	return [persistance.name.toLowerFirst().concat('Repository')/].find[persistance.name.toUpperFirst()/]ByLogin(login) ;
+    }
+  
+   public [persistance.name.toUpperFirst()/] find[persistance.name.toUpperFirst()/]ByEmail(String email) 
+   {
+	return [persistance.name.toLowerFirst().concat('Repository')/].find[persistance.name.toUpperFirst()/]ByEmail(email);
+   }
+
+
+    public [persistance.name.toUpperFirst()/] get[persistance.name.toUpperFirst()/](String verificationToken)
+   {
+	[persistance.name.toUpperFirst()/] [persistance.name.toLowerFirst()/] = tokenRepository.findByToken(verificationToken).get[persistance.name.toUpperFirst()/]();
+	return [persistance.name.toLowerFirst()/];
+    }
+
+
+    public void createVerificationTokenForUser([persistance.name.toUpperFirst()/] [persistance.name.toLowerFirst()/], String token){
+	VerificationToken myToken = new VerificationToken(token, [persistance.name.toLowerFirst()/]);
+	tokenRepository.save(myToken);
+    }
+
+
+    public VerificationToken getVerificationToken(String VerificationToken) 
+    {
+	return tokenRepository.findByToken(VerificationToken);
+    }
+
+
+    public void createPasswordResetTokenForUser([persistance.name.toUpperFirst()/] [persistance.name.toLowerFirst()/], String token) 
+    {
+	PasswordResetToken myToken = new PasswordResetToken(token, [persistance.name.toLowerFirst()/]);
+    passwordTokenRepository.save(myToken);
+    }
+
+
+    public PasswordResetToken getPasswordResetToken(String token) {
+	return passwordTokenRepository.findByToken(token);
+    }
+
+
+    public [persistance.name.toUpperFirst()/] getUserByPasswordResetToken(String token){
+	return passwordTokenRepository.findByToken(token).get[persistance.name.toUpperFirst()/]();
+    }
+
+
+    public void changeUserPassword([persistance.name.toUpperFirst()/] [persistance.name.toLowerFirst()/], String password){
+	[persistance.name.toLowerFirst()/].setPwd(passwordEncoder.encode(password));
+    [persistance.name.toLowerFirst().concat('Repository')/].save([persistance.name.toLowerFirst()/]);
+	}
+
+
+    public Boolean checkIfValidOldPassword([persistance.name.toUpperFirst()/] [persistance.name.toLowerFirst()/], String oldPassword){ 
+	 System.out.println(oldPassword            +"           1");
+	System.out.println(user.getPassword() +"           2");
+	return passwordEncoder.matches(oldPassword, [persistance.name.toLowerFirst()/].getPwd());
+}
+
+[/if]
+
+         //[protected (' : you can write your own code')]
+			
+		//[/protected]
+}
+
+	
+[/file]
+[/template]
+
+
+[template public generateImplementAssociation(classe :AssociationClass){packageName : String = classe.eContainer(Application)._package;}]
+
+[file(classe.eContainer(Application).name.concat('-service/src/main/java/').concat(packageName.convertPackageToPath() .concat('/implement/')).concat(classe.name.toUpperFirst().concat('ServiceImplement.java')),false,'UTF-8')]
+package [packageName.concat('.implement')/];
+import java.util.Date;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import [packageName.concat('.exception')/].BDException;
+
+import java.util.List;
+import [classe.eContainer(PersistanceModel).eContainer(Application)._package.concat('.service')/].[classe.name.toUpperFirst().concat('Service')/];
+import [classe.eContainer(PersistanceModel).eContainer(Application)._package .concat('.repository')/].[classe.name.toUpperFirst().concat('Repository')/];
+import [classe.eContainer(PersistanceModel).eContainer(Application)._package .concat('.persistance')/].[classe.name/];
+@Service 
+public class [classe.name.toUpperFirst().concat('ServiceImplement')/] implements [classe.name.toUpperFirst().concat('Service')/]{
+@Autowired
+	[classe.name.toUpperFirst().concat('Repository')/] [classe.name.toLowerFirst().concat('Repository')/];
+
+	public [classe.name.toUpperFirst().concat('ServiceImplement')/] () {
+		super();
+	}
+	@Transactional
+	public Boolean create[classe.name.toUpperFirst()/]([classe.name.toUpperFirst()/] [classe.name.toLowerFirst()/])throws  BDException{
+		if([classe.name.toLowerFirst().concat('Repository')/].save([classe.name.toLowerFirst()/])!=null){
+		return true;
+	}else{
+         throw new BDException("");
+         }
+	}
+	
+	@Transactional
+	public Boolean update[classe.name.toUpperFirst()/]([classe.name.toUpperFirst()/] [classe.name.toLowerFirst()/])throws  BDException{
+		if([classe.name.toLowerFirst().concat('Repository')/].save([classe.name.toLowerFirst()/])!=null){
+		return true;
+	}else{
+         throw new BDException("");
+         }
+	}
+	@Transactional
+	 public Boolean delete[classe.name.toUpperFirst()/]([classe.name.toUpperFirst()/] [classe.name.toLowerFirst()/]){
+		[classe.name.toLowerFirst().concat('Repository')/].delete([classe.name.toLowerFirst()/]);
+		return true;
+	}
+	@Transactional
+	public List<[classe.name.toUpperFirst()/]> findAll(){
+		return [classe.name.toLowerFirst().concat('Repository')/].findAll();
+	}
+	@Transactional
+	public [classe.name.toUpperFirst()/] find[classe.name.toUpperFirst()/]ById (Long id) throws  BDException{
+		if([classe.name.toLowerFirst().concat('Repository')/].findOne(id)!=null){
+         return [classe.name.toLowerFirst().concat('Repository')/].findOne(id);
+	}else
+         throw new BDException("");
+    }
+	//[protected (' : you can write your own code')]
+			
+		//[/protected]
+	
+}
+
+	
+[/file]
+[/template]
+[template public generateCustomUserDetailsService(p :PersistanceObject){packageName : String = p.eContainer(Application)._package;}]
+
+[file(p.eContainer(Application).name.concat('-service/src/main/java/').concat(packageName.convertPackageToPath() .concat('/implement/')).concat('CustomUserDetailsService.java'),false,'UTF-8')]
+package [packageName.concat('.implement')/];
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import [packageName.concat('.persistance')/].[p.name/];
+import [packageName.concat('.service')/].[p.name.toUpperFirst().concat('Service')/];
+@Service
+public class CustomUserDetailsService implements UserDetailsService {
+
+	@Autowired
+	private [p.name.toUpperFirst()/]Service [p.name.toLowerFirst()/]Service;
+	
+	public [p.name.toUpperFirst()/]Details load[p.name.toUpperFirst()/]By[p.name.toUpperFirst()/]name(String [p.name.toLowerFirst()/]Name) throws [p.name.toUpperFirst()/]nameNotFoundException {
+		[p.name.toUpperFirst()/] [p.name.toLowerFirst()/] = [p.name.toLowerFirst()/]Service.find[p.name.toUpperFirst()/]ByLogin([p.name.toLowerFirst()/]Name);
+		if ([p.name.toLowerFirst()/] == null) {
+			throw new UsernameNotFoundException("[p.name.toUpperFirst()/]Name "+ [p.name.toLowerFirst()/]Name +" not found");
+		}
+		 	return (UserDetails) [p.name.toLowerFirst()/];
+	}
+        //[protected (' : you can write your own code')]
+			
+		//[/protected]
+}
+
+[/file]
+[/template]

@@ -1,0 +1,45 @@
+[comment encoding = UTF-8 /]
+[module ScopeCrossReferencesConfiguration('http://www.eclipse.org/emf/2002/Ecore','http://mondo.org/runtimePatterns')]
+[import org::mondo::generate::scope::project::main::requests::global_queriesScopeProject /]
+
+[template public generateScopeCrossReferencesConfiguration(anPatternInstances : PatternInstances,anProjectName : String)]
+
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name')).replaceAll('\\.','/').concat('/definition/ScopeCrossReferencesConfiguration.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].definition;
+
+import org.eclipse.emf.ecore.EReference;
+import org.mondo.generate.scope.project.ext.IScopeCrossReferences;
+
+import ScopeDefinition.ScopeDefinitionEnum;
+
+[for(currentPackage : String | getAllPackages(anPatternInstances.PatternInstanceScope().classInstances->asSequence())->asSet())]
+import [currentPackage.toUpperFirst()/].impl.[currentPackage/]FactoryImpl;
+[/for]
+
+public class ScopeCrossReferencesConfiguration implements IScopeCrossReferences {
+
+	public ScopeCrossReferencesConfiguration() {
+		// TODO Auto-generated constructor stub
+	}
+
+	@Override
+	public ScopeDefinitionEnum getScopebyReference(EReference ref) {
+		// TODO Auto-generated method stub
+		
+
+[for(currentInstance : ClassRoleInstance |anPatternInstances.PatternInstanceScope().classInstances)]
+	[for (currentFeature : ReferenceRoleInstance | currentInstance.referenceInstances)]
+	if(ref.equals([currentInstance.element.ePackage.name.toUpperFirst()/]FactoryImpl.init().get[currentInstance.element.ePackage.name.toUpperFirst()/]Package().
+		get[currentInstance.element.name.toUpperFirst()/]_[currentFeature.element.name.toUpperFirst()/]()))
+		return ScopeDefinitionEnum.[getEnumScopeDefinition(currentFeature.role.ref.name)/];				
+[/for]
+[/for]		
+		
+		return ScopeDefinitionEnum.RSAME_WORK_SPACE;
+	}
+
+}
+
+
+[/file]
+[/template]

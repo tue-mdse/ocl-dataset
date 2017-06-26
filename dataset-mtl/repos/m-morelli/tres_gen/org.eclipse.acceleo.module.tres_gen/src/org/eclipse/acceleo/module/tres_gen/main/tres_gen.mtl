@@ -1,0 +1,76 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module tres_gen.
+ */]
+[module tres_gen('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import org::eclipse::acceleo::module::tres_gen::main::segment_gen/]
+[import org::eclipse::acceleo::module::tres_gen::main::kernel_gen/]
+[import org::eclipse::acceleo::module::tres_gen::main::task_gen/]
+[import org::eclipse::acceleo::module::tres_gen::main::maskp_carray_gen/]
+
+[**
+ * The documentation of the template tres_gen.
+ * @param aClass
+ */]
+[template public tres_gen(mdl : Model)]
+[comment @main/]
+[comment Generate the file that groups the scripts corresponding to each generation phase /]
+[file ('tres_bn_commands.m', false, 'UTF-8')]
+%
+%%%% Open the Simulink library of built-in blocks and the tres_simulink_blockset
+%
+open_system('simulink');
+
+%
+%%%% Open the tres_simulink_blockset
+%
+open_system('tres_simulink_blockset');
+
+%
+%%%% Open the original model and save it to a new one
+%
+open_system('[mdl.name/]');
+save_system('[mdl.name/]', '[mdl.name/]_bn');
+
+%
+%%%% Generate blocks' (mask) initialization variables
+%
+definitions_of_masks_cellarrays
+
+%
+%%%% Generate the Kernel superstruct
+%
+kernel_gen_commands
+
+%
+%%%% Generate the Task superstruct
+%
+task_gen_commands
+
+%
+%%%% Convert subsystems to Function-Call subsystems with out latches
+%
+subsys_to_segments_tr_commands
+
+%
+%%%% Close the tres_simulink_blockset
+%
+close_system('tres_simulink_blockset');
+
+%
+%%%% Close the Simulink library of built-in blocks
+%
+close_system('simulink');
+
+%
+%%%% Clear temporary vars
+%
+clear_tmp_vars_commands
+[/file]
+[comment Generate the files for each generation phase /]
+[generate_mask_carray(mdl)/]
+[generate_kernel(mdl)/]
+[generate_tasks(mdl)/]
+[generate_segments(mdl)/]
+[/template]

@@ -1,0 +1,141 @@
+[comment encoding = UTF-8 /]
+[module javaRESTClientController('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthenticationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/ExternalServiceLayerPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+
+[template public javaRESTClientController(anAnnotationStack : AnnotationStack, jAlgoRController : JavaAlgoResourceController)]
+/*
+ * ARISTOTLE UNIVERSITY OF THESSALONIKI
+ * Copyright (C) 2015
+ * Aristotle University of Thessaloniki
+ * Department of Electrical & Computer Engineering
+ * Division of Electronics & Computer Engineering
+ * Intelligent Systems & Software Engineering Lab
+ *
+ * Project             : [anAnnotationStack.hasCorePSM.name/]
+ * WorkFile            : 
+ * Compiler            : 
+ * File Description    : 
+ * Document Description: 
+* Related Documents	   : 
+* Note				   : 
+* Programmer		   : RESTful MDE Engine created by Christoforos Zolotas
+* Contact			   : christopherzolotas@issel.ee.auth.gr
+*/
+
+
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[jAlgoRController.parentName.toLowerCase()/];
+
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.UriInfo;
+[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+import javax.ws.rs.HeaderParam;
+import javax.ws.rs.DefaultValue;
+[/if]
+import javax.ws.rs.QueryParam; 
+
+
+[if (jAlgoRController.hasNoOutputModel(anAnnotationStack) = false)]
+[if (jAlgoRController.hasExistentCRUDResourceOutputModel(anAnnotationStack))]
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[jAlgoRController.getExistentCRUDResourceOutputModel(anAnnotationStack).isExistentJavaModelPersistentOutput.annotatesJavaResourceModel.parentName.toLowerCase()/].[jAlgoRController.getExistentCRUDResourceOutputModelAsString(anAnnotationStack)/];
+[/if]
+[/if]
+
+/*
+ * [jAlgoRController.name/] class is responsible to handle incoming HTTP requests for the [jAlgoRController.parentName/] resource. More specifically
+ * this resource controller handles client requests that are delegated to an external server, which is executed at
+ * [jAlgoRController.getTargetServiceURL(anAnnotationStack)/]
+*/
+[jAlgoRController.AlgoControllerHasJAXRSAnnotation.JAXRSAnnotationText/]
+public class [jAlgoRController.name/]{
+
+    @Context
+    private UriInfo oApplicationUri;
+
+[for (httpActivity : HTTPActivity | jAlgoRController.JavaAlgoRControllerHasHTTPActivity->select(activity : HTTPActivity | activity.ActivityHTTPVerb = HTTPVerb::GET or activity.ActivityHTTPVerb = HTTPVerb::POST)) separator('\n')] 
+	/* 
+	 * This function is the WEB API of resource [jAlgoRController.parentName/] and accepts http [if (httpActivity.ActivityHTTPVerb = HTTPVerb::POST)] POST [elseif (httpActivity.ActivityHTTPVerb = HTTPVerb::GET)][/if] requests,   
+     * which it delegates to the underlying Handler [httpActivity.hasHTTPActivityHandler.name/]. 
+     * It returns any response formatted as stated in the @Produces JAX-RS annotation below.
+    */
+    [for (activityJAXRSAnnotation : JAXRSAnnotation | httpActivity.HTTPActivityHasJAXRSAnnotation)]
+	[activityJAXRSAnnotation.JAXRSAnnotationText/]
+	[/for]
+    public [if (jAlgoRController.hasNoOutputModel(anAnnotationStack) = false)][if (jAlgoRController.hasExistentCRUDResourceOutputModel(anAnnotationStack))][jAlgoRController.getExistentCRUDResourceOutputModelAsString(anAnnotationStack)/][else]Java[jAlgoRController.parentName.toUpperFirst()/]OutputModel[/if][else]Java[jAlgoRController.parentName.toUpperFirst()/]OutputModel[/if] [httpActivity.name.toLowerFirst()/]([if (anAnnotationStack.bHasAuthenticationAnnotation)][if (httpActivity.hasBothModeAuthentication(anAnnotationStack))]@DefaultValue("guest") @HeaderParam("authorization") String authHeader[elseif (httpActivity.hasAuthenticationOnlyMode(anAnnotationStack))]@HeaderParam("authorization") String authHeader[/if][/if][if (anAnnotationStack.bHasAuthenticationAnnotation)][if (httpActivity.getQueryParams(anAnnotationStack)->size() > 0)], [/if][/if][for (queryParam : QueryParam | httpActivity.getQueryParams(anAnnotationStack)) separator(', ')]@QueryParam("[queryParam.name/]") String [queryParam.name/][/for][if (jAlgoRController.hasNoIntputModel(anAnnotationStack) = false)][if (httpActivity.getQueryParams(anAnnotationStack)->size() > 0)], [elseif (anAnnotationStack.bHasAuthenticationAnnotation)][if (httpActivity.hasBothModeAuthentication(anAnnotationStack))], [elseif(httpActivity.hasAuthenticationOnlyMode(anAnnotationStack))], [else][/if][else][/if][jAlgoRController.hasAssociatedAlgoModel.name/] o[jAlgoRController.hasAssociatedAlgoModel.name/][/if]){
+
+		//create a new [httpActivity.hasHTTPActivityHandler.name/]
+		[httpActivity.hasHTTPActivityHandler.name/] o[httpActivity.hasHTTPActivityHandler.name/] = new [httpActivity.hasHTTPActivityHandler.name/]([if (anAnnotationStack.bHasAuthenticationAnnotation)][if (httpActivity.hasBothModeAuthentication(anAnnotationStack))]authHeader, [elseif (httpActivity.hasAuthenticationOnlyMode(anAnnotationStack))]authHeader, [/if][/if][for (queryParam : QueryParam | httpActivity.getQueryParams(anAnnotationStack)) separator(' ')][queryParam.name/], [/for][if (jAlgoRController.hasNoIntputModel(anAnnotationStack) = false)]o[jAlgoRController.hasAssociatedAlgoModel.name/], [/if]oApplicationUri);
+		return o[httpActivity.hasHTTPActivityHandler.name/].[httpActivity.name.toLower()/]();
+    }
+[/for]
+}
+[/template]
+
+[query private hasBothModeAuthentication(anHttpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Boolean =
+	getAuthenticationLayerBothModeAnnotations(anAnnotationStack)->exists(bothModeAnnotation | bothModeAnnotation.HTTPActivityHasAuthenticationMode->exists(annHTTPActivity | annHTTPActivity.annotatesHTTPActivity.name = anHttpActivity.name))
+/]
+
+[query private getAuthenticationLayerBothModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(BothMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(BothMode))->asSequence()
+/]
+
+[query private hasAuthenticationOnlyMode(anHttpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Boolean =
+	getAuthenticationLayerAuthenticationOnlyModeAnnotations(anAnnotationStack)->exists(authenticationOnlyMode | authenticationOnlyMode.HTTPActivityHasAuthenticationMode->exists(annHTTPActivity | annHTTPActivity.annotatesHTTPActivity.name = anHttpActivity.name))
+/]
+
+[query private getAuthenticationLayerAuthenticationOnlyModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(AuthenticationOnlyMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(AuthenticationOnlyMode))->asSequence()
+/]
+
+[query private hasGuestMode(anHttpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Boolean =
+	getAuthenticationLayerGuestModeAnnotations(anAnnotationStack)->exists(guestMode | guestMode.HTTPActivityHasAuthenticationMode->exists( annHTTPActivity | annHTTPActivity.annotatesHTTPActivity.name = anHttpActivity.name))
+/]
+
+[query private getAuthenticationLayerGuestModeAnnotations(anAnnotationStack : AnnotationStack) : Sequence(GuestMode) =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select( annotation | annotation.oclIsTypeOf(GuestMode))->asSequence()
+/]
+
+[query private getTargetServiceURL(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : String =
+	anAnnotationStack.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasJavaRESTClientHTTPActivity.hasJavaRESTClientHTTPActivityHandler.targetServiceURL
+/]
+
+[query private getJavaRESTClientControllerAnnotation(anAnnotationStack : AnnotationStack, jAlgoResourceController : JavaAlgoResourceController) : JavaRESTClientController =
+	jAlgoResourceController.getJavaRESTClientControllerAnnotations(anAnnotationStack)->select(javaRESTController | javaRESTController.isJavaRESTClientController.annotatesJavaAlgoController->includes(jAlgoResourceController))->at(1)
+/]
+
+[query private getJavaRESTClientControllerAnnotations(anAnnotationStack : AnnotationStack) : Sequence(JavaRESTClientController) =
+	anAnnotationStack.hasExternalServiceLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(JavaRESTClientController))->asSequence()
+/]
+
+[query private getQueryParams(httpActivity : HTTPActivity, anAnnotationStack : AnnotationStack) : Sequence(QueryParam) =
+	anAnnotationStack.getJavaRESTClientHTTPActivity(anAnnotationStack, httpActivity).hasQueryParam->asSequence()
+/]
+
+[query private getJavaRESTClientHTTPActivity(anAnnotationStack : AnnotationStack, httpActivity : HTTPActivity) : JavaRESTClientHTTPActivity =
+	anAnnotationStack.getJavaRESTClientControllerAnnotations(anAnnotationStack).hasJavaRESTClientHTTPActivity->select( javaRESTClientHTTPActivity | javaRESTClientHTTPActivity.isJavaRESTClientHTTPActivity.annotatesHTTPActivity->includes(httpActivity))->at(1)
+/]
+
+[query private hasNoOutputModel(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : Boolean =
+	anAnnotationStack.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaOutputModel.oclIsUndefined()
+/]
+
+[query private hasNoIntputModel(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : Boolean =
+	anAnnotationStack.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaInputModel.oclIsUndefined()
+/]
+
+[query private hasExistentCRUDResourceOutputModel(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : Boolean =
+	anAnnotationStack.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaOutputModel.oclIsTypeOf(ExistentJavaModelPersistentOutput)
+/]
+
+[query private getExistentCRUDResourceOutputModelAsString(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : String =
+	anAnnotationStack.getExistentCRUDResourceOutputModel(jAlgoResourceController, anAnnotationStack).isExistentJavaModelPersistentOutput.annotatesJavaResourceModel.name
+/] 
+
+[query private getExistentCRUDResourceOutputModel(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : ExistentJavaModelPersistentOutput =
+anAnnotationStack.getJavaRESTClientControllerAnnotation(anAnnotationStack, jAlgoResourceController).hasAssociatedModel.hasJavaOutputModel->select(outputModel | outputModel.oclIsTypeOf(ExistentJavaModelPersistentOutput))->asSequence()->at(1)
+/]

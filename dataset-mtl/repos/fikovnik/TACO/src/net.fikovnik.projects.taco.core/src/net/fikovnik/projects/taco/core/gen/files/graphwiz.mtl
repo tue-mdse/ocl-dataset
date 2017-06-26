@@ -1,0 +1,179 @@
+[comment encoding = UTF-8 /]
+[comment]
+Copyright (C) 2011 by Filip Krikava
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+[/comment]
+
+
+[**
+ * Ecore to graphviz dot language generator.
+ * 
+ * TODO: separators
+ * 
+ * @author Filip Krikava
+ */]
+[module graphwiz('http://www.eclipse.org/emf/2002/Ecore')]
+
+[import net::fikovnik::projects::taco::core::gen::common::uml /]
+
+[query private getAllDependingClasses(class : EClass, superTypes : Boolean, referenceTypes : Boolean) : Set(EClass) =
+	if (superTypes and referenceTypes) then
+		Set(EClass){}
+			->union(class.eSuperTypes)
+			->union(class.eReferences->collect(eReferenceType)->asSet())
+	else if (superTypes) then
+		Set(EClass){}
+			->union(class.eSuperTypes)
+		else
+			Set(EClass){}
+		endif
+	endif
+ /]
+
+[comment]
+FIXME: this does not work from whatever reason
+[pkg.eAllContents(EClass) /]
+[/comment]
+[query public getPackageClasses(pkg : EPackage) : Set(EClass) = 
+	pkg.eClassifiers->select(c | c.oclIsKindOf(EClass))->collect(c | c.oclAsType(EClass))->asSet()
+ /]
+
+[query private getSuperPackages(pkg : EPackage) : Sequence(EPackage) =
+	if (pkg.eSuperPackage->notEmpty()) then
+		getSuperPackages(pkg.eSuperPackage)->union(Sequence(EPackage){pkg})
+	else
+		Sequence(EPackage){pkg}
+	endif
+/]
+
+[template private fqcn(pkg : EPackage) post (trim())]
+[for (p : EPackage | getSuperPackages(pkg)) separator ('__')][p.name/][/for]
+[/template]
+
+[template private fqcn(classifier : EClassifier) post (trim())]
+[if (classifier.ePackage->notEmpty())][fqcn(classifier.ePackage)/]__[/if][classifier.name/]
+[/template]
+
+[template private renderReference(reference : EReference, class : EClass)]
+[fqcn(class)/]:port -> [fqcn(reference.eReferenceType)/]:port ['['/] 
+  arrowhead = "vee" 
+  arrowtail = [if (reference.containment)]"diamond"[else]"none"[/if]
+  taillabel = <<TABLE border="0" cellborder="0" cellspacing="0" cellpadding="0"><TR><TD></TD></TR></TABLE>>
+  label = <<TABLE border="0" cellborder="0" cellspacing="0" cellpadding="0"><TR><TD>- [reference.name/]</TD></TR></TABLE>>
+  headlabel = <<TABLE border="0" cellborder="0" cellspacing="0" cellpadding="0"><TR><TD>[reference.genMultiplicity()/]</TD></TR></TABLE>>
+  minlen = "3"
+  labeldistance = "3.0"
+  labelangle = "20.0"
+[']'/]
+[/template]
+
+[template private renderGeneralization(superType : EClass, subType : EClass)]
+[fqcn(superType)/]:port -> [fqcn(subType)/]:port ['['/] 
+  arrowhead = "none"
+  arrowtail = "onormal"
+  minlen = "1.5"
+[']'/]
+[/template]
+
+[template private renderClassName(class : EClass)]
+[if (class.abstract)]<I>[/if][class.name /][if (class.abstract)]</I>[/if]
+[/template]
+
+[**
+ * Generates only the class node, no references, no generalizations. 
+ */]
+[template private renderClass(class : EClass, attributes : Boolean, color : String)]
+[fqcn(class)/] ['['/] label = <
+<TABLE bgcolor="[color/]" border="0" cellspacing="0" cellpadding="0" cellborder="0" port="port">
+<TR><TD>
+<TABLE border="1" cellborder="0" cellpadding="3" cellspacing="0" align="left">
+<TR><TD>[renderClassName(class)/]</TD></TR>
+</TABLE>
+</TD></TR>
+[if (attributes and class.eAttributes->notEmpty())]
+<TR><TD>
+<TABLE border="1" cellborder="0" cellpadding="3" cellspacing="0" align="left">
+[for (attribute : EAttribute | class.eAttributes)]
+<TR><TD align="left">[attribute.genFeatureLabelWithType()/]</TD></TR>
+[/for]
+</TABLE>
+</TD></TR>
+[/if]
+</TABLE>
+>['];'/]
+[/template]
+
+[template public genClass(class : EClass, superClasses : Boolean, attributes : Boolean, references : Boolean, color : String)]
+[class.getAllDependingClasses(superClasses, references).renderClass(false,'white') /]
+
+[class.renderClass(attributes, color)/]
+
+[if (superClasses)]
+[class.eSuperTypes.renderGeneralization(class)/]
+[/if]
+
+[if (references)]
+[class.eReferences.renderReference(class)/]
+[/if]
+
+[/template]
+
+[template public genPackage(pkg : EPackage) {
+	allClasses : Set(EClass) = getPackageClasses(pkg);
+}]
+
+[comment]render only classes themselves without any references[/comment]
+[allClasses.renderClass(true,'white')/]
+
+[comment]render all known references and generalization[/comment]
+[for (class : EClass | allClasses)]
+[class.eSuperTypes->intersection(allClasses).renderGeneralization(class)/]
+[class.eReferences->select(e : EReference | allClasses->includes(e.eReferenceType)).renderReference(class)/]
+[/for]
+
+[/template]
+
+[template public genPrologue(traceabilityContext : OclAny)]
+digraph G {
+//  ranksep=0.8
+//  nodesep=0.85
+
+  rankdir = TD;
+  compound=true;
+  fontname = "Arial"
+  fontsize = "8"
+
+  node  ['['/]
+    fontname = "Arial"
+    fontsize = "12"
+	margin = "0"
+    shape = "plaintext"
+  [']'/]
+
+  edge  ['['/]
+    fontname = "Arial"
+    fontsize = "9"
+    dir = "both"
+  [']'/]	
+[/template]
+
+[template public genEpilogue(traceabilityContext : OclAny)]
+};
+[/template]

@@ -1,0 +1,271 @@
+[comment encoding = UTF-8 /]
+[module commonHelpers('http://cs.mcgill.ca/sel/ram/3.0','http://www.eclipse.org/emf/2002/Ecore')]
+
+
+[**
+ * Returns a set of the defined type parameters only for the given classifier.
+ * @param cf The classifier
+ */]
+[query public getDefinedTypeParameters(cf : Classifier) : Set(TypeParameter) =
+    cf.typeParameters->select(not genericType.oclIsUndefined())
+/]
+
+
+[**
+ * Returns the set of navigable association ends for the given class.
+ * @param c The class
+ */]
+[query public getNavigableAssociationEnds(c : Class) : Set(AssociationEnd) =
+    c.associationEnds->select(navigable = true)
+/]
+
+
+[**
+ * Returns whether the given association end is multiple or not.
+ * @param ae The association end
+ */]
+[query public isMultipleAssociation(ae : AssociationEnd) : Boolean =
+    not ae.upperBound.oclIsUndefined() and ae.upperBound <> 1
+/]
+
+
+[**
+ * Returns all defined messages corresponding to the given operation.
+ * @param op The operation
+ */]
+[query public getMessagesForOperation(op : Operation) : Set(Message) =
+    op.eContainer(Aspect).messageViews->filter(MessageView)->select(not specification.oclIsUndefined())
+        .specification.messages->select(
+            signature = op and
+            not selfMessage and
+            messageSort <> MessageSort::reply and
+            getMessageFragments()->select(
+                f : InteractionFragment |
+                not f.oclIsKindOf(MessageEnd) or (
+                    let m : Message = f.oclAsType(MessageEnd).message in
+                    m.messageSort <> MessageSort::reply or
+                    f = m.receiveEvent
+                )
+            )->size() > 0
+        )->asSet()
+/]
+
+
+[**
+ * Returns a set of fragments that composes the given message, over the target lifeline of the message.
+ * @param m The message
+ */]
+[query public getMessageFragments(m : Message) : OrderedSet(InteractionFragment) =
+    if not m.selfMessage then
+        let lifelineFragments : OrderedSet(InteractionFragment) =
+                m.getTargetLifeline().getFragmentsOverLifeline() in
+        if lifelineFragments->filter(MessageEnd).message->includes(m) and
+                lifelineFragments->indexOf(m.receiveEvent) < lifelineFragments->size() then
+            let nextFragments : OrderedSet(InteractionFragment) =
+                    lifelineFragments->subOrderedSet(
+                        lifelineFragments->indexOf(m.receiveEvent) + 1,
+                        lifelineFragments->size()
+                    ) in
+            let separatorFragments : OrderedSet(InteractionFragment) =
+                    nextFragments->select(
+                        f : InteractionFragment |
+                        f.oclIsKindOf(MessageEnd) and (
+                            let m : Message = f.oclAsType(MessageEnd).message in
+                            (m.messageSort = MessageSort::reply and f = m.sendEvent) or
+                            (m.messageSort <> MessageSort::reply and not m.selfMessage and f = m.receiveEvent)
+                        )
+                    ) in
+            let lastIndex : Integer =
+                    if separatorFragments->size() > 0 then
+                        let first : InteractionFragment = separatorFragments->first() in
+                        if first.oclAsType(MessageEnd).message.messageSort = MessageSort::reply then
+                            nextFragments->indexOf(first)
+                        else
+                            nextFragments->indexOf(first) - 1
+                        endif
+                    else
+                        nextFragments->size()
+                    endif in
+            if lastIndex > 0 then
+                nextFragments->subOrderedSet(1, lastIndex)
+            else
+                OrderedSet{}
+            endif
+        else
+            OrderedSet{}
+        endif
+    else
+        OrderedSet{}
+    endif
+/]
+
+
+[**
+ * Returns the lifeline (the first) of the given fragment.
+ * @param f The fragment
+ */]
+[query public getLifelineForFragment(f : InteractionFragment) : Lifeline =
+    f.covered->asSequence()->first()
+/]
+
+
+[**
+ * Returns a set of the fragments over the given lifeline.
+ * @param lifeline The lifeline
+ */]
+[query public getFragmentsOverLifeline(lifeline : Lifeline) : OrderedSet(InteractionFragment) =
+    lifeline.eContainer(Interaction).fragments->select(covered->includes(lifeline))
+/]
+
+
+[**
+ * Returns the target lifeline of the given message.
+ * @param m The message
+ */]
+[query public getTargetLifeline(m : Message) : Lifeline =
+    m.receiveEvent.oclAsType(InteractionFragment).getLifelineForFragment()
+/]
+
+
+[**
+ * Returns a set of defined arguments only for the given message.
+ * @param m The message
+ */]
+[query public getDefinedMessageArguments(m : Message) : Set(ParameterValueMapping) =
+    m.arguments->select(not value.oclIsUndefined())
+/]
+
+
+[**
+ * Returns whether the given message is a valid reply message.
+ * @param m The message
+ */]
+[query public isValidReplyMessage(m : Message) : Boolean =
+    m.messageSort = MessageSort::reply and not m.returns.oclIsUndefined()
+/]
+
+
+[**
+ * Returns whether the given message is not (sure) a reply message.
+ * @param m The message
+ */]
+[query public isNotReplyMessage(m : Message) : Boolean =
+    m.messageSort <> MessageSort::reply
+/]
+
+
+[**
+ * Returns whether the given message has an assign value.
+ * @param m The message
+ */]
+[query public hasAssignValue(m : Message) : Boolean =
+    not m.assignTo.oclIsUndefined()
+/]
+
+
+[**
+ * Returns whether the given message is a create message.
+ * @param m The message
+ */]
+[query public isCreateMessage(m : Message) : Boolean =
+    m.messageSort = MessageSort::createMessage
+/]
+
+
+[**
+ * Returns whether the given message is related to a constructor operation.
+ * @param m The message
+ */]
+[query public isConstructorMessage(m : Message) : Boolean =
+    m.signature.operationType = OperationType::Constructor
+/]
+
+
+[**
+ * Returns whether the given language string is equal to another excepted language.
+ * @param language The language string
+ * @param expected The expected language
+ */]
+[query public isLang(language : String, expected : String) : Boolean =
+    language.toLowerCase().trim() = expected
+/]
+
+
+[**
+ * Get the valid 'lower_case_underscored' equivalent of the given string.
+ * @param input The input string
+ */]
+[query public toLowerCaseUnderscoreIdentifier(input : String) : String =
+    trim().toLowerCase().replaceAll('[^a-z0-9]+', '_').replace('^[0-9]+', '_')
+/]
+
+
+[**
+ * Removes all the new lines of the given string.
+ * @param input The input string
+ */]
+[query public removeNewLines(input : String) : String =
+    replaceAll('(\r\n|\n)', '')
+/]
+
+
+[**
+ * Reduces multiple new lines to one in the given string.
+ * @param input The input string
+ */]
+[query public removeMultipleNewLines(input : String) : String =
+    replaceAll('(\r\n|\n){2,}', '\n')
+/]
+
+
+[**
+ * Replaces all successive blanks (spaces, new lines...) by one space.
+ * @param input The input string
+ */]
+[query public flatten(input : String) : String =
+    replaceAll('[ (\r\n|\n)\t]+', ' ')
+/]
+
+
+[**
+ * Surrounds the input string with the given string.
+ * @param input The input string
+ * @param s The string to surround with
+ */]
+[query public surroundWith(input : String, s : String) : String =
+    s + input + s
+/]
+
+
+[**
+ * Surrounds the input string with the given string if the input is not empty.
+ * @param input The input string
+ * @param s The string to surround with
+ */]
+[query public surroundWithIfNotEmpty(input : String, s : String) : String =
+    replaceAll('^((.|(\r\n|\n))+)$', s + '$1' + s)
+/]
+
+
+[**
+ * Removes new lines preceded by a marker.
+ * @param input The input string
+ * @param marker The marker
+ */]
+[query public removeMarkedNewLines(input : String, marker : String) : String =
+    replaceAll(marker + '(\r\n|\n)+', '')
+/]
+
+
+[**
+ * Append the given string at the end of the input string only if not already present.
+ * @param input The input string
+ * @param s The string you want to append
+ */]
+[query public appendIfNeeded(input : String, s : String) : String =
+    if input.endsWith(s) then
+        input
+    else
+        input + s
+    endif
+/]

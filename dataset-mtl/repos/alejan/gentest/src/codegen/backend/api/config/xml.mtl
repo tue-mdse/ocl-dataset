@@ -1,0 +1,75 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module webx,l.
+ */]
+[module xml('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import ::utils /]
+[import backend::api::config::shiro /]
+
+[**
+ * The documentation of the template genWebXML.
+ * @param aModel
+ */]
+[template public mainXML(m : Model, path : String)]
+[m.genWebXML(path)/]
+[m.genResources(path)/]
+[m.genBeansXml(path)/]
+[m.genTestServicePersistence(m.getTestServicesMetaInfPath())/]
+[/template]
+
+[template protected genWebXML(m : Model, path : String)]
+[file (path.concat('web.xml'), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd" version="3.0">
+[m.genWebXMLShiroFilter()/]
+    <session-config>
+        <session-timeout>30</session-timeout>
+    </session-config>
+</web-app>
+[/file]
+[/template]
+
+[template protected genResources(m : Model, path : String)]
+[file (path.concat('glassfish-resources.xml'), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE resources PUBLIC "-//GlassFish.org//DTD GlassFish Application Server 3.1 Resource Definitions//EN" "http://glassfish.org/dtds/glassfish-resources_1_5.dtd">
+<resources>
+    <jdbc-connection-pool name="[m.getPoolName()/]" allow-non-component-callers="false" associate-with-thread="false" connection-creation-retry-attempts="0" connection-creation-retry-interval-in-seconds="10" connection-leak-reclaim="false" connection-leak-timeout-in-seconds="0" connection-validation-method="auto-commit" datasource-classname="org.apache.derby.jdbc.ClientDataSource" fail-all-connections="false" idle-timeout-in-seconds="300" is-connection-validation-required="false" is-isolation-level-guaranteed="true" lazy-connection-association="false" lazy-connection-enlistment="false" match-connections="false" max-connection-usage-count="0" max-pool-size="32" max-wait-time-in-millis="60000" non-transactional-connections="false" pool-resize-quantity="2" res-type="javax.sql.DataSource" statement-timeout-in-seconds="-1" steady-pool-size="8" validate-atmost-once-period-in-seconds="0" wrap-jdbc-objects="false">
+        <property name="serverName" value="localhost"/>
+        <property name="portNumber" value="1527"/>
+        <property name="databaseName" value="[m.name/]"/>
+        <property name="User" value="APP"/>
+        <property name="Password" value="APP"/>
+        <property name="driverClass" value="org.apache.derby.jdbc.ClientDriver"/>
+        <property name="createDatabase" value="create"/>
+    </jdbc-connection-pool>
+    <jdbc-resource enabled="true" jndi-name="[m.getJNDIName()/]" object-type="user" pool-name="[m.getPoolName()/]"/>
+</resources>
+[/file]
+[/template]
+
+[template protected genTestServicePersistence(m : Model, path : String)]
+[file (path.concat('persistence.xml'), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="2.0" xmlns="http://java.sun.com/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
+    <persistence-unit name="[m.getPUName()/]" transaction-type="JTA">
+        <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+        [for (cl : Class | m.getClasses())]
+        <class>[m.baseGroup()/].entities.[cl.name/]Entity</class>
+        [/for]
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+        <shared-cache-mode>NONE</shared-cache-mode>
+        <properties>
+            <property name="eclipselink.ddl-generation" value="drop-and-create-tables"/>
+            <property name="eclipselink.target-database" value="Derby"/>
+            <property name="javax.persistence.jdbc.driver" value="org.apache.derby.jdbc.ClientDriver"/>
+            <property name="javax.persistence.jdbc.url" value="jdbc:derby://localhost:1527/jdbc[m.name/]Test"/>
+            <property name="javax.persistence.jdbc.user" value="APP"/>
+            <property name="javax.persistence.jdbc.password" value="APP"/>
+            <property name="eclipselink.logging.level" value="FINE"/>
+            <property name="eclipselink.logging.parameters" value="true"/>
+        </properties>
+    </persistence-unit>
+</persistence>
+[/file]
+[/template]

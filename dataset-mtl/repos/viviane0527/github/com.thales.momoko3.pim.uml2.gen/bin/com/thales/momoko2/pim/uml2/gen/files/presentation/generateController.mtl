@@ -1,0 +1,351 @@
+[comment encoding = UTF-8 /]
+[module generateController('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::name::fileNameQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::imports::classImports /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationClassQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::attributes::getterSetterAttributes /]
+[import com::thales::momoko2::pim::uml2::gen::request::name::getterSetterNameQueries/]
+
+[**
+ * This template generates the controller for a class.
+ * @param aClass
+ */]
+[template public generateController(aClass : Class) 
+? ((isFeatureClass(aClass) or isObjectClass(aClass)) and isAbstract._not())]
+[file (getPresentationFileName(aClass), false, 'UTF-8')]
+package [aClass.getModel().name.toLowerFirst()/].presentation;
+
+[generateModelElementImport(aClass)/]
+import [aClass.getModel().name.toLowerFirst()/].presentation.util.JsfUtil;
+import [aClass.getModel().name.toLowerFirst()/].presentation.util.PaginationHelper;
+import [aClass.getModel().name.toLowerFirst()/].persistence.[aClass.name/]Facade;
+import [aClass.getModel().name.toLowerFirst()/].annotations.FeatureType;
+import [aClass.getModel().name.toLowerFirst()/].annotations.Facade;
+[generateAllAssociatedObjectImport(aClass)/]
+[if isFeatureClass(aClass)]
+import [aClass.getModel().name.toLowerCase()/].presentation.util.lazymodels.Lazy[aClass.name/]DataModel;
+[/if]
+import data.presentation.util.JsfUtil;
+import data.presentation.util.JsfUtil.PersistAction;
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.annotation.PostConstruct;
+import javax.ejb.EJBException;
+import javax.enterprise.context.SessionScoped;
+import javax.faces.component.UIComponent;
+import javax.faces.context.FacesContext;
+import javax.faces.convert.Converter;
+import javax.faces.convert.FacesConverter;
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.interceptor.Interceptors;
+import org.primefaces.event.FlowEvent;
+import org.primefaces.model.LazyDataModel;
+import org.primefaces.model.SortOrder;
+import [aClass.getModel().name.toLowerFirst()/].persistence.logs.LogBusinessMethodInterceptor;
+import [aClass.getModel().name.toLowerFirst()/].persistence.logs.LogLifeCycleMethodInterceptor;
+
+
+@Named("[aClass.name.toLowerFirst()/]Controller")
+@SessionScoped
+//@Interceptors({
+//	LogLifeCycleMethodInterceptor.class,
+//	LogBusinessMethodInterceptor.class }
+//)
+public class [aClass.name/]Controller implements Serializable {
+
+    private [aClass.name/] selected;
+	[if isFeatureClass(aClass)]
+    //@Inject
+	private LazyDataModel<[aClass.name/]>  model;
+	@Inject @Facade(FeatureType.[aClass.name/])
+	[/if]
+    private [aClass.name/]Facade [aClass.name.toLowerFirst()/]Facade;
+    //private long selectedItemIndex;
+	private List<[aClass.name/]> items = null;
+    private boolean skip;
+    private static Logger logger = Logger.getLogger([aClass.name/]Controller.class.getName());
+
+	[generateAllAssociatedObjectDeclaration(aClass)/]
+	
+    public [aClass.name/]Controller() {
+    }
+
+	[if isFeatureClass(aClass)]
+	@PostConstruct
+    public void init () {
+		model = new LazyDataModel<[aClass.name/]>() {
+
+        	@Override
+	        public List<[aClass.name/]> load(int first, int pageSize, String sortField, SortOrder sortOrder, Map<String, String> filters) {
+	            model.setRowCount([aClass.name.toLowerFirst()/]Facade.count(filters));
+   	        	return [aClass.name.toLowerFirst()/]Facade.getResultList(first, pageSize, sortField, sortOrder, filters);
+   	     	}
+
+        	@Override
+        	public [aClass.name/] getRowData(String rowKey){   
+            	for ([aClass.name/] [aClass.name.toLowerFirst()/] : model) {
+                	if ([aClass.name.toLowerFirst()/].getId().equals(rowKey)) {
+                    	return [aClass.name.toLowerFirst()/];
+                	}
+            	}
+            	return null;
+        	}
+
+        	@Override
+        	public Object getRowKey([aClass.name/] [aClass.name.toLowerFirst()/]) {
+            	return [aClass.name.toLowerFirst()/].getId();
+        	}
+    	};
+        model.setRowCount([aClass.name.toLowerFirst()/]Facade.count(new HashMap<String, String>()));
+    }
+
+	[/if]
+	public [aClass.name/] getSelected() {
+		return selected;
+    }
+
+	public void setSelected([aClass.name/] selected) {
+        this.selected = selected;
+    }
+
+    [if isFeatureClass(aClass)]
+    public LazyDataModel<[aClass.name/]> getModel() { 
+        return model;
+    }
+
+	public void setModel(LazyDataModel<[aClass.name/]> model) {
+        this.model = model;
+    }
+
+    [/if]
+    private [aClass.name/]Facade getFacade() {
+        return [aClass.name.toLowerFirst()/]Facade;
+    }
+
+	public boolean isSkip() {
+        return skip;
+    }
+
+    public void setSkip(boolean skip) {
+        this.skip = skip;
+    }
+
+    public String onFlowProcess(FlowEvent event) {
+        logger.log(Level.INFO, "Current wizard step:{0}", event.getOldStep());
+        logger.log(Level.INFO, "Next step:{0}", event.getNewStep());
+
+        if (skip) {
+            skip = false;   //reset in case user goes back  
+            return "confirm";
+        } else {
+            return event.getNewStep();
+        }
+    }
+
+    protected void setEmbeddableKeys() {
+    }
+
+    protected void initializeEmbeddableKey() {
+    }
+
+    public [aClass.name/] prepareCreate() {
+        selected = new [aClass.name/]();
+        initializeEmbeddableKey();
+        return selected;
+    }
+
+	public String prepareList() {
+        return "List";
+    }
+
+    public void create() {
+        persist(PersistAction.CREATE, ResourceBundle.getBundle("/Bundle").getString("[aClass.name/]Created"));
+        if (!JsfUtil.isValidationFailed()) {
+            items = null;    // Invalidate list of items to trigger re-query.
+        }
+    }
+
+
+    public void update() {
+        persist(PersistAction.UPDATE, ResourceBundle.getBundle("/Bundle").getString("[aClass.name/]Updated"));
+    }
+
+    public void destroy() {
+        persist(PersistAction.DELETE, ResourceBundle.getBundle("/Bundle").getString("[aClass.name/]Deleted"));
+        if (!JsfUtil.isValidationFailed()) {
+            selected = null; // Remove selection
+            items = null;    // Invalidate list of items to trigger re-query.
+        }
+    }
+
+	public List<[aClass.name/]> getItems() {
+        if (items == null) {
+            items = getFacade().findAll();
+        }
+        return items;
+    }
+
+    private void persist(PersistAction persistAction, String successMessage) {
+        if (selected != null) {
+            setEmbeddableKeys();
+            try {
+                if (persistAction != PersistAction.DELETE) {
+                    getFacade().edit(selected);
+                } else {
+                    getFacade().remove(selected);
+                }
+                JsfUtil.addSuccessMessage(successMessage);
+            } catch (EJBException ex) {
+                String msg = "";
+                Throwable cause = ex.getCause();
+                if (cause != null) {
+                    msg = cause.getLocalizedMessage();
+                }
+                if (msg.length() > 0) {
+                    JsfUtil.addErrorMessage(msg);
+                } else {
+                    JsfUtil.addErrorMessage(ex, ResourceBundle.getBundle("/Bundle").getString("PersistenceErrorOccured"));
+                }
+            } catch (Exception ex) {
+                Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, null, ex);
+                JsfUtil.addErrorMessage(ex, ResourceBundle.getBundle("/Bundle").getString("PersistenceErrorOccured"));
+            }
+        }
+    }
+	
+	public [aClass.name/] get[aClass.name/](java.lang.Long id) {
+        return getFacade().find(id);
+    }
+
+    public List<[aClass.name/]> getItemsAvailableSelectMany() {
+        return getFacade().findAll();
+    }
+
+    public List<[aClass.name/]> getItemsAvailableSelectOne() {
+        return getFacade().findAll();
+    }
+
+    @FacesConverter(forClass = [aClass.name/].class)
+    public static class [aClass.name/]ControllerConverter implements Converter {
+
+        @Override
+        public Object getAsObject(FacesContext facesContext, UIComponent component, String value) {
+            if (value == null || value.length() == 0) {
+                return null;
+            }
+            [aClass.name/]Controller controller = ([aClass.name/]Controller) facesContext.getApplication().getELResolver().
+                    getValue(facesContext.getELContext(), null, "[aClass.name.toLowerFirst()/]Controller");
+            return controller.get[aClass.name/](getKey(value));
+        }
+
+        java.lang.Long getKey(String value) {
+            java.lang.Long key;
+            key = Long.valueOf(value);
+            return key;
+        }
+
+        String getStringKey(java.lang.Long value) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(value);
+            return sb.toString();
+        }
+
+        @Override
+        public String getAsString(FacesContext facesContext, UIComponent component, Object object) {
+            if (object == null) {
+                return null;
+            }
+            if (object instanceof [aClass.name/]) {
+                [aClass.name/] o = ([aClass.name/]) object;
+                return getStringKey(o.getId());
+            } else {
+                Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "object {0} is of type {1}; expected type: {2}", new Object['[]'/]{object, object.getClass().getName(), [aClass.name/].class.getName()});
+                return null;
+            }
+        }
+
+    }
+	
+	public List<[aClass.name/]> getAll() {
+		return [aClass.name.toLowerFirst()/]Facade.findAll();
+	}
+
+
+	[generateAllAddRemoveOperations(aClass, 'selected')/]
+	[generateAllAssociatedObjectGetterSetter(aClass)/]
+}
+[/file]
+[/template]
+
+[template public generateAllAssociatedObjectDeclaration(aClass : Class)]
+[generateAssociatedObjectDeclaration(aClass)/]
+[for (aProperty : Property | aClass.getOneAssociationObjectProperties())]
+[generateAllAssociatedObjectDeclaration(getDestinationClass(aProperty, aProperty.getAssociation()))/]
+[/for]
+[/template]
+
+[template private generateAssociatedObjectDeclaration (aClass : Class)]
+[for (aProperty : Property | aClass.getManyAssociationObjectProperties())]
+@Inject
+private [getDestinationClass(aProperty, aProperty.association).name/]Controller [getDestinationClass(aProperty, aProperty.association).name.toLowerFirst()/] ;
+[/for]
+[/template]
+
+[template public generateAllAssociatedObjectGetterSetter(aClass : Class)]
+[generateAssociatedObjectGetterSetter(aClass)/]
+[for (aProperty : Property | aClass.getOneAssociationObjectProperties())]
+[generateAllAssociatedObjectGetterSetter(getDestinationClass(aProperty, aProperty.getAssociation()))/]
+[/for]
+[/template]
+
+[template private generateAssociatedObjectGetterSetter (aClass : Class)]
+[for (aProperty : Property | aClass.getManyAssociationObjectProperties())]
+[generateGetterSetterOperation(getDestinationClass(aProperty, aProperty.association).name.toLowerFirst(), getDestinationClass(aProperty, aProperty.association).name.concat('Controller'))/] ;
+[/for]
+[/template]
+
+[template private generateAllAddRemoveOperations (aClass : Class, anInputValue :String)]
+[generateAddRemoveOperations(aClass, anInputValue)/]
+[for (aProperty : Property | aClass.getOneAssociationObjectProperties())]
+[generateAllAddRemoveOperations(getDestinationClass(aProperty, aProperty.getAssociation()), anInputValue.concat('.').concat(getGetterName(aProperty.name)).concat('()'))/]
+[/for]
+[/template]
+
+[template private generateAddRemoveOperations(aClass : Class, anInputValue : String)]
+[for (aProperty : Property | aClass.getManyAssociationObjectProperties())]
+public void add[aProperty.name.toUpperFirst()/] (){
+	Boolean success = [anInputValue/].add[aProperty.name.toUpperFirst()/]([getDestinationClass(aProperty, aProperty.association).name.toLowerFirst()/].getSelected());
+	if (success) JsfUtil.addSuccessMessage(ResourceBundle.getBundle("/Bundle").getString("[getDestinationClass(aProperty, aProperty.association).name/]Created"));
+	else JsfUtil.addErrorMessage(ResourceBundle.getBundle("/Bundle").getString("PersistenceErrorOccured"));
+	[getDestinationClass(aProperty, aProperty.association).name.toLowerFirst()/].prepareCreate();
+	RequestContext.getCurrentInstance().addCallbackParam("ok", success);
+}  
+
+public void remove[aProperty.name.toUpperFirst()/] ([getDestinationClass(aProperty, aProperty.association).name/] item){
+	Boolean success = [anInputValue/].remove[aProperty.name.toUpperFirst()/](item);
+	if (success) JsfUtil.addSuccessMessage(ResourceBundle.getBundle("/Bundle").getString("[getDestinationClass(aProperty, aProperty.association).name/]Deleted"));
+	else JsfUtil.addErrorMessage(ResourceBundle.getBundle("/Bundle").getString("PersistenceErrorOccured"));
+}  
+[/for]
+[/template]
+
+[template private generateAllAssociatedObjectImport(aClass : Class)]
+[generateAssociatedObjectImport(aClass)/]
+[for (aProperty : Property | aClass.getOneAssociationObjectProperties())]
+[generateAllAssociatedObjectImport(getDestinationClass(aProperty, aProperty.getAssociation()))/]
+[/for]
+[/template]
+
+[template private generateAssociatedObjectImport(aClass : Class)]
+[for (aProperty : Property | getManyAssociationObjectProperties(aClass))]
+[generateModelElementImport(getDestinationClass(aProperty, aProperty.association))/]
+[/for]
+[/template]

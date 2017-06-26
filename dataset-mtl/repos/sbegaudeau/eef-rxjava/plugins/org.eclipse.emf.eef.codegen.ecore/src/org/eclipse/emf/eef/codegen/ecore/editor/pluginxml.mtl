@@ -1,0 +1,264 @@
+[comment encoding = UTF-8
+/**
+ * <copyright>
+ *
+ * Copyright (c) 2002-2011 IBM Corporation and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *   IBM - Initial API and implementation
+ *   Obeo - Migrate to Acceleo
+ *
+ * </copyright>
+ */
+/]
+[module pluginxml('http://www.eclipse.org/emf/2002/GenModel')/]
+
+[import org::eclipse::emf::eef::codegen::ecore::services::common /]
+[import org::eclipse::emf::eef::codegen::ecore::services::header /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenModel /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenPackage/]
+
+[template public pluginxml(genModel : GenModel)]
+[file (pluginxmlPath(), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+
+[includeHeaderXml()/]
+
+[if (genModel.bundleManifest)]
+<plugin>
+[else]
+<plugin
+      name="%pluginName"
+      id="[genModel.editorPluginID/]"
+      version="1.0.0"
+      provider-name="%providerName"
+      class="[genModel.getQualifiedEditorPluginClassName()/]$Implementation">
+
+   <requires>
+  [for (pluginID : String | genModel.getEditorRequiredPlugins())]
+      <import plugin="[pluginID/]"[if (not pluginID.startsWith('org.eclipse.core.runtime'))] export="true"[/if]/>
+  [/for]
+   </requires>
+
+   <runtime>
+  [if (genModel.runtimeJar)]
+      <library name="[genModel.editorPluginID/].jar">
+  [else]
+      <library name=".">
+  [/if]
+         <export name="*"/>
+      </library>
+   </runtime>
+[/if]
+[if (genModel.sameEditEditorProject())]
+  [for (genPackage : GenPackage | genModel.getAllGenPackagesWithClassifiers())]
+    [if (not genPackage.genClasses->isEmpty())]
+
+   <extension point="org.eclipse.emf.edit.itemProviderAdapterFactories">
+      <factory
+            uri="[genPackage.getNSURI()/]"
+            class="[genPackage.getQualifiedItemProviderAdapterFactoryClassName()/]"
+            supportedTypes=
+[for (supported : String | genPackage.getProviderSupportedTypes()) before ('              "') separator (genModel.getLineDelimiter() + '               ') after ('"/>') ][supported/][/for]
+   </extension>
+    [comment]<%if (genPackage.isChildCreationExtenders()) { Map<GenPackage, Map<GenClass, List<GenClass.ChildCreationData>>> extendedChildCreationData = genPackage.getExtendedChildCreationData();%>
+      <%if (!extendedChildCreationData.isEmpty()) {%>[/comment]
+[if (genPackage.childCreationExtenders)]
+   <extension point="org.eclipse.emf.edit.childCreationExtenders">
+        [for (genPackage.getExtendedChildCreationDataEntrySet())]
+        [let key : GenPackage = getPackageEntryKey()]
+      <extender
+            uri="[key.getNSURI()/]"
+            class="[genPackage.getQualifiedItemProviderAdapterFactoryClassName()/]$[genPackage.getChildCreationExtenderName(key)/]"/>
+        [/let]
+        [/for]
+   </extension>
+[/if]
+    [/if]
+  [/for]
+[/if]
+[if (genModel.sameModelEditorProject())]
+  [for (genPackage : GenPackage | genModel.getAllGenPackagesWithClassifiers())]
+
+   <extension point="org.eclipse.emf.ecore.generated_package">
+      <package
+            uri="[genPackage.getNSURI()/]"
+    [if (genModel.hasLocalGenModel())]
+            class="[genPackage.getQualifiedPackageInterfaceName()/]"
+            genModel="[genModel.getRelativeGenModelLocation()/]"/>
+    [else]
+            class="[genPackage.getQualifiedPackageInterfaceName()/]"/>
+    [/if]
+   </extension>
+    [if (genPackage.isContentType())]
+
+   <extension point="org.eclipse.emf.ecore.content_parser">
+      <parser
+            contentTypeIdentifier="[genPackage.contentTypeIdentifier/]"
+            class="[genPackage.getQualifiedEffectiveResourceFactoryClassName()/]"/>
+   </extension>
+
+   <extension point="org.eclipse.core.contenttype.contentTypes">
+      <content-type
+            base-type="[if genPackage.isXMIResource()]org.eclipse.emf.ecore.xmi[else]org.eclipse.core.runtime.xml[/if]"
+            file-extensions="[genPackage.fileExtensions/]"
+            id="[genPackage.contentTypeIdentifier/]"
+            name="%_UI_[genPackage.prefix/]_content_type"
+            priority="normal">
+         <describer class="org.eclipse.emf.ecore.xmi.impl.RootXMLContentHandlerImpl$Describer">
+      [if (genPackage.hasTargetNamespace())]
+            <parameter name="namespace" value="[genPackage.getNSURI()/]"/>
+      [/if]
+      [if (genPackage.isXMIResource())]
+            <parameter name="kind" value="xmi"/>
+      [/if]
+         </describer>
+      </content-type>
+   </extension>
+    [elseif (genPackage.getResource() <> GenResourceKind::None)]
+
+   <extension point="org.eclipse.emf.ecore.extension_parser">
+      <parser
+            type="[genPackage.getFileExtension()/]"
+            class="[genPackage.getQualifiedResourceFactoryClassName()/]"/>
+   </extension>
+    [/if]
+  [/for]
+[/if]
+[if (genModel.richClientPlatform)]
+
+   <extension
+         point="org.eclipse.core.runtime.applications"
+         id="[genModel.getEditorAdvisorClassName()/]Application">
+      <application>
+         <run class="[genModel.getQualifiedEditorAdvisorClassName()/]$Application"/>
+      </application>
+   </extension>
+
+   <extension point="org.eclipse.ui.perspectives">
+      <perspective
+            name="%_UI_Perspective_label"
+            class="[genModel.getQualifiedEditorAdvisorClassName()/]$Perspective"
+            id="[genModel.getQualifiedEditorAdvisorClassName()/]Perspective">
+      </perspective>
+   </extension>
+
+   <extension point="org.eclipse.ui.commands">
+      <command
+            name="%_UI_Menu_OpenURI_label"
+            description="%_UI_Menu_OpenURI_description"
+            categoryId="org.eclipse.ui.category.file"
+            id="[genModel.getQualifiedEditorAdvisorClassName()/]OpenURICommand"/>
+  [if (not genModel.richAjaxPlatform)]
+      <command
+            name="%_UI_Menu_Open_label"
+            description="%_UI_Menu_Open_description"
+            categoryId="org.eclipse.ui.category.file"
+            id="[genModel.getQualifiedEditorAdvisorClassName()/]OpenCommand"/>
+  [/if]
+   </extension>
+
+[if (not genModel.richAjaxPlatform)]
+   <extension point="org.eclipse.ui.bindings">
+      <key
+            commandId="[genModel.getQualifiedEditorAdvisorClassName()/]OpenURICommand"
+            sequence="M1+U"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
+      <key
+            commandId="[genModel.getQualifiedEditorAdvisorClassName()/]OpenCommand"
+            sequence="M1+O"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"/>
+   </extension>
+[/if]
+
+   <extension point="org.eclipse.ui.actionSets">
+      <actionSet
+            label="%_UI_[genModel.getEditorAdvisorClassName()/]_ActionSet_label"
+            visible="true"
+            id="[genModel.getEditorAdvisorClassName()/]ActionSet">
+         <action
+               label="%_UI_Menu_About_label"
+               class="[genModel.getQualifiedEditorAdvisorClassName()/]$AboutAction"
+               menubarPath="help/additions"
+               id="[genModel.getQualifiedEditorAdvisorClassName()/]AboutAction"/>
+         <action
+               label="%_UI_Menu_OpenURI_label"
+               definitionId="[genModel.getQualifiedEditorAdvisorClassName()/]OpenURICommand"
+               class="[genModel.getQualifiedEditorAdvisorClassName()/]$OpenURIAction"
+               menubarPath="file/additions"
+               id="[genModel.getQualifiedEditorAdvisorClassName()/]OpenURIAction"/>
+  [if (not genModel.richAjaxPlatform)]
+         <action
+               label="%_UI_Menu_Open_label"
+               definitionId="[genModel.getQualifiedEditorAdvisorClassName()/]OpenCommand"
+               class="[genModel.getQualifiedEditorAdvisorClassName()/]$OpenAction"
+               menubarPath="file/additions"
+               id="[genModel.getQualifiedEditorAdvisorClassName()/]OpenAction"/>
+  [/if]
+      </actionSet>
+   </extension>
+[/if]
+[for (genPackage : GenPackage | genModel.getAllGenPackagesWithClassifiers())]
+  [if (genPackage.hasConcreteClasses())]
+    [if (genPackage.generateModelWizard)]
+      [if (genModel.richClientPlatform)]
+
+   <extension point="org.eclipse.ui.actionSets">
+      <actionSet
+            label="%_UI_[genPackage.getModelWizardClassName()/]_ActionSet_label"
+            visible="true"
+            id="[genPackage.getQualifiedActionBarContributorClassName()/]ActionSet">
+         <action
+               label="%_UI_[genPackage.getModelWizardClassName()/]_label"
+               class="[genPackage.getQualifiedActionBarContributorClassName()/]$NewAction"
+               menubarPath="file/new/additions"
+               id="[genPackage.getQualifiedActionBarContributorClassName()/]NewAction"/>
+      </actionSet>
+   </extension>
+      [else]
+
+   <extension point="org.eclipse.ui.newWizards">
+      <category
+            id="org.eclipse.emf.ecore.Wizard.category.ID"
+            name="%_UI_Wizard_category"/>
+      <wizard
+            id="[genPackage.getQualifiedModelWizardClassName()/]ID"
+            name="%_UI_[genPackage.getModelWizardClassName()/]_label"
+            class="[genPackage.getQualifiedModelWizardClassName()/]"
+            category="org.eclipse.emf.ecore.Wizard.category.ID"
+            icon="icons/full/obj16/[genPackage.prefix/]ModelFile.gif">
+         <description>%_UI_[genPackage.getModelWizardClassName()/]_description</description>
+         <selection class="org.eclipse.core.resources.IResource"/>
+      </wizard>
+   </extension>
+      [/if]
+    [/if]
+
+   <extension point="org.eclipse.ui.editors">
+      <editor
+            id="[genPackage.getQualifiedEditorClassName()/]ID"
+            name="%_UI_[genPackage.getEditorClassName()/]_label"
+            icon="icons/full/obj16/[genPackage.prefix/]ModelFile.gif"
+    [if (not genPackage.isContentType())]
+            extensions="[genPackage.getFileExtension()/]"
+    [/if]
+            class="[genPackage.getQualifiedEditorClassName()/]"
+            contributorClass="[genPackage.getQualifiedActionBarContributorClassName()/]">
+    [if (genPackage.isContentType())]
+         <contentTypeBinding contentTypeId="[genPackage.getQualifiedContentTypeIdentifier()/]"/>
+    [/if]
+      </editor>
+   </extension>
+  [/if]
+[/for]
+
+</plugin>
+[/file]
+[/template]
+
+[query public pluginxmlPath (genModel : GenModel) : String = 'plugin.xml' /]

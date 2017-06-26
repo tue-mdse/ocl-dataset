@@ -1,0 +1,392 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module docs.
+ */]
+[module docs('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import ::utils /]
+
+[**
+ * The documentation of the template mainDocs.
+ * @param aModel
+ */]
+[template public mainDocs(m : Model)]
+[m.genReadMe()/]
+[m.genLicense()/]
+[/template]
+
+[template protected genLicense(m : Model)]
+[file ('LICENSE', false, 'UTF-8')]
+[m.license()/]
+[/file]
+[/template]
+
+[template protected genReadMe(m : Model)]
+[file ('README.md', false, 'UTF-8')]
+# Tabla de contenidos
+-  ['['/]Introducción[']'/](#introducción)
+-  ['['/]API[']'/](#api-de-la-aplicación-[m.name.toLowerCase()/])
+[for (c : Class | m.getClasses())]
+[if (not c.isChild())]
+  - ['['/]Recurso [c.name+']'/](#recurso-[c.name.toLowerCase()/])
+    - ['['/]GET /[c.getURI()/][']'/](#GET-/[c.getURI()/])
+    - ['['/]GET /[c.getURI()/]/{id}[']'/](#GET-/[c.getURI()/]/{id})
+    - ['['/]POST /[c.getURI()/][']'/](#POST-/[c.getURI()/])
+    - ['['/]PUT /[c.getURI()/]/{id}[']'/](#PUT-/[c.getURI()/]/{id})
+    - ['['/]DELETE /[c.getURI()/]/{id}[']'/](#DELETE-/[c.getURI()/]/{id})
+[for (elem : Property | c.getNonCompositeCollectionAttributes())]
+    - ['['/]GET [c.getURI()/]/{[c.getURI()/]id}/[elem.name/][']'/](#GET-[c.getURI()/]/{[c.getURI()/]id}/[elem.name/])
+    - ['['/]GET [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}[']'/](#GET-[c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id})
+    - ['['/]POST [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}[']'/](#POST-[c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id})
+    - ['['/]PUT [c.getURI()/]/{[c.getURI()/]id}/[elem.name/][']'/](#PUT-[c.getURI()/]/{[c.getURI()/]id}/[elem.name/])
+    - ['['/]DELETE [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}[']'/](#DELETE-[c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}[']'/])
+[/for]
+[for (elem : Property | c.getCompositeCollectionAttributes())]
+    - ['['/]GET [c.getURI()/]/{[c.getURI()/]id}/[elem.name/][']'/](#GET-[c.getURI()/]/{[c.getURI()/]id}/[elem.name/])
+    - ['['/]GET [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}[']'/](#GET-[c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id})
+    - ['['/]POST [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}[']'/](#POST-[c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id})
+    - ['['/]PUT [c.getURI()/]/{[c.getURI()/]id}/[elem.name/][']'/](#PUT-[c.getURI()/]/{[c.getURI()/]id}/[elem.name/])
+    - ['['/]DELETE [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}[']'/](#DELETE-[c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}[']'/])
+[/for]
+[/if]
+[/for]
+
+# API Rest
+## Introducción
+La comunicación entre cliente y servidor se realiza intercambiando objetos JSON. Para cada entidad se hace un mapeo a JSON, donde cada uno de sus atributos se transforma en una propiedad de un objeto JSON. Todos los servicios se generan en la URL /[m.getApiProjectName()/]/api/. Por defecto, todas las entidades tienen un atributo `id`, con el cual se identifica cada registro:
+
+```javascript
+{
+    id: '',
+    attribute_1: '',
+    attribute_2: '',
+    ...
+    attribute_n: ''
+}
+```
+
+Cuando se transmite información sobre un registro específico, se realiza enviando un objeto con la estructura mencionada en la sección anterior.
+La única excepción se presenta al solicitar al servidor una lista de los registros en la base de datos, que incluye información adicional para manejar paginación de lado del servidor en el header `X-Total-Count` y los registros se envían en el cuerpo del mensaje como un arreglo.
+
+La respuesta del servidor al solicitar una colección presenta el siguiente formato:
+
+```javascript
+['['/]{}, {}, {}, {}, {}, {}[']'/]
+```
+
+## API de la aplicación [m.name/]
+[for(c : Class | m.getClasses()) ]
+[if (not c.isChild())]
+### Recurso [c.name/]
+El objeto [c.name/] tiene 2 representaciones JSON:	
+
+#### Representación Minimum
+```javascript
+{
+    [for(a : Property | c.allAttributes()) separator(',\n')]
+    [ a.name /]: '' /*Tipo [ a.type.name /]*/[/for]
+
+}
+```
+
+[if (c.hasReferences(false))]
+#### Representación Detail
+```javascript
+{
+    // todo lo de la representación Minimum más los objetos Minimum con relación simple.
+    [for(a : Property | c.getReferences(false)) separator(',\n')]
+    [ a.name /]: {
+    [for(a2 : Property | a.getClass().allAttributes()) separator(',\n')]
+    [ a2.name /]: '' /*Tipo [ a2.type.name /]*/[/for]
+    }[/for]
+
+}
+```
+[/if]
+
+
+
+#### GET /[c.getURI()/]
+
+Retorna una colección de objetos [c.name/] en representación Detail.
+[if (c.hasReferences(false))] 
+Cada [c.name/] en la colección tiene embebidos los siguientes objetos: [for(a : Property | c.getReferences(false)) separator(', ')][ a.getClass().name /][/for].
+[/if]
+
+#### Parámetros
+
+#### N/A
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+200|OK|Colección de ['['/]representaciones Detail[']'/](#recurso-[c.name.toLowerCase()/])
+409|Un objeto relacionado no existe|Mensaje de error
+500|Error interno|Mensaje de error
+
+#### GET /[c.getURI()/]/{id}
+
+Retorna una colección de objetos [c.name/] en representación Detail.
+[if (c.hasReferences(false))] 
+Cada [c.name/] en la colección tiene los siguientes objetos: [for(a : Property | c.getReferences(false)) separator(', ')][ a.getClass().name /][/for].
+[/if]
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+id|Path|ID del objeto [c.name/] a consultar|Sí|Integer
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+200|OK|Objeto [c.name/] en ['['/]representaciones Detail[']'/](#recurso-[c.name.toLowerCase()/])
+404|No existe un objeto [c.name/] con el ID solicitado|Mensaje de error
+500|Error interno|Mensaje de error
+
+#### POST /[c.getURI()/]
+
+Es el encargado de crear objetos [c.name/].
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+body|body|Objeto [c.name/] que será creado|Sí|['['/]Representación Detail[']'/](#recurso-[c.name.toLowerCase()/])
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+201|El objeto [c.name/] ha sido creado|['['/]Representación Detail[']'/](#recurso-[c.name.toLowerCase()/])
+409|Un objeto relacionado no existe|Mensaje de error
+500|No se pudo crear el objeto [c.name/]|Mensaje de error
+
+#### PUT /[c.getURI()/]/{id}
+
+Es el encargado de actualizar objetos [c.name/].
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+id|Path|ID del objeto [c.name/] a actualizar|Sí|Integer
+body|body|Objeto [c.name/] nuevo|Sí|['['/]Representación Detail[']'/](#recurso-[c.name.toLowerCase()/])
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+201|El objeto [c.name/] actualizado|['['/]Representación Detail[']'/](#recurso-[c.name.toLowerCase()/])
+409|Un objeto relacionado no existe|Mensaje de error
+500|No se pudo actualizar el objeto [c.name/]|Mensaje de error
+
+#### DELETE /[c.getURI()/]/{id}
+
+Elimina un objeto [c.name/].
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+id|Path|ID del objeto [c.name/] a eliminar|Sí|Integer
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+204|Objeto eliminado|N/A
+500|Error interno|Mensaje de error
+
+[for (elem : Property | c.getNonCompositeCollectionAttributes())]
+#### GET [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]
+
+Retorna una colección de objetos [ elem.getClass().name /] asociados a un objeto [c.name/] en representación Detail.
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+id|Path|ID del objeto [c.name/] a consultar|Sí|Integer
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+200|OK|Colección de objetos [ elem.getClass().name /] en ['['/]representación Detail[']'/](#recurso-[elem.getClass().name.toLowerCase()/])
+500|Error consultando [ elem.name /] |Mensaje de error
+
+#### GET [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}
+
+Retorna un objeto [ elem.getClass().name /] asociados a un objeto [c.name/] en representación Detail.
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+[c.getURI()/]id|Path|ID del objeto [c.name/] a consultar|Sí|Integer
+[elem.name/]id|Path|ID del objeto [ elem.getClass().name /] a consultar|Sí|Integer
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+200|OK|Objeto [ elem.getClass().name /] en ['['/]representación Detail[']'/](#recurso-[elem.getClass().name.toLowerCase()/])
+404|No existe un objeto [ elem.getClass().name /] con el ID solicitado asociado al objeto [c.name/] indicado |Mensaje de error
+500|Error interno|Mensaje de error
+
+#### POST [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}
+
+Asocia un objeto [ elem.getClass().name /] a un objeto [c.name/].
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+[c.getURI()/]id|PathParam|ID del objeto [c.name/] al cual se asociará el objeto [ elem.getClass().name /]|Sí|Integer
+[elem.name/]id|PathParam|ID del objeto [ elem.getClass().name /] a asociar|Sí|Integer
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+200|Objeto [ elem.getClass().name /] asociado|['['/]Representación Detail de [ elem.getClass().name /][']'/](#recurso-[elem.getClass().name.toLowerCase()/])
+500|No se pudo asociar el objeto [ elem.getClass().name /]|Mensaje de error
+
+#### PUT [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]
+
+Es el encargado de remplazar la colección de objetos [ elem.getClass().name /] asociada a un objeto [c.name/].
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+[c.getURI()/]id|Path|ID del objeto [c.name/] cuya colección será remplazada|Sí|Integer
+body|body|Colección de objetos [ elem.getClass().name /]|Sí|['['/]Representación Detail[']'/](#recurso-[elem.getClass().name.toLowerCase()/])
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+200|Se remplazó la colección|Colección de objetos [ elem.getClass().name /] en ['['/]Representación Detail[']'/](#recurso-[elem.getClass().name.toLowerCase()/])
+500|No se pudo remplazar la colección|Mensaje de error
+
+#### DELETE [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}
+
+Remueve un objeto [ elem.getClass().name /] de la colección en un objeto [c.name/].
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+[c.getURI()/]id|Path|ID del objeto [c.name/] asociado al objeto [ elem.getClass().name /]|Sí|Integer
+[elem.name/]id|Path|ID del objeto [ elem.getClass().name /] a remover|Sí|Integer
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+204|Objeto removido|N/A
+500|Error interno|Mensaje de error
+
+[/for]
+
+[for (elem : Property | c.getCompositeCollectionAttributes())]
+#### GET [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]
+
+Retorna una colección de objetos [ elem.getClass().name /] asociados a un objeto [c.name/] en representación Detail.
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+id|Path|ID del objeto [c.name/] a consultar|Sí|Integer
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+200|OK|Colección de objetos [ elem.getClass().name /] en ['['/]representación Detail[']'/](#recurso-[elem.getClass().name.toLowerCase()/])
+500|Error consultando [ elem.name /] |Mensaje de error
+
+#### GET [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}
+
+Retorna un objeto [ elem.getClass().name /] asociados a un objeto [c.name/] en representación Detail.
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+[c.getURI()/]id|Path|ID del objeto [c.name/] a consultar|Sí|Integer
+[elem.name/]id|Path|ID del objeto [ elem.getClass().name /] a consultar|Sí|Integer
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+200|OK|Objeto [ elem.getClass().name /] en ['['/]representación Detail[']'/](#recurso-[elem.getClass().name.toLowerCase()/])
+404|No existe un objeto [ elem.getClass().name /] con el ID solicitado asociado al objeto [c.name/] indicado |Mensaje de error
+500|Error interno|Mensaje de error
+
+#### POST [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}
+
+Asocia un objeto [ elem.getClass().name /] a un objeto [c.name/].
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+[c.getURI()/]id|PathParam|ID del objeto [c.name/] al cual se asociará el objeto [ elem.getClass().name /]|Sí|Integer
+[elem.name/]id|PathParam|ID del objeto [ elem.getClass().name /] a asociar|Sí|Integer
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+200|Objeto [ elem.getClass().name /] asociado|['['/]Representación Detail de [ elem.getClass().name /][']'/](#recurso-[elem.getClass().name.toLowerCase()/])
+500|No se pudo asociar el objeto [ elem.getClass().name /]|Mensaje de error
+
+#### PUT [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]
+
+Es el encargado de actualizar un objeto [ elem.getClass().name /] asociada a un objeto [c.name/].
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+[c.getURI()/]id|Path|ID del objeto [c.name/] cuya colección será remplazada|Sí|Integer
+body|body|Colección de objetos [ elem.getClass().name /]|Sí|['['/]Representación Detail[']'/](#recurso-[elem.getClass().name.toLowerCase()/])
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+200|Se actualizo el objeto|Objeto [ elem.getClass().name /] en ['['/]Representación Detail[']'/](#recurso-[elem.getClass().name.toLowerCase()/])
+500|No se pudo actualizar|Mensaje de error
+
+#### DELETE [c.getURI()/]/{[c.getURI()/]id}/[elem.name/]/{[elem.name/]id}
+
+Remueve un objeto [ elem.getClass().name /] asociado a un objeto [c.name/].
+
+#### Parámetros
+
+Nombre|Ubicación|Descripción|Requerido|Esquema
+:--|:--|:--|:--|:--
+[c.getURI()/]id|Path|ID del objeto [c.name/] asociado al objeto [ elem.getClass().name /]|Sí|Integer
+[elem.name/]id|Path|ID del objeto [ elem.getClass().name /] a remover|Sí|Integer
+
+#### Respuesta
+
+Código|Descripción|Cuerpo
+:--|:--|:--
+204|Objeto removido|N/A
+500|Error interno|Mensaje de error
+
+[/for]
+
+['['/]Volver arriba[']'/](#tabla-de-contenidos)
+[/if]
+[/for]
+[/file]
+[/template]

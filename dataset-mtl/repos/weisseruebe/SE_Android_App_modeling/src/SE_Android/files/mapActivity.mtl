@@ -1,0 +1,296 @@
+[comment encoding = UTF-8 /]
+[module mapActivity('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[template public mapActivity(c : Class)]
+[comment @main /]
+
+[file ('src/' + c._package.name.toLowerFirst() + '/' + c.name.toUpperFirst() + 'Activity.java', false)]
+package [c._package.name.toLowerFirst()/];
+
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.drawable.Drawable;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.os.Bundle;
+import com.google.android.maps.GeoPoint;
+import com.google.android.maps.ItemizedOverlay;
+import com.google.android.maps.MapView;
+import com.google.android.maps.MyLocationOverlay;
+import com.google.android.maps.OverlayItem;
+import android.content.Intent;
+import android.view.View;
+import android.widget.Button;
+import com.google.android.maps.MapActivity;
+
+/***
+ *
+ */
+
+public class [c.name/]Activity extends MapActivity {
+	private MapView mapView;
+
+	[for (p:Property | c.attribute -> select( e: Property | e.getAppliedStereotype('profile::overlay')<>null))]
+	private [p.name.toUpperFirst()/]Overlay [p.name/]Overlay;
+	[simpleOverlay(c, p)/]
+	[/for]
+
+	[if (c.getAppliedStereotype('profile::locationService')<>null)]
+	[addLocationService(c)/]
+	[/if]
+
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.[c.name.toLower()/]view);
+		
+		initMap();
+		[if (c.getAppliedStereotype('profile::locationService')<>null)]
+		initLocationManager();
+		[/if]
+		initRouteOverlay();
+
+		[createButtons(c)/]
+	}
+
+	public void end(){
+		Intent result = getIntent();
+		setResult(RESULT_OK,result);
+		finish();
+	}
+	
+	[checkIncomingIntentResults(c)/]
+
+	protected void initRouteOverlay() {
+		[for (p:Property | c.attribute -> select( e: Property | e.getAppliedStereotype('profile::overlay')<>null))]
+		[comment Marker kopieren/]		
+		Drawable [p.name/]Marker = this.getResources().getDrawable(R.drawable.placemark_circle);
+		[p.name/]Overlay = new [p.name.toUpperFirst()/]Overlay(this,[p.name/]Marker);
+		mapView.getOverlays().add([p.name/]Overlay);
+		[/for]
+	}
+	
+	//Modelling: StereoType MapView
+	protected void initMap() {
+		mapView = (MapView) findViewById(R.id.mapview);
+		mapView.setBuiltInZoomControls(true);
+
+		final MyLocationOverlay myLocationOverlay = new MyLocationOverlay(this, mapView);
+        mapView.getOverlays().add(myLocationOverlay);
+        myLocationOverlay.enableCompass();
+        myLocationOverlay.enableMyLocation();
+        myLocationOverlay.runOnFirstFix(new Runnable() {
+            public void run() {
+                mapView.getController().animateTo(myLocationOverlay.getMyLocation());
+            }
+        });
+	}
+	
+	@Override
+	protected boolean isRouteDisplayed() {
+		return false;
+	}
+
+	protected void onPause() {
+		super.onPause();
+		// [protected (c.name)]
+		//TODO implement 
+		// [/protected]
+	}
+}
+[/file]
+[editView(c)/]
+[/template]
+
+[template private addLocationService(c:Class)]
+	private LocationManager lm;
+	private void initLocationManager() {
+		lm = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+		LocationListener ll = new LocationListener() {
+			
+			@Override
+			public void onStatusChanged(String provider, int status, Bundle extras) {}
+			
+			@Override
+			public void onProviderEnabled(String provider) {}
+			
+			@Override
+			public void onProviderDisabled(String provider) {}
+			
+			@Override
+			public void onLocationChanged(Location location) {
+				updateLocation(location);
+			}
+		};
+		lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000, 100, ll);		
+	}
+
+	protected void updateLocation(Location location) {
+		GeoPoint gp = new GeoPoint((int)(location.getLatitude()*1E6), (int)(location.getLongitude()*1E6));
+		mapView.getController().animateTo(gp);	
+		mapView.invalidate();
+	}
+[/template]
+
+[template public simpleOverlay(c: Class, p : Property)]
+[file ('src/' + c._package.name.toLowerFirst() + '/' + p.name.toUpperFirst() + 'Overlay.java', false)]
+
+package [c._package.name.toLowerFirst()/];
+
+import android.app.AlertDialog;
+import android.content.Context;
+import android.graphics.drawable.Drawable;
+
+import com.google.android.maps.GeoPoint;
+import com.google.android.maps.ItemizedOverlay;
+import com.google.android.maps.OverlayItem;
+
+public class [p.name.toUpperFirst()/]Overlay extends ItemizedOverlay<OverlayItem> {
+
+	private Context context;
+	
+	public [p.name.toUpperFirst()/]Overlay(Context c, Drawable defaultMarker) {
+		super(boundCenterBottom(defaultMarker));
+		this.context = c;
+		populate();
+	}
+	
+	@Override
+	protected OverlayItem createItem(int i) {
+		// [protected ('Create Item')]
+		//TODO Create a real GeoPoint
+		GeoPoint gp = new GeoPoint(0, 0);
+		return new OverlayItem(gp, "GeoPoint", "Example");
+		// [/protected]
+
+	}
+
+	@Override
+	public int size() {
+	// [protected ('Size')]
+	// TODO Return size of overlay
+		return 1;
+	// [/protected]
+	}
+
+	protected boolean onTap(int index) {
+		AlertDialog.Builder dialog = new AlertDialog.Builder(context);
+		dialog.setTitle("Tapped item "+index+" at Overlay: [p.name/]");
+		dialog.show();
+		return true;
+	}
+}
+[/file]
+[/template]
+
+[template public editView(c : Class)]
+[file ('res/layout/' + c.name.toLower() + 'view.xml', false)]
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/mainlayout"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical" >
+
+    <TextView
+        android:id="@+id/textViewMapTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="MapView"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <com.google.android.maps.MapView
+        android:id="@+id/mapview"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.84"
+        android:apiKey="0yNnniIeOJ9ZSemrxoRfxGdEj_sxcB3hkncu_TQ"
+        android:clickable="true" />
+	[for (p : Association | c.getAssociations())]
+	[for (et: Type | p.endType)]
+	[if (et.getAppliedStereotype('profile::Button')<>null)]
+	<Button
+        android:id="@+id/btn[et.name/]"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="[et.name/]" />
+	[/if]
+	[/for]
+	[/for]
+</LinearLayout>
+[/file]
+[/template]
+
+[comment Read out incoming IntentResults and initialize the onActivityResult()-Method /]
+[template public checkIncomingIntentResults(c : Class)]
+[let intentResultAssociations:Set(Association) = (c.getAssociations() -> select(a|((a.navigableOwnedEnd -> any(p|(p.type.name = c.name) = true) <> null)   and   (a.getAppliedStereotype('profile::IntentResult').name = 'IntentResult'))) )]
+[if intentResultAssociations -> size() > 0]
+@Override
+protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+	super.onActivityResult(requestCode, resultCode, data);
+	switch (requestCode) {
+[for (a:Association | intentResultAssociations)]
+		case [a.getValue(a.getAppliedStereotype('profile::IntentResult'), 'requestCode')/]:
+			if (resultCode == RESULT_OK){
+				// [protected (a.name)]
+				//TODO Handle IntentResult
+				// [/protected]
+
+			}
+			else if (resultCode == RESULT_CANCELED) {
+				
+			}
+			break;
+[/for]
+		default:
+			break;
+	}
+}
+[/if]
+[/let]
+[/template]
+
+[template public createButtons(c:Class)]
+[comment Alle assoziierten Buttons suchen/]
+	[for (p : Association | c.getAssociations())]
+	[for (et: Type | p.endType)]
+	[if (et.getAppliedStereotype('profile::Button')<>null)][button(et.oclAsType(Class),c)/][/if]
+	[/for]
+	[/for]
+[/template]
+
+[**
+ * Erzeugt den Code für einen Button. Wenn eine Association mit dem ST Acitivity dran haengt
+ * Wird der Intent fuer sie gleich in den OnClickListener gepackt
+ * Zusätzlich könnte man die Assoziation noch mit ST Intent versehen
+*/]
+[template public button(btn: Class, parent:Class)]
+	[for (ass : Association | btn.getAssociations() )]
+	[for (et: Type | ass.endType)]
+	[if (et.getAppliedStereotype('profile::Activity')<>null)]
+	Button btn[btn.name/] = (Button) findViewById(R.id.btn[btn.name/]);
+	btn[btn.name/].setOnClickListener(new View.OnClickListener() {
+			
+			@Override
+			public void onClick(View arg0) {
+				// [protected (et.name)]
+				//TODO implement 
+				// [/protected]
+				[if ass.getAppliedStereotype('profile::Intent')<>null]
+				[intent(ass.endType->last().oclAsType(Class),parent)/]
+				[/if]			
+			}
+		});
+	[/if]
+	[/for]	
+	[/for]
+[/template]
+
+[**
+ * Der Intentblock, der dann die Activity startet
+*/]
+[template public intent(activity: Class, parent:Class)]
+	Intent intent = new Intent([parent.name.toUpperFirst()/]Activity.this, [activity.name.toUpperFirst()/]Activity.class);
+	startActivityForResult(intent,123);
+[/template]

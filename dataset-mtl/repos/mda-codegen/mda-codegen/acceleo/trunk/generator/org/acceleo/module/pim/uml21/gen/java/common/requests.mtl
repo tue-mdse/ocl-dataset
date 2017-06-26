@@ -1,0 +1,104 @@
+[module requests('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[query public isEntity(classifier:Classifier) : Boolean =
+classifier.hasStereotype(getProperty('Entity'))
+/]
+
+
+[query public isDao(class:Class) : Boolean =
+class.hasStereotype(getProperty('Dao'))
+/]
+
+
+[query public isDto(class:Class) : Boolean =
+class.hasStereotype(getProperty('Dto'))
+/]
+
+[query public isManageableEntity(class:Class) : Boolean =
+class.hasStereotype(getProperty('Manageable'))
+/]
+
+
+[query public isPK(property:Property) : Boolean =
+property.hasStereotype(getProperty('pk'))
+/]
+
+[query public getPKAttribute(class:Class) : Set(Property) =
+if(class.oclIsTypeOf(AssociationClass)) then
+	class.oclAsType(AssociationClass).getPKAttribute()
+else
+	if (class.interfaceRealization->notEmpty()) then 
+		class.interfaceRealization.target->filter(Interface)->select(isEntity()).attribute->select(isPK())
+		->union(class.attribute->select(isPK()))->asSet() 
+	else 
+		class.attribute->select(isPK()) 
+	endif
+endif 
+/]
+
+[query public getCompositeKeyClass(anEntity : Class):Class = 
+if(anEntity.getPKAttribute()->size()>1) then
+	if(anEntity.getModel().eAllContents(Class)->exists(aClass:Class|aClass.name=anEntity.name.concat('Pk'))) then
+		anEntity.getModel().eAllContents(Class)->select(aClass:Class|aClass.name=anEntity.name.concat('Pk'))
+	else
+		(if(anEntity.ancestors(Package)->isEmpty()) then
+			anEntity.getModel().createOwnedClass(anEntity.name.concat('Pk'), false)
+		else
+			anEntity.ancestors(Package)->first().createOwnedClass(anEntity.name.concat('Pk'), false)
+		endif).
+			appendPkPropertiesToCompositeKeyClass(anEntity.getPKAttribute())
+	endif
+else
+	null
+endif
+/]
+
+[query public getCompositeKeyClass(anAssociationClass : AssociationClass):Class = 
+if(anAssociationClass.getModel().eAllContents(Class)->exists(aClass:Class|aClass.name=anAssociationClass.name.concat('Pk'))) then
+	anAssociationClass.getModel().eAllContents(Class)->select(aClass:Class|aClass.name=anAssociationClass.name.concat('Pk'))
+else
+	(if(anAssociationClass.ancestors(Package)->isEmpty()) then
+		anAssociationClass.getModel().createOwnedClass(anAssociationClass.name.concat('Pk'), false)
+	else
+		anAssociationClass.ancestors(Package)->first().createOwnedClass(anAssociationClass.name.concat('Pk'), false)
+	endif).
+		appendPkPropertiesToCompositeKeyClass(anAssociationClass.memberEnd->at(1).oclAsType(Class).getPKAttribute()).
+		appendPkPropertiesToCompositeKeyClass(anAssociationClass.memberEnd->at(2).oclAsType(Class).getPKAttribute())
+endif
+/]
+
+[query private appendPkPropertyToCompositeKeyClass(aCompositeKeyClass : Class, aPkPropertyOfMemeberEnd : Property) : Class =
+if(not aCompositeKeyClass.createOwnedAttribute(aPkPropertyOfMemeberEnd.owner.oclAsType(Class).name.toLowerFirst().concat(aPkPropertyOfMemeberEnd.type.name.toLowerFirst()).concat('Id'), aPkPropertyOfMemeberEnd.type, 1, 1).oclIsInvalid()) then
+aCompositeKeyClass
+else
+aCompositeKeyClass
+endif
+/]
+
+[query private appendPkPropertiesToCompositeKeyClass(aCompositeKeyClass : Class, pkPropertiesOfMemeberEnd : Set(Property)) : Class =
+pkPropertiesOfMemeberEnd->collect(aPk:Property|aCompositeKeyClass.appendPkPropertyToCompositeKeyClass(aPk))->asSequence()->first()
+/]
+
+[query public getPKAttribute(anAssociationClass : AssociationClass) : Set(Property) =
+anAssociationClass.getCompositeKeyClass().ownedAttribute
+/]
+
+
+[query public hasPrimaryKey(class:Class) : Boolean =
+class.attribute->select(isPK())->notEmpty()
+or
+(class.interfaceRealization->notEmpty()
+and 
+class.interfaceRealization.target->notEmpty()
+and 
+class.interfaceRealization.target->filter(Interface)->notEmpty()
+and 
+class.interfaceRealization.target->filter(Interface)->select(isEntity())->notEmpty()
+and 
+class.interfaceRealization.target->filter(Interface)->select(isEntity())->asSequence()->first().attribute->select(isPK())->notEmpty())
+/]
+
+[query public dtoPerEntity(element:Element) : Boolean = 
+getProperty('generate.dto.per.entity') = 'yes' 
+/]
+

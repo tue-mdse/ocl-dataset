@@ -1,0 +1,38 @@
+[comment encoding = UTF-8 /]
+[module generate_imu('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[comment][import org::eclipse::proteus::generators::acceleo::mmqueries::MMQueries /][/comment]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import generate_system/]
+
+[template public generateIMU(aClass : Class, model : Model)]
+
+[file ('scripts/' + model.name + '/' + aClass.name + '.lua', false, 'UTF-8')]
+require "LuaCycabTK"
+require "LuaIMUSimulator"
+
+--Definition of class [aClass.name/]
+class '[aClass.name/]' (cycabtk.IMUSimulator)
+function [aClass.name/]:__init(name)
+	cycabtk.GPSSimulator.__init(self, name)
+	
+	self:SetActivationPeriod(1./[getAttributeValue(aClass, 'frequency', 'IMU', '10.')/])
+	
+	[generateSystemCommon(aClass, model)/]
+	
+	self:Start()
+	
+	-- Connectors
+	[for( connector: Port | getOutputPortsForElement(aClass) )]
+		[if ( isDataFlowPort(connector))]
+			[if(connector.type.name = 'Imu')]
+	require "LuaIMURosInterface"
+	self.[connector.name/] = cycabtk.IMURosInterface( name..".[connector.name/]" )
+	self:AddPostProcessing( name..".[connector.name/]")
+			[/if]
+		[/if]
+	[/for]
+end
+[/file]
+[/template]

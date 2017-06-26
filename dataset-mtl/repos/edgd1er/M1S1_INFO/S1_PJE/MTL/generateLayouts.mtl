@@ -1,0 +1,174 @@
+[comment encoding = UTF-8 /]
+[module generateLayouts('http:///uiandroid.ecore', 'http:///uiandroid/DataTypes.ecore')]
+
+
+[comment ========================================================
+traitement de la racine UIAndroid
+(génère un fichier séparé pour chaque Layout)
+/]
+[template public generateLayouts(ui : UIAndroid)]
+[for(aff : Affichage | ui.affichages)]
+[file('res/layout/'+aff.id+'.xml', false, 'UTF-8')]
+[treatAfficheur(aff.root, aff.id) /]
+[/file]
+[/for]
+[for(aff : Afficheur | ui.afficheurs)]
+[file('res/layout/'+aff.id+'.xml', false, 'UTF-8')]
+[treatAfficheur(aff, aff.id)/]
+[/file]
+[/for]
+[/template]
+
+[template public treatAfficheur(aff : Afficheur, name : String)]
+Attention, afficheur [aff.id/] non reconnu !!
+[/template]
+
+[template public treatAfficheur(ll : LinearLayout, name : String) post(replaceAll('[\n]+','\n'))]
+<LinearLayout
+    [treatRoot(name)/]
+    android:orientation="[ll.orientation/]"
+    [if (ll.gravity<>null and ll.gravity<>'')]android:gravity="[ll.gravity/]"[/if]
+    [treatLayoutParams(ll.layoutParams)/]
+>
+[for (élément : Elément | ll.contenu)]
+    [treatElement(élément)/]
+[/for]
+</LinearLayout>
+[/template]
+
+[template public treatAfficheur(rl : RelativeLayout, name : String) post(replaceAll('[\n]+','\n'))]
+<RelativeLayout
+    [treatRoot(name)/]
+    [if (rl.gravity<>null and rl.gravity<>'')]android:gravity="[rl.gravity/]"[/if]
+    [treatLayoutParams(rl.layoutParams)/]
+>
+[for (élément : Elément | rl.contenu)]
+    [treatElement(élément)/]
+[/for]
+</RelativeLayout>
+[/template]
+
+[template public treatAfficheur(lv : ListView, name : String)]
+<ListView
+    [treatRoot(name)/]
+    android:id="@+id/[lv.id/]"
+    [treatLayoutParams(lv.layoutParams)/]
+>
+</ListView>
+[/template]
+
+[template public treatRoot(name : String) ? (name<>'')]
+xmlns:android="http://schemas.android.com/apk/res/android"
+xmlns:tools="http://schemas.android.com/tools"
+tools:context=".[name/]"
+[/template]
+
+[template public treatElement(élément : Elément)]
+Attention, élément [élément.id/] non traité !
+[/template]
+
+[template public treatElement(aff : Afficheur)]
+[treatAfficheur(aff, '')/]
+[/template]
+
+[template public treatElement(bouton : Bouton)]
+<Button
+    android:id="@+id/[bouton.id/]"
+    [treatLayoutParams(bouton.layoutParams)/] 
+/>
+[/template]
+
+[template public treatElement(texte : Texte)]
+<TextView
+    android:id="@+id/[texte.id/]"
+    [treatLayoutParams(texte.layoutParams)/]
+/>
+[/template]
+
+[template public treatElement(boite : BoiteDeSaisie)]
+<EditText
+    android:id="@+id/[boite.id/]"
+    [treatLayoutParams(boite.layoutParams)/]
+/>
+[/template]
+
+[template public treatElement(image : Image)]
+<ImageView
+    android:id="@+id/[image.id/]"
+    android:src="@drawable/[image.name/]"
+    [treatLayoutParams(image.layoutParams)/]
+/>
+[/template]
+
+
+[template public treatLayoutParams(alp : LayoutParams) ? (alp<>null)]
+[treatLayoutParamsALP(alp)/]
+[/template]
+
+[template public treatLayoutParams(mlp : MarginLayoutParams) ? (mlp<>null)]
+[treatLayoutParamsMLP(mlp)/]
+[/template]
+
+[template public treatLayoutParams(llp : LinearLayoutParams) ? (llp<>null)]
+[treatLayoutParamsLLP(llp)/]
+[/template]
+
+[template public treatLayoutParams(rlp : RelativeLayoutParams) ? (rlp<>null)]
+[treatLayoutParamsRLP(rlp)/]
+[/template]
+
+[template public treatLayoutParamsALP(alp : LayoutParams) post(replaceAll('[\n]+','\n'))]
+[treatLayoutParam(alp, 'width')/]
+[treatLayoutParam(alp, 'height')/]
+[/template]
+
+[template public treatLayoutParamsMLP(mlp : MarginLayoutParams) post(replaceAll('[\n]+','\n'))]
+[treatLayoutParam(mlp, 'marginTop')/]
+[treatLayoutParam(mlp, 'marginBottom')/]
+[treatLayoutParam(mlp, 'marginLeft')/]
+[treatLayoutParam(mlp, 'marginRight')/]
+[treatLayoutParamsALP(mlp)/]
+[/template]
+
+[template public treatLayoutParamsLLP(llp : LinearLayoutParams) post(replaceAll('[\n]+','\n'))]
+[treatLayoutParam(llp, 'gravity')/]
+[treatLayoutParam(llp, 'weight')/]
+[treatLayoutParamWithoutLayout(llp, 'paddingTop')/]
+[treatLayoutParamWithoutLayout(llp, 'paddingBottom')/]
+[treatLayoutParamWithoutLayout(llp, 'paddingLeft')/]
+[treatLayoutParamWithoutLayout(llp, 'paddingRight')/]
+[treatLayoutParamsMLP(llp)/]
+[/template]
+
+[template public treatLayoutParamsRLP(rlp : RelativeLayoutParams) post(replaceAll('[\n]+','\n'))]
+[treatLayoutParamId(rlp, 'above')/]
+[treatLayoutParamId(rlp, 'below')/]
+[treatLayoutParamId(rlp, 'toLeftOf')/]
+[treatLayoutParamId(rlp, 'toRightOf')/]
+[treatLayoutParamId(rlp, 'alignTop')/]
+[treatLayoutParamId(rlp, 'alignBottom')/]
+[treatLayoutParamId(rlp, 'alignLeft')/]
+[treatLayoutParamId(rlp, 'alignRight')/]
+[treatLayoutParam(rlp, 'centerHorizontal')/]
+[treatLayoutParam(rlp, 'centerVertical')/]
+[treatLayoutParam(rlp, 'centerInParent')/]
+[treatLayoutParamsMLP(rlp)/]
+[/template]
+
+[template public treatLayoutParam(alp : LayoutParams, name : String) post(trim())]
+[let aname : String = alp.eGet(name).toString()]
+[if (aname<>null and aname<>'')]android:layout_[name/]="[aname/]"[/if]
+[/let]
+[/template]
+
+[template public treatLayoutParamWithoutLayout(alp : LayoutParams, name : String) post(trim())]
+[let aname : String = alp.eGet(name).toString()]
+[if (aname<>null and aname<>'')]android:[name/]="[aname/]"[/if]
+[/let]
+[/template]
+
+[template public treatLayoutParamId(alp : LayoutParams, name : String) post(trim())]
+[let aname : String = alp.eGet(name).toString()]
+[if (aname<>null and aname<>'')]android:layout_[name/]="@id/[aname/]"[/if]
+[/let]
+[/template]

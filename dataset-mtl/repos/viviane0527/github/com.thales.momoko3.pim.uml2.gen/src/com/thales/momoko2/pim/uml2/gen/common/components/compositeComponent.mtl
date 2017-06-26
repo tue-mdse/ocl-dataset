@@ -1,0 +1,169 @@
+[comment encoding = UTF-8 /]
+[module compositeComponent('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::textprocessing::textProcessing /]
+[import com::thales::momoko2::pim::uml2::gen::services::uml2Queries /]
+
+[**
+ * This template generates the composite components called.
+ * @param aProperty
+ * @param anInputValue
+ * @param aCssClass
+ */]
+[template public generateCompositeComponent(aProperty : Property, anInputValue : String, aCssClass : String)]
+[generateDateCalendar(aProperty, anInputValue, aCssClass)/]
+[generateTimeCalendar(aProperty, anInputValue, aCssClass)/]
+[generateInputText(aProperty, anInputValue, aCssClass)/]
+[generateSelectOneMenu(aProperty, anInputValue, aCssClass)/]
+[generateSpinner(aProperty, anInputValue, aCssClass)/]
+[generateElse(aProperty, anInputValue, aCssClass)/]
+[/template]
+
+[**
+ * This template generates the DateCalendar component.
+ * @param aProperty
+ */]
+[template private generateDateCalendar(aProperty : Property, anInputValue : String, aCssClass : String)
+? (isDateClass(getDatatypeByProperty(aProperty)))]
+<p:calendar id="[aProperty.class.name/][aProperty.name/]" 
+			pattern="[aProperty.ownedComment._body/]" 
+			value="#{[anInputValue/]}" 
+			title="#{bundle.[aProperty.class.name/]_[aProperty.name/]}" 
+			required="[isMandatoryProperty(aProperty)/]" 
+			showOn="button"/>
+[/template]
+
+[**
+ * This template generates the TimeCalendar component.
+ * @param aProperty
+ */]
+[template private generateTimeCalendar(aProperty : Property, anInputValue : String, aCssClass : String)
+? (isTimeClass(getDatatypeByProperty(aProperty)))]
+<p:calendar id="[aProperty.class.name/][aProperty.name/]" 
+			pattern="HH:mm" 
+			timeOnly="true"
+			value="#{[anInputValue/]}" 
+			title="#{bundle.[aProperty.class.name/]_[aProperty.name/]}" 
+			required="[isMandatoryProperty(aProperty)/]" 
+			showOn="button"/>
+[/template]
+
+[**
+ * This template generates the Password component.
+ * @param aProperty
+ */]
+[template private generatePassword(aProperty : Property, anInputValue : String, aCssClass : String)
+? (isTimeClass(getDatatypeByProperty(aProperty)))]
+<h:outputLabel for="pwd1" value="#bundle.[aProperty.class.name/]_[aProperty.name/] 1: *"/>
+<p:password id="pwd1" 
+			value="#{[anInputValue/]}"
+			match="pwd2"
+			label="Password 1"
+			title="#{bundle.[aProperty.class.name/]_[aProperty.name/]}" 
+			required="[isMandatoryProperty(aProperty)/]"/>
+<h:outputLabel for="pwd2" value="#bundle.[aProperty.class.name/]_[aProperty.name/] 2: *"/>
+<p:password id="pwd2" 
+			value="#{[anInputValue/]}"
+			label="Password 2"
+			required="[isMandatoryProperty(aProperty)/]"/>
+[/template]
+
+[**
+ * This template generates the InputText component.
+ * @param aProperty
+ */]
+[template private generateInputText(aProperty : Property, anInputValue : String, aCssClass : String)
+? (isTextClass(getDatatypeByProperty(aProperty)))]
+<p:inputText id="[aProperty.class.name/][aProperty.name/]" 
+			 value="#{[anInputValue/]}" 
+			 title="#{bundle.[aProperty.class.name/]_[aProperty.name/]}" 
+			 required="[isMandatoryProperty(aProperty)/]"/>
+<p:tooltip value="[aProperty.ownedComment._body/]"
+		   rendered="[aProperty.ownedComment._body/]!=''"
+		   for="[aProperty.class.name/][aProperty.name/]"/>
+<p:tooltip value="[generateFieldTooltip(aProperty)/]"
+		   rendered="[generateFieldTooltip(aProperty)/]!=''"
+		   for="[aProperty.class.name/][aProperty.name/]"
+		   showEvent="focus"
+		   hideEvent="blur"/>
+[/template]
+
+[**
+ * This template generates the SelectOneMenu component.
+ * @param aProperty
+ */]
+[template private generateSelectOneMenu(aProperty : Property, anInputValue : String, aCssClass : String)
+? (isEnumerateClass(getDatatypeByProperty(aProperty)))]
+<h:selectOneMenu id="[aProperty.class.name/][aProperty.name/]" 
+				 value="#{[anInputValue/]}" 
+				 title="#{bundle.[aProperty.class.name/]_[aProperty.name/]}" 
+				 required="[isMandatoryProperty(aProperty)/]">
+	<f:selectItem itemLabel="Select One" itemValue="" />
+	<f:selectItems value="#{enumUtil.[aProperty.type.name.toLowerFirst()/]Values}"/>
+</h:selectOneMenu>
+<p:tooltip value="[aProperty.ownedComment._body/]"
+		   rendered="[aProperty.ownedComment._body/]!=''"
+		   for="[aProperty.class.name/][aProperty.name/]"/>
+[/template]
+
+
+[**
+ * This template generates the plain component.
+ * @param aProperty
+ */]
+[template private generateElse(aProperty : Property, anInputValue : String, aCssClass : String)
+? (isDateClass(getDatatypeByProperty(aProperty))._not())]
+[if (isIntegerClass(getDatatypeByProperty(aProperty))._not()) and (isRealClass(getDatatypeByProperty(aProperty))._not()) and ((isEnumerateClass(getDatatypeByProperty(aProperty))._not()) and (isTextClass(getDatatypeByProperty(aProperty))._not())) and ((isTimeClass(getDatatypeByProperty(aProperty))._not()) and (isTimeClass(getDatatypeByProperty(aProperty))._not()))]
+<p:inputText id="[aProperty.class.name/][aProperty.name/]" 
+			 value="#{[anInputValue/]}" 
+			 title="#{bundle.[aProperty.class.name/]_[aProperty.name/]}" 
+			 required="[isMandatoryProperty(aProperty)/]"/>
+<p:tooltip value="[aProperty.ownedComment._body/]"
+		   rendered="[aProperty.ownedComment._body/]!=''"
+		   for="[aProperty.class.name/][aProperty.name/]"/>
+<p:tooltip value="[generateFieldTooltip(aProperty)/]"
+		   rendered="[generateFieldTooltip(aProperty)/]!=''"
+		   for="[aProperty.class.name/][aProperty.name/]"
+		   showEvent="focus"
+		   hideEvent="blur"/>
+[/if]
+[/template]     
+
+[**
+ * This template generates the Spinner component.
+ * @param aProperty
+ */]
+[template private generateSpinner(aProperty : Property, anInputValue : String, aCssClass : String)
+? (isIntegerClass(getDatatypeByProperty(aProperty)) or isRealClass(getDatatypeByProperty(aProperty)))]
+<p:spinner id="[aProperty.class.name/][aProperty.name/]" 
+		   value="#{[anInputValue/]}" 
+		   title="#{bundle.[aProperty.class.name/]_[aProperty.name/]}"
+		   required="[isMandatoryProperty(aProperty)/]"/>
+<p:tooltip value="[aProperty.ownedComment._body/]"
+		   rendered="[aProperty.ownedComment._body/]!=''"
+		   for="[aProperty.class.name/][aProperty.name/]"/>
+<p:tooltip value="[generateFieldTooltip(aProperty)/]"
+		   rendered="[generateFieldTooltip(aProperty)/]!=''"
+		   for="[aProperty.class.name/][aProperty.name/]"
+		   showEvent="focus"
+		   hideEvent="blur"/>
+[/template]  
+ 
+[template private generateFieldTooltip(aProperty:Property) post(generateTextProcessingLine())]
+[if isTextClass(getDatatypeByProperty(aProperty))] 
+pattern=[getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty),'text'), 'pattern').toString()/]
+ - minLength=[getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty),'text'), 'minLength').toString()/]
+ - maxLength=[getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty),'text'), 'maxLength').toString()/]
+[/if]
+
+[if isIntegerClass(getDatatypeByProperty(aProperty))]
+min=[getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty),'integer'), 'min').toString()/]
+ - max=[getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty),'integer'), 'max').toString()/]
+[/if]
+
+[if isRealClass(getDatatypeByProperty(aProperty))]
+min=[getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty),'real'), 'min').toString()/]
+ - max=[getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty),'real'), 'max').toString()/]
+[/if]
+[/template]

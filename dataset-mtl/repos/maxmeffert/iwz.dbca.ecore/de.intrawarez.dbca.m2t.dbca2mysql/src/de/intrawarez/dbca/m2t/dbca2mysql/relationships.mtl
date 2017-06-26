@@ -1,0 +1,38 @@
+[comment encoding = UTF-8 /]
+[module relationships('http://www.intrawarez.de/dbca')]
+
+[import de::intrawarez::dbca::m2t::common::database/]
+[import de::intrawarez::dbca::m2t::common::attributes/]
+[import de::intrawarez::dbca::m2t::common::entities/]
+[import de::intrawarez::dbca::m2t::common::relationships/]
+
+[import de::intrawarez::dbca::m2t::dbca2mysql::types/]
+[import de::intrawarez::dbca::m2t::dbca2mysql::names/]
+
+[template public generate(r : Relationship)]
+-- ================================================================================
+--  Relationship [r.selectSource().name/].[r.name/] ([r.type/] : [r.selectSource().name/] -> [r.selectTarget().name/])
+-- ================================================================================
+CREATE TABLE [r.mysqlName()/] (
+[for (a : Attribute | r.selectAttributes()) separator(',')]
+	[r.selectAttributeNames()->at(i)/] [a.mysqlType()/] [if (a.oclIsKindOf(Property) and a.oclAsType(Property).isNullable)]NULL[else]NOT NULL[/if]
+[/for]
+);
+ALTER TABLE [r.mysqlName()/] ADD CONSTRAINT [r.mysqlPKName()/]
+	PRIMARY KEY ([r.selectPrimaryPropertyNames()->sep(',')/]);
+[if (r.isOneToOne())]
+ALTER TABLE [r.mysqlName()/] ADD CONSTRAINT [r.mysqlUCSourceName()/]
+	UNIQUE ([r.selectSource().selectPrimaryProperties().mysqlName(r.selectSource())->sep(',')/]);
+ALTER TABLE [r.mysqlName()/] ADD CONSTRAINT [r.mysqlUCTargetName()/]
+	UNIQUE ([r.selectTarget().selectPrimaryProperties().mysqlName(r.selectTarget())->sep(',')/]);
+[/if]
+ALTER TABLE [r.mysqlName()/] ADD CONSTRAINT [r.mysqlFKSourceName()/]
+	FOREIGN KEY ([r.selectSource().selectPrimaryProperties().mysqlName(r.selectSource())->sep(',')/])
+	REFERENCES [r.selectSource().mysqlName()/]([r.selectSource().selectPrimaryProperties().mysqlName()->sep(',')/])
+	ON DELETE CASCADE;
+ALTER TABLE [r.mysqlName()/] ADD CONSTRAINT [r.mysqlFKTargetName()/]
+	FOREIGN KEY ([r.selectTarget().selectPrimaryProperties().mysqlName(r.selectTarget())->sep(',')/])
+	REFERENCES [r.selectTarget().mysqlName()/]([r.selectTarget().selectPrimaryProperties().mysqlName()->sep(',')/])
+	ON DELETE CASCADE;
+-- ================================================================================
+[/template]

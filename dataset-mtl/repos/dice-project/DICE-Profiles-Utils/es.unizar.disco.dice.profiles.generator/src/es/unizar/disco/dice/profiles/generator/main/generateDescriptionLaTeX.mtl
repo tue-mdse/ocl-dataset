@@ -1,0 +1,138 @@
+[comment encoding = UTF-8 /]
+[module generateDescriptionLaTeX(
+'http://www.eclipse.org/emf/2002/Ecore',
+'http://com.masdes.dam/profiles/DAM/1.0'
+)]
+
+[import es::unizar::disco::dice::profiles::generator::main::queries /]
+
+[template public generateEPackage(ePackage : EPackage)]
+[comment @main/]
+[if (not(isExcluded(ePackage)))]
+[let ePackageName : String = getName(ePackage).tokenize('::')->last()]
+[file ('Description/' + ePackage.nsPrefix + '.tex', false, 'UTF-8')]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% This is an automatically generated TeX file, do not modify it manually.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+[let eDataTypes : OrderedSet(EDataType) = notExcluded(ePackage.eClassifiers)->filter(EDataType) ]
+[if (eDataTypes->notEmpty())]
+\begin{small}
+% Total table width: 23.5cm
+\begin{longtable} {|>{\raggedright\arraybackslash}p{8cm}|>{\raggedright\arraybackslash}p{8cm}|>{\raggedright\arraybackslash}p{7.5cm}|}
+  \caption{\texttt{[getName(ePackage)/]} data types}
+  \label{tab:types_[ePackageName/]}\\
+  \hline%
+  \textbf{Name} & \textbf{Kind} & \textbf{Values or Description} \\\hline
+  [for (eDataType : EDataType | eDataTypes)]
+  [if (eDataType.oclIsTypeOf(EEnum))]
+  [let eEnum : EEnum  = eDataType.oclAsType(EEnum)]
+    \textbf{\texttt{[getName(eEnum) /]}} & Enumeration & [for (eEnumLiteral : EEnumLiteral | eEnum.eLiterals) separator(', ') ]\texttt{[ eEnumLiteral.literal.trim().toValidLaTeX() /]}[/for]\\
+  [/let]
+  [else]
+    \textbf{\texttt{[getName(eDataType) /]}} & DataType & \texttt{[ eDataType.instanceTypeName.toValidLaTeX() /]}\\
+  [/if]
+  [let theComment : String = buildEClassifierComment(eDataType) ]
+  [if (theComment.size() > 0)]
+  \cline{2-3}
+  & \multicolumn{2}{p{10.5cm}|}{\textbf{Comments:} [ theComment /]}  \\
+  [/if]
+  [/let]\hline
+  [/for] 
+\end{longtable}
+\end{small}
+[/if]
+[/let]
+
+[let eClasses : OrderedSet(EClass) = notExcluded(ePackage.eClassifiers)->filter(EClass) ]
+[if (eClasses->notEmpty())]
+\begin{small}
+% Total table width: 23.5cm
+\begin{longtable} {|>{\raggedright\arraybackslash}p{10cm}|p{4.5cm}|>{\raggedright\arraybackslash}p{9cm}|}
+  \caption{The \texttt{[getName(ePackage)/]} package}
+  \label{tab:mapping_[ePackageName/]}\\
+  \hline%
+  \textbf{DICE \texttt{[getName(ePackage)/]} Metamodel Element} & \textbf{Description} & \textbf{Attributes} \\\hline
+  [for (eClass : EClass | eClasses) ]
+  [generateMetamodelElement(eClass) /] & [ (if (getDescription(eClass) <> null) then getDescription(eClass).toValidLaTeX() else '' endif) /] & [generateAttributes(eClass) /] \\\hline
+  [/for] 
+\end{longtable}
+\end{small}
+[/if]
+[/let]
+
+[/file]
+[/let]
+[/if]
+[/template]
+
+[template public generateMetamodelElement(eClass : EClass)]
+\textbf{\texttt{[eClass.name /]}}
+[generateSupertypes(eClass) /]
+[/template]
+
+[template public generateSupertypes(eClass : EClass)]
+[if (eSuperTypes->notEmpty() or getExtendsName(eClass) <> null)] inherits from:\newline [/if][comment
+/][let eSuperTypes : OrderedSet(EClass) = notExcluded(eClass.eAllSuperTypes) ][comment
+/][for (eSuperClass : EClass | eSuperTypes) separator(',\\newline ') ]\texttt{[ getFQN(eSuperClass).toValidLaTeX().hyphenate().replaceAll('::', '::\\\\allowbreak{}') /]}[/for][comment
+/][if (getExtendsName(eClass) <> null)]
+[if (eSuperTypes->notEmpty())],\newline[/if]
+[let extendsString : String = getExtendsName(eClass)]
+[for (superType : String | extendsString.tokenize(',')) separator(',\\newline ') ]
+\texttt{[superType.toValidLaTeX().hyphenate().replaceAll('::', '::\\\\allowbreak{}') /]}
+[/for]
+[/let]
+[/if]
+[/let]
+[/template]
+
+[template public generateAttributes(eClass : EClass)]
+[let eAllReferences : OrderedSet(EStructuralFeature) = notExcluded(eClass.eAllReferences)]
+[let eDirectReferences : OrderedSet(EReference) = notExcluded(eClass.eReferences) ]
+[let eAllAttributes : OrderedSet(EAttribute) = notExcluded(eClass.eAllAttributes)]
+[let eDirectAttributes : OrderedSet(EAttribute) = notExcluded(eClass.eAttributes) ]
+[if (eDirectReferences->notEmpty() or eDirectAttributes->notEmpty())]
+\begin{minipage}['['/]t[']'/]{\linewidth}
+\raggedright
+\begin{enumerate}['['/]leftmargin=0.5cm,topsep=0ex,itemsep=0ex,partopsep=0ex,parsep=0ex[']'/]
+[if (eDirectAttributes->notEmpty())]
+\item Attributes:
+\begin{itemize}['['/]leftmargin=0cm,topsep=0ex,itemsep=0ex,partopsep=0ex,parsep=0ex[']'/]
+[for (eAttribute : EAttribute | eDirectAttributes)]
+\item \texttt{[ eAttribute.name.toValidLaTeX() /]}: \texttt{[ eAttribute.eType.toUmlTypeName() /]}
+[/for]
+\end{itemize}
+[/if]
+[if (eDirectReferences->notEmpty())]
+[let eDirectContainmentReferences : OrderedSet(EReference) = eDirectReferences->select(containment = true)]
+[if (eDirectContainmentReferences->notEmpty())]
+\item Compositions:
+\begin{itemize}['['/]leftmargin=0cm,topsep=0ex,itemsep=0ex,partopsep=0ex,parsep=0ex[']'/]
+[for (eReference : EReference | eDirectReferences)]
+\item \texttt{[eReference.name.toValidLaTeX() /]}: \texttt{[ eReference.eType.toUmlTypeName() /]}
+[/for]
+\end{itemize}
+[/if]
+[/let]
+[let eDirectNonContainmentReferences : OrderedSet(EReference) = eDirectReferences->select(containment = false)]
+[if (eDirectNonContainmentReferences->notEmpty())]
+\item Associations:
+\begin{itemize}['['/]leftmargin=0cm,topsep=0ex,itemsep=0ex,partopsep=0ex,parsep=0ex[']'/]
+[for (eReference : EReference | eDirectReferences)]
+\item \texttt{[eReference.name.toValidLaTeX() /]}: \texttt{[ eReference.eType.toUmlTypeName() /]}
+[/for]
+\end{itemize}
+[/if]
+[/let]
+[/if]
+\end{enumerate}
+\end{minipage}
+\vspace{1pt}
+[/if]
+[/let]
+[/let]
+[/let]
+[/let]
+[/template]

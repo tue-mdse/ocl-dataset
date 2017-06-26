@@ -1,0 +1,365 @@
+[comment encoding = UTF-8 /]
+[module main('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[template public generateParameters(anOperation : Operation)]
+[for(aParameter : Parameter | anOperation.ownedParameter)][if(aParameter.direction.toString().equalsIgnoreCase('return')._not())][aParameter.type.name/] [aParameter.name/], [/if][/for]
+[/template]
+
+[template public generateCopyCtorParameters(aClass : Class)]
+[for (aProperty : Property | aClass.attribute) separator(', ')][if(aProperty.upper = -1)]vector<[/if][aProperty.type.name/][if(aProperty.upper = -1)]>*[/if] _[aProperty.name/][/for]
+[/template]
+
+[template public generateElement(aPackage : Package)]
+[comment @main/]
+
+[for (anEnum : Enumeration | aPackage.ownedElement)]
+	[file (aPackage.name.concat('/'+anEnum.name.concat('.h')), false, 'UTF-8')]
+enum [anEnum.name/]
+{
+	[for (aLiteral : EnumerationLiteral | anEnum.ownedLiteral)]
+	[aLiteral.name/],
+	[/for]
+};
+	[/file]
+[/for]
+
+[for (aClass : Class | aPackage.ownedElement)]
+	[if (aPackage.name.equalsIgnoreCase('Model'))]
+		[file (aClass.name.concat('.h'), false, 'UTF-8')]
+		[/file]
+		[file (aClass.name.concat('.cpp'), false, 'UTF-8')]
+			[if (aClass.name.equalsIgnoreCase('main'))]
+#include "engine/Engine.h"
+
+Engine* engine = Engine::getInstance();
+
+int main(int argc, char **argv)
+{
+	srand (time(NULL));
+    engine->run();
+    
+    return 0;
+}
+			[/if]
+		[/file]
+	[else]
+		[file (aPackage.name.concat('/'+aClass.name.concat('.h')), false, 'UTF-8')]
+#ifndef __[aClass.name/]__
+#define __[aClass.name/]__
+
+#include <glew.h>
+#include <GLFW/glfw3.h>
+#include <vector>
+#include <thread>
+#include <mutex>
+#include <noise/noise.h>
+#include "noiseutils.h"
+
+#include "../depends/glm/glm.hpp"
+#include "../depends/glm/gtc/matrix_transform.hpp"
+
+// [protected ('defines')]
+// [/protected]
+
+// [protected ('includes')]
+// [/protected]
+
+[for(superClass : Class | aClass.superClass)]
+#include "[superClass.name/].h"
+[/for]
+
+[for (anAssociation : Association | aClass.getAssociations())]
+	[for(anEnd : Property | anAssociation.ownedEnd)]
+		[if(anEnd.type.name.equalsIgnoreCase(aClass.name) and (anEnd.aggregation.toString().equalsIgnoreCase('composite') or anEnd.aggregation.toString().equalsIgnoreCase('shared')))]
+			[for(anEnd : Property | anAssociation.ownedEnd)]	
+				[if(anEnd.aggregation.toString().equalsIgnoreCase('none'))]
+#include "[anEnd.type.name/].h"
+				[/if]
+			[/for]
+		[/if]
+	[/for]
+[/for]
+
+using namespace std;
+
+// [protected ('class import')]
+// [/protected]
+
+class [aClass.name/][for(superClass : Class | aClass.superClass) before(' : ') separator (', ')]public [superClass.name/][/for]
+{
+	// [protected ('private')]
+	// [/protected]
+			[for (anAssociation : Association | aClass.getAssociations())]
+				[for(anEnd : Property | anAssociation.ownedEnd)]
+					[if(anEnd.type.name.equalsIgnoreCase(aClass.name) and anEnd.aggregation.toString().equalsIgnoreCase('composite') and anEnd.visibility.toString().equalsIgnoreCase('private'))]
+						[for(anEnd : Property | anAssociation.ownedEnd)]	
+							[if(anEnd.aggregation.toString().equalsIgnoreCase('none'))]
+	[if(anEnd.isStatic)]static [/if][anEnd.type.name/]* [anEnd.name/];
+							[/if]
+						[/for]
+					[/if]
+					[if(anEnd.type.name.equalsIgnoreCase(aClass.name) and anEnd.aggregation.toString().equalsIgnoreCase('shared') and anEnd.visibility.toString().equalsIgnoreCase('private'))]
+						[for(anEnd : Property | anAssociation.ownedEnd)]	
+							[if(anEnd.aggregation.toString().equalsIgnoreCase('none'))]
+	[if(anEnd.isStatic)]static [/if]vector<[anEnd.type.name/]*> [anEnd.name/];
+							[/if]
+						[/for]
+					[/if]
+				[/for]
+			[/for]
+			[for (aProperty : Property | aClass.attribute)]
+				[if (aProperty.visibility.toString().equalsIgnoreCase('private'))]
+	[if(aProperty.isStatic)]static [/if][if(aProperty.upper = -1)]vector<[/if][aProperty.type.name/][if(aProperty.upper = -1)]>*[/if] [aProperty.name/];
+				[/if]
+			[/for]
+			[for (anOperation : Operation | aClass.ownedOperation)]
+				[if(anOperation.visibility.toString().equalsIgnoreCase('private'))]
+		[if(anOperation.isStatic)]static [/if][if(anOperation.isAbstract)]virtual [/if][anOperation.type.name/][if(anOperation.type.name.equalsIgnoreCase('Task') or anOperation.type.name.equalsIgnoreCase('OctreeEntry'))]*[/if] [anOperation.name/]([if(anOperation.generateParameters().size()>2)][anOperation.generateParameters().substring(1, anOperation.generateParameters().size()-2)/][/if])[if(anOperation.isAbstract)] = 0[/if];
+				[/if]
+			[/for]
+
+	protected:
+	// [protected ('protected')]
+	// [/protected]
+			[for (aProperty : Property | aClass.attribute)]
+				[if (aProperty.visibility.toString().equalsIgnoreCase('protected'))]
+	[if(aProperty.isStatic)]static [/if][if(aProperty.upper = -1)]vector<[/if][aProperty.type.name/][if(aProperty.upper = -1)]>[/if] [aProperty.name/];
+				[/if]
+			[/for]
+			[for (anAssociation : Association | aClass.getAssociations())]
+				[for(anEnd : Property | anAssociation.ownedEnd)]
+					[if(anEnd.type.name.equalsIgnoreCase(aClass.name) and anEnd.aggregation.toString().equalsIgnoreCase('composite') and anEnd.visibility.toString().equalsIgnoreCase('protected'))]
+						[for(anEnd : Property | anAssociation.ownedEnd)]	
+							[if(anEnd.aggregation.toString().equalsIgnoreCase('none'))]
+	[if(anEnd.isStatic)]static [/if][anEnd.type.name/]* [anEnd.name/];
+							[/if]
+						[/for]
+					[/if]
+					[if(anEnd.type.name.equalsIgnoreCase(aClass.name) and anEnd.aggregation.toString().equalsIgnoreCase('shared') and anEnd.visibility.toString().equalsIgnoreCase('protected'))]
+						[for(anEnd : Property | anAssociation.ownedEnd)]	
+							[if(anEnd.aggregation.toString().equalsIgnoreCase('none'))]
+	[if(anEnd.isStatic)]static [/if]vector<[anEnd.type.name/]*> [anEnd.name/];
+							[/if]
+						[/for]
+					[/if]
+				[/for]
+			[/for]
+
+	public:
+		// [protected ('public')]
+		// [/protected]
+		[for (aProperty : Property | aClass.attribute)]
+				[if (aProperty.visibility.toString().equalsIgnoreCase('public'))]
+	[if(aProperty.isStatic)]static [/if][if(aProperty.upper = -1)]vector<[/if][aProperty.type.name/][if(aProperty.upper = -1)]>[/if] [aProperty.name/];
+				[/if]
+			[/for]
+		[if(aClass.generateCopyCtorParameters().equalsIgnoreCase('')._not())]
+		[aClass.name/]([aClass.generateCopyCtorParameters()/]);
+		[/if]
+		[aClass.name/]();
+		[if(aClass.isAbstract)]virtual [/if]~[aClass.name/]()[if(aClass.isAbstract)]{}[/if];
+			[for (aProperty : Property | aClass.attribute)]
+				[if (aProperty.visibility.toString().equalsIgnoreCase('public')._not())]
+		[if(aProperty.isStatic)]static [/if][if(aProperty.upper = -1)]vector<[/if][aProperty.type.name/][if(aProperty.upper = -1)]>*[/if] get[aProperty.name.toUpperFirst()/]();
+		[if(aProperty.isStatic)]static [/if]void set[aProperty.name.toUpperFirst()/]([aProperty.type.name/] _[aProperty.name/]);
+				[/if]
+			[/for]
+			[for (anOperation : Operation | aClass.ownedOperation)]
+				[if(anOperation.visibility.toString().equalsIgnoreCase('public'))]
+		[if(anOperation.isStatic)]static [/if][if(anOperation.isAbstract)]virtual [/if][anOperation.type.name/][if(anOperation.type.name.equalsIgnoreCase('Task') or anOperation.type.name.equalsIgnoreCase('OctreeEntry'))]*[/if] [anOperation.name/]([if(anOperation.generateParameters().size()>2)][anOperation.generateParameters().substring(1, anOperation.generateParameters().size()-2)/][/if])[if(anOperation.isAbstract)] = 0[/if];
+				[/if]
+			[/for]
+			[for (anAssociation : Association | aClass.getAssociations())]
+				[for(anEnd : Property | anAssociation.ownedEnd)]
+					[if(anEnd.aggregation.toString().equalsIgnoreCase('composite') and anEnd.visibility.toString().equalsIgnoreCase('public')._not())]
+						[for(otherEnd : Property | anAssociation.ownedEnd)]	
+							[if(otherEnd.aggregation.toString().equalsIgnoreCase('none') and (otherEnd.type.name.equalsIgnoreCase(aClass.name)._not() or otherEnd.type.name.equalsIgnoreCase(anEnd.type.name)))]
+		[if(otherEnd.isStatic)]static [/if][otherEnd.type.name/]* get[otherEnd.name.toUpperFirst()/]();
+								[if(otherEnd.isReadOnly._not())]
+		[if(otherEnd.isStatic)]static [/if]void set[otherEnd.name.toUpperFirst()/]([otherEnd.type.name/]* _[otherEnd.name/]);
+								[/if]
+							[/if]
+						[/for]
+					[/if]
+					[if(anEnd.aggregation.toString().equalsIgnoreCase('shared') and anEnd.visibility.toString().equalsIgnoreCase('public')._not())]
+						[for(otherEnd : Property | anAssociation.ownedEnd)]	
+							[if(otherEnd.aggregation.toString().equalsIgnoreCase('none') and (otherEnd.type.name.equalsIgnoreCase(aClass.name)._not() or otherEnd.type.name.equalsIgnoreCase(anEnd.type.name)))]
+		[if(otherEnd.isStatic)]static [/if]vector<[otherEnd.type.name/]*> get[otherEnd.name.toUpperFirst()/]();
+								[if(otherEnd.isReadOnly._not())]
+		[if(otherEnd.isStatic)]static [/if]void set[otherEnd.name.toUpperFirst()/](vector<[otherEnd.type.name/]*> _[otherEnd.name/]);
+								[/if]
+		[if(otherEnd.isStatic)]static [/if]void set[otherEnd.name.toUpperFirst()/]At([otherEnd.type.name/]* _[otherEnd.name/], int indice);
+							[/if]
+						[/for]
+					[/if]
+				[/for]
+			[/for]
+		[for(superClass : Class | aClass.superClass)]
+			[if(superClass.isAbstract)]
+				[for (anOperation : Operation | superClass.ownedOperation)]
+					[if(anOperation.visibility.toString().equalsIgnoreCase('public'))]
+						[if(anOperation.isAbstract)]
+		[if(anOperation.isStatic)]static [/if][anOperation.type.name/][if(anOperation.type.name.equalsIgnoreCase('Task') or anOperation.type.name.equalsIgnoreCase('OctreeEntry'))]*[/if] [anOperation.name/]([if(anOperation.generateParameters().size()>2)][anOperation.generateParameters().substring(1, anOperation.generateParameters().size()-2)/][/if]);
+						[/if]
+					[/if]
+				[/for]
+			[/if]
+		[/for]
+};
+
+#endif
+		[/file]
+		[file (aPackage.name.concat('/'+aClass.name.concat('.cpp')), false, 'UTF-8')]
+#include <cstdlib>
+
+#include "[aClass.name/].h"
+// [protected ('includes')]
+// [/protected]
+
+[if(aClass.generateCopyCtorParameters().equalsIgnoreCase('')._not())]
+[aClass.name/]::[aClass.name/]([for (aProperty : Property | aClass.attribute) separator(', ')][if(aProperty.upper = -1)]vector<[/if][aProperty.type.name/][if(aProperty.upper = -1)]>*[/if] _[aProperty.name/][/for])
+{
+	[for (aProperty : Property | aClass.attribute)]
+	[aProperty.name/] = _[aProperty.name/];
+	[/for]
+}
+[/if]
+
+[aClass.name/]::[aClass.name/]()
+// [protected ('super class')]
+// [/protected]
+{
+	// [protected ('constructor')]
+	// [/protected]
+}
+
+[if(aClass.isAbstract._not())]
+[aClass.name/]::~[aClass.name/]()
+{
+	// [protected ('destructor')]
+	// [/protected]
+}
+[/if]
+
+// [protected ('methods')]
+// [/protected]
+
+[for(superClass : Class | aClass.superClass)]
+	[if(superClass.isAbstract)]
+		[for (anOperation : Operation | superClass.ownedOperation)]
+			[if(anOperation.visibility.toString().equalsIgnoreCase('public'))]
+				[if(anOperation.isAbstract)]
+[anOperation.type.name/][if(anOperation.type.name.equalsIgnoreCase('Task') or anOperation.type.name.equalsIgnoreCase('OctreeEntry'))]*[/if] [aClass.name/]::[anOperation.name/]([if(anOperation.generateParameters().size()>2)][anOperation.generateParameters().substring(1, anOperation.generateParameters().size()-2)/][/if])
+{
+	// [protected (anOperation.name)]
+	// [/protected]
+}
+				[/if]
+			[/if]
+		[/for]
+	[/if]
+[/for]
+
+[for (anAssociation : Association | aClass.getAssociations())]
+	[for(anEnd : Property | anAssociation.ownedEnd)]
+		[if(anEnd.isStatic and anEnd.aggregation.toString().equalsIgnoreCase('composite'))]
+			[for(otherEnd : Property | anAssociation.ownedEnd)]	
+				[if(otherEnd.aggregation.toString().equalsIgnoreCase('none') and (otherEnd.type.name.equalsIgnoreCase(aClass.name)._not() or otherEnd.type.name.equalsIgnoreCase(anEnd.type.name)))]
+[otherEnd.type.name/]* [aClass.name/]::[otherEnd.name/] = NULL;
+				[/if]
+			[/for]
+		[/if]
+	[/for]
+[/for]
+
+[for (aProperty : Property | aClass.attribute)]
+	[if (aProperty.isStatic)]
+[if(aProperty.upper = -1)]vector<[/if][aProperty.type.name/][if(aProperty.upper = -1)]>*[/if] [aClass.name/]::[aProperty.name/] = [aProperty.defaultValue.name/];	
+	[/if]
+[/for]
+
+[for (aProperty : Property | aClass.attribute)]
+	[if (aProperty.visibility.toString().equalsIgnoreCase('public')._not())]
+[if(aProperty.upper = -1)]vector<[/if][aProperty.type.name/][if(aProperty.upper = -1)]>*[/if] [aClass.name/]::get[aProperty.name.toUpperFirst()/]()
+{
+	// [protected ('get'.concat(aProperty.name.toUpperFirst()))]
+	// [/protected]
+	return [aProperty.name/];
+}
+
+	[if(aProperty.isReadOnly._not())]
+void [aClass.name/]::set[aProperty.name.toUpperFirst()/]([aProperty.type.name/] _[aProperty.name/])
+{
+	[aProperty.name/] = _[aProperty.name/];
+}
+	[/if]
+
+[/if]
+[/for]
+
+[for (anOperation : Operation | aClass.ownedOperation)]
+	[if(anOperation.isAbstract._not())]
+		[if(anOperation.visibility.toString().equalsIgnoreCase('public')) or anOperation.visibility.toString().equalsIgnoreCase('private') ]
+[anOperation.type.name/][if(anOperation.type.name.equalsIgnoreCase('OctreeEntry'))]*[/if] [aClass.name/]::[anOperation.name/]([if(anOperation.generateParameters().size()>2)][anOperation.generateParameters().substring(1, anOperation.generateParameters().size()-2)/][/if])
+{
+	// [protected (anOperation.name)]
+	// [/protected]
+}
+		[/if]
+	[/if]
+[/for]
+
+			[for (anAssociation : Association | aClass.getAssociations())]
+				[for(anEnd : Property | anAssociation.ownedEnd)]
+					[if(anEnd.aggregation.toString().equalsIgnoreCase('composite') and anEnd.visibility.toString().equalsIgnoreCase('public')._not())]
+						[for(otherEnd : Property | anAssociation.ownedEnd)]	
+							[if(otherEnd.aggregation.toString().equalsIgnoreCase('none') and (otherEnd.type.name.equalsIgnoreCase(aClass.name)._not() or otherEnd.type.name.equalsIgnoreCase(anEnd.type.name)))]
+[otherEnd.type.name/]* [aClass.name/]::get[otherEnd.name.toUpperFirst()/]()
+{
+	// [protected ('get'.concat(otherEnd.name.toUpperFirst()))]
+	// [/protected]
+	return [otherEnd.name/];
+}
+
+								[if(otherEnd.isReadOnly._not())]
+void [aClass.name/]::set[otherEnd.name.toUpperFirst()/]([otherEnd.type.name/]* _[otherEnd.name/])
+{
+	[otherEnd.name/] = _[otherEnd.name/];
+}
+					
+								[/if]
+							[/if]
+						[/for]
+					[/if]
+					[if(anEnd.aggregation.toString().equalsIgnoreCase('shared') and anEnd.visibility.toString().equalsIgnoreCase('public')._not())]
+						[for(otherEnd : Property | anAssociation.ownedEnd)]	
+							[if(otherEnd.aggregation.toString().equalsIgnoreCase('none') and (otherEnd.type.name.equalsIgnoreCase(aClass.name)._not() or otherEnd.type.name.equalsIgnoreCase(anEnd.type.name)))]
+vector<[otherEnd.type.name/]*> [aClass.name/]::get[otherEnd.name.toUpperFirst()/]()
+{
+	// [protected ('get'.concat(otherEnd.name.toUpperFirst()))]
+	// [/protected]
+	return [otherEnd.name/];
+}
+
+[if(otherEnd.isStatic)]static [/if]void [aClass.name/]::set[otherEnd.name.toUpperFirst()/]At([otherEnd.type.name/]* _[otherEnd.name/], int indice)
+{
+	[otherEnd.name/]['['/]indice[']'/] = _[otherEnd.name/];
+}
+
+								[if(otherEnd.isReadOnly._not())]
+void [aClass.name/]::set[otherEnd.name.toUpperFirst()/]([otherEnd.type.name/]* _[otherEnd.name/])
+{
+	[otherEnd.name/] = _[otherEnd.name/];
+}
+					
+								[/if]
+							[/if]
+						[/for]
+					[/if]
+				[/for]
+			[/for]
+		[/file]
+	[/if]
+[/for]
+
+[/template]

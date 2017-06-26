@@ -1,0 +1,73 @@
+[comment encoding = UTF-8 /]
+[module GenerateUserCommand('http://www.cuni.cz/mff/d3s/Karel', 'http://www.eclipse.org/emf/2002/Ecore')/]
+
+[import cz::cuni::mff::d3s::karel::generator::templates::internal::Common /]
+
+[template public generateUserCommand(u : UserDefinedCommand)]
+    /** 
+     * This is the implementation of Karel's command defined by user.
+     *
+     * [u.doc.text /]
+     */
+	[userCommandMethodSignature(u) /] {	
+		[for (st : Statement | u.statements)]
+			[st.generateStatement('this') /]						
+		[/for]
+	}	
+[/template]
+
+[template public generateStatement(st : Statement, name: String)]
+	[if (st.oclIsTypeOf(IfStatement))]
+[generateIfStatement(st.oclAsType(IfStatement), name) /]
+	[elseif (st.oclIsTypeOf(IterateStatement))]
+[generateIterateStatement(st.oclAsType(IterateStatement), name) /]
+	[elseif (st.oclIsTypeOf(WhileStatement))]
+[generateWhileStatement(st.oclAsType(WhileStatement), name) /]
+	[elseif (st.oclIsTypeOf(CommandStatement))]
+[generateCommandStatement(st.oclAsType(CommandStatement), name)/]
+	[elseif (st.oclIsTypeOf(UserDefinedCommandStatement))]
+[generateUserCommandStatement(st.oclAsType(UserDefinedCommandStatement), name)/]					
+	[else]	
+		<unsupported statement>	
+	[/if]				 			
+[/template]
+
+[template protected generateIfStatement(st : IfStatement, name:String)]
+if ([generateConditionExpr(st.condition, name)/]) {
+[for (s : Statement | st.statements)]
+	[s.generateStatement(name) /]						
+[/for]
+} else {
+[for (s : Statement | st.elseStatements)]
+	[s.generateStatement(name) /]						
+[/for]
+}	
+[/template]
+
+[template protected generateIterateStatement(st : IterateStatement, name:String)]	
+[/template]
+
+[template protected generateWhileStatement(st : WhileStatement, name:String)]
+while([generateConditionExpr(st.condition, name)/]) {
+	[for (s : Statement | st.statements)]
+			[s.generateStatement(name) /]						
+	[/for]
+}	
+[/template]
+
+[template protected generateCommandStatement(st : CommandStatement, name:String)]
+[name/].[primitiveCommandConverter(st.kind)/];				
+[/template]
+
+[template public generateUserCommandStatement(st : UserDefinedCommandStatement, name:String)]
+[name/].[userCommandMethodCall(st.command) /];		
+[/template]
+
+[comment Generate condition expression - semantics of the expression is hidden in the following code /]
+[template public generateConditionExpr(expr : ConditionExpr, name:String)]
+[if (expr.negation)]![/if] [name+'.'+conditionKindConverter(expr.expr) /]		
+[/template]
+
+[query protected primitiveCommandConverter(cmdKind : CommandKind) : String =  cmdKind.toString().concat('()') /]
+[query protected conditionKindConverter(condKind : ConditionKind) : String =  (condKind.toString().tokenize('_').toLower().toUpperFirst()->prepend('is')->append('()')) /]
+

@@ -1,0 +1,63 @@
+[comment encoding = UTF-8 /]
+[module system2ada('http://multirobotsystem/1.0')/]
+[import agent_spec/]
+[import agent_body/]
+[import agent_task/]
+[import agent_input_buffers/]
+[import agent_data_types/]
+[import logic_spec/]
+[import project/]
+[import task_termination_monitor/]
+[import makefile_nxt/]
+[import generic_data_buffer/]
+[import effector_impl/]
+[import sensors_impl/]
+
+[template public system2ada(aSystem : System)]
+
+[comment @main /]
+[file ('system_'+aSystem.name+'.adb', false, 'UTF-8')]
+-- with Ada.Text_IO;
+
+--  Set up task death notification
+with Start_Up;
+pragma Elaborate_All (Start_Up);
+
+[for (anAgent : Agent | agents)]
+with Agent_[anAgent.name/];
+[/for]
+[for (anAgent : Agent | agents)]
+with Agent_[anAgent.name/]_Task;
+[/for]
+
+--  include packages with the user defined tasks (i.e. sensors, effectors)
+-- [protected('user_code')]
+--  with ...;
+-- [/protected]
+
+procedure System_[aSystem.name/] is
+begin
+   null;
+end System_[aSystem.name/];
+[/file]
+
+[for (anAgent : Agent | aSystem.agents)]
+[project(aSystem)/]
+[makefile_nxt(aSystem)/]
+
+[task_termination_monitor()/]
+[generic_data_buffer()/]
+
+[agent_data_types(anAgent)/]
+[agent_input_buffers(anAgent)/]
+[agent_spec(anAgent)/]
+[agent_body(anAgent)/]
+[logic_spec(anAgent)/]
+[agent_task(anAgent)/]
+
+[effector_impl(anAgent)/]
+[sensors_impl(anAgent)/]
+
+[/for]
+	
+[/template]

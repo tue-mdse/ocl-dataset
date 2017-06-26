@@ -1,0 +1,210 @@
+[comment encoding = UTF-8 /]
+[module module_io('http://subsumption/1.0')/]
+
+[template public module_io(aModule : Module)]
+
+[if self.inputs->notEmpty() or self.outputs.inhibitedBy->notEmpty()]
+
+[comment @main /]
+[file (aModule.name+'_module_io.ads', false, 'UTF-8'))]
+with Ada.Real_Time; use Ada.Real_Time;
+
+with [self.name/]_buffers; use [self.name/]_buffers;
+
+package [self.name/]_module_io is
+
+   [comment ]test if there are suppressed inputs in the module[/comment]   
+   [if inputs.suppressedBy->notEmpty()]
+   type suppressed_input is ([for (inputs->select(suppressedBy->notEmpty())) separator (', ')][self.name/][/for]);
+   type suppression_state_t is array (suppressed_input) of Boolean;
+   type suppression_time_t is array (suppressed_input) of Time;   
+   [/if]
+
+   [comment ]test if there are inhibited outputs in the module[/comment]   
+   [if outputs.inhibitedBy->notEmpty()]
+   type inhibited_output is ([for (outputs->select(inhibitedBy->notEmpty())) separator (', ')][self.name/][/for]);
+   type inhibition_state_t is array (inhibited_output) of Boolean;
+   type inhibition_time_t is array (inhibited_output) of Time;
+   [/if]
+
+   [comment]test if the module have inputs or inhibited outputs[/comment]
+   [if inputs->notEmpty() or outputs.inhibitedBy->notEmpty()]   
+   ----------------------
+   -- Protected_IO --
+   ----------------------
+   
+   -- Protected type for holding status of asynchronous calls to the agent
+   protected Protected_IO is
+      -- Get the current state of the module wires
+      [if self.period > 0]procedure[else]entry[/if] Get_Current_IO
+      (
+         [if inputs->notEmpty()]current_inputs     : out inputs_t[if outputs.inhibitedBy->notEmpty()];[/if][/if]
+         [if outputs.inhibitedBy->notEmpty()]current_inhibition : out inhibition_state_t[/if]
+      );
+      -- Procedures for transmitting data to particulars buffers
+      [for (self.inputs)]
+      procedure Transmit_[self.name/] (item : in [self.name/]_Buffer.Buffer_Data_Type);
+      [/for]
+      [for (aInput : Input | inputs)]
+      [for (aInput.suppressedBy)]
+      procedure Suppress_[aInput.name/]_[i/] (item : in [aInput.name/]_Buffer.Buffer_Data_Type);
+      [/for]
+      [/for]
+      [for (aOutput : Output | outputs)]
+	  [for (aOutput.inhibitedBy)]
+      procedure Inhibit_[aOutput.name/]_[i/];
+	  [/for]
+	  [/for] 
+   private
+      -- Internal, protected copy of the data
+      [if self.inputs->notEmpty()]
+      inputs_state     : inputs_t;
+      [comment]hold a state of the suppressed inputs[/comment]
+      [if inputs.suppressedBy->notEmpty()]
+      suppressed       : suppression_state_t := (others => False);
+      suppression_time : suppression_time_t;
+      [/if]
+      [/if]
+      [comment]hold a state of the inhibited outputs[/comment]
+      [if outputs.inhibitedBy->notEmpty()]
+      inhibited        : inhibition_state_t  := (others => False);
+      inhibition_time  : inhibition_time_t;
+      [/if]
+
+      [if not (aModule.period > 0)]
+      -- Track changes of the input wires
+      Changed : Boolean := False;
+      [/if]
+
+      -- Helper routines
+      [if inputs.suppressedBy->notEmpty()]
+      procedure record_suppression (input : in suppressed_input; time : in Time_Span);
+      [/if]
+      [if outputs.inhibitedBy->notEmpty()]
+      procedure record_inhibition (output : in inhibited_output; time   : in Time_Span);
+      [/if]
+
+   end Protected_IO;
+   [/if]
+end [aModule.name/]_module_io;   
+[/file]
+
+[comment @main /]
+[file (aModule.name+'_module_io.adb', false, 'UTF-8'))]
+-- Module buffers
+with [self.name/]_buffers; use [self.name/]_buffers;
+
+package body [self.name/]_module_io is
+
+   ---------------------------
+   -- Protected_IO body --
+   ---------------------------
+
+   [comment]test if the module have inputs or inhibited outputs[/comment]
+   [if inputs->notEmpty() or outputs.inhibitedBy->notEmpty()]   
+   protected body Protected_IO is
+      [if self.period > 0]procedure[else]entry[/if] Get_Current_IO
+      (
+         [if inputs->notEmpty()]current_inputs     : out inputs_t[if outputs.inhibitedBy->notEmpty()];[/if][/if]
+         [if outputs.inhibitedBy->notEmpty()]current_inhibition : out inhibition_state_t[/if]
+      )
+      [if not (self.period > 0)]when Changed[/if]
+      is
+         [if outputs.inhibitedBy->notEmpty()]
+         now : constant Time := Clock;
+         [/if]
+      begin
+         [if outputs.inhibitedBy->notEmpty()]
+         -- Check if inhibitors have not already expired
+         for output in inhibited_output'Range loop
+            if inhibited (output) and inhibition_time (output) < now then
+               inhibited (output) := False;
+            end if;
+         end loop;
+         -- Copy the current status of the inhibitors
+         current_inhibition := inhibited;
+         [/if]
+         [if inputs->notEmpty()]
+         -- Copy the current status of the input lines
+         current_inputs := inputs_state;
+         -- Mark input data buffers as used
+         [for (inputs)]
+         [self.name/]_Buffer.MarkAsUsed (inputs_state.[self.name/]);
+         [/for]
+         [/if]
+         [if not (aModule.period > 0)]
+         Changed := False;
+         [/if]
+      end Get_Current_IO;
+
+      [for (aInput : Input | inputs)]
+      procedure Transmit_[self.name/] (item : in [self.name/]_Buffer.Buffer_Data_Type) is
+      begin
+         [if aInput.suppressedBy->notEmpty()]
+         -- Check if suppression has already expired
+         if suppressed ([self.name/]) and suppression_time ([self.name/]) < Clock then
+            suppressed ([self.name/]) := False;
+         end if;
+         -- and eventually store the new data
+         if not suppressed ([self.name/]) then
+            inputs_state.[self.name/].Set (item);
+            [if not (aModule.period > 0)]
+            Changed := True;
+            [/if]
+         end if;
+         [else]
+         inputs_state.[self.name/].Set (item);
+         [if not (aModule.period > 0)]
+         Changed := True;
+         [/if]
+         [/if]
+      end Transmit_[self.name/];
+      [/for]
+      
+      [if outputs.inhibitedBy->notEmpty()]
+      [for (aOutput : Output | self.outputs)]
+      [for (aInhibitor : Inhibitor | aOutput.inhibitedBy)]
+      procedure Inhibit_[aOutput.name/]_[i/] is
+      begin
+         record_inhibition ([aOutput.name/], Milliseconds ([(1000*aInhibitor.time).floor()/]));
+      end Inhibit_[aOutput.name/]_[i/];      
+      [/for]
+      [/for]
+
+      procedure record_inhibition (output : in inhibited_output; time : in Time_Span) is
+      begin
+         inhibition_time (output) := Clock + time;
+         inhibited (output)       := True;
+      end record_inhibition;      
+      [/if]
+
+      [if inputs.suppressedBy->notEmpty()]
+      [for (aInput : Input | self.inputs)]
+      [for (aSuppressor : Suppressor | aInput.suppressedBy)]
+      procedure Suppress_[aInput.name/]_[i/] (item : in [aInput.name/]_Buffer.Buffer_Data_Type) is
+      begin
+         [if aInput.suppressedBy->notEmpty()]
+         record_suppression ([aInput.name/], Milliseconds ([(1000*aSuppressor.time).floor()/]));
+         [/if]
+         inputs_state.[aInput.name/].Set (item);
+      end Suppress_[aInput.name/]_[i/];
+      [/for]
+      [/for]
+
+      procedure record_suppression (input : in suppressed_input; time : in Time_Span) is
+      begin
+         suppression_time (input) := Clock + time;
+         suppressed (input)       := True;
+         [if not (aModule.period > 0)]
+         Changed                  := True;
+         [/if]
+      end record_suppression;
+      [/if]
+   end Protected_IO;
+   [/if]
+
+end [aModule.name/]_module_io;
+[/file]
+[/if]
+	
+[/template]

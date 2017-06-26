@@ -1,0 +1,117 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_Component('http://www.eclipse.org/uml2/4.0.0/UML')extends mdd::codeGenerator::csharp::generate_Element /]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Operation /]
+[import mdd::codeGenerator::csharp::generate_Property /]
+[import mdd::codeGenerator::csharp::generate_Classifier/]
+[import mdd::codeGenerator::csharp::generate_PortType/]
+
+[template public generate(c : Component, srcDir:String) ? (c.getAppliedStereotypes()->isEmpty())]
+[file (srcDir+getProperty('artifact.codeFolder')+'/'+c.qualifiedName('/')+'.cs', false, 'UTF-8')]
+
+namespace [c.namespace.qualifiedName('.')/] {
+    using System.Linq;
+
+	/// <summary> Component Description </summary>
+	public class [c.name/]
+	: global::framework.os.threading.Runnable
+	{
+	
+        private global::framework.os.OsRef os;
+        private global::framework.logging.LoggerRef log;
+        private global::framework.persistence.PersistenceRef config;
+        private global::framework.basicTypes.String objectId;
+
+	  #region Constructors
+	  [if (c.constructors()->isEmpty())]
+	    [c.generate_DefaultConstructor()/]
+	  [else]
+	  [for (op : Operation | c.constructors())]
+		[op.gen_Constructor()/]
+	  [/for]
+	  [/if]
+	  #endregion
+
+		#region Active Support
+		private global::framework.os.threading.Thread _thread;
+		public global::framework.os.threading.Thread thread {
+		    get { return _thread; }
+		}
+		
+		public void start() {
+			if (null == this._thread) {
+		    	this._thread = os.createThread(this.objectId);
+		    	this.thread.start(this);
+			}
+		}
+	    [c.createRun()/]
+	    [c.createStop()/]
+		#endregion
+	
+	  #region Operations 
+	  [for (op : Operation | c.ownedOperation->reject(op2|op2.name = c.name))]
+		[op.generate()/]
+	  [/for]	
+	  #endregion
+
+	  #region Ports
+	  [for (pt : Port | c.ownedPort->sortedBy(e | e.name))]
+		[pt.gen_Port()/]
+	  [/for]
+	  #endregion
+	
+	  #region Properties
+	  [for (pr : Property | c.ownedAttribute->reject(a|a.oclIsTypeOf(Port)))]
+		[pr.generate()/]
+	  [/for]
+      #endregion
+
+	  #region Nested Classes
+	  [for (c : Class | c.nestedClassifier->filter(Class)->sortedBy(e | e.name))]
+		[c.generatePortType(srcDir)/]
+	  [/for]
+      #endregion
+	
+	}
+}
+[/file]
+[/template]
+
+[template public createRun(c : Component)]
+public void run() {
+	log.trace(new framework.logging.Message("run()"));
+    try {
+      [self.startCompositeParts()/]
+		//when all active parts have stopped (joined), this thread stops
+      [for ( pr : Property | c.activeProperties() )]
+	    this.[pr.name/].thread.join();
+      [/for]
+    } catch (framework.basicTypes.Exception ex) {
+		log.error(new framework.logging.Message(ex.Message));
+    }
+}
+[/template]
+
+[template public createStop(arg : Component)]
+public void stop() {
+	log.trace(new framework.logging.Message("stop()"));
+  [for ( pr : Property | arg.activeProperties() )]
+    this.[pr.name/].stop();
+	this.[pr.name/].thread.join();
+  [/for]
+}
+[/template]
+
+
+

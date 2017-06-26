@@ -1,0 +1,637 @@
+[
+  {
+    "name": "HardwareResource",
+    "expressions": [],
+    "properties": [
+      "network",
+      "System",
+      "modules"
+    ]
+  },
+  {
+    "name": "Processor",
+    "expressions": [],
+    "properties": [
+      "id",
+      "Module"
+    ]
+  },
+  {
+    "name": "Partition",
+    "expressions": [
+      {
+        "operations": {"<=": 1},
+        "name": "AvailibilityFactorLessThanOrEqualToOne",
+        "body": "availabilityFactor <= 1",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["realtimescheduling::Partition::availabilityFactor"]
+      },
+      {
+        "operations": {
+          "<=": 2,
+          "at": 1,
+          "size": 2,
+          "+": 1,
+          "subSequence": 1,
+          "indexOf": 1,
+          "-": 1
+        },
+        "name": "NonOverlappingIntervals",
+        "body": "\n\t\tif (executionIntervals->size() <= 1)\n\t\tthen true -- Nothing can overlap if there is only one or none!\n\t\telse\n\t\tlet sortedIntervals : Sequence(Interval) = executionIntervals->sortedBy(i : Interval | i.start) in\n\t\t\tsortedIntervals->\n\t\t\t\tsubSequence(1, sortedIntervals->size() - 1)->\n\t\t\t\tforAll(i : Interval | i.end <= sortedIntervals->at(1 + sortedIntervals->indexOf(i)).start)\n\t\tendif",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "VariableExpImpl": 9,
+          "OperationCallExpImpl": 9,
+          "LetExpImpl": 1,
+          "IntegerLiteralExpImpl": 4,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 5,
+          "BooleanLiteralExpImpl": 1
+        },
+        "properties": [
+          "realtimescheduling::Partition::executionIntervals",
+          "realtimescheduling::Interval::end",
+          "realtimescheduling::Interval::start"
+        ]
+      },
+      {
+        "operations": {
+          "<>": 1,
+          "sum": 1,
+          "-": 1,
+          "/": 1
+        },
+        "name": "availabilityFactor",
+        "body": "\n\t\t--check for divide by zero!\n\t\tif (period <> 0)\n\t\tthen executionIntervals->collect(i : Interval | i.end - i.start)->sum() / period\n\t\telse 0.0\n\t\tendif",
+        "type": "PropertyImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 5,
+          "OperationCallExpImpl": 4,
+          "RealLiteralExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "realtimescheduling::Partition::executionIntervals",
+          "realtimescheduling::Interval::end",
+          "realtimescheduling::Partition::period",
+          "realtimescheduling::Interval::start"
+        ]
+      },
+      {
+        "operations": {
+          "<=": 1,
+          "size": 1,
+          "last": 1,
+          ">": 1
+        },
+        "name": "PeriodSpansIntervals",
+        "body": "\n\t\tlet sortedIntervals : Sequence(Interval) = executionIntervals->sortedBy(start) in\n\t\tif (sortedIntervals->size() > 1)\n\t\tthen sortedIntervals->last().end <= period\n\t\telse true\n\tendif",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 4,
+          "VariableExpImpl": 5,
+          "LetExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 4,
+          "BooleanLiteralExpImpl": 1
+        },
+        "properties": [
+          "realtimescheduling::Partition::executionIntervals",
+          "realtimescheduling::Interval::end",
+          "realtimescheduling::Partition::period",
+          "realtimescheduling::Interval::start"
+        ]
+      },
+      {
+        "operations": {
+          "or": 2,
+          "oclIsUndefined": 1,
+          "oclIsInvalid": 1,
+          "oclAsSet": 2,
+          "=": 1
+        },
+        "name": "period",
+        "body": "if (module->oclIsInvalid() or module->oclIsUndefined() or module = null)\n\t\tthen 0.0\n\t\telse self.module.period\n\t\tendif",
+        "type": "PropertyImpl",
+        "constructs": {
+          "VariableExpImpl": 4,
+          "OperationCallExpImpl": 7,
+          "NullLiteralExpImpl": 1,
+          "RealLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "realtimescheduling::Module::period",
+          "realtimescheduling::Partition::module"
+        ]
+      },
+      {
+        "operations": {">": 1},
+        "name": "PositivePeriod",
+        "body": "period > 0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 1,
+          "OperationCallExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["realtimescheduling::Partition::period"]
+      }
+    ],
+    "properties": [
+      "executionIntervals",
+      "virtualProcessorUtilization",
+      "availabilityFactor",
+      "tasks",
+      "id",
+      "SoftwareResource",
+      "module",
+      "schedulingAlgorithm",
+      "period"
+    ]
+  },
+  {
+    "name": "Route",
+    "expressions": [],
+    "properties": [
+      "VirtualLink",
+      "connections",
+      "endToEndDelay"
+    ]
+  },
+  {
+    "name": "VirtualLink",
+    "expressions": [
+      {
+        "operations": {},
+        "name": "PathExists",
+        "body": null,
+        "type": "ConstraintImpl",
+        "constructs": {},
+        "properties": []
+      },
+      {
+        "operations": {">": 1},
+        "name": "PositiveMaxFrameSize",
+        "body": "maxFrameSize > 0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 1,
+          "OperationCallExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["realtimescheduling::VirtualLink::maxFrameSize"]
+      },
+      {
+        "operations": {">": 1},
+        "name": "PositiveBAG",
+        "body": "BAG > 0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["realtimescheduling::VirtualLink::BAG"]
+      },
+      {
+        "operations": {},
+        "name": "RoutesConnectSourceToDestinations",
+        "body": null,
+        "type": "ConstraintImpl",
+        "constructs": {},
+        "properties": []
+      },
+      {
+        "operations": {"<>": 1},
+        "name": "DestinationsCannotIncludeSource",
+        "body": "\n\t\t\t\tdestinations->forAll(dest : Module | dest <> source)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "realtimescheduling::VirtualLink::destinations",
+          "realtimescheduling::VirtualLink::source"
+        ]
+      },
+      {
+        "operations": {},
+        "name": "NoCycles",
+        "body": null,
+        "type": "ConstraintImpl",
+        "constructs": {},
+        "properties": []
+      }
+    ],
+    "properties": [
+      "maxFrameSize",
+      "destinations",
+      "id",
+      "BAG",
+      "SoftwareResource",
+      "routes",
+      "source"
+    ]
+  },
+  {
+    "name": "SoftwareResource",
+    "expressions": [],
+    "properties": [
+      "containedPartitions",
+      "executedTasks",
+      "virtualLinks",
+      "System"
+    ]
+  },
+  {
+    "name": "Port",
+    "expressions": [
+      {
+        "operations": {">": 1},
+        "name": "PositiveBandwidth",
+        "body": "Bandwidth > 0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 1,
+          "OperationCallExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["realtimescheduling::Port::Bandwidth"]
+      },
+      {
+        "operations": {},
+        "name": "UtilizationSumLessThanOne",
+        "body": null,
+        "type": "ConstraintImpl",
+        "constructs": {},
+        "properties": []
+      }
+    ],
+    "properties": [
+      "Bandwidth",
+      "Connection",
+      "Connection",
+      "id",
+      "order",
+      "connection"
+    ]
+  },
+  {
+    "name": "SchedulingAlgorithm",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Module",
+    "expressions": [
+      {
+        "operations": {
+          "size": 1,
+          "sum": 1,
+          ">": 1
+        },
+        "name": "utilization",
+        "body": "if (partition\n\t\t\t\t\t\t->size() > 0)\n\t\t\t\t\tthen partition\n\t\t\t\t\t\t->collect(p | p.availabilityFactor)\n\t\t\t\t\t\t->sum()\n\t\t\t\t\telse 0.0\n\t\t\t\t\tendif",
+        "type": "PropertyImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 3,
+          "RealLiteralExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "realtimescheduling::Module::partition",
+          "realtimescheduling::Partition::availabilityFactor"
+        ]
+      },
+      {
+        "operations": {
+          "flatten": 1,
+          "<=": 2,
+          "at": 1,
+          "size": 2,
+          "subSequence": 1,
+          "+": 1,
+          "-": 1,
+          "indexOf": 1
+        },
+        "name": "NonOverlappingPartitions",
+        "body": "let allIntervals : Sequence(Interval) = partition.executionIntervals\n\t\t->flatten()\n\t\t->sortedBy(i : Interval | i.start)\n\tin if (allIntervals\n\t\t\t->size() <= 1)\n\t\tthen true\n\t\telse allIntervals\n\t\t\t->subSequence(1, allIntervals\n\t\t\t\t->size() - 1)\n\t\t\t->forAll(i : Interval | i.end <= allIntervals\n\t\t\t\t->at(1 + allIntervals\n\t\t\t\t\t->indexOf(i)).start)\n\t\tendif",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 3,
+          "VariableExpImpl": 10,
+          "OperationCallExpImpl": 10,
+          "LetExpImpl": 1,
+          "IntegerLiteralExpImpl": 4,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 5,
+          "BooleanLiteralExpImpl": 1
+        },
+        "properties": [
+          "realtimescheduling::Module::partition",
+          "realtimescheduling::Partition::executionIntervals",
+          "realtimescheduling::Interval::end",
+          "realtimescheduling::Interval::start"
+        ]
+      },
+      {
+        "operations": {">": 1},
+        "name": "PositiveDelay",
+        "body": "delay > 0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["realtimescheduling::Module::delay"]
+      },
+      {
+        "operations": {">": 1},
+        "name": "NonZeroPeriod",
+        "body": "period > 0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["realtimescheduling::Module::period"]
+      }
+    ],
+    "properties": [
+      "partition",
+      "HardwareResource",
+      "utilization",
+      "period",
+      "id",
+      "VirtualLink",
+      "processors",
+      "delay",
+      "VirtualLink",
+      "modulePorts"
+    ]
+  },
+  {
+    "name": "Switch",
+    "expressions": [{
+      "operations": {
+        "size": 1,
+        ">": 1
+      },
+      "name": "AtleastTwoSwitchPorts",
+      "body": "switchPorts->size() > 1",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "OperationCallExpImpl": 2,
+        "VariableExpImpl": 1,
+        "IntegerLiteralExpImpl": 1,
+        "PropertyCallExpImpl": 1
+      },
+      "properties": ["realtimescheduling::Switch::switchPorts"]
+    }],
+    "properties": [
+      "id",
+      "Network",
+      "switchPorts"
+    ]
+  },
+  {
+    "name": "Interval",
+    "expressions": [
+      {
+        "operations": {"<>": 1},
+        "name": "NonZeroLength",
+        "body": "end <> start",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "realtimescheduling::Interval::end",
+          "realtimescheduling::Interval::start"
+        ]
+      },
+      {
+        "operations": {">=": 1},
+        "name": "EndAfterStart",
+        "body": "end >= start",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "realtimescheduling::Interval::end",
+          "realtimescheduling::Interval::start"
+        ]
+      }
+    ],
+    "properties": [
+      "Partition",
+      "end",
+      "start"
+    ]
+  },
+  {
+    "name": "SwitchPort",
+    "expressions": [],
+    "properties": ["Switch"]
+  },
+  {
+    "name": "EndSystemPort",
+    "expressions": [],
+    "properties": ["Module"]
+  },
+  {
+    "name": "Periodicity",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Network",
+    "expressions": [
+      {
+        "operations": {">": 1},
+        "name": "PositiveNetworkLatency",
+        "body": "latency > 0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 1,
+          "OperationCallExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["realtimescheduling::Network::latency"]
+      },
+      {
+        "operations": {">": 1},
+        "name": "PositiveNetworkBandwith",
+        "body": "networkBandwidth > 0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["realtimescheduling::Network::networkBandwidth"]
+      }
+    ],
+    "properties": [
+      "name",
+      "networkBandwidth",
+      "HardwareResource",
+      "switches",
+      "latency",
+      "connections"
+    ]
+  },
+  {
+    "name": "Task",
+    "expressions": [
+      {
+        "operations": {
+          "<=": 1,
+          "<>": 1
+        },
+        "name": "ExecutionAndPeriodAllowsCompletion",
+        "body": "\n\t\tif (periodicity <> Periodicity::Aperiodic)\n\t\t\tthen worstCaseExecTime <= characteristicPeriod\n\t\t\telse true\n\t\t\tendif",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 2,
+          "VariableExpImpl": 3,
+          "EnumLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 3,
+          "BooleanLiteralExpImpl": 1
+        },
+        "properties": [
+          "realtimescheduling::Task::worstCaseExecTime",
+          "realtimescheduling::Task::characteristicPeriod",
+          "realtimescheduling::Task::periodicity"
+        ]
+      },
+      {
+        "operations": {"<=": 1},
+        "name": "DeadlineLessThanPeriod",
+        "body": "implicitDeadline <= characteristicPeriod",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "realtimescheduling::Task::characteristicPeriod",
+          "realtimescheduling::Task::implicitDeadline"
+        ]
+      },
+      {
+        "operations": {">": 1},
+        "name": "PositivePeriod",
+        "body": "characteristicPeriod > 0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 1,
+          "OperationCallExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["realtimescheduling::Task::characteristicPeriod"]
+      },
+      {
+        "operations": {">": 1},
+        "name": "PositiveWCET",
+        "body": "worstCaseExecTime > 0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["realtimescheduling::Task::worstCaseExecTime"]
+      },
+      {
+        "operations": {"<=": 1},
+        "name": "ExecutionAndDeadlineAllowsCompletion",
+        "body": "worstCaseExecTime <= implicitDeadline",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "realtimescheduling::Task::worstCaseExecTime",
+          "realtimescheduling::Task::implicitDeadline"
+        ]
+      }
+    ],
+    "properties": [
+      "worstCaseExecTime",
+      "id",
+      "characteristicPeriod",
+      "SoftwareResource",
+      "implicitDeadline",
+      "priority",
+      "responseTime",
+      "criticalInstance",
+      "scheduleable",
+      "periodicity",
+      "partition"
+    ]
+  },
+  {
+    "name": "System",
+    "expressions": [],
+    "properties": [
+      "name",
+      "hardware",
+      "software"
+    ]
+  },
+  {
+    "name": "Connection",
+    "expressions": [],
+    "properties": [
+      "A",
+      "routes",
+      "B",
+      "Port",
+      "Network",
+      "id"
+    ]
+  }
+]

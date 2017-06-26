@@ -1,0 +1,128 @@
+[comment]Copyright (c) 2013 CEA LIST.
+
+All rights reserved. This program and the accompanying materials
+are made available under the terms of the Eclipse Public License v1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+Contributors:
+ Obeo - Initial API and implementation
+ CEA LIST - Modification to support Facade code generation[/comment]
+[comment encoding = UTF-8 /]
+[module LoaderClass('http://www.eclipse.org/emf/2002/GenModel', 'http://www.eclipse.org/emf/2002/Ecore')/]
+
+[import org::eclipse::emf::eef::codegen::ecore::services::common /]
+[import org::eclipse::emf::eef::codegen::ecore::services::header /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenModel /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenPackage /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenClass /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenClassifier /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenFeature /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenDataType /]
+[import org::eclipse::emf::eef::codegen::ecore::services::StringUtil /]
+
+
+[template public loaderClass(genPackage : GenPackage) { genModel : GenModel = genPackage.genModel; packageName : String = genPackage.getUtilitiesPackageName(); className : String = 'Loader'} ]
+[genModel.initializeImportManager(packageName, className)/]
+
+[genModel.getImportedName('org.eclipse.emf.common.util.URI')/]
+
+[file (genPackage.loaderPath(className), false, 'UTF-8')]
+[genModel.includeHeader()/]
+package [packageName/];
+[let content : String = genPackage.loaderFileContent(genModel, className)]
+[genModel.genSortedImports()/]
+[content/]
+[/let]
+[/file]
+[/template]
+
+[template protected loaderFileContent(genPackage : GenPackage, genModel : GenModel, className : String)]
+
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Map;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EFactory;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.InternalEObject;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.emf.ecore.util.InternalEList;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.xml.sax.SAXException;
+
+
+public class Loader {
+
+	public static Resource doLoad(InputStream inputStream, Map<?, ?> options, EFactory inputFactory, Resource res) throws IOException {
+		//System.err.println("Load : " + res);
+
+		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+		DocumentBuilder db;
+
+		// Open XML
+		try {
+			db = dbf.newDocumentBuilder();
+			Document document = db.parse(inputStream);
+			Element root = document.getDocumentElement();
+
+			if(root.getNodeName().equals("source")) {
+				String umlFileURIAtt = root.getAttribute("uri");
+				URI umlFileURI = URI.createURI(umlFileURIAtt);
+
+				ResourceSet resSetUML = new ResourceSetImpl();
+				Resource resUML = resSetUML.getResource(umlFileURI, true);
+				if(resUML != null) {
+
+					Iterator<EObject> content = resUML.getContents().iterator();
+					ArrayList internalEObjectList = new ArrayList<>();
+
+					while(content.hasNext()) {
+						EObject umlModelElement = (EObject)content.next();
+						if(umlModelElement instanceof org.eclipse.uml2.uml.Element) {
+							EObject representing = Wrapper.getInstance().findOrCreateSpecific((org.eclipse.uml2.uml.Element)umlModelElement);
+	
+							if(representing != null) {
+									internalEObjectList.add(representing);
+							}
+						}
+					}
+
+					InternalEList<InternalEObject> internalEObjects = (InternalEList<InternalEObject>)(InternalEList<?>)res.getContents();
+					internalEObjects.addAllUnique(internalEObjectList);
+
+					return resUML;
+				} else {
+					throw new UnsupportedOperationException();
+				}
+			}
+		} catch (ParserConfigurationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SAXException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return null;
+
+	}
+}
+
+
+[/template]
+
+[query public loaderPath(genPackage : GenPackage, className : String) : String
+	= genPackage.genModel.extractSourceDirectory(genPackage.genModel.modelDirectory) + '/'+ genPackage.getUtilitiesPackageName().toPath() + '/' +
+		className+ '.java'/]

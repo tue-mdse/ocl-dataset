@@ -1,0 +1,134 @@
+[comment encoding = UTF-8 /]
+[module module_task('http://subsumption/1.0')/]
+
+[template public module_task(aModule : Module)]
+
+[comment @main /]
+[file (aModule.name+'_module_task.ads', false, 'UTF-8'))]
+with [aModule.name/]_buffers; use [aModule.name/]_buffers;
+
+package [self.name/]_module_task is
+   pragma Elaborate_Body;
+private
+   -- local access to the output buffers
+   [for (aModule.outputs)]
+   procedure Send_[self.name/] (item : [self.name/]_Buffer.Buffer_Data_Type);
+   [/for]
+end [self.name/]_module_task;
+[/file]
+
+[comment @main /]
+[file (aModule.name+'_module_task.adb', false, 'UTF-8'))]
+with Ada.Real_Time; use Ada.Real_Time;
+
+-- Module buffers
+with [self.name/]_buffers; use [self.name/]_buffers;
+-- Module main operation function
+with [self.name/]_operation;
+
+[comment FIXME: the following allows for duplicated 'with' of modules/]
+-- Modules with inputs connected with the output wires
+[for (aModule.outputs.sink.eContainer(Module)->asSet())]
+with [self.name/]_module;
+[/for]
+-- Modules with suppressors connected with the output wires
+[for (aModule.outputs.activates.eContainer(Input).eContainer(Module)->asSet())]
+with [self.name/]_module;
+[/for]
+-- Modules with inhibitors connected with the output wires
+[for (aModule.outputs.activates.eContainer(Output).eContainer(Module)->asSet())]
+with [self.name/]_module;
+[/for]
+
+[if aModule.inputs->notEmpty() or aModule.outputs.inhibitedBy->notEmpty()]
+with [aModule.name/]_module_io; use [aModule.name/]_module_io;
+[/if]
+
+package body [self.name/]_module_task is
+
+   task Main is
+      -- Set this if default stack size is not appropriate
+      -- pragma Storage_Size(4096);
+   end Main;
+
+   [if outputs.inhibitedBy->notEmpty()]
+   current_inhibition_state : inhibition_state_t;
+   [/if]
+
+   task body Main is
+      -- System_Time.System_Start_Time;
+      [if period->notEmpty() and period > 0]
+      Next_Time      : Ada.Real_Time.Time := Ada.Real_Time.Clock;
+      [/if]
+      [if self.inputs->notEmpty()]
+      current_inputs : inputs_t;
+      [/if]
+      [if self.outputs->notEmpty()]
+      next_outputs   : outputs_t;
+      [/if]
+   begin
+      -- TODO: call the initialization routine
+      -- (if not done by the Ada.Finalization)
+
+      loop
+         [if period->notEmpty() and period > 0]
+         delay until Next_Time;
+         [/if]
+
+         [comment]test if the module have inputs or inhibited outputs[/comment]
+         [if inputs->notEmpty() or outputs.inhibitedBy->notEmpty()]   
+         -- Get the current state of the module wires
+         Protected_IO.Get_Current_IO (
+            [if inputs->notEmpty()]current_inputs => current_inputs[if outputs.inhibitedBy->notEmpty()],[/if][/if]
+            [if outputs.inhibitedBy->notEmpty()]current_inhibition => current_inhibition_state[/if]
+         );
+         [/if]
+
+         -- Evaluate the module main function
+         [if outputs->notEmpty()]next_outputs := [/if][name/]_operation.operation[if self.inputs->notEmpty()] (current_inputs)[/if];
+         
+         [if outputs->notEmpty()]
+         -- Check if data output has been requested and send it out
+         [/if]
+         [for (outputs)]
+         if next_outputs.[name/].isFresh then
+            Send_[name/] (next_outputs.[name/].Get);
+         end if;
+         [/for]
+
+         [if period->notEmpty() and period > 0]
+         -- Set the next wakeup time
+         Next_Time := Next_Time + Ada.Real_Time.Milliseconds ([(1000*period).floor()/]);
+         [/if]
+      end loop;
+   end Main;
+
+   -- local access to the output buffers
+   [for (aOutput : Output | self.outputs) separator ('\n')]
+   procedure Send_[name/] (item : in [name/]_Buffer.Buffer_Data_Type) is
+   begin
+      [if (aOutput.sink->isEmpty() and aOutput.activates->isEmpty())]
+      null;
+      [else]
+      [if aOutput.inhibitedBy->notEmpty()]
+      if not current_inhibition_state ([name/]) then
+      [/if]
+         [for (aSink : Input | aOutput.sink)]
+         [aSink.eContainer(Module).name/]_module.Transmit_[aSink.name/] (item);
+         [/for]
+         [for (aInhibitor : Inhibitor | aOutput.activates)]         
+         [aInhibitor.inhibits.eContainer(Module).name/]_module.Suppress_[aInhibitor.inhibits.name/]_[aInhibitor.inhibits.inhibitedBy->indexOf(aInhibitor)/] (item);
+         [/for]
+         [for (aSuppressor : Suppressor | aOutput.activates)]
+         [aSuppressor.suppress.eContainer(Module).name/]_module.Suppress_[aSuppressor.suppress.name/]_[aSuppressor.suppress.suppressedBy->indexOf(aSuppressor)/] (item);
+         [/for]
+      [if aOutput.inhibitedBy->notEmpty()]
+      end if;
+      [/if]
+      [/if]
+   end Send_[name/];
+   [/for]
+end [aModule.name/]_module_task;
+[/file]
+
+[/template]

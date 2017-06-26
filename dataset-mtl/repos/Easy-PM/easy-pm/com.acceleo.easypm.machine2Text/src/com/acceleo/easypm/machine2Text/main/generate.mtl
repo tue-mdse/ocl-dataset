@@ -1,0 +1,79 @@
+[comment encoding = UTF-8 /]
+[module generate('com.gmf.enseeiht.machineModel')]
+
+[template public generateElement(aMachine : Machine)]
+[comment @main/]
+[file (aMachine.name.concat('Dsl.xtext'), false)]
+grammar com.xtext.enseeiht.stateDSL.StateDsl with org.eclipse.xtext.common.Terminals
+
+generate stateDsl "http://www.xtext.com/enseeiht/stateDSL/StateDsl"
+
+Model returns Model:
+	state+=State*;
+	
+State returns State:
+	'define' name=ID '{'
+		components+=([for (c : Component | aMachine.components) separator('|')][serializeName(c.name)/][/for])*
+		appication+=([for (a : Application | aMachine.applications) separator('|')][serializeName(a.name)/][/for])*
+	'}';
+
+
+[for (c: Component|aMachine.components)]
+
+[serializeName(c.name)/] returns Component:
+	name='[serializeName(c.name)/].' ('children.')? attr=[serializeName(c.name)/]Attr ';' 
+;
+
+[serializeName(c.name)/]Attr returns Attribute:
+	[for (a : Attribute | c.attributes) separator('|')]
+	name='[a.name/]' '=' value=([for (s : String | a.type.tokenize(',')) separator('|')]'[removeBracket(s)/]'[/for])
+	[/for];
+
+[/for]
+
+
+[comment Application /]
+[for (a : Application | aMachine.applications)]
+[serializeName(a.name)/] returns Application:
+	name='[serializeName(a.name)/].' attr=[serializeName(a.name)/]Attr ';'
+;
+
+[serializeName(a.name)/]Attr returns Attribute:
+	[for (at: Attribute | a.attribute) separator('|')]
+	name='[at.name/]' '=' value=	([for (s : String | at.type.tokenize(',')) separator('|')]'[removeBracket(s)/]'[/for])
+	[/for];
+
+[/for]
+
+
+[comment [aMachine->collect(c | aMachine.components.attributes.type)  /]
+[comment for (s : String | a.type.tokenize(',')) separator('|') '[removeBracket(s)'  /]
+[/file]
+[/template]
+
+
+[comment Position of a given component into the Machine components list./]
+[query public positionComponent(c : Component) : Integer = 
+	c.eContainer(Machine).components->indexOf(c)
+/]
+
+[comment Position of a given attribute into its parent Component attributes list./]
+[query public positionAttribute(a : Attribute) : Integer = 
+	a.eContainer(Component).attributes->indexOf(a)
+/]
+
+[query public serializeName(s : String) : String = 
+	s.toLower().toUpperFirst().replaceAll(' ', '')
+/]
+
+[query public removeBracket(s : String) : String = 
+	s.replace('\\{', '').replace('\\}', '').replace(' ', '')
+/]
+
+[query public numberOfComponents(aMachine : Machine) : Integer =
+	aMachine.components.oclAsSet()->size()
+/]
+
+[query public numberOfApplication(aMachine : Machine) : Integer =
+	aMachine.applications.oclAsSet()->size()
+/]

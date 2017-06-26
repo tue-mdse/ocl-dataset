@@ -1,0 +1,105 @@
+[comment encoding = UTF-8 /]
+
+[module Views('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthenticationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+[template public Views(anAnnotationStack : AnnotationStack)]
+[for (p: JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel->asOrderedSet())][if (anAnnotationStack.otherLayer()->collectNested(parentName)->flatten()->includes(p.parentName) or (anAnnotationStack.topLayer()->size()=1 and anAnnotationStack.topLayer()->at(1).parentName=p.parentName))]
+[file ('/' + anAnnotationStack.hasCorePSM.name + 'Client/views/'.concat('') + p.parentName + '.html', false, 'UTF-8')]
+<div ng-controller="[p.parentName/]Ctrl" >[if (anAnnotationStack.bHasAuthenticationAnnotation)]
+<p align="right"><button class="button" ng-click="signOut()">Sign Out</button></p>[/if]
+<!-- Header -->
+[if (anAnnotationStack.cssSelection='Default')]
+	<div style="background-color:#00cc99" class="w3-container  w3-center w3-padding-100px"><a href="#[if (anAnnotationStack.bHasAuthenticationAnnotation)][if (anAnnotationStack.topLayer()->size()>1)]/front[else]/[anAnnotationStack.topLayer().parentName/][/if][/if]" style="text-decoration: none">
+      <h1 style="color:grey" class="w3-margin w3-jumbo">[anAnnotationStack.hasCorePSM.name/]</h1></a>
+    </div>
+    <div class="w3-container w3-grey w3-center">
+      <h3>List of [p.parentName/]</h3>
+    </div>
+[else]
+	<div style="background-color:#fcc7ad" class="w3-container  w3-center w3-padding-100px"><a href="#[if (anAnnotationStack.bHasAuthenticationAnnotation)][if (anAnnotationStack.topLayer()->size()>1)]/front[else]/[anAnnotationStack.topLayer().parentName/][/if][/if]" style="text-decoration: none">
+      <h1 style="color:#425e6c" class="w3-margin w3-jumbo">[anAnnotationStack.hasCorePSM.name/]</h1></a>
+	</div>
+    <div class="w3-container w3-center" style="background-color:#425e6c">
+      <h3  style="color:#fcc7ad">[p.parentName/]</h3>
+    </div>
+[/if]
+    <div ng-show="list" class="w3-container  w3-center w3-padding-100px w3-responsive">
+        <table class="w3-table w3-striped w3-bordered w3-border w3-hoverable w3-white">
+            <thead>
+              <tr>
+				<td><h5>[p.parentName.toUpperFirst()/]Id</h5></td>
+				<td><h5>[p.parentName.toUpperFirst()/] Name</h5></td>
+               	<td><h5>&nbsp;</h5></td>
+                <td><h5>&nbsp;</h5></td>
+                <td><h5>&nbsp;</h5></td>
+                <td><h5>&nbsp;</h5></td>
+				<td><h5>&nbsp;</h5></td>
+              </tr>
+            </thead>
+            <tbody ng-repeat="[p.parentName/] in [p.parentName/].linklist" ng-if="[p.parentName/].idType != 0">
+              <tr>
+				<td><h5>{{[p.parentName/].idType}}</h5></td>
+				<td><h5>{{[p.parentName/].linkRel}}</h5></td>
+                [let e: String = 'PUT'][for (c: JavaResourceController | anAnnotationStack.hasCorePSM.hasJavaRController )][for (d: HTTPActivity | c.JavaRControllerHasHTTPActivity)][if (d.ActivityHTTPVerb.toString()=e and c.parentName = p.parentName and self.name=c.firstOnly(d.ActivityHTTPVerb.toString()))]
+				<td><input type="button" class="button" ng-click="edit[p.parentName.toUpperFirst()/]([p.parentName/].idType)" value="Edit"></td>
+				[/if][/for][/for][/let]
+                [let e: String = 'DELETE'][for (c: JavaResourceController | anAnnotationStack.hasCorePSM.hasJavaRController )][for (d: HTTPActivity | c.JavaRControllerHasHTTPActivity)][if (d.ActivityHTTPVerb.toString()=e and c.parentName = p.parentName and self.name=c.firstOnly(d.ActivityHTTPVerb.toString()))]
+				<td><input type="button" class="button" ng-click="delete[p.parentName.toUpperFirst()/]([p.parentName/].idType)" value="Delete"></td>
+				[/if][/for][/for][/let]
+				<td><input type="button" class="button" ng-click="details([p.parentName/].idType)" value="Details"></td>
+				[for (c: JavaResourceModelManager | anAnnotationStack.setOfIntersection(p))]
+				 <td><input type="button" class="button" ng-click="choose[anAnnotationStack.setOfIntersection(p)->at(i).parentName.toUpperFirst()/]([p.parentName/].idType)" value="[anAnnotationStack.setOfIntersection(p)->at(i).parentName.toUpperFirst()/]"></td>
+				[/for]
+    		  </tr>
+    		</tbody>
+        </table>
+    </div>
+	<div>
+        <input type="button" class="button" ng-click="create=true" value="Create New [p.parentName.toUpperFirst()/]">
+		[for (c: JavaResourceControllerManager| anAnnotationStack.hasCorePSM.hasJavaRCManager)][if (anAnnotationStack.hasCorePSM.hasJavaRModel.hasRelatedJavaRMManager->includes(c.hasAssociatedRMManager) and c.parentName=p.parentName)]<input type="button" class="button" value="Back" ng-click="Back()">[/if][/for]
+    </div>
+	<div ng-show="detail">
+        <table class="w3-table w3-striped w3-bordered w3-border w3-hoverable w3-white">
+            <tbody>
+			[for (c: PSMComponentProperty | p.JavaRModelHasProperty)][if (c.type='String')]
+              <tr>
+                <td><h5>[c.name.toUpperFirst()/]</h5></td><td><h5>{{[p.parentName/].[c.name/]}}</h5></td>
+              </tr>
+			[/if][/for]
+            </tbody>
+        </table>
+        <div>
+        <input type="button" class="button" ng-click="hideDetails()" value="Hide">
+        </div>
+    </div>
+    <div ng-show="create">
+        <form id="new">
+        <div class="w3-container w3-grey">
+            <h3>New [p.parentName.toUpperFirst()/] Form</h3>
+        </div>
+        [for (c: PSMComponentProperty | p.JavaRModelHasProperty)][if ((c.type.startsWith('String')))]
+		<label>[c.name.toUpperFirst()/]<input type="[if (c.name='password')]password[else]text[/if]" name="input[c.name.toUpperFirst()/]" ng-model="[p.parentName/].[c.name/]"></label>[lineSeparator()/][/if][/for]
+        <input type="button" class="button" ng-click="createNew[p.parentName.toUpperFirst()/]()" value="Create">
+        <input type="button" class="button" ng-click="cancel()" value="Cancel">
+        </form>
+    </div>
+    <div ng-show="edit">
+        <form id="update">
+        <div class="w3-container w3-grey">
+            <h3>Edit [p.parentName.toUpperFirst()/] Form</h3>
+        </div>
+        [for (c: PSMComponentProperty | p.JavaRModelHasProperty)][if ((c.type.startsWith('String')))]
+		<label>[c.name.toUpperFirst()/]<input type="[if (c.name='password')]password[else]text[/if]" name="input[c.name.toUpperFirst()/]" ng-model="[p.parentName/].[c.name/]"></label>[lineSeparator()/][/if][/for]
+        <input type="button" class="button" ng-click="doupdate([p.parentName/].[p.parentName.toLower()/]Id)" value="Update">
+        <input type="button" class="button" ng-click="cancelEdit()" value="Cancel">
+        </form>
+    </div>
+</div>
+[/file]
+[/if][/for]
+[/template]
+
+[query public setOfIntersection(anAnnotationStack : AnnotationStack, p: JavaResourceModel ) : OrderedSet(JavaResourceModelManager) = anAnnotationStack.hasCorePSM.hasJavaRCManager.hasAssociatedRMManager->asOrderedSet()->intersection(p.hasRelatedJavaRMManager)->excluding(p.parentName)->asOrderedSet()/]
+[query public firstOnly(c: JavaResourceController,e: String): String =  c.JavaRControllerHasHTTPActivity->select(s: HTTPActivity | s.ActivityHTTPVerb.toString()=e)->asSequence()->first().name/]
+[query public otherLayer(anAnnotationStack: AnnotationStack): OrderedSet(JavaResourceModelManager) = (anAnnotationStack.hasCorePSM.hasJavaRMManager->intersection(anAnnotationStack.hasCorePSM.hasJavaRModel.hasRelatedJavaRMManager->asOrderedSet()))->asOrderedSet()/]
+[query public topLayer(anAnnotationStack: AnnotationStack): OrderedSet(JavaResourceModelManager) = (anAnnotationStack.hasCorePSM.hasJavaRMManager-anAnnotationStack.hasCorePSM.hasJavaRMManager->intersection(anAnnotationStack.hasCorePSM.hasJavaRModel.hasRelatedJavaRMManager->asOrderedSet()))->asOrderedSet()/]

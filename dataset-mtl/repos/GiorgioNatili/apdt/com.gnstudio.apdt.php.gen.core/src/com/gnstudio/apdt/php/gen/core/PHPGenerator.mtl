@@ -1,0 +1,106 @@
+[comment encoding = UTF-8 /]
+[module PHPGenerator('http:///org/gnstudio/apdt/model.ecore')/]
+[import AccessUtils /]
+[import CommentUtils /]
+[import InterfaceUtils /]
+[import ClassUtils /]
+[import ImportUtils /]
+
+[template public genModel(aModel : Model)]
+[comment @main/]
+[comment  gen programs/]
+[if (aModel.programs ->notEmpty())]
+  [for (_program : Program | aModel.programs)]
+    [for (_package : PackageElement | _program.packages)]  
+      [genPackage(_package)/]
+    [/for]
+   [/for]
+[/if]
+[comment  gen packages/]
+[if (aModel.packages ->notEmpty())]
+  [for (_package : PackageElement | aModel.packages)]
+      [genPackage(_package)/]
+  [/for]
+[/if]
+[comment  gen class/]
+[if (not aModel.classElement.oclIsUndefined())]
+  [genClassElement('', aModel.classElement)/]
+[/if]
+[comment  gen interface/]
+[if (not aModel.interfaceElement.oclIsUndefined())]
+  [genInterfaceElement('', aModel.interfaceElement)/]
+[/if]
+[/template]
+
+[template private genPackage(aPackage : PackageElement)  ? (aPackage.interfaces ->notEmpty() or aPackage.classes ->notEmpty())]
+[if (not aPackage.oclIsUndefined() )]
+    [for (_interface : InterfaceElement | aPackage.interfaces)]
+       [genInterfaceElement(aPackage.name, _interface)/]
+    [/for]
+    [for (_class : ClassElement | aPackage.classes)]
+        [genClassElement(aPackage.name, _class)/]
+    [/for]
+[/if]
+[/template]
+
+[template private genPackage(aPackage : PackageElement) ? (aPackage.interfaces ->isEmpty() and aPackage.classes ->isEmpty())]
+[if (not aPackage.oclIsUndefined())]
+    [file (aPackage.name.substituteAll('.', '/').concat('/').concat('__apd_stub_'), false)]
+    DELETE-ME
+    This place holder let you generate packages without any file inside.
+    [/file]
+[/if]
+[/template]
+
+[template public genClassElement(aPackageName:String, aClass : ClassElement)]
+[if ((not aClass.name.oclIsUndefined()) and aClass.name.trim().size()>0)]
+[file (aPackageName.substituteAll('.', '/').concat('/').concat(aClass.name.trim()).concat('.php'), false)]
+<?php
+[if((not aPackageName.oclIsUndefined()) and aPackageName.trim().size()>0)]
+namespace [aPackageName.substituteAll('.', '\\ '.trim())/];[/if]
+        
+[getImportBlock(aClass)/]
+[getComment(aClass.description,null)/]
+class [aClass.name/][if (aClass.extendsElements->notEmpty())] extends [genClassExtendsElement(aClass)/][/if][if (aClass.implementsElements->notEmpty())] implements [genClassImplementsElement(aClass)/][/if]{
+    
+    public function __construct(){ 
+    }
+
+    // public function __destruct(){}
+       
+    [getClassBody(aClass)/] 
+}    
+?>
+[/file]
+[/if]
+[/template]
+
+[template public genInterfaceElement(aPackageName:String, aInterface : InterfaceElement)]
+[if ((not aInterface.name.oclIsUndefined()) and aInterface.name.trim().size()>0)]
+[file (aPackageName.substituteAll('.', '/').concat('/').concat(aInterface.name.trim()).concat('.php'), false)]
+<?php
+[if((not aPackageName.oclIsUndefined()) and aPackageName.trim().size()>0)]
+namespace [aPackageName.substituteAll('.', '\\ '.trim())/];[/if]
+        
+[getImportBlock(aInterface)/]
+[getComment(aInterface.description,null)/]
+interface [aInterface.name/][if (aInterface.extendsElements->notEmpty())] extends [genInterfaceExtendsElement(aInterface)/][/if]{
+    [getInterfaceBody(aInterface)/]
+}    
+?>
+[/file]
+[/if]
+[/template]
+
+[template public genClassExtendsElement(aClass : ClassElement)]
+[for (_extends : TypeReference | aClass.extendsElements) separator (', ')][getBaseType(_extends)/][/for]
+[/template]
+
+
+[template public genClassImplementsElement(aClass : ClassElement)]
+[for (_implements : TypeReference | aClass.implementsElements) separator (', ')][getBaseType(_implements)/][/for]
+[/template]
+
+[template public genInterfaceExtendsElement(aInterface : InterfaceElement)]
+[for (_extends : TypeReference | aInterface.extendsElements) separator (', ')][getBaseType(_extends)/][/for]
+[/template]

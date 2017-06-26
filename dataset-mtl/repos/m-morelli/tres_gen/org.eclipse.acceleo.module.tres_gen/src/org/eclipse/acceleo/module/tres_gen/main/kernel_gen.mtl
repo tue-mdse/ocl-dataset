@@ -1,0 +1,219 @@
+[comment encoding = UTF-8 /]
+[module kernel_gen('http://www.eclipse.org/uml2/4.0.0/UML',
+				   'http:///schemas/Functional/_dozfwFO0EeSLefC5vJP4yw/4',
+				   'http://Mapping/schemas/Allocation/_Px3IoFO1EeSj9tgZpcmhcg/3',
+				   'http://BswResources/schemas/BswRTOS/_RVmBgMETEeOgTPuvx25c_g/4',
+				   'http://www.eclipse.org/papyrus/HwComputing/1')]
+
+[import org::eclipse::acceleo::module::tres_gen::requests::util_general /]
+[import org::eclipse::acceleo::module::tres_gen::requests::util_sr /]
+
+[**
+ * 
+ */]
+[template public generate_kernel(mdl : Model) post(trim())]
+[comment Preliminary variables /]
+[let mdl_name : String = mdl.name]
+[let mapp : Package = mdl.eContents(Package)->selectSinglePackageByName('Mapping')]
+[let plap : Package = mdl.eContents(PackageImport)->selectSinglePackageByName('Platform')]
+[let t2c_set : OrderedSet(Abstraction) = mapp.getTaskToCpuMapsFromPack()->sortTaskToCpuMapsByTaskSetIdx()]
+[let cpu : Class = t2c_set->first().getSupplier()]
+[let rtos : Class = plap.getRtosDeploymentFromPack()->first().getClient()]
+
+[comment ========================= /]
+[comment Generate the file content /]
+[comment ========================= /]
+[file ('kernel_gen_commands.m', false, 'UTF-8')]
+%
+%%%%% Commands for generating Kernel
+%
+% - Adding the Kernel block from tres_simulink_blockset
+[generateKernelBlock(mdl_name, cpu, rtos)/]
+%
+% - Adding the infrastructure for tasks' activations and transmission of tasks' durations
+[generateTasksManagementInfrastructMulti(mdl_name, t2c_set)/]
+%
+% - Adding the Duration of next task instruction
+[generateBlocksOfNextDuration(mdl_name)/]
+[/file]
+
+[comment Closing the preliminary var. declaration section /]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/template]
+
+[**
+ * 
+ */]
+[template public generateKernelBlock(mdl_name : String, cpu : Class, rtos : Class) post(trim())]
+[comment Add and configure the Kernel block /]
+kern1_xy = ['['/]75,30[']'/];
+kern1_wh = ['['/]80,60[']'/];
+kern1_pp = ['['/]kern1_xy, kern1_xy+kern1_wh[']'/];
+add_block('tres_simulink_blockset/Kernel', '[mdl_name/]_bn/Kernel1', 'Position', kern1_pp);
+[comment 
+		 Configure 'taskset_descr_name' /]
+set_param('[mdl_name/]_bn/Kernel1', 'taskset_descr_name', 'task_set_descr');
+[comment 
+
+		 Compute the other mask parameters by using the Class instances 
+		 cpu and rtos (but do not build the 'task_set_descr' cell array)
+
+/]
+[comment
+		 Set the scheduling policy ('scheduling_policy')/]
+[let sched : Class = rtos.getSchedulerFromRtos()]
+[setKernelMaskParamSchedPolicy(mdl_name, sched)/]
+[comment 
+		 Set the Deadline miss rule ('dead_miss_rule')/]
+set_param('[mdl_name/]_bn/Kernel1', 'dead_miss_rule', '[sched.getValueOfStereotypePropertyEnumLit('BswResources::BswRTOS::BswScheduler', 'dlMissPolicy')/]');
+[/let]
+[comment FIXME! (BswResources::BswRTOS does not work?!) 
+		 Set the Time resolution ('time_res')/]
+set_param('[mdl_name/]_bn/Kernel1', 'time_res', '[rtos.getValueOfStereotypePropertyEnumLit('BswResources::BswRTOS::BswPOSIXRTOS', 'timeRes')/]');
+[comment 
+		 Set the Number of cores ('core_num')/]
+set_param('[mdl_name/]_bn/Kernel1', 'core_num', '[cpu.getValueOfStereotypeProperty('MARTE::MARTE_DesignModel::HRM::HwLogical::HwComputing::HwProcessor', 'nbCores')/]');
+[comment 
+		 Set the Underlying engine ('under_engine')/]
+set_param('[mdl_name/]_bn/Kernel1', 'under_engine', 'RTSIM');
+[comment 
+		 Add commands to clear the tmp vars for the definition of block's position
+/]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+%
+%%%% Clear the temporary variables defined for managing the generation of Kernel
+%
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/Kernel1
+clear kern1_xy kern1_wh kern1_pp;
+[/file]
+[/template]
+
+[**
+ * 
+ */]
+[template public generateTasksManagementInfrastructMulti(mdl_name : String, t2c_maps : OrderedSet(Abstraction)) post(trim())]
+%     Add and configure mux (tasks' durations)
+mux1_xy = ['['/]75,100[']'/];
+mux1_wh = ['['/]7,80[']'/];
+mux1_pp = ['['/]mux1_xy, mux1_xy+mux1_wh[']'/];
+add_block('built-in/Mux', '[mdl_name/]_bn/Mux1', 'Position', mux1_pp);
+set_param('[mdl_name/]_bn/Mux1', 'Inputs', '[t2c_maps->size()/]');
+set_param('[mdl_name/]_bn/Mux1', 'DisplayOption', 'bar');
+set_param('[mdl_name/]_bn/Mux1', 'ShowName', 'off' );
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/Mux1
+clear mux1_xy mux1_wh mux1_pp;
+[/file]
+%     Add and configure demux (tasks' activations)
+dex1_xy  = ['['/]kern1_pp(3)+30, kern1_xy(2)-10[']'/];
+dex1_wh = ['['/]7,80[']'/];
+dex1_pp = ['['/]dex1_xy, dex1_xy+dex1_wh[']'/];
+add_block('built-in/Demux', '[mdl_name/]_bn/Demux1', 'Position', dex1_pp);
+set_param('[mdl_name/]_bn/Demux1', 'Outputs', '[t2c_maps->size()/]');
+set_param('[mdl_name/]_bn/Demux1', 'DisplayOption', 'bar');
+set_param('[mdl_name/]_bn/Demux1', 'ShowName', 'off' );
+add_line('[mdl_name/]_bn', 'Kernel1/1', 'Demux1/1', 'autorouting', 'on');
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/Demux1
+clear dex1_xy dex1_wh dex1_pp;
+[/file]
+[for (m : Abstraction | t2c_maps)]
+[let tsk_lcn : String = m.getClient().lowerCaseName()]
+[let tsk_id : String = m.getClient().getTaskIdLong()]
+%     Add and configure the GotoA[tsk_id/] block (tasks' activations)
+[if (i > 1)]
+[let prev_tsk_lcn : String = t2c_maps->at(i-1).getClient().lowerCaseName()]
+[comment Define tmp vars for the position of GotoAxxx block (when i > 1) /]
+gotoa_[tsk_lcn/]_xy  = ['['/]gotoa_[prev_tsk_lcn/]_pp(1),gotoa_[prev_tsk_lcn/]_pp(4)+5[']'/];
+gotoa_[tsk_lcn/]_wh  = ['['/]35,20[']'/];
+gotoa_[tsk_lcn/]_pp  = ['['/]gotoa_[tsk_lcn/]_xy, gotoa_[tsk_lcn/]_xy+gotoa_[tsk_lcn/]_wh[']'/];
+[comment Define tmp vars for the position of FromDxxx block (when i > 1) /]
+fromd_[tsk_lcn/]_xy = ['['/]fromd_[prev_tsk_lcn/]_pp(1),fromd_[prev_tsk_lcn/]_pp(4)+5[']'/];
+fromd_[tsk_lcn/]_wh = ['['/]35,20[']'/];
+fromd_[tsk_lcn/]_pp = ['['/]fromd_[tsk_lcn/]_xy, fromd_[tsk_lcn/]_xy+fromd_[tsk_lcn/]_wh[']'/];
+[/let]
+[else]
+[comment Define tmp vars for the position of GotoAxxx block (when i == 1) /]
+gotoa_[tsk_lcn/]_xy  = ['['/]dex1_xy(1)+30,dex1_xy(2)+5[']'/];
+gotoa_[tsk_lcn/]_wh  = ['['/]35,20[']'/];
+gotoa_[tsk_lcn/]_pp  = ['['/]gotoa_[tsk_lcn/]_xy, gotoa_[tsk_lcn/]_xy+gotoa_[tsk_lcn/]_wh[']'/];
+[comment Define tmp vars for the position of FromDxxx block (when i == 1) /]
+fromd_[tsk_lcn/]_xy = ['['/]0,mux1_xy(2)+5[']'/];
+fromd_[tsk_lcn/]_wh = ['['/]35,20[']'/];
+fromd_[tsk_lcn/]_pp = ['['/]fromd_[tsk_lcn/]_xy, fromd_[tsk_lcn/]_xy+fromd_[tsk_lcn/]_wh[']'/];
+[/if]
+add_block('built-in/Goto', '[mdl_name/]_bn/GotoA[tsk_id/]', 'Position', gotoa_[tsk_lcn/]_pp);
+set_param('[mdl_name/]_bn/GotoA[tsk_id/]', 'GotoTag', 'A_[tsk_id/]');
+set_param('[mdl_name/]_bn/GotoA[tsk_id/]', 'ShowName', 'off' );
+add_line('[mdl_name/]_bn', 'Demux1/[i/]', 'GotoA[tsk_id/]/1', 'autorouting', 'on');
+%     Add and configure the FromD[tsk_id/] block (tasks' durations)
+add_block('built-in/From', '[mdl_name/]_bn/FromD[tsk_id/]', 'Position', fromd_[tsk_lcn/]_pp);
+set_param('[mdl_name/]_bn/FromD[tsk_id/]', 'GotoTag', 'D_[tsk_id/]');
+set_param('[mdl_name/]_bn/FromD[tsk_id/]', 'ShowName', 'off' );
+add_line('[mdl_name/]_bn', 'FromD[tsk_id/]/1', 'Mux1/[i/]', 'autorouting', 'on');
+[comment Add commands to clear the tmp vars for the definition of blocks' positions /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/GotoA[tsk_id/]
+clear gotoa_[tsk_lcn/]_xy gotoa_[tsk_lcn/]_wh gotoa_[tsk_lcn/]_pp;
+
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/FromD[tsk_id/]
+clear fromd_[tsk_lcn/]_xy fromd_[tsk_lcn/]_wh fromd_[tsk_lcn/]_pp;
+[/file]
+[/let]
+[/let]
+[/for]
+[/template]
+
+[**
+ * 
+ */]
+[template public generateBlocksOfNextDuration(mdl_name : String) post(trim())]
+%     Add and configure the FromD1 block
+fromd1_xy = ['['/]0,35[']'/];
+fromd1_wh = ['['/]35,20[']'/];
+fromd1_pp = ['['/]fromd1_xy, fromd1_xy+fromd1_wh[']'/];
+add_block('built-in/From', '[mdl_name/]_bn/FromD1', 'Position', fromd1_pp);
+set_param('[mdl_name/]_bn/FromD1', 'GotoTag', 'D1');
+set_param('[mdl_name/]_bn/FromD1', 'ShowName', 'off');
+add_line('[mdl_name/]_bn', 'FromD1/1', 'Kernel1/1', 'autorouting', 'on');
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/FromD1
+clear fromd1_xy fromd1_wh fromd1_pp;
+[/file]
+%     Add and configure the GotoD1 block
+gotod1_xy  = ['['/]kern1_xy(1)+45, mux1_xy(2)+mux1_wh(2)/2-10[']'/];
+gotod1_wh  = ['['/]30,20[']'/];
+gotod1_pp  = ['['/]gotod1_xy, gotod1_xy+gotod1_wh[']'/];
+add_block('built-in/Goto', '[mdl_name/]_bn/GotoD1', 'Position', gotod1_pp);
+set_param('[mdl_name/]_bn/GotoD1', 'GotoTag', 'D1');
+set_param('[mdl_name/]_bn/GotoD1', 'ShowName', 'off');
+add_line('[mdl_name/]_bn', 'Mux1/1', 'GotoD1/1', 'autorouting', 'on');
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/GotoD1
+clear gotod1_xy gotod1_wh gotod1_pp;
+[/file]
+[/template]
+
+[**
+ * 
+ */]
+[template private setKernelMaskParamSchedPolicy(mdl_name : String, sched : Class) post(trim())]
+[let set_sched_policy_expr : String = 'set_param(\'' + mdl_name + '_bn/Kernel1\', \'scheduling_policy\'']
+[let marte_sched_pol : String = sched.getValueOfStereotypePropertyEnumLit('BswResources::BswRTOS::BswScheduler', 'policy')]
+[if (marte_sched_pol='EarliestDeadlineFirst')]
+[set_sched_policy_expr/], 'EDF');
+[elseif (marte_sched_pol='FixedPriority')]
+[set_sched_policy_expr/], 'FIXED_PRIORITY');
+[/if]
+[/let]
+[/let]
+[/template]

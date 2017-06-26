@@ -1,0 +1,46 @@
+[comment encoding = UTF-8 /]
+[**
+ * Copyright 2012 jccastrejon
+ * 
+ * This file is part of Model2Roo.
+ * Model2Roo is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ * 
+ * Model2Roo is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Model2Roo.  If not, see <http://www.gnu.org/licenses/>.
+ */]
+[module References('http://www.eclipse.org/emf/2002/Ecore')]
+
+[import fr::imag::model2roo::ecore::common::Common /]
+
+[**
+ * Generate the references between the entities contained in the specified package.
+ * @param aPackage UML package.
+ */]
+[template public generateEntitiesReferences(aPackage : EPackage) post(trim())]
+[for (anElement: EClassifier | aPackage.eClassifiers)]
+  [if anElement.oclIsTypeOf(EClass)]
+    [let aClass : EClass = anElement.oclAsType(EClass)]
+      [for (association : EReference | aClass.eReferences)]
+        [association.generateEntityReference()/] --fieldName [association.name/] [association.getRooDetails()/] --class ~.domain.[aClass.name/] 
+      [/for]
+    [/let]
+  [/if]
+[/for]
+[/template]
+
+[**
+ * Generate the Spring Roo command for the specified UML association.
+ * @param association UML association.
+ */]
+[template public generateEntityReference(association : EReference) post(trim())]
+[if association.containment] field set --type ~.domain.[association.eType.name/]
+[else] field reference --type ~.domain.[association.eType.name/] [/if]
+[/template]

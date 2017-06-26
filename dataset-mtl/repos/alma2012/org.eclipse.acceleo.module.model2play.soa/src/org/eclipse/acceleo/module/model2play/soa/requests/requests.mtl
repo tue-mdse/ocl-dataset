@@ -1,0 +1,99 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module requests.
+ */]
+
+[module requests('http://www.obeonetwork.org/dsl/soa/2.0.0','http://www.obeonetwork.org/dsl/entity/2.0.0','http://www.obeonetwork.org/dsl/environment/2.0.0')]
+
+[import org::eclipse::acceleo::module::model2play::entity::requests::requests/]
+
+
+[import org::eclipse::acceleo::module::model2play::soa::common::utils/]
+
+[comment : Variables "globales"/]
+
+
+[query public get_services_folder( nothing : OclAny ) : String =
+'app/services/'
+/]
+
+[query public get_interfaces_folder( nothing : OclAny ) : String =
+get_services_folder() + 'interfaces/'
+/]
+
+[query public get_implementations_folder( nothing : OclAny ) : String =
+get_services_folder() + 'implementations/'
+/]
+
+[query public get_services_package( nothing : OclAny ) : String =
+'services'
+/]
+
+[query public get_interfaces_package( nothing : OclAny ) : String =
+get_services_package() + '.interfaces'
+/]
+
+[query public get_implementations_package( nothing : OclAny ) : String =
+get_services_package() + '.implementations'
+/]
+
+[query public get_services_class( nothing : OclAny ) : String = 
+'Services'
+/]
+
+[query public get_service_suffix( nothing : OclAny ) : String = 
+'Service'
+/]
+
+
+[query public get_wsutils_class( any : OclAny ) : String =
+'WSUtils'
+/]
+
+
+[comment : Conventions de nommage /]
+[query public get_implementation_classname( aService : Service ) : String = 
+aService.name + 'Impl'
+/]
+
+[query public get_interface_classname( aService : Service ) : String = 
+aService.name + 'Iface'
+/]
+
+[query public get_service( anOperation : Operation ) : Service =
+anOperation.eContainer().eContainer()->filter(Service)->asOrderedSet()->first()
+/]
+
+[query public get_service_name( anOperation : Operation ) : String =
+if not get_service()->isEmpty() then get_service().name + get_service_suffix() else '' endif
+/]
+
+[query public is_entity_manager_interface( iface : Interface ) : Boolean = 
+not getAnnotation(iface,'entity_manager')->isEmpty()
+/] 
+
+[query public get_managed_entity_name( iface : Interface ) : String = 
+iface.getAnnotation('entity_manager')._body
+/] 
+
+
+[query public get_managed_entity_name( anOperation : Operation ) : String = 
+anOperation.eContainer(Interface).get_managed_entity_name()
+/] 
+
+[query public get_operation_type( anOperation : Operation ) : String =
+anOperation.getAnnotation('entity_manager')._body
+/]
+
+[query public service_method_call( anOperation : Operation ) : String =
+get_services_class()+'.get'+get_service_name()+'().'+operation_call()
+/]
+
+
+[query public is_default_datatype( aParameter : Parameter ) : Boolean =
+	invoke('org.eclipse.acceleo.module.model2play.soa.services.Services', 'is_default_datatype(java.lang.String)', Sequence{ aParameter.type.name }) /]
+
+
+[query public get_parameter_from_post( aParameter : Parameter ) : String =
+type.name+' '+name+' = '+get_wsutils_class()+'.get_post_data' + if is_default_datatype() then '_as'+type.name else '' endif + '("'+name+'");' 
+/]

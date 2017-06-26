@@ -1,0 +1,70 @@
+[comment encoding = UTF-8 /]
+[module generateEdit('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::name::fileNameQueries /]
+[import com::thales::momoko2::pim::uml2::gen::files::webpages::generateFormBody/]
+[import com::thales::momoko2::pim::uml2::gen::files::webpages::generateDialogs/]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::datatypeQueries /]
+
+[**
+ * This template generates the edit web pages.
+ * @param aClass
+ */]
+[template public generateEdit(aClass : Class) ? (isFeatureClass(aClass))]
+[file (getWebPagesFileName(aClass, 'Edit'), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:comp="http://xmlns.jcp.org/jsf/composite/ezcomp"
+	  xmlns:p="http://primefaces.org/ui">
+
+    <ui:composition>
+
+        <p:dialog id="[aClass.name/]EditDlg" widgetVar="[aClass.name/]EditDialog" modal="true" resizable="false" appendTo="@(body)" header="#{bundle.Edit[aClass.name/]Title}">
+            <h:form id="[aClass.name/]EditForm">
+                <h:panelGroup id="display">
+					<p:panelGrid columns="2" rendered="#{[aClass.name.toLowerFirst()/]Controller.selected != null}" >
+                        <h:form>  
+							<p:growl id="growl" sticky="true" showDetail="true"/>  
+							<p:wizard>  
+                			[generateFormBody(aClass, 'Edit')/]
+						    <p:tab id="confirm" title="Confirmation">  
+                        		<p:panel header="Confirmation">  
+									<h:panelGrid id="confirmation" columns="6"> 
+										[for (aProperty: Property | aClass.getAllProperties())]
+										[if (isFeature_partClass(aProperty.getDatatypeByProperty())._not())]
+										<h:outputText value="[aProperty.name/]: " />  
+                                		<h:outputText styleClass="outputLabel"  
+                                              		value="#{[aClass.name.toLowerFirst()/]Controller.selected.[aProperty.name.toLowerFirst()/]}"/>  
+										[else]
+										[for (p : Property | getDatatypeByProperty(aProperty).getAllDatatypeAttributes())]
+										<h:outputText value="[p.name/]: " />  
+                                		<h:outputText styleClass="outputLabel"  
+                                              		value="#{[aClass.name.toLowerFirst()/]Controller.selected.[p.name.toLowerFirst()/]}"/>  
+										[/for]
+										[/if]
+										[/for]
+										<h:outputText />  
+                                		<h:outputText />  
+                            		</h:panelGrid>  
+								</p:panel>  
+                    		</p:tab>  
+							</p:wizard>  
+						</h:form>
+                    </p:panelGrid>
+
+					<p:commandButton actionListener="#{[aClass.name.toLowerFirst()/]Controller.update}" value="#{bundle.SaveLink}" update="display,:[aClass.name/]ListForm:datalist,:growl" oncomplete="handleSubmit(args, '[aClass.name/]EditDialog');"/>
+                    <p:commandButton value="#{bundle.Cancel}" onclick="[aClass.name/]EditDialog.hide()"/>
+                </h:panelGroup>
+            </h:form>
+        </p:dialog>
+
+    </ui:composition>
+</html>
+[/file]
+[/template]

@@ -1,0 +1,45 @@
+[comment encoding = UTF-8 /]
+[** Copyright 2013 jccastrejon */]
+[module QueryTemplate('http://www.imag.fr/Unql')]
+[import fr::imag::unql::transformation::util::UtilTemplate /]
+
+[**
+ * Analyze the specified program and execute the queries it contains.
+ * @param aProgram EDBT-unql program
+*/]
+[template public executeProgram(aProgram : Program)]
+[comment @main/]
+[file ('result.txt', false, 'UTF-8')]
+[let graphDatabases : Set(Definition) = aProgram.getDatabasesType('graph')]
+[let documentDatabases : Set(Definition) = aProgram.getDatabasesType('document')]
+[let connections : Set(Connection) = aProgram.getConnections()]
+
+[comment Execute each of the defined queries... /]
+[for (aQuery : Select | aProgram.queries)]
+
+  -----------------
+  Evaluating query: [aQuery/]
+
+  [comment Analysis is performed to each relation and their associated attributes /]
+  [for (relation : String | aQuery.relations)]
+    [comment Recover the attributes and conditions associated to the current relation /]
+    [let attributes : Sequence(String) = relation.getAssociatedElements(aQuery.attributes)]
+    [let conditions : Sequence(String) = relation.getAssociatedElements(aQuery.conditions)]
+    [comment Query graph database /]
+    [if (relation.existsInSet(graphDatabases))]
+      [relation.executeGraphQuery(relation.getConnection(connections), attributes, conditions)/]
+    [comment Query document database /]	
+    [elseif (relation.existsInSet(documentDatabases))]
+      [relation.executeDocumentQuery(relation.getConnection(connections), attributes, conditions)/]
+    [/if]
+    [/let]
+    [/let]
+  [/for]
+  -----------------
+
+[/for]
+[/let]
+[/let]
+[/let]
+[/file]
+[/template]

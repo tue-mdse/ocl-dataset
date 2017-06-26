@@ -1,0 +1,90 @@
+[comment encoding = UTF-8 /]
+[module register_h('/PML/model/pml.ecore')]
+[import PMLGen::generator::pmlutil /]
+
+
+[template public generateElement(c : Register)]
+	[file (c.name.concat('_untimed.h'), false, 'UTF-8')]
+	#ifndef [c.name.concat('_h')/]
+	#define  [c.name.concat('_h')/]
+	#include "systemc.h"
+	
+	SC_MODULE([c.name/]){
+
+		[registerUntimed(c)/]
+		
+	 	[for (p : Input | c.inputRegister)]
+	     	[forIn(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+		[for (p : Output | c.outputRegister)]
+	  	[forOut(p.name, p.type.toString(), p.bit, p.length) /]	    
+	     	    [/for]
+        [for (o : Behavior | c.behaviorRegister)]
+        	[o.typeBehavior.toString().toLower()/] [o.name.toLower()/](); 
+/* example code implementation 
+if(writeReg){
+	registers[ '[' /]  address2.read().to_int() [ ']' /] = dataIn;
+	}
+	dataOut = registers[ '[' /]address.read().to_int()[ ']' /] ;
+}
+*/
+        [/for]
+		SC_CTOR([c.name/]) {
+        
+			[for (o : Behavior | c.behaviorRegister)]
+	        	SC_METHOD([o.name.toLower()/]); 
+	        [/for]
+			[for (p : Input | c.inputRegister)]
+	        	[if(p.sensitive) ]
+				      [forSensitive(p.name, p.length.abs())/]
+				[/if]
+	   		[/for]
+        }       
+	};
+	#endif
+	
+	[/file]
+
+[file (c.name.concat('_timed.h'), false, 'UTF-8')]
+	#ifndef [c.name.concat('_h')/]
+	#define  [c.name.concat('_h')/]
+	#include "systemc.h"
+	
+	SC_MODULE([c.name/]){
+	 	[registerTimed(c)/]
+
+		[for (p : Input | c.inputRegister)]
+	     	[forInTimed(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+		[for (p : Output | c.outputRegister)]
+	  	[forOut(p.name, p.type.toString(), p.bit, p.length) /]	    
+	     	    [/for]
+        [for (o : Behavior | c.behaviorRegister)]
+        	[o.typeBehavior.toString().toLower()/] [o.name.toLower()/](); 
+        [/for]
+/* example code implementation 
+while(true){
+if(writeReg){
+	registers[ '[' /]  address2.read().to_int() [ ']' /] = dataIn;
+	}
+	dataOut = registers[ '[' /]address.read().to_int()[ ']' /] ;
+}
+wait(1);
+}
+*/
+		SC_CTOR([c.name/]) {
+        
+			[for (o : Behavior | c.behaviorRegister)]
+	        	SC_THREAD([o.name.toLower()/]); 
+	        [/for]
+			[for (p : Input | c.inputRegister)]
+	        	[if(p.sensitive) ]
+				       [forSensitiveTimed(p.name, p.length.abs())/]
+				[/if]
+	   		[/for]
+        }       
+	};
+	#endif
+	
+	[/file]
+[/template]

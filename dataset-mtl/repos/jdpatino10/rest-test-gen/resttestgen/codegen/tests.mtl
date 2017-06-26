@@ -1,0 +1,827 @@
+[comment encoding = UTF-8 /]
+[module tests('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import ::utils /]
+
+[template public genRestTest(c : Class, path : String) {className : String = c.getAPITestName();}]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+package [c.getModel().baseGroup()/].tests;
+
+import [c.getModel().baseGroup()/].dtos.*;
+import [c.getModel().baseGroup()/].providers.EJBExceptionMapper;
+import [c.getModel().baseGroup()/].services.[c.getJaxRsName()/];
+
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.Cookie;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.glassfish.jersey.filter.LoggingFilter;
+import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.arquillian.container.test.api.RunAsClient;
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.shrinkwrap.api.Archive;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.jboss.shrinkwrap.resolver.api.DependencyResolvers;
+import org.jboss.shrinkwrap.resolver.api.maven.MavenDependencyResolver;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.MethodSorters;
+import uk.co.jemos.podam.api.PodamFactory;
+import uk.co.jemos.podam.api.PodamFactoryImpl;  
+
+/**
+ * @generated
+ */
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@RunWith(Arquillian.class)
+public class [className/] {
+
+    public final static String URLRESOURCES = "src/main/webapp";
+    public final static String URLBASE = "http://localhost:8181/[c.getModel().getWebProjectName()/]/webresources";
+    public final static String PATH = "[c.getURI()/]";
+    public final static int Ok = 200;
+    public final static int Created = 201;
+    public final static int OkWithoutContent = 204;
+    public final static List<[c.getDTOName()/]> data = new ArrayList<>();
+
+    /**
+     * @generated
+     */
+    @Deployment
+    public static Archive<?> createDeployment() {
+        MavenDependencyResolver resolver = DependencyResolvers.use(MavenDependencyResolver.class).loadMetadataFromPom("pom.xml");
+        WebArchive war = ShrinkWrap
+                // Nombre del Proyecto "AppMarketPlace.web" seguido de ".war". Debe ser el mismo nombre del proyecto web que contiene los javascript y los  servicios Rest
+                .create(WebArchive.class, "[c.getModelName()/].web.war")
+                // Se agrega la dependencia a la logica con el nombre groupid:artefactid:version (GAV)
+                .addAsLibraries(resolver.artifact("[c.getModel().baseGroup()/]:[c.getModel().getBackendProjectName()/]:1.0")
+                        .resolveAsFiles())
+                // Se agregan los compilados de los paquetes de servicios
+                .addPackage([c.getJaxRsName()/].class.getPackage())
+                .addPackage(EJBExceptionMapper.class.getPackage())
+                // El archivo que contiene la configuracion a la base de datos. 
+                .addAsResource("META-INF/persistence.xml", "META-INF/persistence.xml")
+                // El archivo shiro.ini 
+                .addAsWebInfResource(new File("src/main/webapp/WEB-INF/shiro.ini"))
+                // El archivo beans.xml es necesario para injeccion de dependencias. 
+                .addAsWebInfResource(new File("src/main/webapp/WEB-INF/beans.xml"))
+                // El archivo web.xml es necesario para el despliegue de los servlets
+                .setWebXML(new File("src/main/webapp/WEB-INF/web.xml"));
+        return war;
+    }
+
+    /**
+     * @generated
+     */
+    @BeforeClass
+    public static void setUp() throws IOException {
+        for (int i = 0; i < 5; i++) {
+            PodamFactory factory = new PodamFactoryImpl();
+            [c.getDTOName()/] dto = factory.manufacturePojo([c.getDTOName()/].class);
+            data.add(dto);
+        }
+
+    }
+
+    //Metodo para autenticarse de ser necesario, recuerde que esto depende de los permisos que se encuentran en el archivo shiro.ini
+    private static Cookie login(String username, String password) {
+        Client cliente = ClientBuilder.newClient();
+
+        UserDTO user = new UserDTO();
+        user.setUserName(username);
+        user.setPassword(password);
+
+        Response response = cliente.target(URLBASE)
+                .path("users")
+                .path("login")
+                .request()
+                .post(Entity.entity(user, MediaType.APPLICATION_JSON));
+
+        UserDTO foundUser = (UserDTO) response.readEntity(UserDTO.class);
+
+        if (foundUser != null && response.getStatus() == Ok) {
+            return response.getCookies().get("JSESSIONID");
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    @RunAsClient
+    public void t1Create[c.name/]() {
+
+        //TODO Realizar login en caso de ser necesario
+
+        [c.getDTOName()/] dto = data.get(0);
+        Client cliente = ClientBuilder.newClient();
+        PodamFactory factory = new PodamFactoryImpl();
+        Response response;
+        [for (att : Property | c.getReferences(true) )]
+        [att.getClass().getDTOName()/] [att.name/] = factory.manufacturePojo([att.getClass().getDTOName()/].class);
+        response = cliente.target(URLBASE)
+                .path("[att.getClass().getURI()/]")
+                .request()
+                .post(Entity.entity([att.name/], MediaType.APPLICATION_JSON));
+        [att.name/] = ([att.getClass().getDTOName()/]) response.readEntity([att.getClass().getDTOName()/].class);
+        dto.[att.setter()/]([att.name/]);
+
+        [/for]
+
+        response = cliente.target(URLBASE)
+                .path(PATH)
+                .request()
+                .post(Entity.entity(dto, MediaType.APPLICATION_JSON));
+        [c.getDTOName()/] result = ([c.getDTOName()/]) response.readEntity([c.getDTOName()/].class);
+        Assert.assertEquals(dto.getId(), result.getId());
+        Assert.assertEquals(Created, response.getStatus());
+    }    
+
+    /**
+     * @generated
+     */
+    @Test
+    @RunAsClient
+    public void t2Get[c.name/]ById() {
+
+        //TODO Realizar login en caso de ser necesario
+
+        Client cliente = ClientBuilder.newClient();
+        [c.getDTOName()/] [c.name.toLower()/]Test = cliente.target(URLBASE)
+                .path(PATH)
+                .path(data.get(0).getId().toString())
+                .request().get([c.getDTOName()/].class);
+        Assert.assertEquals([c.name.toLower()/]Test.getId(), data.get(0).getId());
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    @RunAsClient
+    public void t3Get[c.name/]s() throws IOException {
+
+        //TODO Realizar login en caso de ser necesario
+
+        Client cliente = ClientBuilder.newClient();
+        Response response = cliente.target(URLBASE)
+                .path(PATH)
+                .request().get();
+        String list[c.name/] = response.readEntity(String.class);
+        List<[c.getDTOName()/]> list[c.name/]Test = new ObjectMapper().readValue(list[c.name/], List.class);
+        Assert.assertEquals(Ok, response.getStatus());
+        Assert.assertEquals(1, list[c.name/]Test.size());
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    @RunAsClient
+    public void t4Update[c.name/]() throws IOException {
+
+        //TODO Realizar login en caso de ser necesario
+
+        Client cliente = ClientBuilder.newClient();
+        [c.getDTOName()/] [c.name.toLower()/] = cliente.target(URLBASE)
+                .path(PATH)
+                .path(data.get(0).getId().toString())
+                .request().get([c.getDTOName()/].class);
+        PodamFactory factory = new PodamFactoryImpl();
+        [c.getDTOName()/] [c.name.toLower()/]Changed = factory.manufacturePojo([c.getDTOName()/].class);
+        [for (att : Property | c.attribute)]
+        [c.name.toLower()/].[att.setter()/]([c.name.toLower()/]Changed.[att.getter()/]());
+        [/for]
+
+        Response response = cliente.target(URLBASE)
+                .path(PATH)
+                .path("/" + [c.name.toLower()/].getId())
+                .request().put(Entity.entity([c.name.toLower()/], MediaType.APPLICATION_JSON));
+        [c.getDTOName()/] [c.name.toLower()/]Test = ([c.getDTOName()/]) response.readEntity([c.getDTOName()/].class);
+        Assert.assertEquals(Ok, response.getStatus());
+        [for (att : Property | c.attribute)]
+        Assert.assertEquals([c.name.toLower()/].[att.getter()/](), [c.name.toLower()/]Test.[att.getter()/]());
+        [/for]
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    @RunAsClient
+    public void t5Delete[c.name/]() {
+
+        //TODO Realizar login en caso de ser necesario
+
+        Client cliente = ClientBuilder.newClient();
+        [c.getDTOName()/] [c.name.toLower()/] = data.get(0);
+        Response response = cliente.target(URLBASE)
+                .path(PATH)
+                .path([c.name.toLower()/].getId().toString())
+                .request().delete();
+        Assert.assertEquals(OkWithoutContent, response.getStatus());
+    }
+}
+[/file]
+[/template]
+
+[template public genLogicTests(c : Class, path : String) {className : String = c.getTestName();}]
+[let bean : String = c.getName().concat('Logic')]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+package [c.getModel().baseGroup()/].tests;
+
+import [c.getModel().baseGroup()/].ejbs.[c.getBeanName()/];
+import [c.getModel().baseGroup()/].api.[c.getAPIName()/];
+import [c.getModel().baseGroup()/].converters.[c.getConverterName()/];
+import [c.getModel().baseGroup()/].dtos.[c.getDTOName()/];
+import [c.getModel().baseGroup()/].entities.[c.getEntityName()/];
+import [c.getModel().baseGroup()/].persistence.[c.getPersistenceName()/];
+import static [c.getModel().baseGroup()/].tests._TestUtil.*;
+import java.util.ArrayList;
+import java.util.List;
+[if (c.hasDateAttribute())]import java.util.Date;[/if]
+import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.UserTransaction;
+import org.junit.Assert;
+import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+/**
+ * @generated
+ */
+@RunWith(Arquillian.class)
+public class [className/] {
+    public static final String DEPLOY = "Prueba";
+
+    /**
+     * @generated
+     */
+    @Deployment
+    public static WebArchive createDeployment() {
+        return ShrinkWrap.create(WebArchive.class, DEPLOY + ".war")
+                .addPackage([c.getEntityName()/].class.getPackage())
+                .addPackage([c.getDTOName()/].class.getPackage())
+                .addPackage([c.getConverterName()/].class.getPackage())
+                .addPackage([c.getBeanName()/].class.getPackage())
+                .addPackage([c.getAPIName()/].class.getPackage())
+                .addPackage([c.getPersistenceName()/].class.getPackage())
+                .addAsResource("META-INF/persistence.xml", "META-INF/persistence.xml")
+                .addAsWebInfResource("META-INF/beans.xml", "beans.xml");
+    }
+
+    /**
+     * @generated
+     */
+    @Inject
+    private [c.getAPIName()/] [bean/];
+
+    /**
+     * @generated
+     */
+    @PersistenceContext
+    private EntityManager em;
+
+    /**
+     * @generated
+     */
+    @Inject
+    UserTransaction utx;
+
+    /**
+     * @generated
+     */
+    @Before
+    public void configTest() {
+        try {
+            utx.begin();
+            clearData();
+            insertData();
+            utx.commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                utx.rollback();
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * @generated
+     */
+    private void clearData() {
+        em.createQuery("delete from [c.getEntityName()/]").executeUpdate();
+    }
+
+    /**
+     * @generated
+     */
+    private List<[c.getEntityName()/]> data = new ArrayList<[c.getEntityName()/]>();
+
+    /**
+     * @generated
+     */
+    private void insertData() {
+        for (int i = 0; i < 3; i++) {
+            [c.getEntityName()/] entity = new [c.getEntityName()/]();
+            [for (a : Property | c.getAllAttribs())]
+        	entity.[a.setter()/](generateRandom([a.type.name/].class));
+            [/for]
+            em.persist(entity);
+            data.add(entity);
+        }
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void create[c.name/]Test() {
+        [c.getDTOName()/] dto = new [c.getDTOName()/]();
+        [for (a : Property | c.getAllAttribs())]
+        dto.[a.setter()/](generateRandom([a.type.name/].class));
+        [/for]
+
+        [c.getDTOName()/] result = [bean/].create[c.name/](dto);
+
+        Assert.assertNotNull(result);
+
+        [c.getEntityName()/] entity = em.find([c.getEntityName()/].class, result.getId());
+
+        [for (a : Property | c.getAllAttribs())]
+        Assert.assertEquals(dto.[a.getter()/](), entity.[a.getter()/]());
+        [/for]
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void get[c.name/]sTest() {
+        List<[c.getDTOName()/]> list = [bean/].get[c.name/]s(null, null);
+        Assert.assertEquals(data.size(), list.size());
+        for ([c.getDTOName()/] dto : list) {
+            boolean found = false;
+            for ([c.getEntityName()/] entity : data) {
+                if (dto.getId().equals(entity.getId())) {
+                    found = true;
+                }
+            }
+            Assert.assertTrue(found);
+        }
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void get[c.name/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        [c.getDTOName()/] dto = [bean/].get[c.name/](entity.getId());
+        Assert.assertNotNull(dto);
+        [for (a : Property | c.getAllAttribs())]
+        Assert.assertEquals(entity.[a.getter()/](), dto.[a.getter()/]());
+        [/for]
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void delete[c.name/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        [bean/].delete[c.name/](entity.getId());
+        [c.getEntityName()/] deleted = em.find([c.getEntityName()/].class, entity.getId());
+        Assert.assertNull(deleted);
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void update[c.name/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+
+        [c.getDTOName()/] dto = new [c.getDTOName()/]();
+
+        dto.setId(entity.getId());
+        [for (a : Property | c.getAllAttribs())]
+        dto.[a.setter()/](generateRandom([a.type.name/].class));
+        [/for]
+
+        [bean/].update[c.name/](dto);
+
+        [c.getEntityName()/] resp = em.find([c.getEntityName()/].class, entity.getId());
+
+        [for (a : Property | c.getAllAttribs())]
+        Assert.assertEquals(dto.[a.getter()/](), resp.[a.getter()/]());
+        [/for]
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void get[c.name/]PaginationTest() {
+        //Page 1
+        List<[c.getDTOName()/]> dto1 = [bean/].get[c.name/]s(1, 2);
+        Assert.assertNotNull(dto1);
+        Assert.assertEquals(2, dto1.size());
+        //Page 2
+        List<[c.getDTOName()/]> dto2 = [bean/].get[c.name/]s(2, 2);
+        Assert.assertNotNull(dto2);
+        Assert.assertEquals(1, dto2.size());
+
+        for ([c.getDTOName()/] dto : dto1) {
+            boolean found = false;
+            for ([c.getEntityName()/] entity : data) {
+                if (dto.getId().equals(entity.getId())) {
+                    found = true;
+                }
+            }
+            Assert.assertTrue(found);
+        }
+
+        for ([c.getDTOName()/] dto : dto2) {
+            boolean found = false;
+            for ([c.getEntityName()/] entity : data) {
+                if (dto.getId().equals(entity.getId())) {
+                    found = true;
+                }
+            }
+            Assert.assertTrue(found);
+        }
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void findByName() {
+        String name = data.get(0).getName();
+        List<[c.getEntityName()/]> cache = new ArrayList<[c.getEntityName()/]>();
+        List<[c.getDTOName()/]> list = [bean/].findByName(name);
+
+        for ([c.getEntityName()/] entity : data) {
+            if (entity.getName().equals(name)) {
+                cache.add(entity);
+            }
+        }
+        Assert.assertEquals(cache.size(), list.size());
+        for ([c.getDTOName()/] dto : list) {
+            boolean found = false;
+            for ([c.getEntityName()/] cacheEntity : cache) {
+                if (cacheEntity.getName().equals(dto.getName())) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                Assert.fail();
+            }
+        }
+    }
+}
+[/file]
+[/let]
+[/template]
+[template public genPersistenceTests(c : Class, path : String) {className : String = c.getPersistenceTestName();}]
+[let bean : String = c.getName().concat('Persistence')]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+package [c.getModel().baseGroup()/].tests;
+
+import [c.getModel().baseGroup()/].entities.[c.getEntityName()/];
+import [c.getModel().baseGroup()/].persistence.[c.getPersistenceName()/];
+import static [c.getModel().baseGroup()/].tests._TestUtil.*;
+import java.util.ArrayList;
+import java.util.List;
+[if (c.hasDateAttribute())]import java.util.Date;[/if]
+import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.UserTransaction;
+import org.junit.Assert;
+import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+/**
+ * @generated
+ */
+@RunWith(Arquillian.class)
+public class [className/] {
+    public static final String DEPLOY = "Prueba";
+
+    /**
+     * @generated
+     */
+    @Deployment
+    public static WebArchive createDeployment() {
+        return ShrinkWrap.create(WebArchive.class, DEPLOY + ".war")
+                .addPackage([c.getEntityName()/].class.getPackage())
+                .addPackage([c.getPersistenceName()/].class.getPackage())
+                .addAsResource("META-INF/persistence.xml", "META-INF/persistence.xml")
+                .addAsWebInfResource("META-INF/beans.xml", "beans.xml");
+    }
+
+    /**
+     * @generated
+     */
+    @Inject
+    private [c.getPersistenceName()/] [bean/];
+
+    /**
+     * @generated
+     */
+    @PersistenceContext
+    private EntityManager em;
+
+    /**
+     * @generated
+     */
+    @Inject
+    UserTransaction utx;
+
+    /**
+     * @generated
+     */
+    @Before
+    public void configTest() {
+        try {
+            utx.begin();
+            clearData();
+            insertData();
+            utx.commit();
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                utx.rollback();
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * @generated
+     */
+    private void clearData() {
+        em.createQuery("delete from [c.getEntityName()/]").executeUpdate();
+    }
+
+    /**
+     * @generated
+     */
+    private List<[c.getEntityName()/]> data = new ArrayList<[c.getEntityName()/]>();
+
+    /**
+     * @generated
+     */
+    private void insertData() {
+        for (int i = 0; i < 3; i++) {
+            [c.getEntityName()/] entity = new [c.getEntityName()/]();
+            [for (a : Property | c.getAllAttribs())]
+            entity.[a.setter()/](generateRandom([a.type.name/].class));
+            [/for]
+            em.persist(entity);
+            data.add(entity);
+        }
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void create[c.name/]Test() {
+        [c.getEntityName()/] newEntity = new [c.getEntityName()/]();
+        [for (a : Property | c.getAllAttribs())]
+        newEntity.[a.setter()/](generateRandom([a.type.name/].class));
+        [/for]
+
+        [c.getEntityName()/] result = [bean/].create(newEntity);
+
+        Assert.assertNotNull(result);
+
+        [c.getEntityName()/] entity = em.find([c.getEntityName()/].class, result.getId());
+
+        [for (a : Property | c.getAllAttribs())]
+        Assert.assertEquals(newEntity.[a.getter()/](), entity.[a.getter()/]());
+        [/for]
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void get[c.name/]sTest() {
+        List<[c.getEntityName()/]> list = [bean/].findAll(null, null);
+        Assert.assertEquals(data.size(), list.size());
+        for ([c.getEntityName()/] ent : list) {
+            boolean found = false;
+            for ([c.getEntityName()/] entity : data) {
+                if (ent.getId().equals(entity.getId())) {
+                    found = true;
+                }
+            }
+            Assert.assertTrue(found);
+        }
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void get[c.name/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        [c.getEntityName()/] newEntity = [bean/].find(entity.getId());
+        Assert.assertNotNull(newEntity);
+        [for (a : Property | c.getAllAttribs())]
+        Assert.assertEquals(entity.[a.getter()/](), newEntity.[a.getter()/]());
+        [/for]
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void delete[c.name/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+        [bean/].delete(entity.getId());
+        [c.getEntityName()/] deleted = em.find([c.getEntityName()/].class, entity.getId());
+        Assert.assertNull(deleted);
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void update[c.name/]Test() {
+        [c.getEntityName()/] entity = data.get(0);
+
+        [c.getEntityName()/] newEntity = new [c.getEntityName()/]();
+
+        newEntity.setId(entity.getId());
+        [for (a : Property | c.getAllAttribs())]
+        newEntity.[a.setter()/](generateRandom([a.type.name/].class));
+        [/for]
+
+        [bean/].update(newEntity);
+
+        [c.getEntityName()/] resp = em.find([c.getEntityName()/].class, entity.getId());
+
+        [for (a : Property | c.getAllAttribs())]
+        Assert.assertEquals(newEntity.[a.getter()/](), resp.[a.getter()/]());
+        [/for]
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void get[c.name/]PaginationTest() {
+        //Page 1
+        List<[c.getEntityName()/]> ent1 = [bean/].findAll(1, 2);
+        Assert.assertNotNull(ent1);
+        Assert.assertEquals(2, ent1.size());
+        //Page 2
+        List<[c.getEntityName()/]> ent2 = [bean/].findAll(2, 2);
+        Assert.assertNotNull(ent2);
+        Assert.assertEquals(1, ent2.size());
+
+        for ([c.getEntityName()/] ent : ent1) {
+            boolean found = false;
+            for ([c.getEntityName()/] entity : data) {
+                if (ent.getId().equals(entity.getId())) {
+                    found = true;
+                }
+            }
+            Assert.assertTrue(found);
+        }
+
+        for ([c.getEntityName()/] ent : ent2) {
+            boolean found = false;
+            for ([c.getEntityName()/] entity : data) {
+                if (ent.getId().equals(entity.getId())) {
+                    found = true;
+                }
+            }
+            Assert.assertTrue(found);
+        }
+    }
+
+    /**
+     * @generated
+     */
+    @Test
+    public void findByName() {
+        String name = data.get(0).getName();
+        List<[c.getEntityName()/]> cache = new ArrayList<[c.getEntityName()/]>();
+        List<[c.getEntityName()/]> list = [bean/].findByName(name);
+
+        for ([c.getEntityName()/] entity : data) {
+            if (entity.getName().equals(name)) {
+                cache.add(entity);
+            }
+        }
+        Assert.assertEquals(list.size(), cache.size());
+        for ([c.getEntityName()/] ent : list) {
+            boolean found = false;
+            for ([c.getEntityName()/] cacheEntity : cache) {
+                if (cacheEntity.getName().equals(ent.getName())) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                Assert.fail();
+            }
+        }
+    }
+}
+[/file]
+[/let]
+[/template]
+
+[template public genTestUtils(m : Model, path : String)]
+[file (path.concat('_TestUtil.java'), false, 'UTF-8')]
+package [m.baseGroup()/].tests;
+
+import java.util.Date;
+import java.util.Random;
+import java.util.Calendar;
+
+public class _TestUtil {
+    public static <T> T generateRandom(Class<T> objectClass) {
+        Random r = new Random();
+        if (objectClass.equals(String.class)) {
+            String s = "";
+            for (int i = 0; i < 10; i++) {
+                char c = (char) (Math.abs(r.nextInt()) % ('Z' - 'A') + 'A');
+                s = s + c;
+            }
+            return objectClass.cast(s);
+        } else if (objectClass.equals(Integer.class)) {
+            Integer s = r.nextInt();
+            return objectClass.cast(s);
+        } else if (objectClass.equals(Long.class)) {
+            Long s = r.nextLong();
+            return objectClass.cast(s);
+        } else if (objectClass.equals(Date.class)) {
+            Calendar c = Calendar.getInstance();
+            c.set(Calendar.MONTH, Math.abs(r.nextInt()) % 12);
+            c.set(Calendar.DAY_OF_MONTH, Math.abs(r.nextInt()) % 30);
+            c.set(Calendar.HOUR_OF_DAY, 0);
+            c.set(Calendar.MINUTE, 0);
+            c.set(Calendar.SECOND, 0);
+            c.set(Calendar.MILLISECOND, 0);
+            return objectClass.cast(c.getTime());
+        }
+        return null;
+    }
+
+    private final static java.text.SimpleDateFormat DATE_FORMAT = new java.text.SimpleDateFormat("dd/MM/yyyy");
+
+    public static String generateRandomDate() {
+        Random r = new Random();
+        Calendar c = Calendar.getInstance();
+        c.set(Calendar.MONTH, Math.abs(r.nextInt()) % 12);
+        c.set(Calendar.DAY_OF_MONTH, Math.abs(r.nextInt()) % 30);
+        c.setLenient(true);
+        return DATE_FORMAT.format(c.getTime());
+    }
+
+    public static Date parseDate(String date) {
+        try {
+            return DATE_FORMAT.parse(date);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+}
+[/file]
+[/template]

@@ -1,0 +1,56 @@
+[comment encoding = UTF-8/]
+[module generateHTML('http://data') /]
+[comment 'platform:/resource/tp.fil/src/tp/fil/resources/Data.ecore' /]
+ 
+[template public generateHTML(model:Model)]
+[comment @main/]  
+[file ('PetStore_rendering.html', false, 'UTF-8')]
+	<img src="https://yuml.me/diagram/scruffy/class/
+	[for (c: Class | model.classes)]
+		 [c.generateClass()/],
+	[/for]
+	">
+[/file]
+[/template]
+
+[template public generateClass(c : Class)]
+	[if classHasAttributeAssociation(c)]
+		[c.generateAssociations()/]
+	[else]
+		[ '[' /][c.name/]|[c.generateClassAttributes()/][']'/],
+	[/if]
+	
+[/template]
+
+[template public generateClassAttributes(c: Class)]
+	[for (a: Attribute | c.attributes)]
+		[if (not a.type.doesReferenceModelClass) ]
+			[a.name/] : [a.type.name/];
+		[/if]
+	[/for]
+
+[/template]
+
+[template public generateAssociations(c: Class)]
+	[for (a:Attribute | c.attributes)]
+		[if not a.type.isCollection and a.type.doesReferenceModelClass]
+			[ '[' /][c.name/]|[c.generateClassAttributes()/][']'/]->['['/][a.type.name/]|[findClassByName(c, a.type.name).generateClassAttributes()/][']'/],
+		[elseif a.type.isCollection and a.type.doesReferenceModelClass and not isRelationTreated(c, a.type.name)]
+			[ '[' /][c.name/]|[c.generateClassAttributes()/][']'/]
+			[if isManyToManyRelation(c, a.type.name)]*-*[else]1-0..*[/if]
+			['['/][a.type.name/]|[findClassByName(c, a.type.name).generateClassAttributes()/][']'/],
+		[/if]
+	[/for]
+[/template]
+[query public findClassByName(c : Class, targetClass : String) : Class =
+	c.eContainer(Model).classes->any(c: Class | c.name = targetClass)
+/]
+[query public classHasAttributeAssociation(c : Class) : Boolean =
+	c.attributes->select(a : Attribute | a.type.doesReferenceModelClass)->size() > 0
+/]
+[query public isManyToManyRelation(c : Class, targetClass : String) : Boolean = 
+	c.eContainer(Model).classes->any(c: Class | c.name = targetClass).attributes->select(a : Attribute | a.type.name = c.name)->size() > 0
+/]
+[query public isRelationTreated(c: Class, targetClass : String) : Boolean =
+	c.eContainer(Model).classes->indexOf(c) < c.eContainer(Model).classes->indexOf(findClassByName(c, targetClass))
+/]

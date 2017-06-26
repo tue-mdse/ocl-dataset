@@ -1,0 +1,78 @@
+[comment encoding = UTF-8 /]
+[module javaAzPDPFile('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore','platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthenticationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthorizationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+
+[template public javaAzPDPFile(anAnnotationStack : AnnotationStack)]
+
+[file (anAnnotationStack.hasCorePSM.name  + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/utilities/authorization/core/AzPDP.java', false, 'UTF-8')]
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core;
+
+import java.util.List;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/].[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/];
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.Action;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.AuthorizationResultCode;
+
+public class AzPDP {
+
+	public AzPDP(){
+		
+	}
+	
+	public AuthorizationResult evaluate(AzRequest<?> azRequest){
+		AbstractEvaluationContext evaluationContext = new AzEvaluationContext(azRequest);
+		return this.evaluate(evaluationContext);
+	}
+
+	public AuthorizationResult evaluate(AbstractEvaluationContext evaluationContext){
+		List<ResourceAccessPolicySet> oResourceAccessPolicySet = evaluationContext.getPolicyFinder().findPolicy(evaluationContext.getRequest().getAccessedResourceType());
+		if (oResourceAccessPolicySet.isEmpty()){
+			return new AuthorizationResult(AuthorizationResultCode.NOT_APPLICABLE, "No applicable ResourceAccessPolicySet was found for resource : " + evaluationContext.getRequest().getAccessedResourceType());
+		}
+		if (oResourceAccessPolicySet.size() > 1){
+			return new AuthorizationResult(AuthorizationResultCode.INDETERMINATE, "Multiple root ResourceAccessPolicySets were found for resource : " + evaluationContext.getRequest().getAccessedResourceType());
+		}
+		return oResourceAccessPolicySet.get(0).evaluate(evaluationContext);
+	}
+
+	public AuthorizationResultCode getPermission([anAnnotationStack.getAuthenticationPerformer().authenticationModelName/] oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/], String resourceType, String resourceId, Object includedResource, Action action)
+	{
+		AzRequest<[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/]> request = new AzRequest<[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/]>(oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/],resourceType, resourceId, includedResource, action);    	
+   		return filterResult(request);   	
+	}
+
+	public AuthorizationResultCode getPermission(String resourceType, String resourceId, Object includedResource, Action action)
+	{
+		AzRequest<[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/]> request = new AzRequest<[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/]>(resourceType, resourceId, includedResource, action);    	
+    	return filterResult(request);   	
+	}
+
+	public AuthorizationResultCode getPermission([anAnnotationStack.getAuthenticationPerformer().authenticationModelName/] oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/], String resourceType, String postedResourceParentType, String resourceId, Object includedResource, Action action)
+	{
+		AzRequest<[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/]> request = new AzRequest<[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/]>(oAuthentication[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName.toUpperFirst()/],resourceType, postedResourceParentType, resourceId, includedResource, action);    	
+   		return filterResult(request);   	
+	}
+
+	public AuthorizationResultCode getPermission(String resourceType, String postedResourceParentType, String resourceId, Object includedResource, Action action)
+	{
+		AzRequest<[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/]> request = new AzRequest<[anAnnotationStack.getAuthenticationPerformer().authenticationModelName/]>(resourceType, postedResourceParentType, resourceId, includedResource, action);    	
+    	return filterResult(request);   	
+	}
+
+	private AuthorizationResultCode filterResult(AzRequest request){
+		if (request == null){
+			return null;
+		}
+		AuthorizationResultCode oAuthorizationResultCode = this.evaluate(request).getResultCode();
+		if (oAuthorizationResultCode.equals(AuthorizationResultCode.NOT_APPLICABLE)){
+			return AuthorizationResultCode.PERMIT;
+		}
+		return oAuthorizationResultCode;
+	}
+
+}
+[/file]
+[/template]
+
+[query private getAuthenticationPerformer(anAnnotationStack : AnnotationStack) : AuthenticationPerformer =
+	anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(AuthenticationPerformer))->at(1)
+/]

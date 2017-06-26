@@ -1,0 +1,343 @@
+[comment encoding = UTF-8 /]
+[module generateDBManager('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::ios::common::xisMobileUtils/]
+
+
+[template public generateDBManager(cl : OrderedSet(Class))]
+
+[file ('dbManager.h', false, 'UTF-8')]
+#import <Foundation/Foundation.h>
+#import <sqlite3.h>
+[for (c : Class | cl)]
+#import "[c.name.toUpperFirst()/].h"
+[/for]
+
+@interface DBManager : NSObject
+
+@property (strong, nonatomic) NSString *databasePath;
+@property (nonatomic) sqlite3 *TASKDB; [comment TODO Change db name/]
+
+- (void)initDatabase;
+- (void)setDbPath;
+[for (c : Class | cl)]
+- (int)insert[c.name.toUpperFirst()/]:([c.name.toUpperFirst()/] *)[c.name.toLowerFirst()/];
+- (void)update[c.name.toUpperFirst()/]:([c.name.toUpperFirst()/] *)[c.name.toLowerFirst()/];
+- (void)delete[c.name.toUpperFirst()/]:([c.name.toUpperFirst()/] *)[c.name.toLowerFirst()/];
+- (void)deleteAll[c.name.toUpperFirst()/]s;
+- (NSMutableArray*)getAll[c.name.toUpperFirst()/]s;
+- ([c.name.toUpperFirst()/]*)get[c.name.toUpperFirst()/]ById: (int)identifier;
+[/for]
+
+@end
+[/file]
+
+[file ('dbManager.m', false, 'UTF-8')]
+//
+//  DBManager.m
+//  To-Do
+//
+//  Created by Mats Sandvoll on 02.12.13.
+//  Copyright (c) 2013 Mats Sandvoll. All rights reserved.
+//
+#import "DBManager.h"
+
+@implementation DBManager
+
+- (void)initDatabase{
+    NSString *docsDir;
+    NSArray *dirPaths;
+    // Get the documents directory
+    dirPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    docsDir = dirPaths['['/]0[']'/];
+    // Build the path to the database file
+    _databasePath = ['['/]['['/]NSString alloc[']'/]initWithString: ['['/]docsDir stringByAppendingPathComponent:@"TASK.db"[']'/][']'/];
+    const char *dbpath = ['['/]_databasePath UTF8String[']'/];
+    if (sqlite3_open(dbpath, &_TASKDB) == SQLITE_OK){
+        char *errMsg;
+        const char *sql_stmt;
+		[for (c : Class | cl)]
+		sql_stmt = "CREATE TABLE IF NOT EXISTS [c.name.toUpperCase()/]S (ID INTEGER PRIMARY KEY AUTOINCREMENT, [c.getColums()/])";
+		if (sqlite3_exec(_TASKDB, sql_stmt, NULL, NULL, &errMsg) != SQLITE_OK){
+        	NSLog(@"%s",sqlite3_errmsg(_TASKDB));
+		}
+		[/for]
+        sqlite3_close(_TASKDB);
+    } 
+}
+
+- (void)setDbPath{
+    NSString *docsDir;
+    NSArray *dirPaths;
+    dirPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    docsDir = dirPaths['['/]0[']'/];
+    self.databasePath = ['['/]['['/]NSString alloc]initWithString: ['['/]docsDir stringByAppendingPathComponent:@"TASK.db"[']'/][']'/];
+}
+
+[for (c : Class | cl) separator ('\n')]
+- (int)insert[c.name.toUpperFirst()/]:([c.name.toUpperFirst()/] *[c.name.toLowerFirst()/]){
+    sqlite3_stmt *statement;
+    const char *dbpath = ['['/]_databasePath UTF8String[']'/];
+    if (sqlite3_open(dbpath, &_TASKDB) == SQLITE_OK){
+        NSString *insertSQL = ['['/]NSString stringWithFormat:@"INSERT INTO [c.name.toUpperCase()/]S ([c.getXisEntityAttributes().name->sep(', ')/]) VALUES ([c.getXisEntityAttributes().getStringTypeFormat()->sep(', ')/])", [c.getXisEntityAttributes().getEntityAndAttribute(c.name)->sep(', ')/][']'/];
+        const char *insert_stmt = ['['/]insertSQL UTF8String[']'/];
+        sqlite3_prepare_v2(_TASKDB, insert_stmt,-1, &statement, NULL);
+        if (sqlite3_step(statement) == SQLITE_DONE){
+            NSLog(@"[c.name.toUpperFirst()/] inserted");
+        }else{
+            NSLog(@"%s",sqlite3_errmsg(_TASKDB));
+        }
+        sqlite3_reset(statement);
+        sqlite3_finalize(statement);
+        sqlite3_close(_TASKDB);
+    }
+   return (int)sqlite3_last_insert_rowid(_TASKDB);
+}
+
+- (void)delete[c.name.toUpperFirst()/]:([c.name.toUpperFirst()/] *[c.name.toLowerFirst()/]){
+    sqlite3_stmt *statement;
+    const char *dbpath = ['['/]_databasePath UTF8String[']'/];
+    if (sqlite3_open(dbpath, &_TASKDB) == SQLITE_OK){
+        NSString *insertSQL = ['['/]NSString stringWithFormat:@"DELETE FROM [c.name.toUpperCase()/]S WHERE (ID) = (\"%d\")", [c.name.toLowerFirst()/].[c.name.toLowerCase()/]Id];
+        const char *insert_stmt = ['['/]insertSQL UTF8String[']'/];
+        sqlite3_prepare_v2(_TASKDB, insert_stmt,-1, &statement, NULL);
+        if (sqlite3_step(statement) == SQLITE_DONE){
+            NSLog(@"[c.name.toUpperFirst()/] deleted");
+        }else{
+            NSLog(@"%s",sqlite3_errmsg(_TASKDB));
+        }
+        sqlite3_reset(statement);
+        sqlite3_finalize(statement);
+        sqlite3_close(_TASKDB);
+    }
+}
+
+- (void)update[c.name.toUpperFirst()/]:([c.name.toUpperFirst()/] *[c.name.toLowerFirst()/]){
+    sqlite3_stmt *statement;
+    const char *dbpath = ['['/]_databasePath UTF8String[']'/];
+    if (sqlite3_open(dbpath, &_TASKDB) == SQLITE_OK){
+        NSString *insertSQL = ['['/]NSString stringWithFormat:@"UPDATE [c.name.toUpperCase()/]S SET [c.getXisEntityAttributes().getAttributeNameAndFormat()->sep(', ')/] WHERE ID = \"%d\"", [c.getXisEntityAttributes().getEntityAndAttribute(c.name)->sep(', ')/], [c.name.toLowerFirst()/].[c.name.toLowerFirst()/]Id [']'/];
+        const char *insert_stmt = ['['/]insertSQL UTF8String[']'/];
+        sqlite3_prepare_v2(_TASKDB, insert_stmt,-1, &statement, NULL);
+        if (sqlite3_step(statement) == SQLITE_DONE){
+            NSLog(@"[c.name.toUpperFirst()/] updated");
+        }else{
+            NSLog(@"%s",sqlite3_errmsg(_TASKDB));
+        }
+        sqlite3_reset(statement);
+        sqlite3_finalize(statement);
+        sqlite3_close(_TASKDB);
+    }
+}
+
+- (NSMutableArray*)getAll[c.name.toUpperFirst()/]s{
+    NSMutableArray *[c.name.toUpperFirst()/]s =['['/]['['/]NSMutableArray alloc[']'/] init[']'/];
+    const char *dbpath = ['['/]_databasePath UTF8String[']'/];
+    sqlite3_stmt *statement;
+    if (sqlite3_open(dbpath, &_TASKDB) == SQLITE_OK){
+        NSString *querySQL = ['['/]NSString stringWithFormat:@"SELECT * FROM [c.name.toUpperCase()/]S" [']'/];
+        const char *query_stmt = ['['/]querySQL UTF8String[']'/];
+        if (sqlite3_prepare_v2(_TASKDB,query_stmt, -1, &statement, NULL) == SQLITE_OK){
+            while (sqlite3_step(statement) == SQLITE_ROW){
+                [c.name.toUpperFirst()/] *new[c.name.toUpperFirst()/] = ['['/]['['/][c.name.toUpperFirst()/] alloc[']'/]init[']'/];
+				newTask.taskID = sqlite3_column_int(statement, 0);
+				[for (a : Property | c.getXisEntityAttributes())]
+				new[c.name.toUpperFirst()/].[a.name.toLowerFirst()/] = [a.getSqlCalls()/](statement,1); 
+				[/for]
+                ['['/][c.name.toUpperFirst()/]s addObject:new[c.name.toUpperFirst()/][']'/];
+            }
+            sqlite3_finalize(statement);
+        }
+        sqlite3_close(_TASKDB);
+    }
+    return Tasks;
+}
+
+
+[/for]
+[comment]
+
+- (void)deleteAllNotesToTask:(Task *)task{
+    sqlite3_stmt *statement;
+    const char *dbpath = [_databasePath UTF8String];
+    if (sqlite3_open(dbpath, &_TASKDB) == SQLITE_OK){
+        NSString *insertSQL = [NSString stringWithFormat:@"DELETE FROM NOTES WHERE (task) = (\"%d\")",  task.taskID];
+        const char *insert_stmt = [insertSQL UTF8String];
+        sqlite3_prepare_v2(_TASKDB, insert_stmt,-1, &statement, NULL);
+        if (sqlite3_step(statement) == SQLITE_DONE){
+            NSLog(@"All notes to task deleted");
+        }else{
+            NSLog(@"%s",sqlite3_errmsg(_TASKDB));
+        }
+        sqlite3_reset(statement);
+        sqlite3_finalize(statement);
+        sqlite3_close(_TASKDB);
+    }
+}
+
+- (void)insertCategory:(Category1 *)category{
+    sqlite3_stmt *statement;
+    const char *dbpath = [_databasePath UTF8String];
+    if (sqlite3_open(dbpath, &_TASKDB) == SQLITE_OK){
+        NSString *insertSQL = [NSString stringWithFormat:@"INSERT INTO CATEGORIES (name) VALUES (\"%@\")", category.name];
+        const char *insert_stmt = [insertSQL UTF8String];
+        sqlite3_prepare_v2(_TASKDB, insert_stmt,-1, &statement, NULL);
+        if (sqlite3_step(statement) == SQLITE_DONE){
+            NSLog(@"Category inserted");
+        }else{
+            NSLog(@"%s",sqlite3_errmsg(_TASKDB));
+        }
+        sqlite3_reset(statement);
+        sqlite3_finalize(statement);
+        sqlite3_close(_TASKDB);
+    }
+}
+
+- (NSMutableArray*)getAllTasks{
+    NSMutableArray *Tasks =[[NSMutableArray alloc] init];
+    const char *dbpath = [_databasePath UTF8String];
+    sqlite3_stmt *statement;
+    if (sqlite3_open(dbpath, &_TASKDB) == SQLITE_OK){
+        NSString *querySQL = [NSString stringWithFormat:@"SELECT * FROM TASKS"];
+        const char *query_stmt = [querySQL UTF8String];
+        if (sqlite3_prepare_v2(_TASKDB,query_stmt, -1, &statement, NULL) == SQLITE_OK){
+            while (sqlite3_step(statement) == SQLITE_ROW){
+                Task *newTask = [[Task alloc]init];
+                newTask.taskID = sqlite3_column_int(statement, 0);
+                newTask.externalTaskID = sqlite3_column_int(statement, 1);
+                newTask.name = [[NSString alloc]initWithUTF8String:(const char *) sqlite3_column_text(statement, 2)];
+                newTask.description = [[NSString alloc]initWithUTF8String:(const char *) sqlite3_column_text(statement, 3)];
+                newTask.date = [[NSString alloc]initWithUTF8String:(const char *) sqlite3_column_text(statement, 4)];
+                newTask.category = [[NSString alloc]initWithUTF8String:(const char *) sqlite3_column_text(statement, 5)];
+                [Tasks addObject:newTask];
+            }
+            sqlite3_finalize(statement);
+        }
+        sqlite3_close(_TASKDB);
+    }
+    return Tasks;
+}
+
+- (NSMutableArray*)getAllCategories{
+    NSMutableArray *categories =[[NSMutableArray alloc] init];
+    const char *dbpath = [_databasePath UTF8String];
+    sqlite3_stmt *statement;
+    if (sqlite3_open(dbpath, &_TASKDB) == SQLITE_OK){
+        NSString *querySQL = [NSString stringWithFormat:@"SELECT * FROM CATEGORIES"];
+        const char *query_stmt = [querySQL UTF8String];
+        if (sqlite3_prepare_v2(_TASKDB,query_stmt, -1, &statement, NULL) == SQLITE_OK){
+            while (sqlite3_step(statement) == SQLITE_ROW){
+                Category1 *newCategory = [[Category1 alloc]init];
+                newCategory.name = [[NSString alloc]initWithUTF8String:(const char *) sqlite3_column_text(statement, 0)];
+                [categories addObject:newCategory];
+            }
+            sqlite3_finalize(statement);
+        }
+        sqlite3_close(_TASKDB);
+    }
+    return categories;
+}
+
+- (NSMutableArray*)getNotesByTask:(Task *)task{
+    NSMutableArray *notes =[[NSMutableArray alloc] init];
+    const char *dbpath = [_databasePath UTF8String];
+    sqlite3_stmt *statement;
+    if (sqlite3_open(dbpath, &_TASKDB) == SQLITE_OK){
+        NSString *querySQL = [NSString stringWithFormat:@"SELECT * FROM NOTES WHERE (task) = \"%d\"", task.taskID];
+        const char *query_stmt = [querySQL UTF8String];
+        if (sqlite3_prepare_v2(_TASKDB,query_stmt, -1, &statement, NULL) == SQLITE_OK){
+            while (sqlite3_step(statement) == SQLITE_ROW){
+                Note *newNote = [[Note alloc]init];
+                newNote.noteID = sqlite3_column_int(statement, 0);
+                newNote.externalNoteID = sqlite3_column_int(statement, 1);
+                newNote.description = [[NSString alloc]initWithUTF8String:(const char *) sqlite3_column_text(statement, 2)];
+                newNote.taskID = sqlite3_column_int(statement, 3);
+                [notes addObject:newNote];
+            }
+            sqlite3_finalize(statement);
+        }
+        sqlite3_close(_TASKDB);
+    }
+    return notes;
+}
+
+- (void)deleteAllTasks{
+    sqlite3_stmt *statement;
+    const char *dbpath = [_databasePath UTF8String];
+    if (sqlite3_open(dbpath, &_TASKDB) == SQLITE_OK){
+        NSString *insertSQL = [NSString stringWithFormat:@"DELETE FROM TASKS"];
+        const char *insert_stmt = [insertSQL UTF8String];
+        sqlite3_prepare_v2(_TASKDB, insert_stmt,-1, &statement, NULL);
+        if (sqlite3_step(statement) == SQLITE_DONE){
+            NSLog(@"All task deleted");
+        }else{
+            NSLog(@"%s",sqlite3_errmsg(_TASKDB));
+        }
+        insertSQL = [NSString stringWithFormat:@"DELETE FROM NOTES"];
+        insert_stmt = [insertSQL UTF8String];
+        sqlite3_prepare_v2(_TASKDB, insert_stmt,-1, &statement, NULL);
+        if (sqlite3_step(statement) == SQLITE_DONE){
+            NSLog(@"All notes deleted");
+        }else{
+            NSLog(@"%s",sqlite3_errmsg(_TASKDB));
+        }
+        sqlite3_reset(statement);
+        sqlite3_finalize(statement);
+        sqlite3_close(_TASKDB);
+    }
+}[/comment]
+
+@end
+[/file]
+
+[/template]
+
+[template private getColums(c : Class) post (trim())]
+[c.getXisEntityAttributes().getColumnTypeAndName()->sep(', ')/]
+[/template]
+
+[template private getColumnTypeAndName(p : Property)]
+[p.name/] [p.getSqlType()/]
+[/template]
+
+[template private getSqlType(p : Property) post (trim())]
+[let type : String = p.getXisEntityAttributeType()]	
+	[if (type = 'Integer')]
+	INT
+	[elseif (type = 'Double')]
+	DOUBLE	
+	[elseif (type = 'String')]
+	TEXT
+	[/if]
+[/let]
+[/template]
+
+[template private getStringTypeFormat(p : Property) post (trim())]
+[let type : String = p.getXisEntityAttributeType()]	
+	[if (type = 'Integer')]
+	\"%d\"
+	[elseif (type = 'Double')]
+	\"%f\"	
+	[elseif (type = 'String')]
+	\"%@\"
+	[/if]
+[/let]
+[/template]
+
+[template private getEntityAndAttribute(p : Property, c : String) post (trim())]
+[c.toLowerFirst()/].[p.name.toLowerFirst()/]
+[/template]
+
+[template private getAttributeNameAndFormat(p : Property) post(trim())]
+[p.name.toLowerFirst()/] = [p.getStringTypeFormat()/]
+[/template]
+
+[template private getSqlCalls(p : Property) post (trim())]
+[let type : String = p.getXisEntityAttributeType()]
+	[if (type = 'Integer')]
+	sqlite3_column_int
+	[elseif (type = 'String')]
+	['['/]['['/]NSString alloc[']'/]initWithUTF8String:(const char *) sqlite3_column_tex
+	[/if]
+[/let]
+[/template]

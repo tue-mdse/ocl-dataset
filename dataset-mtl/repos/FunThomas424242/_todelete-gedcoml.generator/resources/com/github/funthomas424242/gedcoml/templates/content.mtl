@@ -1,0 +1,195 @@
+[comment encoding = UTF-8 /]
+[module content('http://com.github.funthomas424242/language/gedcoml')/]
+[import com::github::funthomas424242::gedcoml::templates::queries /]
+[import com::github::funthomas424242::gedcoml::services::utils /]
+
+[template public createContent(project : Projectdescription)]
+[file (projectPath(project)+'/src/main/docbkx/book.dbk', false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<book version="5.0" xmlns="http://docbook.org/ns/docbook"
+      xmlns:xlink="http://www.w3.org/1999/xlink"
+      xmlns:xi="http://www.w3.org/2001/XInclude">
+
+<bookinfo>
+    <title>Familienbuch</title>
+
+	<authorgroup>
+	    <author>
+    	  <firstname>[project.author.firstName/]</firstname>
+	      <surname>[project.author.lastName/]</surname>
+[if ( not project.author.memberId.id.oclIsUndefined() )]
+	      <affiliation>
+    	    <orgname>
+				(<link linkend="[project.author.memberId.id/]">
+					[project.author.memberId.id/]
+				 </link>)
+			</orgname>
+   		  </affiliation>
+[/if]
+      	  <contrib>Erstellung des Dokumentes</contrib>
+    	</author>
+	</authorgroup>
+
+	<pubdate>[getDateValue(project.publishingDate)/]</pubdate>
+
+	<copyright>
+      <year>
+		GNU Free Documentation License (FDL) v1.3 und folgende Versionen
+		(<ulink url="http://www.gnu.org/copyleft/fdl.html">http://www.gnu.org/copyleft/fdl.html</ulink>).
+	  </year>
+  	</copyright>
+ 	
+</bookinfo>
+
+	<preface>
+		<title>Vorwort</title>
+	
+	    <para>Bei dem vorliegenden Werk handelt es sich um ein Familienbuch im
+              Sinne der Genealogy und nicht im Sinne der deutschen Gesetzbücher.</para>
+	</preface>
+
+
+<toc/>
+
+<chapter>
+<title>Familien</title>
+
+[for (imp : FamilyImport | project.imports)]
+	[let importIndex : Integer = project.imports->indexOf(imp)]
+		[createChapter(project,imp.importedResource,'_'+importIndex.toString()) /]
+	[/let]
+[/for]
+  
+</chapter>
+</book>
+[/file]
+	
+[/template]
+
+[template public createChapter(project:Projectdescription,family : Family, parentIndex : String)]
+
+    
+	<xi:include href="Family[parentIndex/].dbk" />
+	[createSection(project,family,parentIndex) /]
+
+[/template]
+
+[template public createSection(project: Projectdescription, family: Family, familyIndex : String )]
+	[file (projectPath(project)+'/src/main/docbkx/Family'+familyIndex+'.dbk', false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<section version="5.0" xmlns="http://docbook.org/ns/docbook"
+			         xmlns:xlink="http://www.w3.org/1999/xlink"
+			         xmlns:xi="http://www.w3.org/2001/XInclude"
+			         xmlns:ns5="http://www.w3.org/2000/svg"
+			         xmlns:ns4="http://www.w3.org/1998/Math/MathML"
+			         xmlns:ns3="http://www.w3.org/1999/xhtml"
+			         xmlns:db="http://docbook.org/ns/docbook">
+
+<title>Familie [family.name/]</title>
+
+[for (personMember : Person | family.members)]
+	[if (personMember.oclIsTypeOf(BekanntePerson) )]
+	[let person : BekanntePerson = personMember.oclAsType(BekanntePerson)]
+
+	
+
+
+	<section>
+	<title><anchor id='[person.id/]'/>[person.id/]</title>
+		
+		<para>
+			<simplelist type="vert">
+			 <member>Geburtsname: <emphasis role="bold">[person.birthName/]</emphasis></member>
+			 <member>Vorname: <emphasis role="bold">[person.firstName/]</emphasis></member>
+			 <member>Mittelname: <emphasis role="bold">[person.middleName/]</emphasis></member>
+			 <member>Nachname: <emphasis role="bold">[person.lastName/]</emphasis></member>
+			 <member>Geschlecht: <emphasis role="bold">[getSexus(person.sex)/]</emphasis></member>
+			 <member>Tag der Geburt: <emphasis role="bold">[getDateValue(person.birthDay)/]</emphasis></member>
+			 <member>Tag des Todes: <emphasis role="bold">[getDateValue(person.deathDay)/]</emphasis></member>
+			</simplelist>
+		</para>
+
+		<para>
+			<variablelist>
+				<varlistentry>
+			    <term>Biologischer Vater</term>
+				<listitem>
+				  <para>
+				  <simplelist>
+					<member>
+					<link linkend="[person.biologicalFatherIs.id/]">[person.biologicalFatherIs.id/]</link>
+					</member>	
+					[if (person.biologicalFatherIs.oclIsTypeOf(BekanntePerson))]
+						[let father : BekanntePerson = person.biologicalFatherIs.oclAsType(BekanntePerson)]
+						<member>
+						[father.lastName/], [father.firstName/] 
+						</member>
+						<member>
+						([getDateValue(father.birthDay)/] - [getDateValue(father.deathDay)/])
+						</member>
+						[/let]
+					[/if]
+				  </simplelist>
+			      </para>
+				</listitem>
+				</varlistentry>
+			<varlistentry>
+			    <term>Biologische Mutter</term>
+				<listitem>
+				  <simplelist>
+				  <member>
+				  <link linkend="[person.biologicalMotherIs.id/]">[person.biologicalMotherIs.id/]</link>		
+				  </member>
+				  [if (person.biologicalMotherIs.oclIsTypeOf(BekanntePerson))]
+					  [let mother : BekanntePerson = person.biologicalMotherIs.oclAsType(BekanntePerson)]
+					  <member>
+						[getName(mother.firstName,mother.lastName)/]
+					  </member> 
+					  <member>
+						([getDateValue(mother.birthDay)/])
+	  				  </member>
+				      [/let]
+					[/if]
+			      </simplelist>
+				</listitem>
+				</varlistentry>
+		    </variablelist>
+		</para>
+	
+		[if ( not isEmpty(person.addresses))]
+		<para> 
+			<emphasis role="bold">Adressen</emphasis>
+
+
+			<para>
+			  <simplelist type="vert">
+				[for (address : Address | person.addresses)]
+		
+					[if (address.oclIsKindOf(PostAddress))]
+					[let postaddress : PostAddress = address.oclAsType(PostAddress)]
+						<member>
+								von			
+								<emphasis role="bold">[getDateValue(postaddress.entry)/]</emphasis>
+								bis
+								<emphasis role="bold">[getDateValue(postaddress.exodus)/]</emphasis> 
+						  <emphasis role="italic">
+					        [postaddress.street/],  [postaddress.postcode/],  [postaddress.city/]
+					      </emphasis>
+					    </member>
+					[/let]
+					[/if]
+				[/for]
+		      </simplelist>
+			</para>
+		</para>
+		[/if]
+
+	</section>
+	
+		[/let]
+		[/if] 
+	[/for]
+</section>
+   
+[/file]
+[/template]

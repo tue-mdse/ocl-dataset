@@ -1,0 +1,542 @@
+[
+  {
+    "name": "Role",
+    "expressions": [
+      {
+        "operations": {
+          "flatten": 1,
+          "checkMonth": 1,
+          "or": 1,
+          "oclIsTypeOf": 4,
+          "checkDays": 1,
+          "and": 2,
+          "allInstances": 2,
+          "asSet": 1,
+          "=": 4,
+          "oclAsType": 3
+        },
+        "name": "MonthDayOfWeekHourRoleAssign",
+        "body": "\nlet  u : RBACUtility = RBACUtility.allInstances() ->any(true),\n     /*month :ecore::EInt = u.getCurrentTime().month,*/\n\t u1: User = User.allInstances()\n\t     ->select(m : User | m.idUser = 'u3')\n\t     ->any(true),\n temporalContext: Set(RBACContext) =\n   self.roleContextAssignment\n-> select(c |c.oclIsTypeOf(TemporalContext)),\n timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet(), months: Set (ComposedRelativeTE) = timeE -> select (e |e.oclIsTypeOf(MonthOfYear) or (e.oclIsTypeOf(RelativeTimeInterval)\nand e.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(MonthOfYear)))\n in\t\nif  self.idRole = 'r6' then months -> exists (t: ComposedRelativeTE|\nt.checkMonth(u)= true\nand t.checkDays(u)= true)  else true endif\n\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 10,
+          "OperationCallExpImpl": 20,
+          "VariableExpImpl": 18,
+          "LetExpImpl": 5,
+          "TypeExpImpl": 9,
+          "StringLiteralExpImpl": 2,
+          "IfExpImpl": 1,
+          "BooleanLiteralExpImpl": 5,
+          "PropertyCallExpImpl": 6
+        },
+        "properties": [
+          "gemRBAC::RelativeTimeInterval::start",
+          "gemRBAC::TimeExpression::relative",
+          "gemRBAC::Role::idRole",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::Role::roleContextAssignment",
+          "gemRBAC::User::idUser"
+        ]
+      },
+      {
+        "operations": {
+          "oclIsTypeOf": 1,
+          "and": 1,
+          "equalTo": 1,
+          "allInstances": 2,
+          "includes": 1,
+          "implies": 1,
+          "getCurrentTime": 1,
+          "=": 3,
+          "oclAsType": 2
+        },
+        "name": "AbsoluteTPRoleAssign",
+        "body": "\n    let u : RBACUtility = RBACUtility.allInstances()\n\t->any(true),\n\t u1: User = User.allInstances()\n\t     ->select(m : User | m.idUser = 'u1')\n\t     ->any(true),\n\ttemporalContext: Set(RBACContext) = self.roleContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)) \n    in  self.idRole = 'r2' and  self.users -> includes (u1) implies\n    temporalContext.oclAsType(TemporalContext).timeexpression \n    -> exists (e: TimeExpression | e.absolute.oclAsType(TimePoint) \n    -> exists( a: TimePoint| a.equalTo (u.getCurrentTime()) = true)) \n    \n    \n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 9,
+          "VariableExpImpl": 13,
+          "OperationCallExpImpl": 13,
+          "LetExpImpl": 3,
+          "TypeExpImpl": 5,
+          "StringLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 6,
+          "BooleanLiteralExpImpl": 3
+        },
+        "properties": [
+          "gemRBAC::Role::idRole",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::TimeExpression::absolute",
+          "gemRBAC::Role::roleContextAssignment",
+          "gemRBAC::Role::users",
+          "gemRBAC::User::idUser"
+        ]
+      },
+      {
+        "operations": {
+          "flatten": 1,
+          "getDayOfWeek": 1,
+          "oclIsTypeOf": 2,
+          "and": 3,
+          "allInstances": 2,
+          "includes": 1,
+          "getCurrentTime": 1,
+          "implies": 1,
+          "asSet": 1,
+          "oclAsType": 3,
+          "=": 5,
+          "checkDaysRank": 1
+        },
+        "name": "indexRoleAssign",
+        "body": "\t\nlet  u: RBACUtility = RBACUtility.allInstances() -> any(true),\n    /*  month :ecore::EInt = u.getCurrentTime().month,*/\n    temporalContext: Set(RBACContext) = self.roleContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)), \n     day:RelativeTimePoint =  u.getDayOfWeek(),\n     u1: User = User.allInstances()\n\t     ->select(m : User | m.idUser = 'u1')\n\t     ->any(true),\n\t timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet() in\n     self.idRole = 'r7' and self.users -> includes (u1)\n     implies     \n      timeE-> exists(t: ComposedRelativeTE|t.oclIsTypeOf(MonthOfYear) = true and\n \t                              t.oclAsType(MonthOfYear).month  = u.getCurrentTime().month and\n \t    \t                      t.checkDaysRank(u)= true ) \n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 9,
+          "OperationCallExpImpl": 22,
+          "VariableExpImpl": 18,
+          "LetExpImpl": 5,
+          "TypeExpImpl": 7,
+          "StringLiteralExpImpl": 2,
+          "BooleanLiteralExpImpl": 4,
+          "PropertyCallExpImpl": 8
+        },
+        "properties": [
+          "gemRBAC::TimeExpression::relative",
+          "gemRBAC::Role::idRole",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::MonthOfYear::month",
+          "gemRBAC::TimePoint::month",
+          "gemRBAC::Role::roleContextAssignment",
+          "gemRBAC::Role::users",
+          "gemRBAC::User::idUser"
+        ]
+      },
+      {
+        "operations": {
+          "excludes": 2,
+          "or": 2,
+          "equalTo": 1,
+          "allInstances": 1,
+          "includes": 2,
+          "oclAsType": 3,
+          "isBefore": 1,
+          "flatten": 3,
+          "oclIsTypeOf": 2,
+          "and": 2,
+          "notEmpty": 1,
+          "getCurrentTime": 2,
+          "asSet": 1,
+          "=": 1
+        },
+        "name": "AbsoluteUBIRoleAssign",
+        "body": "\t \nlet u : RBACUtility = RBACUtility.allInstances() -> any(true) , \n    temporalContext: Set(RBACContext) = self.roleContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)),\n \ttimeE: Set (AbsoluteTE) = temporalContext.oclAsType(TemporalContext).timeexpression.absolute->flatten() ->asSet(),\n  \ttimeIntervals: Set(AbsoluteTE) = timeE-> select (e | e.oclIsTypeOf(TimeInterval)and e.oclAsType(TimeInterval).end = null ) in \n  \tif timeIntervals->notEmpty() then\n \t\tif timeIntervals.oclAsType(TimeInterval) -> exists (t:TimeInterval| ( t.start.equalTo (u.getCurrentTime()) or \n \t\t\tt.start.isBefore (u.getCurrentTime()))) then \n          self.users.sessions ->flatten() -> forAll (s: Session| s.enabledRoles -> includes (self) or s.activeRoles -> includes (self) )\n       \telse\n       \t  self.users.sessions ->flatten() -> forAll (s: Session| s.enabledRoles -> excludes (self) and s.activeRoles -> excludes (self) )\n       endif\n      else\n       true\n      endif\n\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 12,
+          "VariableExpImpl": 28,
+          "OperationCallExpImpl": 24,
+          "LetExpImpl": 4,
+          "NullLiteralExpImpl": 1,
+          "TypeExpImpl": 6,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 14,
+          "BooleanLiteralExpImpl": 2
+        },
+        "properties": [
+          "gemRBAC::TimeInterval::start",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::Session::activeRoles",
+          "gemRBAC::Session::enabledRoles",
+          "gemRBAC::TimeExpression::absolute",
+          "gemRBAC::TimeInterval::end",
+          "gemRBAC::User::sessions",
+          "gemRBAC::Role::roleContextAssignment",
+          "gemRBAC::Role::users"
+        ]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "equalTo": 2,
+          "allInstances": 2,
+          "includes": 1,
+          "oclAsType": 3,
+          "isBefore": 1,
+          "flatten": 2,
+          "oclIsTypeOf": 1,
+          "and": 1,
+          "getCurrentTime": 3,
+          "asSet": 2,
+          "implies": 1,
+          "notEmpty": 1,
+          "=": 5
+        },
+        "name": "periodicUnboundTIRoleAssign",
+        "body": "\nlet\nu: RBACUtility = RBACUtility.allInstances()-> any(true), \nu1: User = User.allInstances() ->\nselect(m : User | m.idUser = 'u1')-> any(true), \n temporalContext: Set(RBACContext) =\n   self.roleContextAssignment\n-> select(c |c.oclIsTypeOf(TemporalContext)),\ntimeE: Set (TimeExpression) = temporalContext.oclAsType\n(TemporalContext).timeexpression -> flatten() -> asSet(),\nabsoluteE: Set (TimeExpression) = timeE ->\nselect (t: TimeExpression| t.absolute. oclAsType(TimeInterval) -> exists (a| a.start.equalTo (u.getCurrentTime()) = true\nor a.start.isBefore(u.getCurrentTime())=true)),\nperiodicE: Set(PeriodicTime)= absoluteE. relative.oclAsType(PeriodicTime) ->flatten() -> asSet()\nin self.idRole= 'r8' and self.users->includes(u1) implies periodicE.nextStart->select( a |\na.equalTo(u.getCurrentTime())=true)->notEmpty()\n\n\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 13,
+          "OperationCallExpImpl": 26,
+          "VariableExpImpl": 23,
+          "LetExpImpl": 6,
+          "TypeExpImpl": 6,
+          "StringLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 10,
+          "BooleanLiteralExpImpl": 5
+        },
+        "properties": [
+          "gemRBAC::TimeInterval::start",
+          "gemRBAC::Role::idRole",
+          "gemRBAC::TimeExpression::relative",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::TimeExpression::absolute",
+          "gemRBAC::PeriodicTime::nextStart",
+          "gemRBAC::Role::roleContextAssignment",
+          "gemRBAC::User::idUser",
+          "gemRBAC::Role::users"
+        ]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "equalTo": 1,
+          "allInstances": 2,
+          "includes": 1,
+          "oclAsType": 5,
+          "flatten": 1,
+          "checkHours": 2,
+          "getDayOfWeek": 1,
+          "oclIsTypeOf": 4,
+          "and": 6,
+          "isContained": 1,
+          "asSet": 1,
+          "implies": 1,
+          "=": 9
+        },
+        "name": "DayOfWeekHoursRoleAssign",
+        "body": "\t\nlet  u : RBACUtility = RBACUtility.allInstances() ->any(true),\n     /*hour :ecore::EInt = u.getCurrentTime().hour,*/\n     day:RelativeTimePoint =  u.getDayOfWeek(),\n\t u2: User = User.allInstances()\n\t     ->select(m : User | m.idUser = 'u2')\n\t     ->any(true),\n\t temporalContext: Set(RBACContext) = self.roleContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)), \n timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet()\n in\t \n self.idRole = 'r1'  and self.users -> includes (u2) implies\n       timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(RelativeTimeInterval) = true and t.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(DayOfWeek)= true and\n       \tday.isContained(t.oclAsType(RelativeTimeInterval))  = true \n       \tand t.checkHours(u)= true)  \n       \tor   timeE -> exists (t:ComposedRelativeTE|t.oclIsTypeOf(DayOfWeek) = true and  day.equalTo (t.oclAsType(DayOfWeek)) = true \n       \t\tand t.checkHours(u)= true) \n       \t\t\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 10,
+          "OperationCallExpImpl": 36,
+          "VariableExpImpl": 25,
+          "LetExpImpl": 5,
+          "TypeExpImpl": 11,
+          "StringLiteralExpImpl": 2,
+          "BooleanLiteralExpImpl": 9,
+          "PropertyCallExpImpl": 7
+        },
+        "properties": [
+          "gemRBAC::RelativeTimeInterval::start",
+          "gemRBAC::Role::idRole",
+          "gemRBAC::TimeExpression::relative",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::Role::roleContextAssignment",
+          "gemRBAC::User::idUser",
+          "gemRBAC::Role::users"
+        ]
+      },
+      {
+        "operations": {
+          "<=": 1,
+          "or": 2,
+          "allInstances": 2,
+          "includes": 1,
+          "oclAsType": 11,
+          "flatten": 1,
+          "oclIsTypeOf": 5,
+          "and": 7,
+          "getCurrentTime": 5,
+          "asSet": 1,
+          "implies": 1,
+          "=": 9,
+          ">": 1
+        },
+        "name": "RelativeHoursRoleAssign",
+        "body": "\t\nlet  u : RBACUtility = RBACUtility.allInstances() ->any(true),\n    /*  hour :ecore::EInt = u.getCurrentTime().hour,*/\n\t u1: User = User.allInstances()\n\t     ->select(m : User | m.idUser = 'u2')\n\t     ->any(true),\n  temporalContext: Set(RBACContext) =\n   self.roleContextAssignment\n-> select(c |c.oclIsTypeOf(TemporalContext)),\t     \n timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet()\n in\t \n self.idRole = 'r9' and  self.users -> includes (u1) implies\n       timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(HourOfDay) = true\n \t                             and t.oclAsType(HourOfDay).hour = u.getCurrentTime().hour) or\n \t    timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(RelativeTimeInterval) = true \n \t    \t    and t.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(HourOfDay) = true\n \t    \t    and t.oclAsType(RelativeTimeInterval).end.oclIsTypeOf(HourOfDay) = true and \n \t    \t    t.oclAsType(RelativeTimeInterval).start.oclAsType(HourOfDay).hour <= u.getCurrentTime().hour   and\n \t    \t    (t.oclAsType(RelativeTimeInterval).end.oclAsType(HourOfDay).hour > u.getCurrentTime().hour or\n \t    \t    \t(t.oclAsType(RelativeTimeInterval).end.oclAsType(HourOfDay).hour = u.getCurrentTime().hour and u.getCurrentTime().minute = 0 ))\n \t    ) \n \n\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 10,
+          "OperationCallExpImpl": 47,
+          "VariableExpImpl": 26,
+          "LetExpImpl": 4,
+          "IntegerLiteralExpImpl": 1,
+          "TypeExpImpl": 18,
+          "StringLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 20,
+          "BooleanLiteralExpImpl": 6
+        },
+        "properties": [
+          "gemRBAC::RelativeTimeInterval::start",
+          "gemRBAC::TimePoint::hour",
+          "gemRBAC::TimeExpression::relative",
+          "gemRBAC::Role::idRole",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::RelativeTimeInterval::end",
+          "gemRBAC::Role::roleContextAssignment",
+          "gemRBAC::Role::users",
+          "gemRBAC::HourOfDay::hour",
+          "gemRBAC::User::idUser",
+          "gemRBAC::TimePoint::minute"
+        ]
+      },
+      {
+        "operations": {
+          "<=": 1,
+          "or": 3,
+          "allInstances": 2,
+          "includes": 1,
+          "oclAsType": 18,
+          "flatten": 1,
+          "checkHours": 2,
+          "oclIsTypeOf": 5,
+          "and": 11,
+          "implies": 1,
+          "asSet": 1,
+          "getCurrentTime": 8,
+          "<": 1,
+          "=": 12,
+          ">": 1,
+          ">=": 1
+        },
+        "name": "DayOfMonthHoursRoleAssign",
+        "body": "\t\nlet  u : RBACUtility = RBACUtility.allInstances() ->any(true),\n     /*month :ecore::EInt = u.getCurrentTime().month,*/\n     /*day :ecore::EInt = u.getCurrentTime().day,*/\n\t u1: User = User.allInstances()\n\t     ->select(m : User | m.idUser = 'u1')\n\t     ->any(true),\n\t temporalContext: Set(RBACContext) = self.roleContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)),    \n timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet()\n in\t \n self.idRole = 'r4' and  self.users -> includes (u1) implies  \n       timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(DayOfMonth) = true\n \t                             and t.oclAsType(DayOfMonth).month  = u.getCurrentTime().month and  t.oclAsType(DayOfMonth).day  = u.getCurrentTime().day and t.checkHours(u)= true) or\n \t    timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(RelativeTimeInterval) = true \n \t    \t    and t.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(DayOfMonth) = true\n \t    \t    and t.oclAsType(RelativeTimeInterval).end.oclIsTypeOf(DayOfMonth) = true and \n \t    \t   ( t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfMonth).month < u.getCurrentTime().month or  (t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfMonth).month = u.getCurrentTime().month) and \n \t    \t     t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfMonth).day <= u.getCurrentTime().day)   and\n \t    \t  (t.oclAsType(RelativeTimeInterval).end.oclAsType(DayOfMonth).month > u.getCurrentTime().month or ( t.oclAsType(RelativeTimeInterval).end.oclAsType(DayOfMonth).month = u.getCurrentTime().month    and\n \t    \t    t.oclAsType(RelativeTimeInterval).end.oclAsType(DayOfMonth).day >= u.getCurrentTime().day))  and\n \t    \t    t.checkHours(u)= true )\n\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 10,
+          "OperationCallExpImpl": 69,
+          "VariableExpImpl": 37,
+          "LetExpImpl": 4,
+          "TypeExpImpl": 25,
+          "StringLiteralExpImpl": 2,
+          "BooleanLiteralExpImpl": 8,
+          "PropertyCallExpImpl": 30
+        },
+        "properties": [
+          "gemRBAC::RelativeTimeInterval::start",
+          "gemRBAC::DayOfMonth::month",
+          "gemRBAC::TimePoint::day",
+          "gemRBAC::Role::idRole",
+          "gemRBAC::TimeExpression::relative",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::TimePoint::month",
+          "gemRBAC::RelativeTimeInterval::end",
+          "gemRBAC::Role::roleContextAssignment",
+          "gemRBAC::DayOfMonth::day",
+          "gemRBAC::User::idUser",
+          "gemRBAC::Role::users"
+        ]
+      }
+    ],
+    "properties": []
+  },
+  {
+    "name": "Session",
+    "expressions": [
+      {
+        "operations": {
+          "and": 1,
+          "hasDuration": 1,
+          "getCumulativeActiveDuration": 1,
+          "oclAsSet": 1,
+          "allInstances": 1,
+          "notEmpty": 1,
+          "getCurrentAbsoluteTE": 4,
+          "greaterThan": 1
+        },
+        "name": "DurationAbsoluteBTIRoleEnab",
+        "body": "\nlet u : RBACUtility = RBACUtility.allInstances()-> any(true), \nrolesA: Set(Role) = self.enabledRoles ->  select (r:Role| r.getCurrentAbsoluteTE(u)\n-> notEmpty() and\nr.getCurrentAbsoluteTE(u).hasDuration())  \nin rolesA -> forAll(r: Role |\nr.getCurrentAbsoluteTE(u).duration.greaterThan(u.getCumulativeActiveDuration(r,self.user, r.getCurrentAbsoluteTE(u).\n duration)))\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 3,
+          "OperationCallExpImpl": 11,
+          "VariableExpImpl": 13,
+          "LetExpImpl": 2,
+          "TypeExpImpl": 1,
+          "BooleanLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "gemRBAC::AbsoluteTE::duration",
+          "gemRBAC::Session::enabledRoles",
+          "gemRBAC::Session::user"
+        ]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "allInstances": 2,
+          "includes": 2,
+          "oclAsType": 3,
+          "flatten": 1,
+          "oclIsTypeOf": 2,
+          "and": 1,
+          "isContained": 1,
+          "oclAsSet": 1,
+          "getCurrentTime": 1,
+          "notEmpty": 1,
+          "asSet": 1,
+          "=": 2
+        },
+        "name": "AbsoluteBTIRoleEnab",
+        "body": "\nlet u : RBACUtility = RBACUtility.allInstances()-> any(true),\n    r : Role = Role.allInstances() -> select(r : Role|r.idRole = 'r1')-> any(true),\n    temporalContext: Set(RBACContext) = r.roleContextEnabling -> select(c |c.oclIsTypeOf(TemporalContext)),\n    timeE: Set(AbsoluteTE) =temporalContext.oclAsType(TemporalContext).timeexpression. absolute -> flatten() -> asSet(),\n    timeI: Set(AbsoluteTE) = timeE -> select(e | e.oclIsTypeOf(TimeInterval)\n    and e.oclAsType(TimeInterval).end ->notEmpty())\nin if timeI.oclAsType(TimeInterval) -> exists(i:TimeInterval | u.getCurrentTime(). isContained(i)= true) then\n    self.enabledRoles -> includes(r) or self.activeRoles -> includes(r)\nelse \n     true\nendif\n\n\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 10,
+          "OperationCallExpImpl": 19,
+          "VariableExpImpl": 18,
+          "LetExpImpl": 5,
+          "StringLiteralExpImpl": 1,
+          "TypeExpImpl": 7,
+          "IfExpImpl": 1,
+          "BooleanLiteralExpImpl": 4,
+          "PropertyCallExpImpl": 7
+        },
+        "properties": [
+          "gemRBAC::Role::roleContextEnabling",
+          "gemRBAC::Role::idRole",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::Session::enabledRoles",
+          "gemRBAC::Session::activeRoles",
+          "gemRBAC::TimeInterval::end",
+          "gemRBAC::TimeExpression::absolute"
+        ]
+      }
+    ],
+    "properties": []
+  },
+  {
+    "name": "Permission",
+    "expressions": [
+      {
+        "operations": {
+          "excludes": 1,
+          "or": 1,
+          "equalTo": 1,
+          "allInstances": 2,
+          "includes": 1,
+          "oclAsType": 5,
+          "flatten": 1,
+          "checkHours": 1,
+          "getDayOfWeek": 1,
+          "oclIsTypeOf": 4,
+          "and": 3,
+          "isContained": 1,
+          "asSet": 1,
+          "=": 2
+        },
+        "name": "DayOfWeekHourPermAssign",
+        "body": "\nif self.idPermission = 'p4' then\nlet u: RBACUtility = RBACUtility.allInstances() ->any(true), \n   day: RelativeTimePoint = u.getDayOfWeek(),\nr: Role = Role.allInstances() ->\nselect(r : Role | r.idRole = 'r1') ->any(true), \ntemporalContext: Set(RBACContext) =\nself.permissionContextAssignment -> select(c |\nc.oclIsTypeOf(TemporalContext)),\ntimeE: Set (ComposedRelativeTE) = temporalContext.\noclAsType(TemporalContext).timeexpression. relative.oclAsType(ComposedRelativeTE)\n-> flatten() -> asSet(),\ndays: Set (ComposedRelativeTE) = \n\ntimeE ->select(t| \n\t(t.oclIsTypeOf(RelativeTimeInterval) and\n    t.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(DayOfWeek) \n    and day.isContained (t.oclAsType(RelativeTimeInterval)))\n    or \n    (t.oclIsTypeOf(DayOfWeek) \n    and day.equalTo(t.oclAsType(DayOfWeek)))\n    \n    )\nin \n\nif days -> exists (t| t.checkHours(u)) then \nself.roles -> includes (r)\nelse\nself.roles -> excludes (r)\nendif \nelse\ntrue\nendif\n \n \n \t    \n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 10,
+          "OperationCallExpImpl": 25,
+          "VariableExpImpl": 25,
+          "LetExpImpl": 6,
+          "TypeExpImpl": 11,
+          "StringLiteralExpImpl": 2,
+          "IfExpImpl": 2,
+          "BooleanLiteralExpImpl": 3,
+          "PropertyCallExpImpl": 8
+        },
+        "properties": [
+          "gemRBAC::Permission::permissionContextAssignment",
+          "gemRBAC::RelativeTimeInterval::start",
+          "gemRBAC::TimeExpression::relative",
+          "gemRBAC::Role::idRole",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::Permission::idPermission",
+          "gemRBAC::Permission::roles"
+        ]
+      },
+      {
+        "operations": {
+          "excludes": 1,
+          "allInstances": 2,
+          "includes": 1,
+          "oclAsType": 3,
+          "flatten": 1,
+          "oclIsTypeOf": 2,
+          "and": 1,
+          "isContained": 1,
+          "oclAsSet": 2,
+          "notEmpty": 1,
+          "getCurrentTime": 1,
+          "asSet": 1,
+          "=": 3
+        },
+        "name": "AbsoluteBTIPermAssign",
+        "body": "\nif self.idPermission = 'p1' then\nlet u: RBACUtility = RBACUtility.allInstances()-> any(true) -> any(true),\n    r : Role = Role.allInstances() -> select(r : Role|r.idRole = 'r1')-> any(true),\n    temporalContext: Set(RBACContext) = self.permissionContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)),\n    timeE: Set (AbsoluteTE) = temporalContext.oclAsType (TemporalContext).timeexpression.absolute -> flatten() -> asSet(),\n    timeI: Set(AbsoluteTE) = timeE -> select(e | e.oclIsTypeOf(TimeInterval) and e.oclAsType(TimeInterval).end->notEmpty())\nin \n  /*if timeI.oclAsType(TimeInterval)-> notEmpty() then*/\n   if timeI.oclAsType(TimeInterval) ->exists(i:TimeInterval|u.getCurrentTime().\n        isContained(i)= true) then \n        self.roles->includes(r)\n    else \n\t\tself.roles->excludes(r)\n\t\t\n\tendif\n  else\n     true\n  endif\n\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 11,
+          "OperationCallExpImpl": 20,
+          "VariableExpImpl": 19,
+          "LetExpImpl": 5,
+          "TypeExpImpl": 7,
+          "StringLiteralExpImpl": 2,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 8,
+          "BooleanLiteralExpImpl": 5
+        },
+        "properties": [
+          "gemRBAC::Permission::permissionContextAssignment",
+          "gemRBAC::Role::idRole",
+          "gemRBAC::Permission::idPermission",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::TimeInterval::end",
+          "gemRBAC::TimeExpression::absolute",
+          "gemRBAC::Permission::roles"
+        ]
+      },
+      {
+        "operations": {
+          "<=": 1,
+          "or": 3,
+          "allInstances": 2,
+          "includes": 1,
+          "oclAsType": 18,
+          "flatten": 1,
+          "checkHours": 2,
+          "oclIsTypeOf": 5,
+          "and": 11,
+          "getCurrentTime": 8,
+          "implies": 1,
+          "asSet": 1,
+          "<": 1,
+          "=": 12,
+          ">": 1,
+          ">=": 1
+        },
+        "name": "DayOfMonthHoursPermAssign",
+        "body": "\t\nlet  u : RBACUtility = RBACUtility.allInstances() ->any(true),\n     /*month :ecore::EInt = u.getCurrentTime().month,*/\n     /*day :ecore::EInt = u.getCurrentTime().day,*/\n\t r: Role = Role.allInstances()\n\t     ->select(r : Role | r.idRole = 'r4')\n\t     ->any(true),\n\t temporalContext: Set(RBACContext) = self.permissionContextAssignment -> select(c |c.oclIsTypeOf(TemporalContext)),    \n timeE: Set (ComposedRelativeTE) = temporalContext.oclAsType(TemporalContext).timeexpression.relative.oclAsType(ComposedRelativeTE)->flatten()->asSet()\n in\t \n self.idPermission = 'p5' and  self.roles -> includes (r) implies  \n       timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(DayOfMonth) = true\n \t                             and t.oclAsType(DayOfMonth).month  = u.getCurrentTime().month and  t.oclAsType(DayOfMonth).day  = u.getCurrentTime().day and t.checkHours(u)= true) or\n \t    timeE -> exists (t: ComposedRelativeTE|t.oclIsTypeOf(RelativeTimeInterval) = true \n \t    \t    and t.oclAsType(RelativeTimeInterval).start.oclIsTypeOf(DayOfMonth) = true\n \t    \t    and t.oclAsType(RelativeTimeInterval).end.oclIsTypeOf(DayOfMonth) = true and \n \t    \t   ( t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfMonth).month < u.getCurrentTime().month or  (t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfMonth).month = u.getCurrentTime().month) and \n \t    \t     t.oclAsType(RelativeTimeInterval).start.oclAsType(DayOfMonth).day <= u.getCurrentTime().day)   and\n \t    \t  (t.oclAsType(RelativeTimeInterval).end.oclAsType(DayOfMonth).month > u.getCurrentTime().month or ( t.oclAsType(RelativeTimeInterval).end.oclAsType(DayOfMonth).month = u.getCurrentTime().month    and\n \t    \t    t.oclAsType(RelativeTimeInterval).end.oclAsType(DayOfMonth).day >= u.getCurrentTime().day))  and\n \t    \t    t.checkHours(u)= true )\n\n",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 10,
+          "OperationCallExpImpl": 69,
+          "VariableExpImpl": 37,
+          "LetExpImpl": 4,
+          "TypeExpImpl": 25,
+          "StringLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 30,
+          "BooleanLiteralExpImpl": 8
+        },
+        "properties": [
+          "gemRBAC::DayOfMonth::month",
+          "gemRBAC::Permission::permissionContextAssignment",
+          "gemRBAC::RelativeTimeInterval::start",
+          "gemRBAC::TimePoint::day",
+          "gemRBAC::TimeExpression::relative",
+          "gemRBAC::Role::idRole",
+          "gemRBAC::Permission::idPermission",
+          "gemRBAC::TemporalContext::timeexpression",
+          "gemRBAC::TimePoint::month",
+          "gemRBAC::RelativeTimeInterval::end",
+          "gemRBAC::DayOfMonth::day",
+          "gemRBAC::Permission::roles"
+        ]
+      }
+    ],
+    "properties": []
+  }
+]

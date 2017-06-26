@@ -1,0 +1,125 @@
+[module servicio('http://www.eclipse.org/uml2/4.0.0/UML', 'http://www.eclipse.org/emf/2002/Ecore')/]
+
+[template public generate(c : Class)]
+[comment @main/]
+[file ('/src/main/java/' + c._package.qualifiedName.replaceAll('::', '/') +'/servicio/'+ c.name + 'Servicio.java', false, 'UTF-8')]
+package [c._package.qualifiedName.replaceAll('::', '.')/].servicio;
+
+import [c._package.qualifiedName.replaceAll('::', '.')/].dto.*;
+import [c._package.qualifiedName.replaceAll('::', '.')/].logica.*;
+import java.util.List;
+import java.util.ArrayList;
+import javax.ejb.EJB;
+import javax.ejb.Stateless;
+import javax.ws.rs.*;
+import javax.ws.rs.core.*;
+
+/**
+  * [c.eAnnotations/]
+  * [c.eAnnotations.documentacionAnn()/]
+  *  @generated
+  */
+[c.classHeader()/] {
+	@EJB
+    private [c.name/]Logica logica;
+
+	[c.getAll()/]
+	[c.getID()/]
+	[c.insert()/]
+	[c.delete()/]
+	
+}
+[/file]
+[/template]
+
+[template public documentacionAnn(e: ecore::EAnnotation)]
+  * [e.details/]
+  * [e.details.documentacion()/]
+[/template]
+
+[template public documentacion(d: ecore::EStringToStringMapEntry)]
+[d.key/]-[d.value/]
+[/template]
+
+[template public classHeader(c : Class)]
+@Stateless
+@Path("/[c.name/]")
+@Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
+[c.visibility/] class [c.name/]Servicio[c.extendsHeader()/][c.implementsHeader()/]
+[/template]
+
+[template public extendsHeader(c : Class) ? (c.superClass->notEmpty())]
+ extends [c.superClass.name/]
+[/template]
+
+[template public implementsHeader(c : Class) ? (c.interfaceRealization->notEmpty())]
+ implements [c.interfaceRealization.supplier.name->sep(', ')/]
+[/template]
+
+[template public getAll(a : Class)]
+
+/**
+* retorna una lista con los [a.name/] que se encuentran en la base de datos
+* @return retorna una lista de [a.name/]DTO
+* @generated
+*/
+@GET
+public List<[a.name/]DTO> obtenerTodos[a.name/]s(){
+	return logica.obtenerTodos();
+}
+[/template]
+
+[template public getID(a : Class)]
+
+/**
+* @param id identificador del elemento [a.name/]
+* @return [a.name/] del id dado
+* @generated
+*/
+@GET
+@Path("/{id}")
+public [a.name/]DTO obtener[a.name/](@PathParam("id") Long id){
+	return logica.obtener(id);
+}
+
+[/template]
+
+[template public insert(a : Class)]
+
+/**
+ * almacena la informacion de [a.name/]
+ * @param dto [a.name/] a guardar
+ * @return [a.name/] con los cambios realizados por el proceso de guardar
+ * @generated
+ */
+@POST
+public [a.name/]DTO guardar[a.name/]([a.name/]DTO dto){
+    if(dto.getId()!=null){
+        logica.actualizar(dto);
+        return dto;
+    }else{
+        return logica.guardar(dto);
+    }
+}
+
+[/template]
+
+[template public update(a : Class)]
+
+[/template]
+
+[template public delete(a : Class)]
+
+/**
+ * elimina el registro [a.name/] con el identificador dado
+ * @param id identificador del [a.name/]
+ * @generated 
+ */
+@DELETE
+@Path("/{id}")
+public void borrar[a.name/](@PathParam("id") Long id){
+	logica.borrar(id);
+}
+
+[/template]

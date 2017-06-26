@@ -1,0 +1,41 @@
+[comment encoding = UTF-8 /]
+[module toTINA('http://petrinet')/]
+
+[template public toTINA(petrinet : PetriNet)]
+
+[comment @main /]
+[file (petrinet.name.concat('.net'), false, 'UTF-8')]
+net [petrinet.name/]
+[for (pl : Place | petrinet.nodes->getPlaces())]
+pl [pl.name/] ([pl.marking/])
+[/for]
+[for (tr : Transition | petrinet.nodes->getTransitions())]
+tr [tr.name/] ['['/][tr.min_time/],[tr.max_time/][']'/][tr.incomings->getPredecessor()/] ->[tr.outgoings->getSuccessor()/]
+[/for]
+[/file]
+[/template]
+
+[query public getPlaces(nodes : OrderedSet(Node)) : OrderedSet(Place) = 
+	nodes->select( n | n.oclIsTypeOf(Place) )
+		->collect( n | n.oclAsType(Place) )
+		->asOrderedSet()
+/]
+
+[query public getTransitions(nodes : OrderedSet(Node)) : OrderedSet(Transition) = 
+	nodes->select( t | t.oclIsTypeOf(Transition) )
+		->collect( t | t.oclAsType(Transition) )
+		->asOrderedSet()
+/]
+
+[template public getPredecessor(arcs : OrderedSet(Arc))]
+[for (a : Arc | arcs)]
+ [a.source.name/][if (a.kind = ArcKind::read_arc)]
+?[a.weight/][else]
+[if (a.weight > 1)]*[a.weight/][/if][/if]
+[/for]	
+[/template]
+
+[template public getSuccessor(arcs : OrderedSet(Arc))]
+[for (a : Arc | arcs)]
+ [a.target.name/][if (a.weight > 1)]*[a.weight/][/if][/for]	
+[/template]

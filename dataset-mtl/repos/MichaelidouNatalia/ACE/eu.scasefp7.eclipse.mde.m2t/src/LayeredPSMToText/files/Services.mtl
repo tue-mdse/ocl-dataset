@@ -1,0 +1,63 @@
+[comment encoding = UTF-8 /]
+[module Services('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthenticationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+[template public Services(anAnnotationStack: AnnotationStack)]
+[file ('/' + anAnnotationStack.hasCorePSM.name + 'Client/js/services.js', false, 'UTF-8')]
+
+var services = angular.module('[anAnnotationStack.hasCorePSM.name/].services', ['['/]'ngResource','ngRoute']);
+
+[for (p: JavaResourceControllerManager | anAnnotationStack.hasCorePSM.hasJavaRCManager)]
+services.factory('[p.parentName/]Factory', function ($resource) {
+   [if (anAnnotationStack.bHasAuthenticationAnnotation)]return function(credentials){[/if]
+	 return { [for (c: String | p.setIds(anAnnotationStack))][if (not(c=p.parentName) or anAnnotationStack.topLayer().parentName->includes(p.parentName))]
+		[c/]: $resource('http://localhost:8085/[anAnnotationStack.hasCorePSM.name/]/api[p.controllerURI.substituteAll('{', ':').substituteAll('}','').substitute('Manager','')/][if (p.setIds(anAnnotationStack)->size()>2)]/[c/]/:[c/]Id/[p.parentName/][/if]/:[p.parentName/]Id', {[if (p.setIds(anAnnotationStack)->size()>1)][c/]Id: '@[c/]Id',[/if][p.parentName/]Id: '@[p.parentName/]Id'},{
+		get: { method: 'GET'[if (anAnnotationStack.bHasAuthenticationAnnotation=true)], headers: { 'Authorization': 'Basic ' + credentials} [/if]},
+		[if (not(p.setIds(anAnnotationStack)->size()>2))]create: { method: 'POST'[if (anAnnotationStack.bHasAuthenticationAnnotation)], headers: { 'Authorization': 'Basic ' + credentials} [/if]},[/if]
+		update: { method: 'PUT' [if (anAnnotationStack.bHasAuthenticationAnnotation=true)], headers: { 'Authorization': 'Basic ' + credentials} [/if]},
+        delete: { method: 'DELETE'[if (anAnnotationStack.bHasAuthenticationAnnotation=true)], headers: { 'Authorization': 'Basic ' + credentials} [/if]} 
+		})[if (p.setIds(anAnnotationStack)->size()>2)]
+		,
+		[c/]: $resource('http://localhost:8085/[anAnnotationStack.hasCorePSM.name/]/api[p.controllerURI.substituteAll('{', ':').substituteAll('}','')/][if (p.setIds(anAnnotationStack)->size()>2)]/[c/]/:[c/]Id/[p.parentName/][/if]/:[p.parentName/]Id', {[if (p.setIds(anAnnotationStack)->size()>1)][c/]Id: '@[c/]Id',[/if][p.parentName/]Id: '@[p.parentName/]Id'},{
+		getList: { method: 'GET'[if (anAnnotationStack.bHasAuthenticationAnnotation)], headers: { 'Authorization': 'Basic ' + credentials} [/if]},
+		create: { method: 'POST'[if (anAnnotationStack.bHasAuthenticationAnnotation)], headers: { 'Authorization': 'Basic ' + credentials} [/if]}
+		})
+		[if (p.setIds(anAnnotationStack)->size()>2 and not(p.setIds(anAnnotationStack)->last()=c))],[/if][/if]
+[/if][/for]
+};[if (anAnnotationStack.bHasAuthenticationAnnotation)]}[/if]
+});
+[/for]
+
+[anAnnotationStack.hasCorePSM.name/].service('popupService',function($window){
+    this.showPopup=function(message){
+        return $window.confirm(message);
+    }
+});
+[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]
+[anAnnotationStack.hasCorePSM.name/].service('SignIn',function($rootScope ){
+        
+        var vm = this;
+        
+        vm.setHeader = function(credentials){
+           vm.headers = credentials;  
+                };
+
+        vm.getHeader = function(){
+            return vm.headers;
+        };
+		
+        vm.setsignedIn = function(signedIn){
+            vm.signedIn = signedIn;
+        };
+        
+        vm.getsignedIn = function(){
+            return vm.signedIn;
+        };
+    });
+[/if]
+[/file]
+[/template]
+
+[query public getFirstResourceUri(p: String) : String = p.substring(p.index('{'), p.index('}')).substituteAll('{', '').substituteAll('Id}', '')/]
+[query private getAuthenticationPerformer(anAnnotationStack : AnnotationStack) : AuthenticationPerformer = anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(AuthenticationPerformer))->at(1)/]
+[query public topLayer(anAnnotationStack: AnnotationStack): OrderedSet(JavaResourceModelManager) = (anAnnotationStack.hasCorePSM.hasJavaRMManager-anAnnotationStack.hasCorePSM.hasJavaRMManager->intersection(anAnnotationStack.hasCorePSM.hasJavaRModel.hasRelatedJavaRMManager->asOrderedSet()))->asOrderedSet()/]
+[query public setIds(p: JavaResourceControllerManager,anAnnotationStack: AnnotationStack): OrderedSet(String) =  p.JavaRCManagerHasHTTPActivity.hasHTTPActivityParameter.name.substitute('Id', '')->asOrderedSet()->intersection(anAnnotationStack.hasCorePSM.hasJavaRCManager.parentName->asOrderedSet())->including(p.parentName)->asOrderedSet()/]

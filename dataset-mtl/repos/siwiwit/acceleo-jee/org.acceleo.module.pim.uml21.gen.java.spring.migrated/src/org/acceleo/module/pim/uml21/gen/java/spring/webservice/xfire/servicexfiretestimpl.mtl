@@ -1,0 +1,137 @@
+[module servicexfiretestimpl('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template public fullFilePath(class : Class)]
+[if (not class.hasStereotype(getProperty('Extern')) and hasStereotype(getProperty('Service')))]
+[if (class.hasRemoteOperations())]
+[class.pathToTestJava()/]/[class.serviceImplPackage().toPath()/]/[class.name/]WebServiceTest.java
+[/if]
+[/if]
+
+[/template][/comment]
+
+
+[template public generateServiceFireTestImpl(class : Class)? ((not class.hasStereotype(getProperty('Extern')) and hasStereotype(getProperty('Service')) and class.hasRemoteOperations()))]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToTestJava(), class.serviceImplPackage().toPath(), class.name.concat('WebServiceTest.java')), false))]
+package [class.serviceImplPackage()/];
+
+// [protected ('imports')] 
+// for import
+import org.codehaus.xfire.XFire;
+import org.codehaus.xfire.XFireFactory;
+import org.codehaus.xfire.server.http.XFireHttpServer;
+import org.codehaus.xfire.service.ServiceRegistry;
+import org.junit.Test;
+
+import [class.servicePackage()/].I[class.name/];
+import [class.servicePackage()/].I[class.name/]WebService;
+
+// [/protected] for import
+
+public class [class.name/]WebServiceTest extends [class.name/]Test{
+	
+	XFireHttpServer server;	
+	
+	
+	@Override
+	protected void onSetUp() throws Exception {
+		super.onSetUp();
+        setPopulateProtectedVariables(true);
+		
+		ServiceRegistry registry = (ServiceRegistry) getApplicationContext().getBean("xfire.serviceRegistry");
+		assertNotNull(registry);
+		assertNotNull(getApplicationContext().getBean("[class.name.toLowerFirst()/]"));
+		assertTrue(getApplicationContext().getBean("[class.name.toLowerFirst()/]") instanceof I[class.name.toUpperFirst()/]WebService);
+		assertTrue(registry.hasService("I[class.name.toUpperFirst()/]WebService"));
+		
+		//Register the service in local ServiceRegistry
+        XFire xfire = XFireFactory.newInstance().getXFire();
+        xfire.getServiceRegistry().register(registry.getService("I[class.name.toUpperFirst()/]WebService"));
+        
+        /*
+        List inHandlers = new ArrayList();
+		inHandlers.add(new org.codehaus.xfire.util.dom.DOMInHandler());
+		inHandlers.add(new org.codehaus.xfire.util.LoggingHandler());
+		xfire.getInHandlers().addAll(inHandlers);
+		
+		List outHandlers = new ArrayList();
+		outHandlers.add(new org.codehaus.xfire.util.dom.DOMOutHandler());
+		outHandlers.add(new org.codehaus.xfire.util.LoggingHandler());
+		xfire.getOutHandlers().addAll(outHandlers);
+		
+		List faultHandlers = new ArrayList();
+		faultHandlers.add(new org.codehaus.xfire.util.dom.DOMOutHandler());
+		faultHandlers.add(new org.codehaus.xfire.util.LoggingHandler());
+		xfire.getFaultHandlers().addAll(faultHandlers);
+        */
+        
+        // Start the HTTP server
+        this.server = new XFireHttpServer();
+        server.setPort(8191);
+        server.start(); 
+        
+        // [protected ('onSetUp')] 
+		// onSetUp        
+		// [/protected] onSetUp         
+	}
+
+	@Override
+	protected void onTearDown() throws Exception {
+		super.onTearDown();		
+		if(server.isStarted()){
+			server.stop();
+		}
+		// [protected ('onTearDown')] 
+		// onTearDown           
+        // [/protected]    
+	}
+
+	@Override
+	protected I[class.name/] get[class.name/]() throws Exception {
+	    I[class.name/]WebService [class.name.toLowerFirst()/]WebService = get[class.name/]WebService();
+		assertNotNull([name.toLowerFirst()/]WebService);
+		Mock[class.name/]WebService mock[class.name/] = new Mock[class.name/]WebService([class.name.toLowerFirst()/]WebService);		
+		assertTrue(mock[class.name/] instanceof I[class.name/]);
+		I[class.name/] [class.name.toLowerFirst()/] = (I[class.name/])mock[class.name/];
+		assertNotNull([class.name.toLowerFirst()/]);		
+		return [class.name.toLowerFirst()/];
+	}
+
+[for (oper:Operation|class.ownedOperation)]
+	[if (oper.hasStereotype(getProperty('Remote')))]
+	@Test public void test[oper.name.toUpperFirst()/]() throws Exception{
+	    // [protected ('test')] 
+		// of test[oper.name.toUpperFirst()/]		
+		super.test[oper.name.toUpperFirst()/]();
+		// [/protected] of test[oper.name.toUpperFirst()/]			
+	}
+	[else]
+	//no test for non <<Remote>> operation
+	@Test public void test[oper.name.toUpperFirst()/]() throws Exception{	   
+		assertTrue(true);
+	}	
+	[/if]
+[/for]
+	 
+ 	// [protected ('specific tests')] 
+	// of specific tests	
+	// [/protected] of specific tests
+
+}
+[/file]
+[/template]

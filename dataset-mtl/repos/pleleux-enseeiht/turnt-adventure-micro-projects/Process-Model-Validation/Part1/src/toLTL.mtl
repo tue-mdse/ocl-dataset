@@ -1,0 +1,95 @@
+[comment encoding = UTF-8 /]
+[module toLTL('http://simplepdl')]
+
+[comment Generation de verification de proprietes ltl  partir d'un modele simplepdl /]
+
+[template public toLTL(process : Process)]
+[comment @main/]
+[file (process.name.concat('.ltl'), false, 'UTF-8')]
+# Generated ltl file ([process.name/])
+
+############################
+# Definitions d'operations #
+############################
+prefix ! p = - p;			# Negation
+infix p & q = p /\ q;		# And
+infix p | q = p \/ q;		# Or
+infix q suit p = ['[]'/](p => <> q); # Sequence
+op finished = [for (wd : WorkDefinition | process.processElements->getWD())] [wd.name/]_finished & [/for][process.name/]_finished;
+#########################
+# Proprietes a verifier #
+#########################
+### Partie I
+## General
+	finished => (<> (['[]'/] finished));
+	['[]'/] ! finished; # non accessible
+[for (wd : WorkDefinition | process.processElements->getWD())]
+	['[]'/] ! ([process.name/]_finished & ![wd.name/]_finished);
+[/for]
+## Ressources
+[comment Le modele ne produit pas de ressources /]
+[for (res : Resource | process.resources->getResources())]
+	['[]'/] ([res.name/] <= [res.marking/]) ;
+[/for]
+[comment Les regles sur les WorkSequence /]
+## Regles sur les WorkSequence
+[for (ws : WorkSequence | process.processElements->getWS())]
+[if (ws.getTypeWS()=0)]
+[comment Start prec to start succ /]
+	finished => (['[]'/] ([ws.successor.name/]_started ['=>'/] (<> [ws.predecessor.name/]_started)));
+[elseif (ws.getTypeWS()=1)]
+[comment Finish prec to start succ/]
+	finished => (['[]'/] ([ws.successor.name/]_started ['=>'/] (<> [ws.predecessor.name/]_finished)));
+[elseif (ws.getTypeWS()=2)]
+[comment Start prec to finish succ /]
+	finished => (['[]'/] ([ws.successor.name/]_finished ['=>'/] (<> [ws.predecessor.name/]_started)));
+[elseif (ws.getTypeWS()=3)]
+[comment Finish prec to finish succ /]
+	finished => (['[]'/] ([ws.successor.name/]_finished ['=>'/] (<> [ws.predecessor.name/]_finished)));
+[/if]
+[/for]
+[comment A la fin, toutes les activites sont en p_finished et ressources restituees /]
+
+[comment Ressources restituees /]
+# Restitution des ressources
+[for (res : Resource | process.resources->getResources())]
+	finished => ([res.name/] = [res.marking/]);
+[/for]
+
+[comment Au moins une des WorkDefinition doit etre soit : en p_ready, p_running, p_inBreak, p_finished /]
+	['[]'/] ([for (wd : WorkDefinition | process.processElements->getWD())][wd.name/]_ready | [wd.name/]_running | [wd.name/]_finished | [/for][process.processElements->getLastWD().name/]_running) ;
+	['[]'/] ([process.name/]_running | [process.name/]_finished);
+
+[/file]
+[/template]
+
+[query public getTypeWS(element : WorkSequence) : Integer =  
+	element.linkType->count(element.linkType)
+/]
+
+[query public getWD(elements : OrderedSet(ProcessElement)) : OrderedSet(WorkDefinition) = 
+	elements->select(e | e.oclIsTypeOf(WorkDefinition))
+		->collect(e | e.oclAsType(WorkDefinition))
+		->asOrderedSet() 
+/]
+[query public getWS(elements : OrderedSet(ProcessElement)) : OrderedSet(WorkSequence) =  
+	elements->select(e | e.oclIsTypeOf(WorkSequence))
+		->collect(e | e.oclAsType(WorkSequence))
+		->asOrderedSet()
+/]
+
+[query public getLastWD(elements : OrderedSet(ProcessElement)) : WorkDefinition =
+	elements->getWD()->any(true)
+/]
+
+[query public getParameters(elements : OrderedSet(ProcessElement)) : OrderedSet(Parameter) = 
+	elements->select(e | e.oclIsTypeOf(Parameter))
+		->collect(e | e.oclAsType(Parameter))
+		-> asOrderedSet() 
+/]
+
+[query public getResources(elements : OrderedSet(Resource)) : OrderedSet(Resource) = 
+	elements->select(e | e.oclIsTypeOf(Resource))
+		->collect(e | e.oclAsType(Resource))
+		->asOrderedSet()
+/]

@@ -1,0 +1,439 @@
+[comment encoding = UTF-8 /]
+[module logic('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import ::utils /]
+
+[template public mainLogic(c : Class, path : String)]
+    [c.genLogicInterface(path.concat('api/'))/]
+    [c.genLogicBean(path.concat('ejbs/'))/]
+[/template]
+
+[template protected genLogicInterface(c : Class, path : String) {className : String = c.getAPIName();}]
+[file (path.concat(className + '.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].api;
+
+import [c.getModel().baseGroup()/].entities.[c.getEntityName()/];
+[for (a : Property | c.getNonCompositeCollectionAttributes())]
+import [c.getModel().baseGroup()/].entities.[a.getClass().getEntityName()/];
+[/for]
+import java.util.List;
+
+public interface [className/] {
+    public int count[c.name/]s();
+[if (c.isChild())]
+    public List<[c.getEntityName()/]> get[c.name/]s(Long [c.getParentAttribute().getClass().getName()/]id);
+    public List<[c.getEntityName()/]> get[c.name/]s(Integer page, Integer maxRecords, Long [c.getParentAttribute().getClass().getName()/]id);
+    public [c.getEntityName()/] get[c.name/](Long [c.getName()/]id);
+    public [c.getEntityName()/] create[c.name/](Long [c.getParentAttribute().getClass().getName()/]id, [c.getEntityName()/] entity);
+    public [c.getEntityName()/] update[c.name/](Long [c.getParentAttribute().getClass().getName()/]id, [c.getEntityName()/] entity);
+    public void delete[c.name/](Long id);
+[else]
+    public List<[c.getEntityName()/]> get[c.name/]s();
+    public List<[c.getEntityName()/]> get[c.name/]s(Integer page, Integer maxRecords);
+    public [c.getEntityName()/] get[c.name/](Long id);
+    public [c.getEntityName()/] create[c.name/]([c.getEntityName()/] entity); 
+    public [c.getEntityName()/] update[c.name/]([c.getEntityName()/] entity);
+    public void delete[c.name/](Long id);
+[/if]
+    [for (a : Property | c.getNonCompositeCollectionAttributes())]
+    public List<[a.getClass().getEntityName()/]> list[a.name.toUpperFirst()/](Long [c.getEntityId()/]);
+    public [a.getClass().getEntityName()/] get[a.name.toUpperFirst()/](Long [c.getEntityId()/], Long [a.getEntityId()/]);
+    public [a.getClass().getEntityName()/] add[a.name.toUpperFirst()/](Long [c.getEntityId()/], Long [a.getEntityId()/]);
+    public List<[a.getClass().getEntityName()/]> replace[a.name.toUpperFirst()/](Long [c.getEntityId()/], List<[a.getClass().getEntityName()/]> list);
+    public void remove[a.name.toUpperFirst()/](Long [c.getEntityId()/], Long [a.getEntityId()/]);
+    [/for]
+}
+[/file]
+[/template]
+
+[template protected genLogicBean(c : Class, path : String) {className : String = c.getBeanName();}]
+[file (path.concat(className.concat('.java')), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].ejbs;
+
+import [c.getModel().baseGroup()/].api.[c.getAPIName()/];
+import [c.getModel().baseGroup()/].entities.[c.getEntityName()/];
+import [c.getModel().baseGroup()/].persistence.[c.getPersistenceName()/];
+[if (c.isChild())]
+import [c.getModel().baseGroup()/].api.[c.getParentAttribute().getClass().getAPIName()/];
+import [c.getModel().baseGroup()/].entities.[c.getParentAttribute().getClass().getEntityName()/];
+[/if]
+[for (a : Property | c.getNonCompositeCollectionAttributes())]
+import [c.getModel().baseGroup()/].entities.[a.getClass().getEntityName()/];
+[if (not a.isRelationshipOwner())]
+import [c.getModel().baseGroup()/].api.[a.getClass().getAPIName()/];
+[/if]
+[/for]
+[if(c.isChild() and c.getParentAttribute().isOne2One())]
+import java.util.ArrayList;
+[/if]
+import java.util.List;
+import javax.ejb.Stateless;
+import javax.inject.Inject;
+import javax.persistence.NoResultException;
+
+/**
+ * @generated
+ */
+@Stateless
+public class [className/] implements [c.getAPIName()/] {
+
+    @Inject private [c.getPersistenceName()/] persistence;
+
+    [if (c.isChild())]
+    @Inject
+    private [c.getParentAttribute().getClass().getAPIName()/] [c.getParentAttribute().getClass().getBeanLower()/];
+    [/if]
+
+    [for (cl : Class | c.getNonCompositeCollectionAttributes()->reject(isRelationshipOwner())->collect(a| a.getClass())->asOrderedSet())]
+    @Inject private [cl.getAPIName()/] [cl.getBeanLower()/];
+
+    [/for]
+    /**
+     * Obtiene el número de registros de [c.name/].
+     *
+     * @return Número de registros de [c.name/].
+     * @generated
+     */
+    public int count[c.name/]s() {
+        return persistence.count();
+    }
+
+[if (c.isChild())]
+    /**
+     * Obtiene la lista de los registros de [c.name/] que pertenecen a un [c.getParentAttribute().getClass().name/].
+     *
+     * @param [c.getParentAttribute().getClass().getName()/]id id del [c.getParentAttribute().getClass().name/] el cual es padre de los [c.name/]s.
+     * @return Colección de objetos de [c.getEntityName()/].
+     * @generated
+     */
+    @Override
+    public List<[c.getEntityName()/]> get[c.name/]s(Long [c.getParentAttribute().getClass().getName()/]id) {
+        [c.getParentAttribute().getClass().getEntityName()/] [c.getParentAttribute().getClass().getName()/] = [c.getParentAttribute().getClass().getBeanLower()/].get[c.getParentAttribute().getClass().name/]([c.getParentAttribute().getClass().getName()/]id);
+        [if(c.getParentAttribute().isOne2One())]
+        List<[c.getEntityName()/]>[c.getName()/] = new ArrayList<>();
+        if ([c.getParentAttribute().getClass().getName()/].[c.getParentAttribute().getOtherEnd().getter()/]()!=null){
+        [c.getName()/].add([c.getParentAttribute().getClass().getName()/].[c.getParentAttribute().getOtherEnd().getter()/]());
+        }
+        return [c.getName()/];
+        [else]
+        return [c.getParentAttribute().getClass().getName()/].[c.getParentAttribute().getOtherEnd().getter()/]();
+        [/if]
+        
+    }
+
+    /**
+     * Obtiene la lista de los registros de [c.name/] que pertenecen a un [c.getParentAttribute().getClass().name/] indicando los datos para la paginación.
+     *
+     * @param page Número de página.
+     * @param maxRecords Número de registros que se mostraran en cada página.
+     * @param [c.getParentAttribute().getClass().getName()/]id id del [c.getParentAttribute().getClass().name/] el cual es padre de los [c.name/]s.
+     * @return Colección de objetos de [c.getEntityName()/].
+     * @generated
+     */
+    @Override
+    public List<[c.getEntityName()/]> get[c.name/]s(Integer page, Integer maxRecords, Long [c.getParentAttribute().getClass().getName()/]id) {
+        return persistence.findAll(page, maxRecords, [c.getParentAttribute().getClass().getName()/]id);
+    }
+
+    /**
+     * Obtiene los datos de una instancia de [c.name/] a partir de su ID.
+     *
+     * @pre La existencia del elemento padre [c.getParentAttribute().getClass().name/] se debe garantizar.
+     * @param [c.getName()/]id) Identificador del [c.name/] a consultar
+     * @return Instancia de [c.getEntityName()/] con los datos del [c.name/] consultado.
+     * @generated
+     */
+    @Override
+    public [c.getEntityName()/] get[c.name/](Long [c.getName()/]id) {
+        try {
+            return persistence.find([c.getName()/]id);
+        }catch(NoResultException e){
+            throw new IllegalArgumentException("El [c.name/] no existe");
+        }
+    }
+
+    /**
+     * Se encarga de crear un [c.name/] en la base de datos.
+     *
+     * @param entity Objeto de [c.getEntityName()/] con los datos nuevos
+     * @param [c.getParentAttribute().getClass().getName()/]id id del [c.getParentAttribute().getClass().name/] el cual sera padre del nuevo [c.name/].
+     * @return Objeto de [c.getEntityName()/] con los datos nuevos y su ID.
+     * @generated
+     */
+    @Override
+    public [c.getEntityName()/] create[c.name/](Long [c.getParentAttribute().getClass().getName()/]id, [c.getEntityName()/] entity) {
+        [c.getParentAttribute().getClass().getEntityName()/] [c.getParentAttribute().getClass().getName()/] = [c.getParentAttribute().getClass().getBeanLower()/].get[c.getParentAttribute().getClass().name/]([c.getParentAttribute().getClass().getName()/]id);
+        [if(c.getParentAttribute().isOne2One())]
+        Long [c.getName()/]id=0L;
+        if ([c.getParentAttribute().getClass().getName()/].[c.getParentAttribute().getOtherEnd().getter()/]()!=null){
+        [c.getName()/]id=[c.getParentAttribute().getClass().getName()/].[c.getParentAttribute().getOtherEnd().getter()/]().getId();
+        }
+        [/if]
+        entity.[c.getParentAttribute().setter()/]([c.getParentAttribute().getClass().getName()/]);
+        entity = persistence.create(entity);
+        [if(c.getParentAttribute().isOne2One())]        
+        if ([c.getName()/]id!=0L){
+        persistence.delete([c.getName()/]id);
+        }
+        [/if]
+        return entity;
+    }
+
+    /**
+     * Actualiza la información de una instancia de [c.name/].
+     *
+     * @param entity Instancia de [c.getEntityName()/] con los nuevos datos.
+     * @param [c.getParentAttribute().getClass().getName()/]id id del [c.getParentAttribute().getClass().name/] el cual sera padre del [c.name/] actualizado.
+     * @return Instancia de [c.getEntityName()/] con los datos actualizados.
+     * @generated
+     */
+    @Override
+    public [c.getEntityName()/] update[c.name/](Long [c.getParentAttribute().getClass().getName()/]id, [c.getEntityName()/] entity) {
+        [c.getParentAttribute().getClass().getEntityName()/] [c.getParentAttribute().getClass().getName()/] = [c.getParentAttribute().getClass().getBeanLower()/].get[c.getParentAttribute().getClass().name/]([c.getParentAttribute().getClass().getName()/]id);
+        entity.[c.getParentAttribute().setter()/]([c.getParentAttribute().getClass().getName()/]);
+        return persistence.update(entity);
+    }
+
+    /**
+     * Elimina una instancia de [c.name/] de la base de datos.
+     *
+     * @param id Identificador de la instancia a eliminar.
+     * @param [c.getParentAttribute().getClass().getName()/]id id del [c.getParentAttribute().getClass().name/] el cual es padre del [c.name/].
+     * @generated
+     */
+    @Override
+    public void delete[c.name/](Long id) {
+        [c.getEntityName()/] old = get[c.name/](id);
+        persistence.delete(old.getId());
+    }
+[else]
+    /**
+     * Obtiene la lista de los registros de [c.name/].
+     *
+     * @return Colección de objetos de [c.getEntityName()/].
+     * @generated
+     */
+    @Override
+    public List<[c.getEntityName()/]> get[c.name/]s() {
+        return persistence.findAll();
+    }
+
+    /**
+     * Obtiene la lista de los registros de [c.name/] indicando los datos para la paginación.
+     *
+     * @param page Número de página.
+     * @param maxRecords Número de registros que se mostraran en cada página.
+     * @return Colección de objetos de [c.getEntityName()/].
+     * @generated
+     */
+    @Override
+    public List<[c.getEntityName()/]> get[c.name/]s(Integer page, Integer maxRecords) {
+        return persistence.findAll(page, maxRecords);
+    }
+
+    /**
+     * Obtiene los datos de una instancia de [c.name/] a partir de su ID.
+     *
+     * @param id Identificador de la instancia a consultar
+     * @return Instancia de [c.getEntityName()/] con los datos del [c.name/] consultado.
+     * @generated
+     */
+    public [c.getEntityName()/] get[c.name/](Long id) {
+        return persistence.find(id);
+    }
+
+    /**
+     * Se encarga de crear un [c.name/] en la base de datos.
+     *
+     * @param entity Objeto de [c.getEntityName()/] con los datos nuevos
+     * @return Objeto de [c.getEntityName()/] con los datos nuevos y su ID.
+     * @generated
+     */
+    @Override
+    public [c.getEntityName()/] create[c.name/]([c.getEntityName()/] entity) {
+        persistence.create(entity);
+        return entity;
+    }
+
+    /**
+     * Actualiza la información de una instancia de [c.name/].
+     *
+     * @param entity Instancia de [c.getEntityName()/] con los nuevos datos.
+     * @return Instancia de [c.getEntityName()/] con los datos actualizados.
+     * @generated
+     */
+    @Override
+    public [c.getEntityName()/] update[c.name/]([c.getEntityName()/] entity) {
+        return persistence.update(entity);
+    }
+
+    /**
+     * Elimina una instancia de [c.name/] de la base de datos.
+     *
+     * @param id Identificador de la instancia a eliminar.
+     * @generated
+     */
+    @Override
+    public void delete[c.name/](Long id) {
+        persistence.delete(id);
+    }
+[/if]
+  
+    [for (a : Property | c.getNonCompositeCollectionAttributes())]
+
+    /**
+     * Obtiene una colección de instancias de [a.getClass().getEntityName()/] asociadas a una
+     * instancia de [c.name/]
+     *
+     * @param [c.getEntityId()/] Identificador de la instancia de [c.name/]
+     * @return Colección de instancias de [a.getClass().getEntityName()/] asociadas a la instancia de [c.name/]
+     * @generated
+     */
+    @Override
+    public List<[a.getClass().getEntityName()/]> list[a.name.toUpperFirst()/](Long [c.getEntityId()/]) {
+        return get[c.name/]([c.getEntityId()/]).[a.getter()/]();
+    }
+
+    /**
+     * Obtiene una instancia de [a.getClass().getEntityName()/] asociada a una instancia de [c.name/]
+     *
+     * @param [c.getEntityId()/] Identificador de la instancia de [c.name/]
+     * @param [a.getEntityId()/] Identificador de la instancia de [a.getClass().name/]
+     * @generated
+     */
+    @Override
+    public [a.getClass().getEntityName()/] get[a.name.toUpperFirst()/](Long [c.getEntityId()/], Long [a.getEntityId()/]) {
+        List<[a.getClass().getEntityName()/]> list = get[c.name/]([c.getEntityId()/]).[a.getter()/]();
+        [a.getClass().getEntityName()/] [a.getEntityLower()/] = new [a.getClass().getEntityName()/]();
+        [a.getEntityLower()/].setId([a.getEntityId()/]);
+        int index = list.indexOf([a.getEntityLower()/]);
+        if (index >= 0) {
+            return list.get(index);
+        }
+        return null;
+    }
+
+    /**
+     * Asocia un [a.getClass().name/] existente a un [c.name/]
+     *
+     * @param [c.getEntityId()/] Identificador de la instancia de [c.name/]
+     * @param [a.getEntityId()/] Identificador de la instancia de [a.getClass().name/]
+     * @return Instancia de [a.getClass().getEntityName()/] que fue asociada a [c.name/]
+     * @generated
+     */
+    @Override
+    public [a.getClass().getEntityName()/] add[a.name.toUpperFirst()/](Long [c.getEntityId()/], Long [a.getEntityId()/]) {
+		[if (a.isRelationshipOwner())]
+        [c.getEntityName()/] [c.getEntityLower()/] = get[c.name/]([c.getEntityId()/]);
+        [a.getClass().getEntityName()/] [a.getEntityLower()/] = new [a.getClass().getEntityName()/]();
+        [a.getEntityLower()/].setId([a.getEntityId()/]);
+        [c.getEntityLower()/].[a.getter()/]().add([a.getEntityLower()/]);
+        return get[a.name.toUpperFirst()/]([c.getEntityId()/], [a.getEntityId()/]);
+		[else]
+        [if (a.getOtherEnd().getUpper() = 1)]
+        [c.getEntityName()/] [c.getEntityLower()/] = get[c.name/]([c.getEntityId()/]);
+        [a.getClass().getEntityName()/] [a.getEntityLower()/] = [a.getClass().getBeanLower()/].get[a.getClass().name/]([a.getEntityId()/]);
+        [a.getEntityLower()/].[a.getOtherEnd().setter()/]([c.getEntityLower()/]);
+        return [a.getEntityLower()/];
+        [else]
+        [a.getClass().getBeanLower()/].add[a.getOtherEnd().name.toUpperFirst()/]([a.getEntityId()/], [c.getEntityId()/]);
+        return [a.getClass().getBeanLower()/].get[a.getClass().name/]([a.getEntityId()/]);
+        [/if]
+		[/if]
+    }
+
+    /**
+     * Remplaza las instancias de [a.getClass().name/] asociadas a una instancia de [c.name/]
+     *
+     * @param [c.getEntityId()/] Identificador de la instancia de [c.name/]
+     * @param list Colección de instancias de [a.getClass().getEntityName()/] a asociar a instancia de [c.name/]
+     * @return Nueva colección de [a.getClass().getEntityName()/] asociada a la instancia de [c.name/]
+     * @generated
+     */
+    @Override
+    public List<[a.getClass().getEntityName()/]> replace[a.name.toUpperFirst()/](Long [c.getEntityId()/], List<[a.getClass().getEntityName()/]> list) {
+        [c.getEntityName()/] [c.getEntityLower()/] = get[c.name/]([c.getEntityId()/]);
+		[if (not a.isRelationshipOwner())]
+        List<[a.getClass().getEntityName()/]> [a.getClass().getName()/]List = [a.getClass().getBeanLower()/].get[a.getClass().name/]s();
+        [if (a.getOtherEnd().getUpper() = 1)]
+        for ([a.getClass().getEntityName()/] [a.getClass().getName()/] : [a.getClass().getName()/]List) {
+            if (list.contains([a.getClass().getName()/])) {
+                [a.getClass().getName()/].[a.getOtherEnd().setter()/]([c.getEntityLower()/]);
+            } else {
+                if ([a.getClass().getName()/].[a.getOtherEnd().getter()/]() != null && [a.getClass().getName()/].[a.getOtherEnd().getter()/]().equals([c.getEntityLower()/])) {
+                    [a.getClass().getName()/].[a.getOtherEnd().setter()/](null);
+                }
+            }
+        }
+        [else]
+        for ([a.getClass().getEntityName()/] [a.getClass().getName()/] : [a.getClass().getName()/]List) {
+            if (list.contains([a.getClass().getName()/])) {
+                if (![a.getClass().getName()/].[a.getOtherEnd().getter()/]().contains([c.getEntityLower()/])) {
+                    [a.getClass().getBeanLower()/].add[a.getOtherEnd().name.toUpperFirst()/]([a.getClass().getName()/].getId(), [c.getEntityId()/]);
+                }
+            } else {
+                [a.getClass().getBeanLower()/].remove[a.getOtherEnd().name.toUpperFirst()/]([a.getClass().getName()/].getId(), [c.getEntityId()/]);
+            }
+        }
+        [/if]
+		[/if]
+        [c.getEntityLower()/].[a.setter()/](list);
+        return [c.getEntityLower()/].[a.getter()/]();
+    }
+
+    /**
+     * Desasocia un [a.getClass().name/] existente de un [c.name/] existente
+     *
+     * @param [c.getEntityId()/] Identificador de la instancia de [c.name/]
+     * @param [a.getEntityId()/] Identificador de la instancia de [a.getClass().name/]
+     * @generated
+     */
+    @Override
+    public void remove[a.name.toUpperFirst()/](Long [c.getEntityId()/], Long [a.getEntityId()/]) {
+        [if (not a.isRelationshipOwner())]
+        [if (a.getOtherEnd().getUpper() = 1)]
+        [a.getClass().getEntityName()/] entity = [a.getClass().getBeanLower()/].get[a.getClass().name/]([a.getEntityId()/]);
+        entity.[a.getOtherEnd().setter()/](null);
+        [else]
+        [a.getClass().getBeanLower()/].remove[a.getOtherEnd().name.toUpperFirst()/]([a.getEntityId()/], [c.getEntityId()/]);
+        [/if]
+        [else]
+        [c.getEntityName()/] entity = get[c.name/]([c.getEntityId()/]);
+        [a.getClass().getEntityName()/] [a.getEntityLower()/] = new [a.getClass().getEntityName()/]();
+        [a.getEntityLower()/].setId([a.getEntityId()/]);
+        entity.[a.getter()/]().remove([a.getEntityLower()/]);
+        [/if]
+    }
+    [/for]
+}
+[/file]
+[/template]
+
+[template private getEntityId(c : Class)]
+[c.name.toLowerFirst().concat('Id')/]
+[/template]
+
+[template private getEntityLower(c : Class)]
+[c.name.toLowerFirst().concat('Entity')/]
+[/template]
+
+[template private getBeanLower(c : Class)]
+[c.name.toLowerFirst().concat('Logic')/]
+[/template]
+
+[template private getEntityId(a : Property)]
+[a.name.toLowerFirst().concat('Id')/]
+[/template]
+
+[template private getEntityLower(a : Property)]
+[a.name.toLowerFirst().concat('Entity')/]
+[/template]
+
+[template protected getBeanName(c : Class)]
+[c.name.concat('Logic')/]
+[/template]

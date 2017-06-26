@@ -1,0 +1,152 @@
+[comment encoding = UTF-8 /]
+[module AllElementsPropertySourceJAVA('http://www.eclipse.org/emf/2002/Ecore','http://mondo.org/runtimePatterns','http://www.eclipse.org/emf/2002/GenModel')]
+[import org::mondo::generate::modular::project::main::requests::global_queriesModularProject /]
+
+[template public AllElementsPropertySourceJAVA(anProjectName : String, anPackageName : String, anPatternInstance : PatternInstance, anEObjectGenModel : GenModel)]
+
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name') + '.' + anPatternInstance.Get_ProjectClassRoleInstance().element.name).replaceAll('\\.','/').concat('/propertysource/').concat('AllElementsPropertySource.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/].propertysource;
+
+import java.io.IOException;
+
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IProjectNature;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EObject;
+import [anProjectName.toLower()/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/].XMI_File;
+import org.eclipse.ui.views.properties.IPropertySource;
+import org.eclipse.ui.views.properties.IPropertySourceProvider;
+
+[for (c : ClassRoleInstance | anPatternInstance.Get_FolderClassRoleInstance()->union(anPatternInstance.Get_FileClassRoleInstance()))]
+import [generateEClassImport(c.element)/];
+[/for]
+
+public class AllElementsPropertySource implements IPropertySourceProvider {
+
+	public AllElementsPropertySource() {
+		super();		
+		// TODO Auto-generated constructor stub
+	}
+
+	@Override
+	public IPropertySource getPropertySource(Object object) {
+		// TODO Auto-generated method stub
+		URI fileURI = null;
+		//Select a Project
+		if(object instanceof IProject){
+			IProject pro = (IProject)object;
+			if(!isProject(pro))
+				return null;
+			//Get project address
+			fileURI = URI.createPlatformResourceURI(((IProject)object).getFullPath().toString().concat("/"+((IProject)object).getFullPath().lastSegment().toString()).concat(".xmi"),true);
+			IResource resource = pro.findMember(pro.getName()+".xmi");
+			if(resource!=null){						
+				try {
+						return new [anPatternInstance.Get_ProjectClass().name.toString() /]ItemPropertiesSource(new XMI_File(fileURI));
+					} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					}
+			}	
+			else	
+				return null;				
+		}	
+		//Select a Folder
+		if(object instanceof IFolder){
+			IFolder fol = (IFolder)object;
+			//Get folder address
+			if(!isProject(fol.getProject()))
+				return null;
+			fileURI = URI.createPlatformResourceURI(((IFolder)object).getFullPath().toString().concat("/"+fol.getName()+".xmi"),true);
+			IResource resource = fol.findMember(fol.getName()+".xmi");
+			if(resource!=null){
+				XMI_File folder_file = new XMI_File(fileURI);
+				EObject root = null;
+				try {
+					root = folder_file.Get_Root();
+				} catch (IOException e1) {
+				// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				//For with all folders
+				[for (c : ClassRoleInstance | anPatternInstance.Get_FolderClassRoleInstance())]
+				if(root instanceof [c.element.name /]){	
+					try {
+						return new [c.element.name.toString() /]ItemPropertiesSource(folder_file);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				}
+				[/for]
+						
+				}
+				else 
+					return null;
+				}
+		//Select a File
+		if(object instanceof IFile){
+			IFile fil = (IFile)object;
+			//Get folder address
+			if(!isProject(fil.getProject()))
+				return null;
+			fileURI = URI.createPlatformResourceURI(((IFile)object).getFullPath().toString(),true);
+			if(fil.exists()){
+				XMI_File file = new XMI_File(fileURI);
+				EObject root = null;
+				try {
+					root = file.Get_Root();
+				} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+				}
+				//For with all folders
+				[for (c : ClassRoleInstance | anPatternInstance.Get_FileClassRoleInstance())]
+				if(root instanceof [c.element.name /]){	
+				try {
+					return new [c.element.name.toString() /]ItemPropertiesSource(file);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				}
+				[/for]
+					
+			}
+			else 
+				return null;
+			}
+
+		return null;	
+	}
+
+	public static boolean isProject(IProject pro) 
+	{
+		if(pro.isOpen() == true) {
+			IProjectNature modularNature = null;
+			try {
+				modularNature = pro.getNature(Project_Nature);
+			} catch (CoreException e) {
+				
+				e.printStackTrace();
+			}
+	
+			if(modularNature==null)
+				return false;
+			else
+				return true;	
+		}
+		return false;	
+	}
+	
+	public static String Project_Nature = "[anProjectName/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/].ModularNature";
+
+}
+
+[/file]
+
+[/template]

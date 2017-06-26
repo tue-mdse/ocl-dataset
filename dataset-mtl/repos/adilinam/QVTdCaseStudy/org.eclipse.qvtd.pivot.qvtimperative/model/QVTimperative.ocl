@@ -1,0 +1,81 @@
+import 'platform:/resource/org.eclipse.qvtd.pivot.qvtimperative/model/QVTimperative.ecore'
+import 'platform:/resource/org.eclipse.qvtd.pivot.qvtcorebase/model/QVTcoreBase.ecore'
+import 'platform:/resource/org.eclipse.qvtd.pivot.qvtbase/model/QVTbase.ecore'
+--import 'http://www.eclipse.org/ocl/2015/Pivot'
+
+package ocl
+context Element
+def: joinNames(names : Set(String)) : String = '{' + names->sortedBy(n | n)->iterate(n; s : String = '' | if s = '' then n else s + ';' + n endif) + '}'
+
+endpackage
+
+package qvtimperative
+
+context Mapping
+def: allAreas : Set(qvtcorebase::Area) = self.domain.oclAsType(qvtcorebase::Area)->asSet()->including(self)
+def: allGuardPatterns : Set(qvtcorebase::GuardPattern) = allAreas.guardPattern->asSet()
+def: guardVariables : Set(ocl::Variable) = allGuardPatterns.variable->asSet()
+def: boundGuardVariables : Set(ocl::Variable) = allGuardPatterns.predicate->selectByKind(VariablePredicate).targetVariable->asSet()
+/* Mapping guard variables that are assigned  */
+--def: boundGuardVariables : Set(ocl::Variable) = guardVariables->select(initExpression <> null)
+def: unboundGuardVariables : Set(ocl::Variable) = guardVariables - boundGuardVariables
+-- def: noInheritance : Boolean = self.refinement->isEmpty()
+-- def: noParents : Boolean = self.specification->isEmpty()
+/* Mappings are either L to M or M to R, but not both */
+--inv ViaMiddle: isToMiddle xor isFromMiddle
+/* No mapping refinement */
+-- inv NoRefinement: noInheritance and noParents
+inv NoMiddleGuardPatternVariables: guardPattern.variable->isEmpty()
+--inv NoMiddleBottomPatternVariables: bottomPattern.variable->isEmpty() and bottomPattern.realizedVariable->isEmpty()
+
+context MappingCall
+def: referredNames : Set(String) = referredMapping.unboundGuardVariables.name->asSet()
+def: referringNames : Set(String) = binding.boundVariable.name->asSet()
+inv MatchingCallBindings('Mismatched bindings ' + referredMapping.name + joinNames(referredNames) + ' <= ' + joinNames(referringNames)): referredNames = referringNames
+inv UniqueCallBindings: binding->isUnique(boundVariable)
+
+context MappingCallBinding
+inv CompatibleBinding: value.type.conformsTo(boundVariable.type) or boundVariable.type.conformsTo(value.type)
+
+endpackage
+
+package qvtcorebase
+
+context Area
+def: mapping : qvtimperative::Mapping = if oclIsKindOf(qvtimperative::Mapping) then self else oclAsType(CoreDomain).rule endif.oclAsType(qvtimperative::Mapping)
+def: isMiddle : Boolean = oclIsKindOf(qvtimperative::Mapping)
+def: isSource : Boolean = oclIsKindOf(CoreDomain) and oclAsType(CoreDomain).isCheckable
+def: isTarget : Boolean = oclIsKindOf(CoreDomain) and oclAsType(CoreDomain).isEnforceable
+
+--context BottomPattern
+--inv UniquePropertyAssignments: assignment->select(PropertyAssignment)->isUnique(a : PropertyAssignment | a.targetProperty)	-- FIXME redundant "a : PropertyAssignment | a."
+
+context CoreDomain
+def: mapping : qvtimperative::Mapping = rule.oclAsType(qvtimperative::Mapping)
+inv CheckableXorEnforceable: isCheckable xor isEnforceable
+inv NoSideBottomPatternVariables: bottomPattern.variable->isEmpty()
+inv NoSideBottomPatternAssignments: bottomPattern.assignment->isEmpty()
+inv NoSideBottomPatternEnforcements: bottomPattern.enforcementOperation->isEmpty()
+
+context PropertyAssignment
+inv IsNotReadOnly: not targetProperty.isReadOnly
+inv PropertyOfSlot(slotExpression.type.name + ' must conform to ' + targetProperty.owningClass.name): slotExpression.type.conformsTo(targetProperty.owningClass)
+inv CompatibleType(value.type.name + ' must conform to ' + targetProperty.type.name): value.type.conformsTo(targetProperty.type)
+inv NoRealizedVariableNavigations: value->closure(oclContents())->selectByKind(ocl::VariableExp)->select(referredVariable.oclIsKindOf(RealizedVariable))->select(oclContainer().oclIsKindOf(ocl::CallExp))->isEmpty()
+
+context RealizedVariable
+def: isBottom : Boolean = oclContainer().oclIsKindOf(BottomPattern)
+def: isGuard : Boolean = oclContainer().oclIsKindOf(GuardPattern)
+inv IsBottom('RealizedVariable ' + name + ' must be in a BottomPattern'): isBottom
+inv IsEnforced('RealizedVariable ' + name + ' must be in an enforceable Area'): isBottom and oclContainer().oclAsType(BottomPattern).area.isTarget
+
+--context Variable
+--inv IsInGuard: oclContainer().oclIsKindOf(GuardPattern)
+--inv IsEnforced: let area = oclContainer().oclAsType(GuardPattern).area, mapping = area.mapping in
+--	if mapping.isToMiddle then area = mapping else area.oclAsType(CoreDomain).isEnforceable endif
+
+context VariableAssignment
+inv NoVariableAssignmentsInSourceDomain: not bottomPattern.area.isSource
+inv CompatibleType: value.type.conformsTo(targetVariable.type)
+
+endpackage

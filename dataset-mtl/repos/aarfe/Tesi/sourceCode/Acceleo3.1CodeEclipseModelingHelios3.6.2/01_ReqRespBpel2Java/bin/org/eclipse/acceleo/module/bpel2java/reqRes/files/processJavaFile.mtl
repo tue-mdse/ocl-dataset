@@ -1,0 +1,264 @@
+[comment encoding = UTF-8 /]
+[module processJavaFile('http:///org/eclipse/bpel/model/bpel.ecore','http://www.eclipse.org/wsdl/2003/WSDL')]
+[import org::eclipse::acceleo::module::bpel2java::reqRes::common::createSetGet /]
+[import org::eclipse::acceleo::module::bpel2java::reqRes::common::genericTemplates /]
+[import org::eclipse::acceleo::module::bpel2java::reqRes::files::partnerLinkClientJavaFile /]
+
+[comment] [template public genProcessJavaFile(aProcess : Process,varTypeList1 : Sequence(String),varNameList1 : Sequence(Variable),varTypeList2 : Sequence(String),varNameList2 : Sequence(Variable))] [/comment]
+[template public genProcessJavaFile(aProcess : Process)]
+[file (aProcess.name+'.java', false, 'UTF-8')]
+[comment]
+[let varSet : Set(String) = Set{clientVarReqType, clientVarResType, serv1VarReqType, serv1VarResType}]
+[let ] [/comment]
+package bpel2java.uni;
+
+public class [aProcess.name/] {
+	[comment] NOT GENERIC
+	Because these values are to be found in the .wsdl descriptor files, not here in the .bpel :-(
+	[/comment]	
+
+[comment] Add the variables needed for the communication
+// Variables needed for the communication
+[createPrivateTempAttributes(varTypeList1, varNameList1)/]
+[createPrivateTempAttributes(varTypeList2, varNameList2)/]
+[/comment]
+public void runWorkflow() {
+	//Check for CreateInstance=YES
+	
+[comment Create the PartnerLinks STUBS and write their roles in comments/]
+//Create the PartnerLinks STUBS
+
+System.out.println("In the Process.java");
+[for (aPL : PartnerLink | aProcess.eAllContents(PartnerLink))]
+	[if (not aPL.myRole.oclIsUndefined())] 
+	// STUB service representing the PartnerLink:[aPL.name/] with myRole: [aPL.myRole.name/] 	
+	[/if] 
+	[if (not aPL.partnerRole.oclIsUndefined())]
+	// STUB service representing the PartnerLink:[aPL.name/] with PartnerRole: [aPL.partnerRole.name/]
+	[/if]
+	PL[aPL.name.toUpperFirst()/] myPL[aPL.name.toUpperFirst()/] = new PL[aPL.name.toUpperFirst()/]();
+	// DEBUG
+	if(myPL[aPL.name.toUpperFirst()/].equals(null)) System.out.println("Object not created");
+[/for]
+[comment] Check if the 1st activity is a SEQUENCE - NOT WORKING
+[aProcess.eAllContents(Activity)->first().oclIsTypeOf(Sequence)/]
+[/comment]
+[comment Get the elements from the sequence and create the corresponding java calls /]
+
+[let aSeq : Sequence = aProcess.eAllContents(Activity)->first()]
+
+[comment Control if the first element in the Sequence is a Receive/]
+	[if (aSeq.eAllContents(Activity)->at(1).oclIsTypeOf(Receive))]
+		[let aReceive : Receive = aSeq.eAllContents(Activity)->at(1)]
+// Emulate the Receive activity		
+		myPL[aReceive.partnerLink.name.toUpperFirst()/].[aReceive.name.toLowerFirst()/]();			
+		[/let]	
+	[else]
+	The first element in the sequence is not a Receive
+	[/if]
+
+[comment Control if the 2nd element in the Sequence is an Assign/]
+	[if (aSeq.eAllContents(Activity)->at(2).oclIsTypeOf(Assign))]
+		[let aCopy : Copy = aSeq.eAllContents(Activity)->at(2).eAllContents(Copy)->last()]
+		[comment NOT GENERIC , cant relate the name of the variables to its PL, so I take it from the invoke, which is not a generic strategy/]	
+// Emulate the Assign activity 
+		[for (anInvoke : Invoke | aProcess.eAllContents(Invoke))]
+			[if (anInvoke.inputVariable = aCopy.to.variable)]
+				myPL[anInvoke.partnerLink.name.toUpperFirst()/]
+			[elseif (i>=2)]
+				There are more than one "invoke" construct in the software, the "Assign" might not work properly	
+			[/if]	
+		[/for]
+		.get[aCopy.to.variable.name.toUpperFirst()/]().set[aCopy.to.query.value.substring(aCopy.to.query.value.index(':')+1).toUpperFirst()/]( 
+		[for (aReceive : Receive | aProcess.eAllContents(Receive))]
+			[if (aReceive.variable = aCopy.from.variable)]
+				myPL[aReceive.partnerLink.name.toUpperFirst()/]
+			[elseif (i>=2)]
+				There are more than one "receive" construct in the software, the "Assign" might not work properly	
+			[/if]	
+		[/for]	
+		.get[aCopy.from.variable.name.toUpperFirst()/]().get[aCopy.from.query.value.substring(aCopy.from.query.value.index(':')+1).toUpperFirst()/]() );		
+		[/let]	
+	[else]
+		The 2nd element in the sequence is not an Assign
+	[/if]
+
+[comment Control if the 3rd element in the Sequence is an Invoke/]
+	[if (aSeq.eAllContents(Activity)->at(3).oclIsTypeOf(Invoke))]
+		[let anInvoke : Invoke = aSeq.eAllContents(Activity)->at(3)]
+// Emulate the Invoke activity
+		myPL[anInvoke.partnerLink.name.toUpperFirst()/].[anInvoke.operation.name/]Stub();		
+        [/let]
+	[else]	
+	The 3rd element in the sequence is not an Invoke
+	[/if]
+	
+[comment Control if the 4th element in the Sequence is an Invoke/]
+	[if (aSeq.eAllContents(Activity)->at(4).oclIsTypeOf(Assign))]
+		[let aCopy : Copy = aSeq.eAllContents(Activity)->at(4).eAllContents(Copy)->last()]
+[comment NOT GENERIC , cant relate the name of the variables to its PL, so I take it from the invoke, which is not a generic strategy/]	
+// Emulate the Assign activity 
+		[for (aReply : Reply | aProcess.eAllContents(Reply))]
+			[if (aReply.variable = aCopy.to.variable)]
+				myPL[aReply.partnerLink.name.toUpperFirst()/]
+			[elseif (i>=2)]
+				There are more than one "reply" construct in the software, the "Assign" might not work properly	
+			[/if]	
+		[/for]
+		.get[aCopy.to.variable.name.toUpperFirst()/]().set[aCopy.to.query.value.substring(aCopy.to.query.value.index(':')+1).toUpperFirst()/]( 
+		[for (anInvoke : Invoke | aProcess.eAllContents(Invoke))]
+			[if (anInvoke.outputVariable = aCopy.from.variable)]
+				myPL[anInvoke.partnerLink.name.toUpperFirst()/]
+			[elseif (i>=2)]
+				There are more than one "invoke" construct in the software, the "Assign" might not work properly	
+			[/if]	
+		[/for]	
+		.get[aCopy.from.variable.name.toUpperFirst()/]().get[aCopy.from.query.value.substring(aCopy.from.query.value.index(':')+1).toUpperFirst()/]() );		
+		[/let]	
+	[else]	
+		The 4th element in the sequence is not an Invoke
+	[/if]	
+//		myPLClient.getOutput().setResult( myPLAuthorWSParterLink.getAuthorWSParterLinkResponse().getAutographByCognomeEasyReturn );	
+	
+[comment Control if the 35th element in the Sequence is an Reply/]
+	[if (aSeq.eAllContents(Activity)->at(5).oclIsTypeOf(Reply))]
+		[let aReply : Reply = aSeq.eAllContents(Activity)->at(5)]
+// Emulate the Reply activity
+		myPL[aReply.partnerLink.name.toUpperFirst()/].[aReply.name/]();		
+        [/let]
+	[else]	
+	The 5th element in the sequence is not an Invoke
+	[/if]
+	
+[comment]
+[aProcess.eAllContents(Activity)->first().eContents()->first()/]
+[aSeq.oclIsKindOf(Activity).toString()/]
+[aProcess.eAllContents(Activity)->first()/]
+[aSeq.eContents()->first()/]
+[/comment]
+[/let]
+
+
+ 
+	}
+}
+
+[/file]
+[/template]
+
+
+
+
+[comment]
+
+[Add setter and getter /]
+	/**
+     * Add Setters and Getters    
+     */
+
+
+[comment]
+[for (aVariable  : Variable | aProcess.eAllContents(Variable))]  
+[createSetGet(varList->at(i), aVariable.name)/]
+[/for]
+[/comment]
+
+
+
+	/**
+     * Communication with client    
+     */
+public [clientVarReqType/] [activitySequence.eContents(Receive).name/]() {
+return null;
+}
+public [clientVarResType/] [activitySequence.eContents(Reply).name/]() {
+return null;
+}
+
+
+0 [aProcess.eContents(Activity).eContents().toString()/]
+a [activitySequence.eContents(Activity).toString()/]
+b [activitySequence->first().eGet('type')/]
+c [activitySequence->first().eGet('name')/]
+d [activitySequence.eContents(Receive).toString()/]
+e [aProcess.eContents(Activity).eContents().eGet('name')/]
+f [activitySequence.oclAsType(Activity)/]
+g [activitySequence./]
+h [activitySequence.toString()/]
+i [activitySequence->last().oclAsType(Activity).name/]
+l [(activitySequence->followingSiblings())/]
+[if (activitySequence->first().oclAsType(Activity).name.toString()='main')]
+ciao
+[/if] [/comment]
+
+[comment]
+[for (aVar : String | )]
+	protected [varSet->asSequence()->at(i)/] a[aVar/];
+[/for]	
+[/comment]
+[comment]
+BOH
+[var->at(1)/] [i/] pop
+[var->at(2)/] [i/]
+[var->at(3)/] [i/]
+[var->at(4)/] [i/]
+BOOM
+[varSet->asOrderedSet()->at(2)/] [i/]
+[varSet->asOrderedSet()->at(3)/] [i/]
+[varSet->asOrderedSet()->at(4)/] [i/]
+
+[Set{1, 2, 3}->select(k : Integer | k = 5)/]
+[/comment]
+
+
+	
+[comment]	Code to get the variable names from the BPEL, not generic because this code should be gt from the .WSDL
+protected [aProcess.name+'Request'/] a[aProcess.name+'Request'/];
+protected [aProcess.name+'Response'/] a[aProcess.name+'Response'/];
+[for (aVariable  : Variable | aProcess.eAllContents(Variable))]  
+	[let name : String = aVariable.messageType.qName.toString()]
+	    	[let index : Integer = name.index('}')]
+	[if (i=3)]
+protected [name.substring(index+1).toUpperFirst()/] a[name.substring(index+1).toUpperFirst()/];
+	[/if]    
+	[if (i=4)]
+protected [name.substring(index+1, name.size()-7).toUpperFirst()/] a[name.substring(index+1, name.size()-7).toUpperFirst()/];				
+	[/if]    	
+	    	[/let]
+	    [/let]	    		 
+[/for]
+[/comment]
+
+
+[comment]
+[for (aVariable: Variable | aProcess.eAllContents(Variable))]
+  VarName: [aVariable.name/] Index: [i/]
+	
+  [/for]
+[/comment]
+
+[comment] [aProcess.activity.name][/comment]
+ [comment]  
+[for (anAttribute: Activity | aProcess.eAllContents(Receive))]
+  Name: [anAttribute.name/] Index: [i/]
+  [/for] [/comment]
+
+
+[comment] WORKING GOOD
+[for (myReceive: Activity | aProcess.eAllContents(Receive))]
+  Name: [myReceive.name/] Index: [i/]
+  prop:
+  [/for]
+
+[for (myReceive: Receive | aProcess.eAllContents(Receive))]
+  public void [myReceive.operation.name/](aSimpleProcessRequest ) {
+	}
+  [/for]
+[/comment]
+
+[comment]
+  [let aReceive : Activity = aProcess.eAllContents(Receive)]
+  [aReceive.name/]
+  [/let]
+[/comment]
+

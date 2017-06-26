@@ -1,0 +1,229 @@
+[comment encoding = UTF-8 /]
+[module ecoreToMarkdown('http://www.eclipse.org/emf/2002/Ecore')]
+
+
+[**
+ * Prints all concret subclasses.
+*/]
+[template public printAllSubClassesAndTitel(anEPackage : EPackage, name : String)]
+## all [name/]
+
+[printAllSubClasses(anEPackage, name)/]
+
+[/template]
+
+[**
+ * Prints all concret subclasses.
+*/]
+[template public printAllEClasses(anEPackage : EPackage,basePath : String)]
+[allEclassesAsLink(anEPackage)/]
+
+[for (it : EClass | anEPackage.eClassifiers->selectByType(EClass)
+)]
+[printEClass(it.oclAsType(EClass),basePath)/][/for]
+
+# all enums
+
+The complete list of all EEnums in this package.
+
+[allEclassesAsLink(anEPackage.eClassifiers->selectByType(EEnum))/]
+
+[for (it : EEnum | anEPackage.eClassifiers->selectByType(EEnum)
+)]
+[printEEnum(it.oclAsType(EEnum))/][/for]
+
+# all edatatypes
+
+The complete list of all EDataTypes in this package.
+
+[allEclassesAsLink(anEPackage.eClassifiers->selectByType(EDataType))/]
+
+[for (it : EDataType | anEPackage.eClassifiers->selectByType(EDataType)
+)]
+[printEDataType(it.oclAsType(EDataType))/][/for]
+
+
+
+[/template]
+
+[**
+ * Prints all concret subclasses.
+*/]
+[template public printAllSubClasses(anEPackage : EPackage, name : String)]
+[for (it : EClass | anEPackage.eClassifiers
+		->selectByType(EClass) )]
+[if ( not it.abstract and not it.eAllSuperTypes
+			->select(c:EClass  | c.name=name )->isEmpty() )]
+* [printEClassLink(it.oclAsType(EClass))/]
+[/if][/for][/template]
+
+[**
+ * Print the eclass link.
+*/]
+[template public printEClassLink(anEclass : EClassifier)]
+[ '[' /][anEclass.name/][ ']' /]([anEclass.ePackage.name.toLower()/]-model#[anEclass.name.toLower()/])[/template]
+
+
+[**
+ * Creates doc from the eannotations.
+ * 
+*/]
+[template public toDocumentationInTable(ann : Collection(EAnnotation))]
+[for (ea : EAnnotation | ann)]
+[for (it : EStringToStringMapEntry | ea.details)]
+[if (it.key='documentation')][it.value.substituteAll('\n', ' ').substituteAll('\r', ' ').trim() /][/if][/for][/for][/template]
+
+[**
+ * Creates doc from the eannotations.
+ * 
+*/]
+[template public toDocumentation(ann : Collection(EAnnotation))]
+[for (ea : EAnnotation | ann)]
+[for (it : EStringToStringMapEntry | ea.details)]
+[if (it.key='documentation')][it.value.trim()/][/if][/for][/for][/template]
+
+[template public allEclassesAsLink(pack : EPackage)]
+[for (it : EClass | pack.eClassifiers->selectByType(EClass) )]
+|[printEClassLink(it)/][/for]| 
+
+[/template]
+
+
+[template public allEclassesAsLink(pack : Collection(EClassifier))]
+[for (it : EClassifier | pack )]
+|[printEClassLink(it)/][/for]| 
+
+[/template]
+
+
+[**
+ * Print an eenum.
+*/]
+[template public printEEnum(ee : EEnum)]
+## [ee.name/]
+
+[toDocumentation(ee.eAnnotations)/]
+
+name | literal | value | doc
+----|----|---|---
+[for (it : EEnumLiteral | ee.eLiterals)]
+[it.name/]|[it.literal/]|[it.value/]|[toDocumentation(it.eAnnotations)/]
+[/for]
+
+[linkToTop(ee.ePackage)/]
+
+
+[/template]
+
+[**
+ * Print the edatatypes.
+*/]
+[template public printEDataType(ee : EDataType)]
+## [ee.name/]
+
+[toDocumentation(ee.eAnnotations)/]
+
+instanceTypeName | instanceClassName | serializable | doc
+----|----|---|---
+[ee.instanceTypeName/]|[ee.instanceClassName/]|[ee.serializable/]|[toDocumentation(ee.eAnnotations) /]
+
+[linkToTop(ee.ePackage)/]
+
+
+[/template]
+
+
+[**
+ * Links to a type if it is not an ecore type.
+*/]
+[template protected printAttributeLink(attribute : EAttribute)]
+[if (not (attribute.eType.ePackage.name='ecore'))]
+[printEClassLink(attribute.eType)/][else]
+[attribute.eType.name/][/if]
+[/template]
+
+[**
+ * Print the eclass.
+*/]
+[template public printEClass(anEclass : EClass,basePath : String)]
+
+## [anEclass.name/]
+
+[comment]icon|abstract | interface 
+---|----|----
+[anEclass.printKind(basePath)/]|[anEclass.abstract/]|[anEclass.interface/][/comment]
+[printEClassKind(anEclass, basePath)/]
+
+[toDocumentation(anEclass.eAnnotations)/]
+
+[if (not anEclass.eSuperTypes->isEmpty())]
+**direct super types :**
+[for (it : EClass | anEclass.eSuperTypes)]
+|[printEClassLink(it)/][/for]|
+[/if]
+
+[if (not anEclass.eAllSuperTypes->removeAll(anEclass.eSuperTypes)->isEmpty())]
+**all super types :**
+[for (it : EClass | anEclass.eAllSuperTypes->removeAll(anEclass.eSuperTypes)  )]
+|[printEClassLink(it)/][/for]| 
+[/if]
+[if (not anEclass.eAttributes->isEmpty())]
+
+**attributes**
+
+name | type | cardinality | changeable | doc
+----|----|---|---|---
+[for (it : EAttribute | anEclass.eAttributes)]
+[it.name/]|[printAttributeLink(it) /]|[cardinality(it)/]|[it.changeable/]|[ toDocumentationInTable(it.eAnnotations)/]
+[/for][/if]	
+
+[if (not anEclass.eReferences->isEmpty())]
+**references**
+
+name | type | containment | cardinality | changeable | doc
+----|---|---|---|---|---
+[for (it : EReference | anEclass.eReferences)]
+[it.name/]|[printEClassLink(it.eReferenceType)/]|[it.containment/]|[cardinality(it)/]|[it.changeable/]|[ toDocumentationInTable(it.eAnnotations)/]
+[/for][/if]
+
+
+[if (not anEclass.eOperations->isEmpty())]
+**methods**
+
+name | doc
+----|---|---|---|---|---
+[for (it : EOperation | anEclass.eOperations)]
+[it.name/]|[ toDocumentationInTable(it.eAnnotations)/]
+[/for][/if]
+
+[linkToTop(anEclass.ePackage)/]
+
+[/template]
+
+
+[template private printEClassKind(eClass : EClass, basePath : String)]
+ kind  |
+---|
+[if (eClass.interface)]
+Interface|
+[elseif (eClass.abstract)]
+Abstract|	
+[else]
+[eClass.printKind(basePath)/] Concrete|
+[/if]
+[/template]
+
+[template public printKind(eClass : EClass, basePath : String) post (trim())]
+[eClass.name.imageStart()/]([basePath/]/icons/full/obj16/[eClass.name/].gif)[/template]
+
+[query public imageStart(name : String) : String = '!['+name+']'/]
+
+
+
+
+[template public linkToTop(anEPackage : EPackage)]
+[ '[' /]_back to top_[ ']' /]([anEPackage.name.toLower()/]-model#concret-classes-in-the-model-[anEPackage.name.toLower()/])
+[/template]
+
+[template protected cardinality(feature : EStructuralFeature)]
+[feature.lowerBound/]-[if (feature.upperBound=-1)]*[else][feature.upperBound/][/if][/template]

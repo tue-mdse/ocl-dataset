@@ -1,0 +1,207 @@
+[comment encoding = UTF-8 /]
+[module genEntityCache('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::gen::as::entity::genEntityInterface /]
+[import com::mgs::uml::gen::as::business::genBusiness /]
+[import com::mgs::uml::gen::as::business::genValueObject /]
+[import com::mgs::uml::gen::as::common::asUtils /]
+[import com::mgs::uml::common::services /]
+[import com::mgs::uml::common::umlUtils /]
+
+
+[template public genImportAllEntityInterface(m : Model)]
+[for (c : Class | m.profile_getAllEntities())]
+import [c.genEntityPackage()/].[c.interfaceName()/];
+[/for]
+[/template]
+
+[template public genImportAllEntity(m : Model)]
+import entity.Entity;
+[for (c : Class | m.profile_getAllEntities())]
+import [c.genEntityPackage()/].[c.genName()/];
+[/for]
+[/template]
+
+[template public genImportAllVO(m : Model)]
+[for (c : Class | m.profile_getAllEntities())]
+import [c.genPackageVO()/].[c.genNameVO()/];
+[/for]
+[/template]
+
+[template public genEntityCache(m : Model)]
+	
+[comment @main /]
+[file ('entity/EntityCache.as', false, 'UTF-8')]
+package entity
+{
+	[genImportAllEntityInterface()/]
+	[genImportAllEntity()/]
+	[genImportAllVO()/]
+	import vo.AbstractVO;
+	
+	public class EntityCache extends EntityCacheBase
+	{
+	
+		private static var _instance:EntityCache;
+		public static function getInstance():EntityCache{
+			if(_instance == null){
+				_instance = new EntityCache();
+			}
+			return _instance;
+		}
+		
+		public function EntityCache()
+		{
+			super();
+		}
+		
+[for (c : Class | m.profile_getAllEntities())]
+
+		public static function get[c.genName()/]Identifier():String{
+			return "[c.genIdentifier()/]";
+		}
+
+		[c.genEntityCacheCreate()/]	
+		
+		[c.genEntityCacheUpdates()/]
+		
+		[c.genEntityCacheCreateVO()/]
+		
+		[c.genEntityCacheGet()/]
+[/for]
+		
+	}
+}
+[/file]
+	
+[/template]
+
+[template public genEntityCacheCreate(c : Class)]
+public function create[c.genName()/]():[c.interfaceName()/]{
+	var object:[c.interfaceName()/] = new [c.genName()/]();
+	object.setId(temporaryId--);
+	setObject("[c.genIdentifier()/]", object);
+	return object;
+}
+[/template]
+
+[template public genEntityCacheGet(c : Class)]
+public function get[c.genName()/](id:int):[c.interfaceName()/]{
+	return getObject("[c.genIdentifier()/]", id) as [c.interfaceName()/];
+}
+[/template]
+
+[template public genEntityCacheCreateVO(c : Class)]
+public function create[c.genName()/]VO(object:[c.interfaceName()/], recursive:Boolean = false, excludes:Array = null, excludesVO:Array = null):[c.genNameVO()/]{
+	var retVO:[c.genNameVO()/] = null;
+	if(object != null){
+		if(excludes == null){
+			excludes = new Array();
+			excludesVO = new Array();
+		}
+		excludes.push(object);
+		retVO = new [c.genNameVO()/]();
+		excludesVO.push(retVO);
+		retVO.id = object.getId();
+		populate[c.genName()/]VO(retVO, object, recursive, excludes, excludesVO);
+	}
+	return retVO;
+}
+
+private function populate[c.genName()/]VO(retVO:[c.genNameVO()/], object:[c.interfaceName()/], recursive:Boolean = false, excludes:Array = null, excludesVO:Array = null):void{
+[if (c.hasBaseClass())]
+	// populate from parent.
+	populate[c.baseClass().genName()/]VO(retVO, object, recursive, excludes, excludesVO);
+[/if]
+	// populate fields
+[for (p : Property | c.profile_propertiesEntity()) ? (isSimplePrimitive())]
+	retVO.[p.genName()/] = object.[p.getterName()/]();
+[/for]
+	if(recursive){
+[for (p : Property | c.profile_propertiesEntity()) ? (not isSimplePrimitive())]
+[if (p.upper = 1)]
+		retVO.[p.genName()/] = _create[p.type->filter(Class).genName()/]VO(object.[p.getterName()/](), recursive, excludes, excludesVO);
+[else]
+		retVO.[p.genName()/] = new Array();
+		for each(var element[i/]:[p.type->filter(Class).interfaceName()/] in object.[p.getterName()/]()){
+			retVO.[p.genName()/].push(_create[p.type->filter(Class).genName()/]VO(element[i/], recursive, excludes, excludesVO));
+		}
+[/if]
+[/for]
+	}
+}
+
+
+private function _create[c.genName()/]VO(object:[c.interfaceName()/], recursive:Boolean = false, excludes:Array = null, excludesVO:Array = null):[c.genNameVO()/]{
+	var retVO:[c.genNameVO()/] = null;
+	if(object != null){
+		var index:int = excludes.indexOf(object);
+		if(index >= 0){
+			retVO = excludesVO['[index]'/];
+		}else if(!object.isPersistent() || object.isModified()){
+			retVO = create[c.genName()/]VO(object, recursive, excludes, excludesVO);
+		}else{
+			excludes.push(object);
+			retVO = new [c.genNameVO()/]();
+			excludesVO.push(retVO);
+			retVO.id = object.getId();
+			retVO.partial = true; 
+		}
+	}
+	return retVO;
+}
+[/template]
+
+[template public genEntityCacheUpdates(c : Class)]
+public function update[c.genName()/](object:[c.genNameVO()/], excludes:Array = null):[c.interfaceName()/]{
+	if(object == null){
+		return null;
+	}
+	if(excludes == null){
+		excludes = new Array();
+	}
+[for (cc : Class | c.getChildClassesChildToRoot())]
+	if(object is [cc.genNameVO()/]){
+		return update[cc.genName()/](object as [cc.genNameVO()/], excludes);
+	}
+[/for]
+	var cache:[c.interfaceName()/] = getObject("[c.genIdentifier()/]", object.id) as [c.interfaceName()/];
+	var isInCache:Boolean = cache != null;
+	if(excludes.indexOf(cache) < 0){
+		if(cache == null){
+			cache = new [c.genName()/]();
+			cache.setId(object.id);
+			(cache as Entity).setPartial(true);
+			setObject("[c.genIdentifier()/]", cache);
+		}
+		excludes.push(cache);
+		if(!object.partial){
+			update[c.genName()/]Properties(object, cache, excludes);
+			(cache as Entity).setPartial(false);
+			(cache as Entity).setModified(false);
+		}
+	}
+	return cache;
+}
+
+private function update[c.genName()/]Properties(object:[c.genNameVO()/], cache:[c.interfaceName()/], excludes:Array):void{
+[if (c.hasBaseClass())]
+	// copy parent properties.
+	update[c.baseClass().genName()/]Properties(object, cache, excludes);
+[/if]
+	// copy attributes
+[for (p : Property | c.profile_propertiesEntity()) ? (isSimplePrimitive())]
+	cache.[p.setterName()/](object.[p.genName()/]);
+[/for]
+	// copy relations
+[for (p : Property | c.profile_propertiesEntity()) ? (not isSimplePrimitive() and upper = 1)]
+	cache.[p.setterName()/](update[p.type->filter(Class).genName()/](object.[p.genName()/], excludes));
+[/for]
+[for (p : Property | c.profile_propertiesEntity()) ? (not isSimplePrimitive() and upper <> 1)]
+	for each(var element[i/]:[p.type->filter(Class).genNameVO()/] in object.[p.genName()/]){
+		cache.[p.adderName()/](update[p.type->filter(Class).genName()/](element[i/], excludes));
+	}
+[/for]
+}
+
+[/template]

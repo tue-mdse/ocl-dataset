@@ -1,0 +1,53 @@
+[comment encoding = UTF-8 /]
+[module androidmanifestXML('http://www.eclipse.org/uml2/3.0.0/UML')/]
+
+[template public androidmanifestXML(c : Class)]
+[file ('AndroidManifest.xml', false, 'UTF-8')]
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="[formatPackageName(c._package.name)/]"
+    android:versionCode="1"
+    android:versionName="1.0" >
+	
+    <uses-sdk android:minSdkVersion="[c.getValue(c.getAppliedStereotype('profile::AndroidManifestXML'), 'min_SDK')/]" />
+    
+	[for (p : Property | c.getAppliedStereotype('profile::AndroidManifestXML').getAllAttributes())]
+		[if p.name <> 'min_SDK' and p.name <> 'MainActivity' and p.name <> 'showTitleBar' and p.name <> 'useGoogleMapsLibrary' and c.getValue(c.getAppliedStereotype('profile::AndroidManifestXML'), p.name) = true]
+	<uses-permission android:name="android.permission.[p.name/]" />
+		[/if]
+	[/for]
+
+    <application
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+		[if (getValue(getAppliedStereotype('profile::AndroidManifestXML'), 'showTitleBar')) <> true]android:theme="@android:style/Theme.NoTitleBar"[/if]>
+        
+		[if (getValue(getAppliedStereotype('profile::AndroidManifestXML'), 'useGoogleMapsLibrary')) = true]<uses-library android:name="com.google.android.maps" android:required="true"/>[/if]
+            
+        <activity android:name=".[getValue(getAppliedStereotype('profile::AndroidManifestXML'), 'MainActivity').oclAsType(Class).name/]" android:label="@string/app_name" >
+            <intent-filter >
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+	[for (e : Element | c._package.ownedElement)]
+		[if (e.oclIsKindOf(Class)) ]
+			[comment TODO: Bessere Methode zum Abfragen einer Activity finden. /]
+			[if (e.getAppliedStereotype('profile::Activity') <> null or
+				e.getAppliedStereotype('profile::ListActivity') <> null or
+				e.getAppliedStereotype('profile::PreferenceActivity') <> null or
+				e.getAppliedStereotype('profile::MainActivity') <> null )
+				and
+				e.oclAsType(Class).name <> (c.getValue(c.getAppliedStereotype('profile::AndroidManifestXML'), 'MainActivity').oclAsType(Class).name)]
+		<activity android:name=".[e.oclAsType(Class).name /]"></activity>
+			[/if]
+		[/if]
+	[/for]
+    </application>
+
+</manifest>
+[/file]
+[/template]
+
+
+[query public formatPackageName(name : String) : String = invoke('SWE_Android.files.Utility','formatPackageName(java.lang.String)', Sequence{name}) /]

@@ -1,0 +1,54 @@
+[comment encoding = UTF-8 /]
+[module generateLazyModel('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::name::fileNameQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::imports::classImports /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationClassQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::attributes::getterSetterAttributes /]
+[import com::thales::momoko2::pim::uml2::gen::request::name::getterSetterNameQueries/]
+
+[**
+ * This template generates the controller for a class.
+ * @param aClass
+ */]
+[template public generateLazyModel(aClass : Class) 
+? ((isFeatureClass(aClass)) and isAbstract._not())]
+[file (getLazyModelFileName(aClass), false, 'UTF-8')]
+package [aClass.getModel().name.toLowerCase()/].presentation.util.lazymodels;
+
+[generateModelElementImport(aClass)/]
+import java.util.Map;
+import java.util.List;
+import javax.inject.Inject;
+import org.primefaces.model.LazyDataModel;
+import org.primefaces.model.SortOrder;
+import [aClass.getModel().name.toLowerCase()/].annotations.Facade;
+import [aClass.getModel().name.toLowerCase()/].annotations.FeatureType;
+import [getModelPackageName(aClass).toLowerCase()/].[aClass.name/];
+import [aClass.getModel().name.toLowerCase()/].persistence.[aClass.name/]Facade;
+import [aClass.getModel().name.toLowerCase()/].persistence.logs.LogBusinessMethodInterceptor;
+import [aClass.getModel().name.toLowerCase()/].persistence.logs.LogLifeCycleMethodInterceptor;
+
+
+public class Lazy[aClass.name/]DataModel extends LazyDataModel<[aClass.name/]> {
+
+    private [aClass.name/]Facade ejbFacade;
+
+	private [aClass.name/]Facade getFacade() {
+    	return ejbFacade;
+	}
+
+	public void setFacade([aClass.name/]Facade ejbFacade) {
+    	this.ejbFacade = ejbFacade;
+	}
+
+	@Override
+    public List<[aClass.name/]> load(int first, int pageSize, String sortField, SortOrder sortOrder, Map<String,String> filters) {
+    	int dataSize =  getFacade().count(filters);  
+        this.setRowCount(dataSize); 
+        return getFacade().load(first, pageSize, sortField,sortOrder,filters);
+	}
+}
+[/file]
+[/template]

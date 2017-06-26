@@ -1,0 +1,303 @@
+[**
+ *
+ *             -=( Python Code Generator )=-
+ *
+ *  This script will generate one file per packages. 
+ *  It also support following things:
+ *      - classes/interfaces (as classes)/enumerations
+ *      - inheritance/interface realization (as inheritance)
+ *      - attributes/associations
+ *          + cardinility {x...*} -> generated as list
+ *      - __init__ (following these rules):
+ *          + if no '__init__' is found, but there is attribute -> '__init__' generated
+ *          + if many '__init__' is found -> '__init__' with the greatest number of arguments is generated
+ *          + '__init__' 'self' variable is generated if missing
+ *          + if '__init__' parameter name (x) matches an attribute name -> 'self.x = x' is generated
+ *      - operations
+ *      - operation body throws 'NotImplementedError' by default
+ *      - comments
+ * 
+ * We can help you modifying this script so it can match your needs: 
+ * send us a ticket, we will gladly help you.
+ *         = GenMyModel Team
+ *
+ * This script uses the MTL language (also named MOFM2T or regarding its implementation, Acceleo)
+ * For more details, see:
+ *  Language Reference      : http://help.eclipse.org/juno/topic/org.eclipse.acceleo.doc/pages/reference/language.html?cp=5_3_0
+ *  Operations              : http://help.eclipse.org/juno/topic/org.eclipse.acceleo.doc/pages/reference/operations.html?cp=5_3_2
+ *  Text Production Rules   : http://help.eclipse.org/juno/topic/org.eclipse.acceleo.doc/pages/reference/textproductionrules.html?cp=5_3_5
+ *    
+ * Copyright (c) 2014-2016 GenMyModel
+ * See the file located at https://github.com/genmymodel/generators/blob/master/LICENSE for copying permission.
+ *
+ * Author:  Vincent Aranega - GenMyModel
+ * Contributor:  Alexis Muller - GenMyModel
+ */]
+[comment encoding = UTF-8 /]
+[module uml2python('http://www.eclipse.org/uml2/4.0.0/UML')/]
+
+
+[**
+ * Main entry point. This main template MUST be named 'generate' and it must
+ * own the main annotation.
+ */]
+[template public generate(m : Package)]
+[comment @main/]
+[file (m.name.concat('.py'), false, 'UTF-8')]
+[if (not m.ownedComment->isEmpty())]
+"""
+[m.ownedComment.genComment(' ')/]
+"""
+
+[/if]
+[comment Dummy and very simple import management (misses the extern module imports) /]
+[if (not m.allOwnedElements()->filter(TypedElement)->select(type <> null and type.name <> null and type.name = 'Date')->isEmpty())]
+from datetime import datetime
+
+[/if]
+[comment Generate code for classes/interfaces /]
+[for (e : Classifier | m.ownedType->filter(Classifier)->sortedBy(getAllRelations()->size())) separator('\n')]
+[e.genClassif().trim()/]
+[/for]
+[/file]
+[/template]
+
+[comment]
+ These templates are used to generate 'Classifier' code, i.e., Class, Interface and Enumeration.
+[/comment]
+[template public genClassif(e : Classifier)/]
+[template public genClassif(c : Class)]
+[let inherited : Bag(Classifier) = c.superClass->union(c.interfaceRealization.contract)]
+class [c.name/]([if (not inherited->isEmpty())][for (cl : Classifier | inherited) separator(', ')][cl.name/][/for][else]object[/if]):
+	[if (not c.ownedComment->isEmpty())]
+	"""
+	[c.ownedComment.genComment(' ')/]
+	"""
+	[/if]
+	[c.genInit()/]
+	[if (not c.nestedClassifier->isEmpty())]
+	
+	[c.nestedClassifier.genClassif()/]
+	[/if]
+	[if (not c.ownedOperation->isEmpty())]
+	[for (ops : Operation | c.ownedOperation->reject(name = '__init__'))]
+	[ops.gen()/]
+	[/for]
+	[/if]
+[/let]
+[/template]
+
+[template public genClassif(i : Interface)]
+[let inherited : Bag(Classifier) = i.generalization.general]
+class [i.name/]([if (not inherited->isEmpty())][for (cl : Classifier | inherited) separator(', ')][cl.name/][/for][else]object[/if]):
+	[if (not i.ownedComment->isEmpty())]
+	"""
+	[i.ownedComment.genComment(' ')/]
+	"""
+	[/if]
+	[if (i.ownedOperation->isEmpty())]
+	pass
+	[/if]
+	[if (not i.nestedClassifier->isEmpty())]
+	[i.nestedClassifier.genClassif()/]
+	[/if]
+	[if (not i.ownedOperation->isEmpty())]
+	[for (ops : Operation | i.ownedOperation)]
+	[ops.gen()/]
+	[/for]
+	[/if]
+[/let]
+[/template]
+
+
+[template public genInit(c : Class)]
+[if (c.hasConstructor())]
+[c.ownedOperation->select(name = '__init__')->sortedBy(o | -(o.ownedParameterSet->size()))->first().genInit()/]
+[elseif (c.ownedAttribute->addAll(c.getAssociationsProps())->notEmpty())]
+def __init__(self)
+    [for (p : Property | c.ownedAttribute->addAll(c.getAssociationsProps()))]
+    self.[p.name/] = [p.genValue()/]
+    [/for]
+[elseif (c.ownedOperation->isEmpty())]
+    pass
+[/if]
+[/template]
+
+[template public genInit(o : Operation) ? (name = '__init__')]
+[let nself : String = if (o.getParameters()->exists(name = 'self')) then '' else 'self, ' endif]
+def __init__([nself/][for (p : Parameter | o.getParameters()) before(', ') separator(', ')][p.name/][/for]):
+[for (p : Property | o.class.ownedAttribute->addAll(o.class.getAssociationsProps()))]
+    [if (o.getParameters().name->includes(p.name))]
+    self.[p.name/] = [p.name/]
+    [else]
+    self.[p.name/] = [p.genValue()/]
+    [/if]
+[/for]
+[/let]
+[/template]
+
+
+[**
+ *This template represents the choice we made about UML Enumeration
+ *compilation to python code.
+ */]
+[template public genClassif(e : Enumeration)]
+class [e.name/]:
+	[if (not e.ownedComment->isEmpty())]
+	"""
+	[e.ownedComment.genComment(' ')/]
+	"""
+	[/if]
+	[if (not e.ownedLiteral->isEmpty())]
+	[for (lit : EnumerationLiteral | e.ownedLiteral) separator(', ')][lit.name/][/for] = range([e.ownedLiteral->size()/])
+	[/if]
+[/template]
+
+[template public gen(p : Property)]
+[if (not p.ownedComment->isEmpty())]
+[p.ownedComment.genComment('#')/]
+
+[/if]
+self.[if (p.visibility = VisibilityKind::_private)]__[/if][p.name/] = [p.genValue()/]
+[/template]
+
+[template public gen(o : Operation)]
+[o.header()/]
+	[if (not o.ownedComment->isEmpty())]
+	"""
+	[o.ownedComment.genComment(' ')/]
+	"""
+	[/if]
+	[o.bodyOperation()/]	
+[/template]
+
+[**
+ * Generate an operation header. If the operation visibility is set to
+ * private, '__' prefixes the operation name.
+ */]
+[template public header(o : Operation)]
+def [if (o.visibility = VisibilityKind::_private)]__[/if][o.name/](self[for (param : Parameter | o.ownedParameter->excluding(o.getReturnResult())) before (', ') separator(', ')][param.name/][/for]):
+[/template]
+
+[template public bodyOperation(o : Operation)]
+[if (o.getReturnResult() <> null and o.getReturnResult().type <> null)]
+return [o.getReturnResult().genValue()/]
+[else]raise NotImplementedError
+[/if]
+[/template]
+
+[template public genValue(m : MultiplicityElement) post (trim())]
+[if (m.isMany())]['['/]]
+[elseif (m.oclIsKindOf(TypedElement))][m.oclAsType(TypedElement).type.genSingleValue()/]
+[else]None
+[/if]
+[/template]
+
+[comment]
+ Generate single values for methods and attributes initialization.
+[/comment]
+[template public genSingleValue(t : Type) post (trim())]
+[if (t = null)]None
+[elseif (t.name = 'String')]""
+[elseif (t.name = 'UnlimitedNatural')]0L
+[elseif (t.name = 'Double')]0.
+[elseif (t.name = 'Real')]0.
+[elseif (t.name = 'Float')]0.
+[elseif (t.name = 'Long')]0L
+[elseif (t.name = 'Integer')]0
+[elseif (t.name = 'Short')]0
+[elseif (t.name = 'Byte')]0x0
+[elseif (t.name = 'ByteArray')]['['/]]
+[elseif (t.name = 'Boolean')]False
+[elseif (t.name = 'Date')]datetime()
+[elseif (t.name = 'Char')]''
+[elseif (t.oclIsKindOf(Enumeration))][if (not t.oclAsType(Enumeration).ownedLiteral->isEmpty())][t.name/].[t.oclAsType(Enumeration).ownedLiteral->at(1).name/][else]None[/if]
+[elseif (t.oclIsKindOf(Classifier))]None
+[else]None[/if]
+[/template]
+
+[template public genComment(c : Comment, prefix : String)]
+[prefix/][c.genBody(prefix).format().replaceAll('\n','\n' + prefix + ' ')/]
+[/template]
+
+[template public genBody(c : Comment, prefix : String)]
+[c._body/][if (not c.ownedComment->isEmpty())]['\n'/][prefix/] [c.ownedComment.genBody(prefix)->sep('\n ' + prefix)/][/if]
+[/template]
+
+[query public isMany(s : MultiplicityElement) : Boolean =
+	s.lower > 1 or s.upper = -1 or s.upper > 1 
+/]
+
+[query public isAssociation(p : Property) : Boolean =
+	not p.association.oclIsUndefined()
+/]
+
+[query public hasConstructor(c : Class) : Boolean =
+    c.ownedOperation->exists(name = '__init__')
+/]
+
+[comment small hack on this query, need better type checking/]
+[query public getAllRelations(c : Classifier) : Set(Classifier) = 
+    if (c.oclIsKindOf(Class)) then
+        c.oclAsType(Class).getAllClassRelations()
+    else if (c.oclIsKindOf(Interface)) then
+        c.oclAsType(Interface).getAllInterfaceRelations()
+        else 
+            Set{c}->excluding(c) 
+        endif
+    endif
+/]
+
+[query public getAllClassRelations(c : Class) : Set(Classifier) =
+    c.getAllImplementedInterfaces()->union(c.getGenerals())
+/]
+
+[query public getAllInterfaceRelations(c : Interface) : Set(Classifier) =
+    c.getGenerals()
+/]
+
+[query public getParameters(o : Operation) : OrderedSet(Parameter) =
+    o.ownedParameter->reject(e | e = o.getReturnResult())
+/]
+
+[query public getAssociationsProps(c : Class) : OrderedSet(Property) =
+    Association.allInstances().ownedEnd
+        ->select(p | p.type = c and p.getOpposite() <> null).getOpposite()->asOrderedSet()
+/]
+
+[**
+ * == Replace documentation format (rich text) to asciidoc
+ *  As it uses regex, of course it cannot deal with every cases. 
+ */]
+[query public format(s : String) : String =
+    if s <> null and s.trim() <> '' then
+    s   .trim()
+        .replaceAll('\\n', '\n')
+        .replaceAll('</?b>', '*')
+        .replaceAll('<div><br></div>','\n')
+        .replaceAll('(</div>([^<$]))+', '\n$2')
+		.replaceAll('(</div>)+', '')
+		.replaceAll('(^<div[^>]*>)+', '')
+		.replaceAll('([^^])(<div[^>]*>)+', '$1\n')
+        .replaceAll('</?i>','_')
+        .replaceAll('</?u>','')
+        .replaceAll('<p>','')
+        .replaceAll('</p>','\n')
+        .replaceAll('<ul[^>]*>','\n\n')
+        .replaceAll('</ul>','\n')
+        .replaceAll('<ol[^>]*>','\n\n')
+        .replaceAll('</ol>','\n')
+        .replaceAll('<li[^>]*>', '* ')
+        .replaceAll('</li>', '\n')
+        .replaceAll('&nbsp;',' ')
+        .replaceAll('<br>', '\n')
+        .replaceAll('<span[^>]*>', '')
+        .replaceAll('</span>', '')
+        .replaceAll('\\+\\s*$', '.')
+        .replaceAll('([^.?!])$','$1.')
+        .replaceAll('&lt;','<')
+        .replaceAll('&gt;','>')
+    else
+        ''
+    endif
+/]

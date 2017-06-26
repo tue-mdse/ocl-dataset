@@ -1,0 +1,252 @@
+[comment encoding = UTF-8 /]
+[module CreateFolderNewWizardPage('http://www.eclipse.org/emf/2002/Ecore','http://mondo.org/runtimePatterns')]
+[import org::mondo::generate::modular::project::main::requests::global_queriesModularProject /]
+
+[template public CreateFolderNewWizardPage(anProjectName : String, anPackageName : String, anPatternInstance : PatternInstance)]
+
+[for(c : ClassRoleInstance | anPatternInstance.Get_FolderClassRoleInstance()->union(anPatternInstance.Get_ProjectClassRoleInstance()
+																						 ->select(anClassRoleInstance : ClassRoleInstance | anClassRoleInstance.referenceInstances
+																						 ->select(ref : ReferenceRoleInstance | ref.element.eType.name.toString() = anClassRoleInstance.element.name.toString())->size() > 0)->asSequence()))]) ] 
+
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name') + '.' + anPatternInstance.Get_ProjectClassRoleInstance().element.name).replaceAll('\\.','/').concat('/wizard/folder/').concat(c.element.name.toString()).concat('CreateFolderWizardPage.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/].wizard.folder;
+
+import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.wizard.WizardPage;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.ui.dialogs.ContainerSelectionDialog;
+
+
+/**
+ * The "New" wizard page allows setting the container for the new file as well
+ * as the file name. The page will only accept file name without the extension
+ * OR with the extension that matches the expected one (figure).
+ */
+
+public class [c.element.name/]CreateFolderWizardPage extends WizardPage {
+	
+	private Text containerText;
+	private Text fileText;
+
+	private ISelection selection;
+
+	//Attributes
+	[for (attr : EAttribute | c.element.eAllAttributes)]
+	[if(c.Get_ClassRoleInstance_TypeFeature_EAttribute('name').name<>attr.name)]
+	private Label lbl_[attr.name /];
+	private Text txt_[attr.name /];
+	[/if]
+	[/for]
+
+	/**
+	 * Constructor for [c.element.name/]CreateFolderWizardPage.
+	 * 
+	 * @param pageName
+	 */
+	public [c.element.name/]CreateFolderWizardPage(ISelection selection) {
+		super("wizardPage");
+		setTitle("Create a Folder");
+		setDescription("This wizard creates a new folder.");
+		this.selection = selection;
+	}
+
+	/**
+	 * @see IDialogPage#createControl(Composite)
+	 */
+	public void createControl(Composite parent) {
+		Composite container = new Composite(parent, SWT.NULL);
+		GridLayout layout = new GridLayout();
+		container.setLayout(layout);
+		layout.numColumns = 3;
+		layout.verticalSpacing = 9;
+		Label label = new Label(container, SWT.NULL);
+		label.setText("&Container:");
+
+		containerText = new Text(container, SWT.BORDER | SWT.SINGLE);
+		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+		containerText.setLayoutData(gd);
+		containerText.addModifyListener(new ModifyListener() {
+			public void modifyText(ModifyEvent e) {
+				dialogChanged();
+			}
+		});
+
+		Button button = new Button(container, SWT.PUSH);
+		button.setText("Browse...");
+		button.addSelectionListener(new SelectionAdapter() {
+			public void widgetSelected(SelectionEvent e) {
+				handleBrowse();
+			}
+		});
+		label = new Label(container, SWT.NULL);
+		label.setText("&Folder name([c.Get_ClassRoleInstance_TypeFeature_EAttribute('name').name/]):");
+
+		fileText = new Text(container, SWT.BORDER | SWT.SINGLE);
+		gd = new GridData(GridData.FILL_HORIZONTAL);
+		fileText.setLayoutData(gd);
+		fileText.addModifyListener(new ModifyListener() {
+			public void modifyText(ModifyEvent e) {
+				dialogChanged();
+			}
+		});
+
+		//Attributes
+		[for (attr : EAttribute | c.element.eAllAttributes)]
+		[if(c.Get_ClassRoleInstance_TypeFeature_EAttribute('name').name<>attr.name)]
+		new Label(container, SWT.NONE);
+		lbl_[attr.name /] = new Label(container, SWT.NONE);
+		lbl_[attr.name /].setText("[attr.name /]: ");
+		txt_[attr.name /] = new Text(container, SWT.BORDER | SWT.SINGLE );
+		txt_[attr.name /].setLayoutData(new GridData(GridData.FILL_HORIZONTAL));						
+		[/if]
+		
+		[/for]
+
+		//Add Listeners for Attributes
+		[for (attr : EAttribute | c.element.eAllAttributes)]
+		[if(c.Get_ClassRoleInstance_TypeFeature_EAttribute('name').name<>attr.name)]
+		txt_[attr.name /].addModifyListener(new ModifyListener() {
+			
+			@Override
+			public void modifyText(ModifyEvent e) {
+				// TODO Auto-generated method stub
+				 
+				 Validate_Form();
+			}
+		});
+		[/if]
+		[/for]
+		//End Attributes
+	
+		initialize();
+		dialogChanged();
+		setControl(container);
+	}
+
+	/**
+	 * Tests if the current workbench selection is a suitable container to use.
+	 */
+
+	private void initialize() {
+		if (selection != null && selection.isEmpty() == false
+				&& selection instanceof IStructuredSelection) {
+			IStructuredSelection ssel = (IStructuredSelection) selection;
+			if (ssel.size() > 1)
+				return;
+			Object obj = ssel.getFirstElement();
+			if (obj instanceof IResource) {
+				IContainer container;
+				if (obj instanceof IContainer)
+					container = (IContainer) obj;
+				else
+					container = ((IResource) obj).getParent();
+				containerText.setText(container.getFullPath().toString());
+			}
+		}
+		fileText.setText("new_folder");
+	}
+
+	/**
+	 * Uses the standard container selection dialog to choose the new value for
+	 * the container field.
+	 */
+
+	private void handleBrowse() {
+		ContainerSelectionDialog dialog = new ContainerSelectionDialog(
+				getShell(), ResourcesPlugin.getWorkspace().getRoot(), false,
+				"Select new container");
+		if (dialog.open() == ContainerSelectionDialog.OK) {
+			Object['[]'/] result = dialog.getResult();
+			if (result.length == 1) {
+				containerText.setText(((Path) result['[0]'/]).toString());
+			}
+		}
+	}
+
+	/**
+	 * Ensures that both text fields are set.
+	 */
+
+	private void dialogChanged() {
+		IResource container = ResourcesPlugin.getWorkspace().getRoot()
+				.findMember(new Path(getContainerName()));
+		String fileName = getFileName();
+
+		if (getContainerName().length() == 0) {
+			updateStatus("File container must be specified");
+			return;
+		}
+		if (container == null
+				|| (container.getType() & (IResource.PROJECT | IResource.FOLDER)) == 0) {
+			updateStatus("File container must exist");
+			return;
+		}
+		if (!container.isAccessible()) {
+			updateStatus("Project must be writable");
+			return;
+		}
+		if (fileName.length() == 0) {
+			updateStatus("File name must be specified");
+			return;
+		}
+		if (fileName.replace('\\', '/').indexOf('/', 1) > 0) {
+			updateStatus("File name must be valid");
+			return;
+		}
+		updateStatus(null);
+	}
+
+	private void updateStatus(String message) {
+		setErrorMessage(message);
+		setPageComplete(message == null);
+	}
+
+	public String getContainerName() {
+		return containerText.getText();
+	}
+
+	public String getFileName() {
+		return fileText.getText();
+	}
+
+	public void Validate_Form()
+	{
+		setPageComplete(false);
+		[for (attr : EAttribute | c.element.eAllAttributes)]
+		[if(c.Get_ClassRoleInstance_TypeFeature_EAttribute('name').name<>attr.name)]
+			if(txt_[attr.name /].getText().equals(""))
+				return;
+		[/if]
+		[/for]
+		setPageComplete(true);
+	}
+	
+	//Get the Attributes
+	[for (attr : EAttribute | c.element.eAllAttributes)]
+		[if(c.Get_ClassRoleInstance_TypeFeature_EAttribute('name').name<>attr.name)]
+	public String Get_[attr.name /]()
+	{	
+		return txt_[attr.name/].getText();
+	}	
+		
+	[/if]
+	[/for]
+}
+[/file]
+[/for]
+[/template]

@@ -1,0 +1,139 @@
+[comment encoding = UTF-8 /]
+[**
+ * Documentation of the module contraintesTournee
+ * Le module qui contient le code a generer pour chaque contrainte liee a la classe Tournee. Il 
+ * importe un (1) seul module pour pouvoir utiliser ses templates.
+ * Il depend d'un fichier uml -cette dependance est exprimee en parametre du module- comme tous 
+ * les autres modules du projet.
+ * Il definit autant de templates que de contraintes dans la classe Tournee.
+*/]
+[module contraintesTournee('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::edf::acceleo::stage::minizinc::common::comparaison /]
+
+[**
+ * Documentation of the template contrainte1
+ * Contient le code permettant la generation du minizinc correspodant a la premiere contrainte (ou
+ * VEValide) ocl de la classe Tournee.
+ * @param aPackage correspond au package qui contient les classes.
+ * Nous recuperons les classes qui nous interessent une a une et leurs proprietes et nous les stoquons 
+ * dans des variables. Ensuite nous ecrivons le code acceleo generant le minizinc
+*/]
+[template public contrainte1(
+	aPackage : Package, 
+	facteurs : Sequence(String), 
+	operateurs : Sequence(String), 
+	comparateur : String)
+	post (trim())
+]
+[let classVE : Class =
+	aPackage.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.attribute->exists(
+			p : Property | 
+			p.name.toLower().contains('identifiantve') 
+		)
+	)->asOrderedSet()->at(1)
+]
+[let classTournee : Class =
+	aPackage.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.attribute->exists(
+			p : Property | 
+			p.name.toLower().contains('distancetournee') 
+		)
+	)->asOrderedSet()->at(1)
+]
+
+[let proprieteIdentifiantVE : Property = 
+	classVE.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('identifiantve'))->at(1)
+]
+[let proprieteDistanceTournee : Property = 
+	classTournee.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('distancetournee')
+	)->at(1) 
+]
+% Un vehicule par tournee
+constraint alldifferent(tourneeVehicule);
+% L'autonomie et le niveau de batterie du VE sont suffisants pour effectuer la tournee
+constraint forall(t in [classTournee.name /]s)(
+	forall(ve in [classVE.name /]s)(
+		(tourneeVehicule['['/]t[']'/] = [proprieteIdentifiantVE.name /]['['/]ve[']'/]) -> 
+		([comparaison(facteurs, operateurs, comparateur) /] /\ kmElec['['/]t[']'/] = [proprieteDistanceTournee.name /]['['/]t[']'/])
+	)
+);
+[/let]
+[/let]
+[/let]
+[/let]
+[/template]
+
+[**
+ * Documentation of the template contrainte2
+ * Cotient le code permettant la generation du minizinc correspodant a la deuxieme contrainte (ou
+ * VEouVT) ocl de la classe Tournee.
+ * @param aPackage correspond au package qui contient les classes.
+ * Nous recuperons les classes qui nous interessent une a une et leurs proprietes et nous les stoquons 
+ * dans des variables. Ensuite nous ecrivons le code acceleo generant le minizinc
+*/]
+[template public contrainte2(aPackage : Package)]
+[let classTournee : Class =
+	aPackage.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.attribute->exists(
+			p : Property | 
+			p.name.toLower().contains('distancetournee') 
+		)
+	)->asOrderedSet()->at(1)
+]
+[let classVT : Class =
+	aPackage.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.attribute->exists(
+			p : Property | 
+			p.name.toLower().contains('identifiantvt') 
+		)
+	)->asOrderedSet()->at(1)
+]
+[let proprieteIdentifiantVT : Property = 
+	classVT.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('identifiantvt')
+	)->at(1)
+]
+% affectation d'un vehicule thermique et dans ce cas kmElec est nul
+constraint forall(t in [classTournee.name /]s)(
+	forall(vt in [classVT.name /]s)(
+		tourneeVehicule['['/]t[']'/] = [proprieteIdentifiantVT.name /]['['/]vt[']'/] -> kmElec['['/]t[']'/] = 0
+	)
+);
+[/let]
+[/let]
+[/let]
+[/template]
+
+[**
+ * Documentation of the template contrainte3
+ * Contient le code permettant la generation du minizinc correspodant a la troisieme contrainte (ou
+ * sommeKmElec) ocl de la classe Tournee.
+ * @param aPackage correspond au package qui contient les classes.
+ * Nous recuperons la classe qui nous interesse que nous stoquons dans une variable. Ensuite nous 
+ * ecrivons le code acceleo generant le minizinc
+*/]
+[template public contrainte3(aPackage : Package)]
+[let classTournee : Class =
+	aPackage.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.attribute->exists(
+			p : Property | 
+			p.name.toLower().contains('distancetournee') 
+		)
+	)->asOrderedSet()->at(1)
+]
+%maximiser le nombre de km de tounrnee fait par les vehicules electriques
+solve maximize sum(['['/]kmElec['['/]t[']'/] | t in [classTournee.name /]s[']'/]);
+[/let]
+[/template]

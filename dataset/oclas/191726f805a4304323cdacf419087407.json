@@ -1,0 +1,178 @@
+[
+  {
+    "name": "WeavingModelContent",
+    "expressions": [],
+    "properties": ["WeavingLink"]
+  },
+  {
+    "name": "WeavingModel",
+    "expressions": [
+      {
+        "operations": {
+          "<=": 1,
+          "size": 3,
+          "and": 2,
+          "oclAsSet": 4,
+          "oclBadOperation": 4,
+          "=": 2,
+          ">": 2
+        },
+        "name": "findTextElementForOffset",
+        "body": "let textElements:OrderedSet(TextElement) =\n\tself.findTextElementForOffset(offset)\nin\n-- If the closes distance is not 0 there is no decision to take\nif (textElements->size() <= 1) then\n\ttextElements\nelse\n\t--Hit an Attribute and want Attributes -> everything is fine\n\tif (self.findTextElementForOffset(offset)->select(t | t.oclAsType(ecore::EObject).eContainer().oclAsType(WeavingLink).modelElement.oclIsTypeOf(PLM::Attribute))->size() > 0 and strategy = SearchStrategy::AttributePreffered) then\n\t\tself.findTextElementForOffset(offset)->select(t | t.oclAsType(ecore::EObject).eContainer().oclAsType(WeavingLink).modelElement.oclIsTypeOf(PLM::Attribute))\n\telse\n\t\t--Hit an Entity and want an Entity -> everything is fine\n\t\tif (self.findTextElementForOffset(offset)->select(t | t.oclAsType(ecore::EObject).eContainer().oclAsType(WeavingLink).modelElement.oclIsTypeOf(PLM::Entity))->size() > 0 and strategy = SearchStrategy::EntityPreffered) then\n\t\t\tself.findTextElementForOffset(offset)->select(t | t.oclAsType(ecore::EObject).eContainer().oclAsType(WeavingLink).modelElement.oclIsTypeOf(PLM::Entity))\n\t\telse\n\t\t\t--Bad luck\n\t\t\ttextElements\n\t\tendif\n\tendif\nendif",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 4,
+          "VariableExpImpl": 9,
+          "OperationCallExpImpl": 18,
+          "LetExpImpl": 1,
+          "IntegerLiteralExpImpl": 3,
+          "EnumLiteralExpImpl": 2,
+          "IfExpImpl": 3,
+          "InvalidLiteralExpImpl": 4
+        },
+        "properties": []
+      },
+      {
+        "operations": {
+          "asOrderedSet": 1,
+          "allInstances": 1,
+          "=": 1
+        },
+        "name": "findLinkForPLMElement",
+        "body": "WeavingLink.allInstances()->select(l | l.modelElement = element)->asOrderedSet()",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 3,
+          "TypeExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["M2TWeaving::WeavingLink::modelElement"]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "min": 1,
+          "and": 1,
+          "asOrderedSet": 1,
+          "allInstances": 1,
+          "+": 1,
+          "=": 3,
+          "-": 3,
+          ">=": 1
+        },
+        "name": "findTextElementForOffset",
+        "body": "let allTextElements:Set(TextElement) =\r\n\tTextElement.allInstances()\r\nin\r\nlet closestDistance:Integer = \r\n\tallTextElements->collect(e | offset - e.offset)->select(n | n >= 0)->min()\r\nin\r\nallTextElements->select(e | \r\n\t\t(\t((offset - e.offset) = closestDistance)\r\n\t\t\t\tor\r\n\t\t\t(\r\n\t\t\t\t (closestDistance = 0)\r\n\t\t\t\t\t and \r\n\t\t\t\t( offset - (e.offset + e.length) ) = closestDistance)\r\n\t\t\t)\r\n\t\t)->asOrderedSet()->sortedBy(t | t.offset)",
+        "type": "OperationImpl",
+        "constructs": {
+          "IteratorExpImpl": 4,
+          "VariableExpImpl": 14,
+          "OperationCallExpImpl": 13,
+          "LetExpImpl": 2,
+          "IntegerLiteralExpImpl": 2,
+          "TypeExpImpl": 1,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "M2TWeaving::TextElement::offset",
+          "M2TWeaving::TextElement::length"
+        ]
+      }
+    ],
+    "properties": ["links"]
+  },
+  {
+    "name": "SearchStrategy",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "TextElement",
+    "expressions": [{
+      "operations": {
+        "trim": 1,
+        "size": 1
+      },
+      "name": "getLengthTrimmed",
+      "body": "self.text.trim().size()",
+      "type": "OperationImpl",
+      "constructs": {
+        "OperationCallExpImpl": 2,
+        "VariableExpImpl": 1,
+        "PropertyCallExpImpl": 1
+      },
+      "properties": ["M2TWeaving::TextElement::text"]
+    }],
+    "properties": [
+      "text",
+      "offset",
+      "length"
+    ]
+  },
+  {
+    "name": "WeavingLink",
+    "expressions": [
+      {
+        "operations": {
+          "oclIsUndefined": 1,
+          "oclIsTypeOf": 1,
+          "oclAsType": 2,
+          "-": 1,
+          "first": 1,
+          "calculateOffset": 1
+        },
+        "name": "calculateOffset",
+        "body": "let firstChild:WeavingModelContent = \r\n\tself.children->first()\r\nin\r\n\tif (firstChild.oclIsUndefined()) then\r\n\t\t-1\r\n\telse\r\n\t\tif (firstChild.oclIsTypeOf(TextElement)) then\r\n\t\t\tfirstChild.oclAsType(TextElement).offset\r\n\t\telse\r\n\t\t\tfirstChild.oclAsType(WeavingLink).calculateOffset()\r\n\t\tendif\r\n\tendif ",
+        "type": "OperationImpl",
+        "constructs": {
+          "VariableExpImpl": 5,
+          "OperationCallExpImpl": 7,
+          "LetExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "TypeExpImpl": 3,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "M2TWeaving::TextElement::offset",
+          "M2TWeaving::WeavingLink::children"
+        ]
+      },
+      {
+        "operations": {
+          "calculateLength": 1,
+          "oclIsUndefined": 1,
+          "last": 1,
+          "oclIsTypeOf": 1,
+          "+": 1,
+          "oclAsType": 3,
+          "-": 2,
+          "calculateOffset": 1
+        },
+        "name": "calculateLength",
+        "body": "let lastChild:WeavingModelContent = \r\n\tself.children->last()\r\nin\r\n\tif (lastChild.oclIsUndefined()) then\r\n\t\t-1\r\n\telse\r\n\t\tif (lastChild.oclIsTypeOf(TextElement)) then\r\n\t\t\t(lastChild.oclAsType(TextElement).offset + lastChild.oclAsType(TextElement).length) - self.calculateOffset()\r\n\t\telse\r\n\t\t\tlastChild.oclAsType(WeavingLink).calculateLength()\r\n\t\tendif\r\n\tendif ",
+        "type": "OperationImpl",
+        "constructs": {
+          "OperationCallExpImpl": 11,
+          "VariableExpImpl": 7,
+          "LetExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "TypeExpImpl": 4,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "M2TWeaving::TextElement::offset",
+          "M2TWeaving::TextElement::length",
+          "M2TWeaving::WeavingLink::children"
+        ]
+      }
+    ],
+    "properties": [
+      "WeavingModel",
+      "children",
+      "modelElement"
+    ]
+  }
+]

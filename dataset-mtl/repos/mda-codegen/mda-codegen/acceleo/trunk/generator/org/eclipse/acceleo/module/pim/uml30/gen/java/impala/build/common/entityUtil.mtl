@@ -1,0 +1,226 @@
+[comment encoding = UTF-8 /]
+[module entityUtil('http://www.eclipse.org/uml2/3.0.0/UML')]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::build::common::buildPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::stringUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainCommon /]
+[query public isSimpleType(aType : Type) : Boolean =
+aType.name.isSimpleType()
+/] 
+
+[query public isSimpleType(typeName : String) : Boolean = 
+	typeName = 'byte' or 
+	typeName = 'short' or typeName = 'Short'  or 
+	typeName = 'int' or typeName = 'Integer'  or 
+	typeName = 'long' or typeName = 'Long' or 
+	typeName = 'float' or typeName = 'Float' or 
+	typeName = 'double' or typeName = 'Double' or 
+	typeName = 'boolean' or typeName = 'Boolean' or 
+	typeName = 'char' or typeName = 'Char' or
+	typeName = 'String' or
+	typeName = 'Date'or 
+	typeName = 'Time'
+/]
+
+[query public getPrimaryProperties(anEntity : Class, list : Sequence(Property)) : Set(Property) = 
+if (not anEntity.isCirclePKReferece(Set{})) then
+	list->union(anEntity.getPKAttribute()->select(aPK : Property |aPK.type.isSimpleType() or aPK.type.oclIsTypeOf(Enumeration))->asSequence())->
+	union(anEntity.getPKAttribute()->select(aPK : Property |not aPK.type.isSimpleType() and (aPK.type.oclIsTypeOf(Class))).type.oclAsType(Class).getPrimaryProperties(Sequence{})->asSequence())
+else
+	Set{}
+endif
+/]
+
+[query public isCirclePKReferece(anEntity : Class, presentList : Set(Class)) : Boolean = 
+if(presentList->exists(aClass:Class|aClass=anEntity)) then
+	true
+else
+	anEntity.getPKAttribute().type->filter(Class)->asSet()->exists(aClass:Class|aClass.isCirclePKReferece(presentList->including(aClass)))
+endif 
+/]
+
+[template public simpleMySQLType(aField : Property) post (trim())]
+[aField.type.convertToJavaType().simpleMySQLType()/]
+[/template]
+
+[template public simpleMySQLType(typeName : String) post (trim())]
+	[if (typeName = 'byte')]
+TINYINT
+	[elseif (typeName = 'short' or typeName = 'Short' )]
+SMALLINT,
+	[elseif (typeName = 'int' or typeName = 'Integer' )]
+INTEGER
+	[elseif (typeName = 'long' or typeName = 'Long' )]
+BIGINT
+	[elseif (typeName = 'float' or typeName = 'Float' )]
+REAL
+	[elseif (typeName = 'double' or typeName = 'Double' )]
+DOUBLE
+	[elseif (typeName = 'boolean' or typeName = 'Boolean' )]
+BIT
+	[elseif (typeName = 'char' or typeName = 'Char' )]
+CHAR
+	[elseif (typeName = 'String')]
+VARCHAR(200)
+	[elseif (typeName = 'Date')]
+DATE
+	[elseif (typeName = 'Time')]
+TIME
+	[/if]
+[/template]
+
+[template public generateSampleValue(aField : Property, index : Integer) post (trim())]
+	[if (aField.type.oclIsTypeOf(Enumeration))]
+		[let anEnum : Enumeration = aField.type.oclAsType(Enumeration)]
+			[let enumLiteralCount : Integer = anEnum.ownedLiteral->size()]
+				[if (enumLiteralCount > 0)]
+					[let literalIndex : Integer = index.mod(enumLiteralCount)+1]
+'[anEnum.ownedLiteral->at(literalIndex).name.toUpper()/]'
+					[/let]
+				[else]
+''
+				[/if]
+			[/let]
+		[/let]
+	[else]
+		[let typeName : String = aField.type.convertToJavaType()]
+			[if (typeName = 'byte')]
+[index/]
+			[elseif (typeName = 'short' or typeName = 'Short' )]
+[index/]
+			[elseif (typeName = 'int' or typeName = 'Integer' )]
+[index/]
+			[elseif (typeName = 'long' or typeName = 'Long' )]
+[index/]
+			[elseif (typeName = 'float' or typeName = 'Float' )]
+[index/].0
+			[elseif (typeName = 'double' or typeName = 'Double' )]
+[index/].0
+			[elseif (typeName = 'boolean' or typeName = 'Boolean' )]
+[index.mod(2)/]
+			[elseif (typeName = 'char' or typeName = 'Char' )]
+'a'
+			[elseif (typeName = 'String')]
+'[aField.name/][index/]'
+			[elseif (typeName = 'Date')]
+'2012-1-0[index/]'
+			[elseif (typeName = 'Time')]
+'2012-1-0[index/] 00:00:00'
+			[/if]
+		[/let]
+	[/if]
+[/template]
+
+[query public getSimpleFields(anEntity : Class) : Set(Property) = 
+anEntity.ownedAttribute->select(aProperty:Property|not aProperty.isPK() and (aProperty.type.isSimpleType() or aProperty.type.oclIsTypeOf(Enumeration)))
+/]
+
+
+[query public getReferenceFields(anEntity : Class) : Set(Property) = 
+anEntity.getOppositeAttributes(false)->filter(Property)->select(aProperty:Property|not aProperty.isPK() and not aProperty.type.oclIsTypeOf(Enumeration) and not aProperty.type.isSimpleType())->asSet()
+/]
+
+[query public getInheritancePrimaryProperties(anEntity : Class, list : Sequence(Property)) : Set(Property) = 
+if (not anEntity.isCirclePKReferece(Set{})) then
+	filterWithStereotype(anEntity.subClass(), getProperty('Entity'))->filter(Class).getPrimaryProperties(Sequence{})->asSet()
+else
+	Set{}
+endif
+/]
+
+
+[query public getInheritanceSimpleFields(anEntity : Class) : Set(Property) = 
+if(filterWithStereotype(anEntity.subClass(), getProperty('Entity'))->filter(Class)->notEmpty()) then
+	filterWithStereotype(anEntity.subClass(), getProperty('Entity'))->filter(Class).getSimpleFields()->asSet()
+else
+	Set{}
+endif
+/]
+
+[query public getInheritanceReferenceFields(anEntity : Class) : Set(Property) = 
+if(filterWithStereotype(anEntity.subClass(), getProperty('Entity'))->filter(Class)->notEmpty()) then
+	filterWithStereotype(anEntity.subClass(), getProperty('Entity'))->filter(Class).getReferenceFields()->asSet()
+else
+	Set{}
+endif
+/]
+
+[query public getReferenceColumnName(aProperty:Property) : String =
+if(aProperty.name->notEmpty() and aProperty.name.trim().size()>0) then 
+	aProperty.name.trim().toLower()
+else 
+	'id'
+endif
+/]
+
+[query public hasNoEntityParent(aClassifier : Classifier) : Boolean = 
+if(aClassifier.general->notEmpty()) then
+	aClassifier.general->forAll(aParent : Classifier|not aParent.isEntity() and aParent.hasNoEntityParent())
+else
+	true
+endif
+/]
+
+[query public getHighestEntity(anEntity : Class) : Class = 
+if(anEntity.superClass->notEmpty() and anEntity.superClass->asSequence()->first().isEntity()) then
+	anEntity.superClass->asSequence()->first().getHighestEntity()
+else
+	anEntity
+endif
+/]
+
+[comment][query public sortByRef(entities : Sequence(Class)) : Sequence(Class) = 
+invoke('org.eclipse.acceleo.module.pim.uml30.gen.java.impala.build.common.EntityRefSort', 'sortByRef(java.util.List)', Sequence{entities})
+/][/comment]
+
+
+[comment][query public getFields(anEntity : Class) : Set(Property) = 
+anEntity.classAttributes()->filter(Property)->select(aProperty:Property|not aProperty.isPK() and (aProperty.type.isSimpleType() or aProperty.type.oclIsTypeOf(Enumeration))) 
+/][/comment]
+		[comment](entity.classAttributes().type->select(aType:Type|aType.oclIsTypeOf(Class) and aType.oclAsType(Class).isEntity()).oclAsType(Class).entityRate())->sum()
+		+ entity.classAttributes().type->select(aType:Type|aType.oclIsTypeOf(Class) and aType.oclAsType(Class).isEntity())->size()[/comment]
+
+[query public entityRate(entity : Class) : Integer =
+	if(entity.isEntity()) then
+		if (entity.hasEntityParent()) then
+			entity.superClass->asSequence()->first().entityRate() + 1 
+		else
+			0
+		endif		
+		+
+		if(entity.classAttributes(false)->select(aProp:Property|aProp.type.oclIsTypeOf(Class) and aProp.type.oclAsType(Class).isEntity())->notEmpty()) then
+			entity.classAttributes(false)->select(aProp:Property|aProp.type.oclIsTypeOf(Class) and aProp.type.oclAsType(Class).isEntity()).propertyRate()->sum()
+		else
+			0
+		endif
+	else
+		0
+	endif
+	
+/]
+
+[query public propertyRate(aProp:Property) : Integer =
+	if(aProp.upper=1 or aProp.upper=0) then
+		if(aProp.oppositeAttribute().upper=1 or aProp.oppositeAttribute().upper=0) then
+			if(aProp.isNavigable()) then
+				aProp.type.oclAsType(Class).entityRate() + 1
+			else
+				0
+			endif
+		else
+			aProp.type.oclAsType(Class).entityRate() + 1
+		endif
+	else
+		if(aProp.oppositeAttribute().upper=1 or aProp.oppositeAttribute().upper=0) then
+			0
+		else
+			0
+		endif
+	endif
+/]

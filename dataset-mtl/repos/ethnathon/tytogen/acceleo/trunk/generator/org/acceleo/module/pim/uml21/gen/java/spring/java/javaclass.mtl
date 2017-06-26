@@ -1,0 +1,129 @@
+[module javaclass('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(class : Class)]
+[if (class.isJavaClassifier()->notEmpty())]
+[class.pathToMainJava()/]/[class.classPackage().toPath()/]/[class.name/].java
+[/if]
+
+[/template][/comment]
+
+[template public generateJavaClass(class : Class)]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(), class.classPackage().toPath(), class.name.concat('.java')), false))]
+package [class.classPackage()/];
+
+// [protected ('imports')] 
+
+[for (classifier:Classifier|class.operationsParametersTypes())]
+import [classifier.getCompleteName()/];	
+[/for]
+[class.genCollectionImports()/]
+
+// [/protected]
+
+[class.generateJavadoc()/]
+[class.genModifiers()/] class [class.name/][class.extensions()/] {
+
+[comment  Generate attributes /]
+[for (prop:Property|class.attribute)]
+	[prop.visibility/] [prop.type.convertToJavaType()/] [prop.name/];
+[/for]
+
+	/**
+	 * Default constructor 
+	 */
+	public [class.name/]() {
+		super();
+	}
+
+[if (class.attribute->notEmpty())]
+	/**
+	 * Constructor with all parameters initialized
+	[for (prop:Property|class.attribute)]
+	 * @param [prop.name/] [prop.ownedComment._body/]
+	[/for]
+	 */	
+	public [class.name/]([class.attribute.asParameter()->sep(', ')/]) {
+
+	[for (prop:Property|class.attribute)]
+		this.[prop.name/] = [prop.name/];
+	[/for]
+	}	
+[/if]
+
+[comment  Generate operations /]
+[for (oper:Operation|class.ownedOperation)]
+	[oper.generateJavadoc()/]
+	[oper.genModifiers()/] [oper.generateReturn()/] [oper.name/]([oper.generateRawParameters()/]) [if (oper.raisedException->notEmpty())]throws [oper.raisedException.name->sep(', ')/][/if][oper.genOperationBody()/]
+[/for]
+
+}
+
+[/file]
+[/template]
+
+
+[template public extensions(class : Class)]
+[class.inheritances()/][class.implements()/]
+[/template]
+
+
+[template public inheritances(class : Class)]
+[if (class.general->notEmpty())] extends [class.general.name/][/if]
+[/template]
+
+
+[template public implements(class : Class)]
+[if (class.interfaceRealization->notEmpty())] implements [class.interfaceRealization.asClass()->sep(', ')/][/if]
+[/template]
+
+
+[template public asClass(interfaceRealization : InterfaceRealization)]
+[interfaceRealization.supplier.name/]
+[/template]
+
+
+[template public asParameter(property : Property)]
+[property.type.convertToJavaType()/] [property.name/]
+[/template]
+
+
+[template public genModifiers(operation : Operation)]
+[operation.visibility/][if (operation.isLeaf)] final[/if][if (operation.isAbstract)] abstract[/if][if (operation.isStatic)] static[/if]
+[/template]
+
+
+[template public genModifiers(class : Class)]
+[class.visibility/][if (class.isLeaf)] final[/if][if (class.isAbstract or class.ownedOperation->select(isAbstract)->notEmpty())] abstract[/if]
+[/template]
+
+
+[template public genOperationBody(operation : Operation)]
+[if (isAbstract)]
+;
+[else]
+	{
+		// [protected ('operation')]		
+		// TODO implement [name/]
+		throw new UnsupportedOperationException("Method not yet implemented");
+		// [/protected] of [name/]
+	}
+
+[/if]
+
+[/template]

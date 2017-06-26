@@ -1,0 +1,155 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_Property('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Behaviour /]
+
+[template public generateSignature(pr : Property)]
+[pr.typeName()/] [pr.name/] { get; set; }
+[/template]
+
+[template public generate(pr : Property)]
+[if pr.isCollection()]
+private [pr.typeName()/] _[pr.name/];
+/// <summary> Property Description </summary>
+public [pr.typeName()/] [pr.name/] {
+  get { return this._[pr.name/];}
+  set { this._[pr.name/] = value; }
+}
+/// <summary> Property Description </summary>
+public void add[pr.name.toUpperFirst()/](['global::'+pr.type.qualifiedName('.')/] value) { this.[pr.name/] = this.[pr.name/].including(value); }
+/// <summary> Property Description </summary>
+public void remove[pr.name.toUpperFirst()/](['global::'+pr.type.qualifiedName('.')/] value) { this.[pr.name/] = this.[pr.name/].excluding(value); }
+[else][if pr.isQualified()]
+private global::System.Collections.Generic.IDictionary<[pr.qualifier.typeName()->first()/],[pr.typeName()/]> _[pr.name/];
+/// <summary> Property Description </summary>
+public global::System.Collections.Generic.IDictionary<[pr.qualifier.typeName()->first()/],[pr.typeName()/]> [pr.name/] {
+  get { return this._[pr.name/];}
+  set { this._[pr.name/] = value; }
+}
+/// <summary> Property Description </summary>
+public [pr.typeName()/] get[pr.name.toUpperFirst()/]([pr.qualifier->first().typeName()/] [pr.qualifier->first().name/]) { return this.[pr.name/].ContainsKey([pr.qualifier->first().name/]) ? this.[pr.name/]['['/][pr.qualifier->first().name/][']'/] : null; }
+/// <summary> Property Description </summary>
+public void set[pr.name.toUpperFirst()/]([pr.qualifier->first().typeName()/] [pr.qualifier->first().name/], [pr.typeName()/] [pr.name/]) { this.[pr.name/]['['/][pr.qualifier->first().name/][']'/] = [pr.name/]; }
+[else]
+private [pr.typeName()/] _[pr.name/];
+/// <summary> Property Description </summary>
+public [pr.typeName()/] [pr.name/] {
+  get { return this._[pr.name/];}
+  set { this._[pr.name/] = value; }
+}
+[/if][/if]
+[/template]
+
+[template public generateComposite(pr : Property)]
+[if pr.isCollection()]
+this.[pr.name/] = os.[pr.typeName2()/](); 
+[else][if pr.isQualified()]
+this.[pr.name/] = new global::System.Collections.Generic.Dictionary<[pr.qualifier.typeName()->first()/],[pr.typeName()/]>();
+[else][if pr.defaultValue.oclIsUndefined()]
+  [if pr.type.oclIsTypeOf(PrimitiveType) or pr.type.oclIsTypeOf(DataType)]
+this.[pr.name/] = new [pr.typeName()/]();
+  [else][if pr.type.oclIsTypeOf(Enumeration)]
+this.[pr.name/] = null;
+  [else]
+this.[pr.name/] = new [pr.typeName()/](objectId + ".[pr.name/]");
+  [/if][/if]
+[else]
+this.[pr.name/] = [pr.generateDefault()/];
+[/if][/if][/if]
+[/template]
+
+[template public generateClone(pr : Property)]
+[if pr.isQualified()]
+new global::System.Collections.Generic.Dictionary<[pr.qualifier.typeName()->first()/],[pr.typeName()/]>(
+	this.[pr.name/].ToDictionary(x=>x.Key[(if pr.qualifier.type.oclIsKindOf(Enumeration)->forAll(x|x) then '' else pr.qualifier.type.clone() endif)/], x=>x.Value[pr.type.clone()/])
+)[else][if pr.isCollection()]
+  [if pr.type.oclIsTypeOf(PrimitiveType)]
+null==this.[pr.name/]?null:os.[pr.typeName2()/]( this.[pr.name/].Select(el => new global::[pr.type.qualifiedName('.')/](el)) )[else]
+null==this.[pr.name/]?null:os.[pr.typeName2()/]( this.[pr.name/].Select(el => el.deepClone()) )[/if][else][if pr.type.oclIsTypeOf(PrimitiveType)]
+null==this.[pr.name/]?null:new [pr.typeName()/](this.[pr.name/])[else][if pr.type.oclIsTypeOf(Enumeration)]
+this.[pr.name/][else]
+null==this.[pr.name/]?null:this.[pr.name/].deepClone()[/if][/if][/if][/if]
+[/template]
+
+[query public clone(arg : Type) : String =
+ if self.oclIsTypeOf(PrimitiveType) then
+	''
+ else
+	'.deepClone()'
+ endif
+/]
+
+
+[template public generateDataTypeComposite(pr : Property)]
+[if pr.isCollection()]
+this.[pr.name/] = os.[pr.typeName2()/](); 
+[else]
+  [if pr.isQualified()]
+this.[pr.name/] = new global::System.Collections.Generic.Dictionary<[pr.qualifier.typeName()->first()/],[pr.typeName()/]>();
+  [else]
+this.[pr.name/] = [pr.generateDefault()/];
+  [/if]
+[/if]
+[/template]
+
+[query public generateDefault(arg : Property) : String =
+if self.defaultValue.oclIsUndefined() then
+  if self.isOptional() then
+    'null'
+  else
+    if arg.type.oclIsTypeOf(DataType) then
+      'new '+self.typeName()+'()'
+    else
+      '**undefined default value not valid as property is not optional**'
+    endif
+  endif
+else
+  if self.defaultValue.oclIsTypeOf(OpaqueExpression)
+  or self.defaultValue.oclIsTypeOf(LiteralNull)
+  then
+  	self.defaultValue.generate()
+  else
+	'new '+self.typeName()+'('+self.defaultValue.generate()+')'
+  endif
+endif
+/]
+
+[template public generateDataTypeComposite_old(pr : Property)]
+[if pr.isCollection()]
+this.[pr.name/] = os.[pr.typeName2()/](); 
+[else]
+  [if pr.isQualified()]
+this.[pr.name/] = new global::System.Collections.Generic.Dictionary<[pr.qualifier.typeName()->first()/],[pr.typeName()/]>();
+  [else]
+    [if (pr.defaultValue.oclIsUndefined())]
+this.[pr.name/] = null;
+    [else]
+      [if (pr.defaultValue.oclIsKindOf(LiteralString) and pr.defaultValue.oclAsType(LiteralString).value.oclIsUndefined())]
+        [if pr.type.oclIsTypeOf(PrimitiveType) or pr.type.oclIsTypeOf(DataType)]
+this.[pr.name/] = new [pr.typeName()/]();
+        [else]
+          [if pr.type.oclIsTypeOf(Enumeration)]
+this.[pr.name/] = null;
+          [else]
+this.[pr.name/] = new [pr.typeName()/]();
+          [/if]
+        [/if]
+      [else]
+this.[pr.name/] = [pr.generateDefault()/];
+      [/if]
+    [/if]
+  [/if]
+[/if]
+[/template]
+

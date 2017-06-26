@@ -1,0 +1,80 @@
+[comment encoding = UTF-8 /]
+[module generate_vehicle_config('http://www.eclipse.org/uml2/3.0.0/UML')]
+[comment][import org::eclipse::proteus::generators::acceleo::mmqueries::MMQueries /][/comment]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+
+[template public generateVehicleConfig(aClass : Class, model : Model)]
+
+[file ('data/configuration/' + aClass.name + '_config.xml', false, 'UTF-8')]
+[let ugvKind : String = getAttributeValue(aClass, 'ugvKind', 'Robot', 'car')]
+[if('ugvKind'.equalsIgnoreCase('differential'))]
+<vehicle typeOfVehicle = "differential">
+[elseif(ugvKind.equalsIgnoreCase('car'))]
+<vehicle typeOfVehicle = "car">
+[else]
+<vehicle>
+[/if]
+	<vehicleTraction>4WD</vehicleTraction>
+	<vehicleMass>[getAttributeValue(aClass, 'mass', 'Robot', '700')/]</vehicleMass>
+
+	<maxEngineForce>2500</maxEngineForce>
+	<maxBreakingForce>2500</maxBreakingForce>
+	<maxAllowedSteering>0.375</maxAllowedSteering>
+	<maxAllowedVelocity>2.0</maxAllowedVelocity>
+
+	<vehicleWidth>[getAttributeValue(aClass, 'width', 'Robot', '1.2')/]</vehicleWidth>
+	<vehicleLength>[getAttributeValue(aClass, 'length', 'Robot', '1.9')/]</vehicleLength>
+
+	<axleLength>1.2</axleLength>
+
+	[let wheel_list : Sequence(NamedElement) = getLevel1SubComponentsForComponentWithStereotype(aClass, 'WheelSystem')]
+	[if (wheel_list->size()>0)]
+	[let wheel : NamedElement = wheel_list->first()]
+		[let wheel_class : Class = findClassInModel(model, wheel.oclAsType(Property).type.name)]
+		[if wheel_class.hasStereotype('WheelSystem')]
+	<wheelFriction>[getAttributeValue(wheel_class, 'wheelFriction', 'WheelSystem', '150000')/]</wheelFriction>
+	<suspensionStiffness>[getAttributeValue(wheel_class, 'suspensionStiffness', 'WheelSystem', '350')/]</suspensionStiffness>
+	<suspensionDamping>[getAttributeValue(wheel_class, 'suspensionDamping', 'WheelSystem', '50')/]</suspensionDamping>
+	<suspensionCompression>[getAttributeValue(wheel_class, 'suspensionCompression', 'WheelSystem', '5')/]</suspensionCompression>
+	<wheelVelocityPIDkp>[getAttributeValue(wheel_class, 'wheelVelocityPIDkp', 'WheelSystem', '500')/]</wheelVelocityPIDkp>	
+	<wheelVelocityPIDki>[getAttributeValue(wheel_class, 'wheelVelocityPIDki', 'WheelSystem', '7.5')/]</wheelVelocityPIDki>	
+	<wheelVelocityPIDkd>[getAttributeValue(wheel_class, 'wheelVelocityPIDkd', 'WheelSystem', '0.2')/]</wheelVelocityPIDkd>	
+	<wheelVelocityPIDmaxSum>[getAttributeValue(wheel_class, 'wheelVelocityPIDmaxSum', 'WheelSystem', '10')/]</wheelVelocityPIDmaxSum>	
+	<wheelVelocityPIDmaxVal>[getAttributeValue(wheel_class, 'wheelVelocityPIDmaxVal', 'WheelSystem','1000')/]</wheelVelocityPIDmaxVal>	
+	<wheelSteeringPIDkp>[getAttributeValue(wheel_class, 'wheelSteeringPIDkp', 'WheelSystem', '50')/]</wheelSteeringPIDkp>	
+	<wheelSteeringPIDki>[getAttributeValue(wheel_class, 'wheelSteeringPIDki', 'WheelSystem', '0.75')/]</wheelSteeringPIDki>	
+	<wheelSteeringPIDkd>[getAttributeValue(wheel_class, 'wheelSteeringPIDkd', 'WheelSystem', '0.45')/]</wheelSteeringPIDkd>	
+	<wheelSteeringPIDmaxSum>[getAttributeValue(wheel_class, 'wheelSteeringPIDmaxSum', 'WheelSystem', '10')/]</wheelSteeringPIDmaxSum>	
+	<wheelSteeringPIDmaxVal>[getAttributeValue(wheel_class, 'wheelSteeringPIDmaxVal', 'WheelSystem', '1000')/]</wheelSteeringPIDmaxVal>	
+		[/if]
+		[/let]
+	[/let]
+	
+	<wheels numberOfWheels = "[wheel_list->size()/]">
+	[for (wheel: NamedElement | wheel_list)]
+		[let wheel_class : Class = findClassInModel(model, wheel.oclAsType(Property).type.name)]
+		[if wheel_class.hasStereotype('WheelSystem')]
+		<wheel typeOfWheel = "[getAttributeValue(wheel_class, 'typeOfWheel', 'WheelSystem', 'axleWheel')/]">
+			<odometry>true</odometry>
+			<wheelSide>Right</wheelSide>
+			<axlePosition>-0.65</axlePosition>
+			
+			<wheelRadius>[getAttributeValue(wheel_class,'wheelRadius', 'WheelSystem', '0.165')/]</wheelRadius>
+			<wheelWidth>[getAttributeValue(wheel_class,'wheelWidth', 'WheelSystem', '0.153')/]</wheelWidth>
+			<suspensionRestLength>[getAttributeValue(wheel_class,'suspensionRestLength', 'WheelSystem', '0.1')/]</suspensionRestLength>
+			<wheelConnectionHeight>[getAttributeValue(wheel_class,'wheelConnectionHeight', 'WheelSystem', '0.15')/]</wheelConnectionHeight>
+			
+			<encoderResolution>1</encoderResolution>
+			<reductionFactor>1</reductionFactor>
+		</wheel>
+		[/if]
+		[/let]
+	[/for]
+	 </wheels>
+	[/if]
+	[/let]
+</vehicle>
+[/let]
+[/file]
+[/template]

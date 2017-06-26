@@ -1,0 +1,82 @@
+[comment encoding = UTF-8 /]
+[module wsConfigFile('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import fr::bermosa::acceleo::exemple::common::common /]
+[import fr::bermosa::acceleo::exemple::files::extend::interfaceFile /]
+
+
+[template public genWSFileBody(aPackage : Package)]
+[genWSFileHeader()/]
+
+	[genWSFileConfig()/]
+
+	[genWSDeclarations()/]
+
+[genWSFooter()/]
+[/template]
+
+[template protected genWSFileHeader(aPackage : Package)]
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:cxf="http://cxf.apache.org/core"
+	xmlns:jaxws="http://cxf.apache.org/jaxws"
+	xsi:schemaLocation="http://cxf.apache.org/jaxws http://cxf.apache.org/schemas/jaxws.xsd
+		http://cxf.apache.org/core http://cxf.apache.org/schemas/core.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+	<import resource="classpath:META-INF/cxf/cxf.xml"/>
+	<import resource="classpath:META-INF/cxf/cxf-extension-soap.xml" />
+	<import resource="classpath:META-INF/cxf/cxf-servlet.xml"/>
+[/template]
+
+[template protected genWSFileConfig(aPackage : Package)]
+<!--
+[protected ('CXF bus configuration')]
+-->
+
+<!--
+	Start of user code CXF bus configuration
+-->	
+<cxf:bus>
+	<cxf:inInterceptors>
+		<ref bean="loggingInInterceptor"/>
+		<!-- <ref bean="basicAuthInterceptor"/> -->
+	</cxf:inInterceptors>
+	<cxf:inFaultInterceptors>
+		<ref bean="loggingInInterceptor"/>
+	</cxf:inFaultInterceptors>
+	<cxf:outInterceptors>
+		<ref bean="loggingOutInterceptor"/>
+	</cxf:outInterceptors>
+	<cxf:outFaultInterceptors>
+		<ref bean="loggingOutInterceptor"/>
+	</cxf:outFaultInterceptors>
+</cxf:bus>
+	
+<!-- Interceptors used to trace requests and responses: HTTP headers + SOAP messages -->
+<bean id="loggingInInterceptor" class="org.apache.cxf.interceptor.LoggingInInterceptor"/>
+<bean id="loggingOutInterceptor" class="org.apache.cxf.interceptor.LoggingOutInterceptor"/>
+
+<!-- Interceptor used to read HTTP Basic authentication from HTTP header -->	
+<bean id="basicAuthInterceptor" class="fr.bermone.config.BasicAuthAuthorizationInterceptor"/>
+<!--
+[/protected]
+-->
+[/template]
+
+[template protected genWSDeclarations(aPackage : Package) post (trim())]
+[for (anInterface : Interface | aPackage.eAllContents(Interface))]
+<jaxws:endpoint id="[anInterface.genServiceEndpointName().toLowerFirst()/]WS"
+	implementor="[anInterface.genPackagePath()/].[anInterface.genServiceEndpointName()/]"
+	address="/[anInterface.genName()/]">
+	<jaxws:features>
+	</jaxws:features>
+</jaxws:endpoint>
+
+[/for]
+[/template]
+
+[template protected genWSFooter(aPackage : Package)]
+</beans>
+[/template]

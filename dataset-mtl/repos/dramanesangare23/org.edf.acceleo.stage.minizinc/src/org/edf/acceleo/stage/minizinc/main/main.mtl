@@ -1,0 +1,45 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module main.
+ * Le module nous permet d'appeler les modules qui generent les fichiers à travers ses templates
+ * Il depend d'un fichier uml (cette dependance est exprimée en paramètre du module) comme tous 
+ * les autres modules du projet.
+ * Il est composé de deux (2) templates principaux dont l'un porte le même nom que lui et provoque et
+ * dont l'exécution provoque la générations des fichiers de contraintes minizinc, et l'autre du nom
+ * de generateParameters et dont l'exécution provoque la génération du fichier de données pour les
+ * fichiers de contraintes
+ */]
+[module main('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::edf::acceleo::stage::minizinc::files::genMZNTournee /]
+[import org::edf::acceleo::stage::minizinc::files::genDZN /]
+
+[**
+ * The documentation of the template main.
+ * @param aPackage : Correspond au package qui contient les classes dans le fichier uml la classe 
+ * qui nous interesse est recuperée dans le template genMZNTournee du module files::genMZNTournee
+ * Nous ne considerons ici que le package qui contient les d'où le test 
+ * if(aPackage.packagedElement->filter(Class)->size() <> 0)
+ */]
+[template public main(aPackage : Package) post (trim())]
+[comment @main/]
+
+[comment]Parcours du package en selectionnant uniquement les classes[/comment]
+[if (aPackage.packagedElement->filter(Class)->size() <> 0) ]
+[comment] 'vevalide', 'veouvt' et 'sommeKmElec' sont les noms donnés aux contraintes de la classe 
+Tournee 
+[/comment]
+	[aPackage.genMZNTournee(OrderedSet{'vevalide', 'veouvt', 'sommeKmElec'}) /]
+
+[comment]S'il s'agit du package parent des packages d'objets. C'est à dire le package dont les 
+packagedElement contiennent des objets. Nous faisons appel au template genDZN qui contient le contenu 
+du fichier à generer, sur ce package[/comment]
+[elseif (aPackage.packagedElement->filter(Package)->exists(
+		suivant : Package | 
+		suivant.packagedElement->filter(InstanceSpecification)->size() <> 0
+	)
+)]
+	[aPackage.genDZN() /]
+[/if]
+
+[/template]

@@ -1,0 +1,59 @@
+[comment encoding = UTF-8 /]
+[module IndexAttributeConfiguration('http://www.eclipse.org/emf/2002/Ecore', 'http://mondo.org/runtimePatterns')]
+[import org::mondo::generate::index::project::main::requests::global_queriesIndexProject /]
+
+
+[template public generateIndexAttributeConfiguration(anProjectName : EString,anPatternInstances : PatternInstances)]
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name')).replaceAll('\\.','/').concat('/definition/IndexAttributeConfiguration.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].definition;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import org.eclipse.core.runtime.Platform;
+import org.mondo.generate.index.project.execute.IExecuteIndexedAttribute;
+import org.mondo.generate.index.project.ext.EvaluateIndexAttributeContributor;
+
+public class IndexAttributeConfiguration implements IExecuteIndexedAttribute {
+
+	public final List<IdxdAttribute> listIndexedAttr = new ArrayList<IdxdAttribute>();
+	
+	public IndexAttributeConfiguration() {
+		// TODO Auto-generated constructor stub
+	}
+	
+	@Override
+	public void ExecuteIdxAttribute() {
+		// TODO Auto-generated method stub
+		FillArrayList();
+		EvaluateIndexAttributeContributor eval = new EvaluateIndexAttributeContributor();
+		Iterator<IdxdAttribute> it = listIndexedAttr.iterator();
+		while (it.hasNext()) {
+			IdxdAttribute idxdAttribute = (IdxdAttribute) it.next();
+			boolean response = eval.ExecuteIndexAttribute(Platform.getExtensionRegistry(), idxdAttribute.getMetamodel(), 
+												idxdAttribute.getAnEClass(), idxdAttribute.getAttribute());
+			
+			System.out.println("Metamodelo: " + idxdAttribute.getMetamodel() + "EClass : " + idxdAttribute +
+								"Attribute: " + idxdAttribute.getAttribute() + "Respuesta: " + response );
+			
+		}
+	}
+	
+	public void FillArrayList()
+	{
+		//Indexed Attributes
+[for(currentClassR : ClassRoleInstance |anPatternInstances.PatternInstanceIndex().classInstances)]
+	[for(currentInstance : FeatureRoleInstance | currentClassR.featureInstances)]
+		[if (currentInstance.oclIsKindOf(TypeFeatureRoleInstance))]
+		listIndexedAttr.add(new IdxdAttribute("[currentClassR.element.ePackage.nsURI/]",
+											  "[currentClassR.element.name/]","[currentInstance.oclAsType(TypeFeatureRoleInstance).element.name/]"));
+		[/if]
+	[/for]
+[/for]		
+	}
+
+}
+
+[/file]
+[/template]

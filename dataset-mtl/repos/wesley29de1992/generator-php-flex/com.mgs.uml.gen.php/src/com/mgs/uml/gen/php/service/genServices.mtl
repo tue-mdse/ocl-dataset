@@ -1,0 +1,166 @@
+[comment encoding = UTF-8 /]
+[module genServices('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::common::umlUtils /]
+[import com::mgs::uml::common::services /]
+[import com::mgs::uml::gen::php::vo::genValueObject /]
+[import com::mgs::uml::gen::php::vo::genValueObjectInclude /]
+[import com::mgs::uml::gen::php::common::phpUtils /]
+[import com::mgs::uml::gen::php::service::serviceUtils /]
+[import com::mgs::uml::common::profileUtils /]
+
+
+[template public genReturnType(op : Operation) post(trim())]
+	[op.type.name/]
+[/template]
+
+[template public genName(p : Parameter) post(trim())]
+	[p.name/]
+[/template]
+
+[template public genType(op : Operation) post(trim())]
+	[op.type.name/]
+[/template]
+
+[template public genType(p : Parameter) post(trim())]
+[if (p.upper > 1)]
+	array
+[elseif (p.type.oclIsKindOf(Class))]
+	[p.type->filter(Class).genNameVO()/]
+[/if]
+[/template]
+
+[template public genArgument(p : Parameter) post(trim())]
+[p.genType()/] $[p.genName()/]
+[/template]
+
+[template public genArgument(c : Class) post(trim())]
+[c.genNameVO()/] $instance
+[/template]
+
+[template public genServiceCommentBody(op : Operation) post(trim())]
+[if (not op.isStatic)]
+ * @param $instance [op.class.genNameVO()/] the instance.
+[/if]
+[for (p : Parameter | op.getInputParameters())]
+ * @param $[p.genName()/] [p.genTypeForComment()/] [p.getDocumentation()/]
+[/for]
+[if (op.getReturnResult() <> null)]
+ * @return [op.genType()/] [op.getReturnResult().getDocumentation()/]
+[/if]
+[/template]
+
+[template public genArguments(op : Operation) post(trim())]
+[if (op.isStatic)]
+	[op.getInputParameters().genArgument()->sep(', ')/]
+[else]
+	[op.class.genArgument()->asSet()->union(op.getInputParameters().genArgument())->sep(', ')/]
+[/if]
+[/template]
+
+[template public genServices(op : Operation)]
+	
+[comment @main /]
+
+[file (op.genServiceFilePath(), false, 'UTF-8')]
+<?php
+
+// Declare all specific imports.
+// [protected ('serviceImportsAdditions')]
+	
+// [/protected]
+
+/**
+ * Service [op.genServiceName()/]
+ * [op.getDocumentation()/]
+ * @generated
+ */
+class [op.genServiceName()/] {
+
+	/** Service main execution.
+	 [op.genServiceCommentBody()/]
+	 */
+	public function run([op.genArguments()/]){
+		[op.genPrerequists()/]
+		// [protected ('runMethodBody')]
+			
+		// [/protected]
+	}
+
+	// [protected ('serviceBodyAdditions')]
+		
+	// [/protected]
+}
+
+?>
+[/file]
+	
+[/template]
+
+[template public genPrerequists(op : Operation) post (trim())]
+// Prerequists.
+[if (not op.isStatic)]
+if($instance == null){
+	throw new IllegalArgumentException("instance must not be null");
+}
+[/if]
+[for (p : Parameter | op.getInputParameters())]
+[p.genPrerequists()/]
+[/for]
+[/template]
+
+[template public genPrerequists(p : Parameter) post (trim())]
+[if (p.isSimplePrimitive())]
+[p.genPrerequistType()/]
+[p.genFormatting()/]
+[p.genPrerequistValidity()/]
+[else]
+[if (p.lower = 1)]
+if($[p.genName()/] == null){
+	throw new IllegalArgumentException("[p.genName()/] must not be null");
+}
+[/if]
+[/if]
+[/template]
+
+[template public genFormatting(p : Parameter) post (trim())]
+[if (p.type.name = 'String')]
+$[p.genName()/] = stripslashes(trim($[p.genName()/]));
+[/if]
+[/template]
+
+[template public php_checkTypeFunc(t : Type) post (trim())]
+[if (t.name = 'String')]
+	is_string
+[elseif (t.name = 'Boolean')]
+	is_bool
+[elseif (t.name = 'RawData')]
+	ByteArray
+[/if]
+	
+[/template]
+
+[template public genPrerequistType(p : Parameter) post (trim())]
+[if (p.type.php_checkTypeFunc().toString().size() = 0)]
+// TODO check type for [p.type.name/]
+[else]
+if(![p.type.php_checkTypeFunc()/]($[p.genName()/])){
+	throw new IllegalArgumentException("[p.genName()/] must be [p.type.name/] but is " . gettype($[p.genName()/]));
+}
+[/if]
+[/template]
+
+[template public genPrerequistValidity(p : Parameter) post (trim())]
+[if (p.profile_isValidity())]
+[if (p.profile_validity_getMin() > 0)]
+if(strlen($[p.genName()/]) < [p.profile_validity_getMin()/]){
+	throw new IllegalArgumentException("[p.genName()/] too short : min [p.profile_validity_getMin()/] but is " . strlen($[p.genName()/]));
+}
+[/if]
+[if (p.profile_validity_getMax() > 0)]
+if(strlen($[p.genName()/]) > [p.profile_validity_getMax()/]){
+	throw new IllegalArgumentException("[p.genName()/] too long : max [p.profile_validity_getMax()/] but is " . strlen($[p.genName()/]));
+}
+[/if]
+[/if]
+[/template]
+

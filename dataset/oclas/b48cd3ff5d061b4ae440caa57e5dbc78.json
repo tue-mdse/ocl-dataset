@@ -1,0 +1,904 @@
+[
+  {
+    "name": "Transition",
+    "expressions": [
+      {
+        "operations": {
+          "<=": 1,
+          "and": 1,
+          ">=": 1
+        },
+        "name": "mustBeValidProbability",
+        "body": "\n            probability >= 0.0 and probability <= 1.0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 3,
+          "RealLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": ["m4jdsl::Transition::probability"]
+      },
+      {
+        "operations": {
+          "not": 1,
+          "or": 1,
+          "oclIsUndefined": 2,
+          "allInstances": 1,
+          "implies": 1,
+          "=": 1,
+          "oclType": 2
+        },
+        "name": "mustBeThinkTimesOfSameType",
+        "body": "\n            Transition.allInstances()->\n                forAll(t1,t2|\n                    not (t1.thinkTime.oclIsUndefined() or t2.thinkTime.oclIsUndefined()) implies \n                    t1.thinkTime.oclType() = t2.thinkTime.oclType()\n                )",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 9,
+          "VariableExpImpl": 4,
+          "TypeExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": ["m4jdsl::Transition::thinkTime"]
+      }
+    ],
+    "properties": [
+      "targetState",
+      "MarkovState",
+      "probability",
+      "thinkTime"
+    ]
+  },
+  {
+    "name": "MarkovState",
+    "expressions": [
+      {
+        "operations": {
+          "sum": 1,
+          "implies": 1,
+          "=": 1,
+          ">": 1
+        },
+        "name": "mustBeValidProbabilitySum",
+        "body": "\n            outgoingTransitions.probability->exists(p | p > 0) implies\n            outgoingTransitions.probability->sum() = 1.0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 3,
+          "VariableExpImpl": 5,
+          "OperationCallExpImpl": 4,
+          "IntegerLiteralExpImpl": 1,
+          "RealLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "m4jdsl::MarkovState::outgoingTransitions",
+          "m4jdsl::Transition::probability"
+        ]
+      },
+      {
+        "operations": {
+          "not": 2,
+          "oclIsUndefined": 2,
+          "or": 1,
+          "oclIsTypeOf": 4,
+          "and": 4,
+          "allInstances": 1,
+          "implies": 2,
+          "oclAsType": 2,
+          "=": 2
+        },
+        "name": "mustBeOutgoingTransitionsCorrespondingToSessionLayer",
+        "body": "\n            not service.oclIsUndefined() implies \n            ApplicationState.allInstances()->exists(as|service = as.service and\n                outgoingTransitions->forAll(t|\n                    not t.targetState.oclIsUndefined() implies as.outgoingTransitions->exists(at|\n                        (at.targetState.oclIsTypeOf(ApplicationExitState) and\n                         t.targetState.oclIsTypeOf(BehaviorModelExitState)) or\n                       ((t.targetState.oclIsTypeOf(MarkovState) and\n                         at.targetState.oclIsTypeOf(ApplicationState) and\n                         at.targetState.oclAsType(ApplicationState).service =\n                         t.targetState.oclAsType(MarkovState).service)))))",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 3,
+          "OperationCallExpImpl": 20,
+          "VariableExpImpl": 12,
+          "TypeExpImpl": 7,
+          "PropertyCallExpImpl": 14
+        },
+        "properties": [
+          "m4jdsl::MarkovState::service",
+          "m4jdsl::ApplicationTransition::targetState",
+          "m4jdsl::Transition::targetState",
+          "m4jdsl::ApplicationState::service",
+          "m4jdsl::MarkovState::outgoingTransitions",
+          "m4jdsl::ApplicationState::outgoingTransitions"
+        ]
+      },
+      {
+        "operations": {
+          "not": 1,
+          "<>": 2,
+          "or": 1,
+          "oclIsUndefined": 2,
+          "and": 1,
+          "implies": 1
+        },
+        "name": "mustBeOutgoingTransitionsWithUniqueTargetStates",
+        "body": "\n            outgoingTransitions->\n                forAll(t1,t2|\n                (t1 <> t2 and not(t1.targetState.oclIsUndefined() or t2.targetState.oclIsUndefined()))\n                     implies t1.targetState <> t2.targetState\n                )",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 7,
+          "OperationCallExpImpl": 8,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "m4jdsl::Transition::targetState",
+          "m4jdsl::MarkovState::outgoingTransitions"
+        ]
+      }
+    ],
+    "properties": [
+      "service",
+      "BehaviorModel",
+      "outgoingTransitions",
+      "BehaviorModel"
+    ]
+  },
+  {
+    "name": "ProtocolState",
+    "expressions": [{
+      "operations": {
+        "<>": 3,
+        "not": 1,
+        "oclIsUndefined": 2,
+        "or": 2,
+        "and": 1,
+        "implies": 1
+      },
+      "name": "mustBeUniqueOutgoingTransitions",
+      "body": "\n            outgoingTransitions->\n                forAll(t1,t2|\n                    (t1 <> t2 and not(t1.targetState.oclIsUndefined() or t2.targetState.oclIsUndefined()))\n                    implies (t1.targetState <> t2.targetState or t1.guard <> t2.guard))",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "IteratorExpImpl": 1,
+        "OperationCallExpImpl": 10,
+        "VariableExpImpl": 9,
+        "PropertyCallExpImpl": 7
+      },
+      "properties": [
+        "m4jdsl::ProtocolTransition::targetState",
+        "m4jdsl::ProtocolState::outgoingTransitions",
+        "m4jdsl::ProtocolTransition::guard"
+      ]
+    }],
+    "properties": [
+      "ProtocolLayerEFSM",
+      "outgoingTransitions",
+      "request",
+      "ProtocolLayerEFSM"
+    ]
+  },
+  {
+    "name": "GuardActionParameterType",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "RelativeFrequency",
+    "expressions": [{
+      "operations": {
+        "<=": 1,
+        "and": 1,
+        ">=": 1
+      },
+      "name": "mustBeValidFrequency",
+      "body": "\n            value >= 0.0 and value <= 1.0",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "OperationCallExpImpl": 3,
+        "VariableExpImpl": 2,
+        "RealLiteralExpImpl": 2,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": ["m4jdsl::RelativeFrequency::value"]
+    }],
+    "properties": [
+      "behaviorModel",
+      "BehaviorMix",
+      "value"
+    ]
+  },
+  {
+    "name": "ProtocolExitState",
+    "expressions": [],
+    "properties": ["ProtocolLayerEFSM"]
+  },
+  {
+    "name": "WorkloadIntensity",
+    "expressions": [],
+    "properties": [
+      "formula",
+      "WorkloadModel"
+    ]
+  },
+  {
+    "name": "SessionLayerEFSM",
+    "expressions": [
+      {
+        "operations": {
+          "not": 1,
+          "oclIsUndefined": 1,
+          "includes": 1,
+          "implies": 1
+        },
+        "name": "mustBeInitialStateWhichIsIncludedInApplicationStatesList",
+        "body": "\n            not initialState.oclIsUndefined() implies applicationStates->includes(initialState)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 4,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "m4jdsl::SessionLayerEFSM::initialState",
+          "m4jdsl::SessionLayerEFSM::applicationStates"
+        ]
+      },
+      {
+        "operations": {
+          "<>": 2,
+          "not": 1,
+          "oclIsUndefined": 2,
+          "or": 1,
+          "and": 1,
+          "implies": 1
+        },
+        "name": "mustBeApplicationStatesWithUniqueServices",
+        "body": "\n            applicationStates->forAll(s1,s2|\n                (s1 <> s2 and not(s1.service.oclIsUndefined() or s2.service.oclIsUndefined()))\n                 implies s1.service <> s2.service\n            )",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 8,
+          "VariableExpImpl": 7,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "m4jdsl::ApplicationState::service",
+          "m4jdsl::SessionLayerEFSM::applicationStates"
+        ]
+      }
+    ],
+    "properties": [
+      "initialState",
+      "exitState",
+      "ApplicationModel",
+      "applicationStates",
+      "guardActionParameterList"
+    ]
+  },
+  {
+    "name": "ProtocolLayerEFSMState",
+    "expressions": [],
+    "properties": [
+      "eId",
+      "ProtocolTransition"
+    ]
+  },
+  {
+    "name": "Guard",
+    "expressions": [],
+    "properties": [
+      "ApplicationTransition",
+      "guardParameter",
+      "negate",
+      "diffMinimum"
+    ]
+  },
+  {
+    "name": "BehaviorModel",
+    "expressions": [
+      {
+        "operations": {
+          "not": 1,
+          "<>": 2,
+          "oclIsUndefined": 2,
+          "or": 1,
+          "and": 1,
+          "allInstances": 1,
+          "implies": 1
+        },
+        "name": "mustBeUniqueNames",
+        "body": "\n            BehaviorModel.allInstances()->forAll(b1,b2|\n                 (b1 <> b2 and not(b1.name.oclIsUndefined() or b2.name.oclIsUndefined()))\n                     implies b1.name <> b2.name\n                )",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 9,
+          "VariableExpImpl": 6,
+          "TypeExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": ["m4jdsl::BehaviorModel::name"]
+      },
+      {
+        "operations": {
+          "not": 1,
+          "oclIsUndefined": 1,
+          "includes": 1,
+          "implies": 1
+        },
+        "name": "mustBeInitialStateWhichIsIncludedInMarkovStatesList",
+        "body": "\n            not initialState.oclIsUndefined() implies markovStates->includes(initialState)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 4,
+          "VariableExpImpl": 3,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "m4jdsl::BehaviorModel::initialState",
+          "m4jdsl::BehaviorModel::markovStates"
+        ]
+      },
+      {
+        "operations": {
+          "<>": 2,
+          "not": 1,
+          "or": 1,
+          "oclIsUndefined": 2,
+          "and": 1,
+          "allInstances": 1,
+          "implies": 1
+        },
+        "name": "mustBeUniqueFilenames",
+        "body": "\n            BehaviorModel.allInstances()->forAll(b1,b2 |\n                (b1 <> b2 and not(b1.filename.oclIsUndefined() or b2.filename.oclIsUndefined()))\n                    implies b1.filename <> b2.filename)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 6,
+          "OperationCallExpImpl": 9,
+          "TypeExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": ["m4jdsl::BehaviorModel::filename"]
+      },
+      {
+        "operations": {
+          "allInstances": 1,
+          "=": 1
+        },
+        "name": "mustBeBehaviorModelWithMarkovStatesForAllServices",
+        "body": "\n            Service.allInstances()->\n                forAll(s|markovStates->exists(m|m.service = s))",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 2,
+          "TypeExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "m4jdsl::MarkovState::service",
+          "m4jdsl::BehaviorModel::markovStates"
+        ]
+      },
+      {
+        "operations": {
+          "not": 1,
+          "or": 1,
+          "oclIsUndefined": 1,
+          "includes": 1,
+          "implies": 1,
+          "=": 1
+        },
+        "name": "mustBeBehaviorModelWithoutForeignTargetStates",
+        "body": "\n            markovStates->forAll(s| \n                s.outgoingTransitions->forAll(t|\n                    not t.targetState.oclIsUndefined() implies\n                    (markovStates->includes(t.targetState)\n                    or t.targetState = exitState)))",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "OperationCallExpImpl": 6,
+          "VariableExpImpl": 7,
+          "PropertyCallExpImpl": 7
+        },
+        "properties": [
+          "m4jdsl::Transition::targetState",
+          "m4jdsl::MarkovState::outgoingTransitions",
+          "m4jdsl::BehaviorModel::markovStates",
+          "m4jdsl::BehaviorModel::exitState"
+        ]
+      },
+      {
+        "operations": {
+          "<>": 2,
+          "not": 1,
+          "oclIsUndefined": 2,
+          "or": 1,
+          "and": 1,
+          "implies": 1
+        },
+        "name": "mustBeMarkovStatesWithUniqueServices",
+        "body": "\n            markovStates->forAll(s1,s2|\n                (s1 <> s2 and not(s1.service.oclIsUndefined() or s2.service.oclIsUndefined()))\n                    implies s1.service <> s2.service\n                )",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 7,
+          "OperationCallExpImpl": 8,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "m4jdsl::MarkovState::service",
+          "m4jdsl::BehaviorModel::markovStates"
+        ]
+      }
+    ],
+    "properties": [
+      "initialState",
+      "filename",
+      "WorkloadModel",
+      "markovStates",
+      "exitState",
+      "name",
+      "RelativeFrequency"
+    ]
+  },
+  {
+    "name": "ProtocolTransition",
+    "expressions": [],
+    "properties": [
+      "targetState",
+      "action",
+      "ProtocolState",
+      "guard"
+    ]
+  },
+  {
+    "name": "ApplicationTransition",
+    "expressions": [],
+    "properties": [
+      "targetState",
+      "action",
+      "applicationState",
+      "guard"
+    ]
+  },
+  {
+    "name": "Service",
+    "expressions": [{
+      "operations": {
+        "<>": 2,
+        "not": 1,
+        "oclIsUndefined": 2,
+        "or": 1,
+        "and": 1,
+        "allInstances": 1,
+        "implies": 1
+      },
+      "name": "mustBeUniqueNames",
+      "body": "\n    \t\tService.allInstances()->\n                forAll(s1,s2|\n                    (s1 <> s2 and not(s1.name.oclIsUndefined() or s2.name.oclIsUndefined()))\n                     implies s1.name <> s2.name\n                )",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "IteratorExpImpl": 1,
+        "OperationCallExpImpl": 9,
+        "VariableExpImpl": 6,
+        "TypeExpImpl": 1,
+        "PropertyCallExpImpl": 4
+      },
+      "properties": ["m4jdsl::Service::name"]
+    }],
+    "properties": [
+      "ApplicationState",
+      "name",
+      "MarkovState"
+    ]
+  },
+  {
+    "name": "ConstantWorkloadIntensity",
+    "expressions": [{
+      "operations": {">=": 1},
+      "name": "mustBeNonnegativeSessionNumber",
+      "body": "\n           numberOfSessions >= 0",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "OperationCallExpImpl": 1,
+        "VariableExpImpl": 1,
+        "IntegerLiteralExpImpl": 1,
+        "PropertyCallExpImpl": 1
+      },
+      "properties": ["m4jdsl::ConstantWorkloadIntensity::numberOfSessions"]
+    }],
+    "properties": ["numberOfSessions"]
+  },
+  {
+    "name": "SessionLayerEFSMState",
+    "expressions": [],
+    "properties": [
+      "ApplicationTransition",
+      "eId"
+    ]
+  },
+  {
+    "name": "NormallyDistributedThinkTime",
+    "expressions": [{
+      "operations": {
+        "<=": 1,
+        "and": 2,
+        ">=": 2
+      },
+      "name": "mustBeValidThinkTimeValues",
+      "body": "\n            mean >= 0.0 and deviation >= 0.0 and deviation <= mean",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "VariableExpImpl": 4,
+        "OperationCallExpImpl": 5,
+        "RealLiteralExpImpl": 2,
+        "PropertyCallExpImpl": 4
+      },
+      "properties": [
+        "m4jdsl::NormallyDistributedThinkTime::deviation",
+        "m4jdsl::NormallyDistributedThinkTime::mean"
+      ]
+    }],
+    "properties": [
+      "deviation",
+      "mean"
+    ]
+  },
+  {
+    "name": "BehaviorMix",
+    "expressions": [
+      {
+        "operations": {
+          "<>": 2,
+          "not": 1,
+          "oclIsUndefined": 2,
+          "or": 1,
+          "and": 1,
+          "implies": 1
+        },
+        "name": "mustBeUniqueBehaviorModels",
+        "body": "\n            relativeFrequencies->forAll(f1,f2|\n             (f1 <> f2 and not(f1.behaviorModel.oclIsUndefined() or f2.behaviorModel.oclIsUndefined()))\n                 implies f1.behaviorModel <> f2.behaviorModel)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 7,
+          "OperationCallExpImpl": 8,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "m4jdsl::RelativeFrequency::behaviorModel",
+          "m4jdsl::BehaviorMix::relativeFrequencies"
+        ]
+      },
+      {
+        "operations": {
+          "sum": 1,
+          "=": 1
+        },
+        "name": "mustBeValidFrequencySum",
+        "body": "\n            relativeFrequencies.value->sum() = 1.0",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 2,
+          "VariableExpImpl": 2,
+          "RealLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "m4jdsl::BehaviorMix::relativeFrequencies",
+          "m4jdsl::RelativeFrequency::value"
+        ]
+      }
+    ],
+    "properties": [
+      "WorkloadModel",
+      "relativeFrequencies"
+    ]
+  },
+  {
+    "name": "ApplicationExitState",
+    "expressions": [],
+    "properties": ["SessionLayerEFSM"]
+  },
+  {
+    "name": "ProtocolLayerEFSM",
+    "expressions": [
+      {
+        "operations": {
+          "not": 1,
+          "or": 1,
+          "oclIsUndefined": 1,
+          "includes": 1,
+          "implies": 1,
+          "=": 1
+        },
+        "name": "mustBeProtocolLayerEFSMWithoutForeignStates",
+        "body": "\n            protocolStates->forAll(s|\n                s.outgoingTransitions->forAll(t|\n                    not t.targetState.oclIsUndefined() implies\n                    (protocolStates->includes(t.targetState) or t.targetState = exitState)))",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "OperationCallExpImpl": 6,
+          "VariableExpImpl": 7,
+          "PropertyCallExpImpl": 7
+        },
+        "properties": [
+          "m4jdsl::ProtocolLayerEFSM::exitState",
+          "m4jdsl::ProtocolTransition::targetState",
+          "m4jdsl::ProtocolLayerEFSM::protocolStates",
+          "m4jdsl::ProtocolState::outgoingTransitions"
+        ]
+      },
+      {
+        "operations": {
+          "<>": 2,
+          "not": 1,
+          "oclIsUndefined": 2,
+          "or": 1,
+          "and": 1,
+          "implies": 1
+        },
+        "name": "mustBeProtocolStatesWithUniqueRequests",
+        "body": "\n            protocolStates->forAll(s1,s2|\n                (s1 <> s2 and not(s1.request.oclIsUndefined() or s2.request.oclIsUndefined()))\n                 implies s1.request <> s2.request\n            )",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 8,
+          "VariableExpImpl": 7,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "m4jdsl::ProtocolLayerEFSM::protocolStates",
+          "m4jdsl::ProtocolState::request"
+        ]
+      },
+      {
+        "operations": {
+          "not": 1,
+          "oclIsUndefined": 1,
+          "includes": 1,
+          "implies": 1
+        },
+        "name": "mustBeInitialStateWhichIsIncludedInProtocolStatesList",
+        "body": "\n            not initialState.oclIsUndefined() implies protocolStates->includes(initialState)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 4,
+          "VariableExpImpl": 3,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "m4jdsl::ProtocolLayerEFSM::initialState",
+          "m4jdsl::ProtocolLayerEFSM::protocolStates"
+        ]
+      }
+    ],
+    "properties": [
+      "exitState",
+      "initialState",
+      "protocolStates",
+      "ApplicationState"
+    ]
+  },
+  {
+    "name": "JavaRequest",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Assertion",
+    "expressions": [],
+    "properties": [
+      "patternToTest",
+      "Request"
+    ]
+  },
+  {
+    "name": "ApplicationState",
+    "expressions": [{
+      "operations": {
+        "<>": 3,
+        "not": 1,
+        "oclIsUndefined": 2,
+        "or": 2,
+        "and": 1,
+        "implies": 1
+      },
+      "name": "mustBeUniqueOutgoingTransitions",
+      "body": "\n            outgoingTransitions->\n                forAll(t1,t2|\n                (t1 <> t2 and not(t1.targetState.oclIsUndefined() or t2.targetState.oclIsUndefined()))\n                     implies (t1.targetState <> t2.targetState or t1.guard <> t2.guard))",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "IteratorExpImpl": 1,
+        "OperationCallExpImpl": 10,
+        "VariableExpImpl": 9,
+        "PropertyCallExpImpl": 7
+      },
+      "properties": [
+        "m4jdsl::ApplicationTransition::targetState",
+        "m4jdsl::ApplicationTransition::guard",
+        "m4jdsl::ApplicationState::outgoingTransitions"
+      ]
+    }],
+    "properties": [
+      "protocolDetails",
+      "SessionLayerEFSM",
+      "service",
+      "SessionLayerEFSM",
+      "outgoingTransitions"
+    ]
+  },
+  {
+    "name": "BeanShellRequest",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "ApplicationModel",
+    "expressions": [],
+    "properties": [
+      "sessionLayerEFSM",
+      "WorkloadModel"
+    ]
+  },
+  {
+    "name": "GuardActionParameterList",
+    "expressions": [],
+    "properties": [
+      "guardActionParameters",
+      "SessionLayerEFSM"
+    ]
+  },
+  {
+    "name": "ThinkTime",
+    "expressions": [],
+    "properties": ["Transition"]
+  },
+  {
+    "name": "BehaviorModelExitState",
+    "expressions": [],
+    "properties": ["BehaviorModel"]
+  },
+  {
+    "name": "HTTPRequest",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "GuardActionParameter",
+    "expressions": [],
+    "properties": [
+      "targetName",
+      "GuardActionParameterList",
+      "guardActionParameterName",
+      "parameterType",
+      "sourceName",
+      "Action",
+      "Guard"
+    ]
+  },
+  {
+    "name": "Request",
+    "expressions": [
+      {
+        "operations": {
+          "<>": 2,
+          "not": 1,
+          "or": 1,
+          "oclIsUndefined": 2,
+          "and": 1,
+          "implies": 1
+        },
+        "name": "mustBeUniquePropertyKeys",
+        "body": "\n         properties->forAll(p1,p2 | \n             (p1 <> p2 and not(p1.key.oclIsUndefined() or p2.key.oclIsUndefined()))\n                implies p1.key <> p2.key\n         )",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 8,
+          "VariableExpImpl": 7,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "m4jdsl::Request::properties",
+          "m4jdsl::Property::key"
+        ]
+      },
+      {
+        "operations": {
+          "<>": 2,
+          "not": 1,
+          "oclIsUndefined": 2,
+          "or": 1,
+          "and": 1,
+          "implies": 1
+        },
+        "name": "mustBeUniqueParameterNames",
+        "body": "\n        parameters->forAll(p1,p2 |\n             (p1 <> p2 and not(p1.name.oclIsUndefined() or p2.name.oclIsUndefined()))\n             implies p1.name <> p2.name\n        )",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 7,
+          "OperationCallExpImpl": 8,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "m4jdsl::Parameter::name",
+          "m4jdsl::Request::parameters"
+        ]
+      },
+      {
+        "operations": {
+          "allInstances": 1,
+          "=": 1,
+          "oclType": 2
+        },
+        "name": "mustBeRequestsOfSameType",
+        "body": "\n        Request.allInstances()->forAll(r1,r2 | r1.oclType() = r2.oclType())",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 4,
+          "VariableExpImpl": 2,
+          "TypeExpImpl": 1
+        },
+        "properties": []
+      }
+    ],
+    "properties": [
+      "assertions",
+      "properties",
+      "ProtocolState",
+      "parameters",
+      "eId"
+    ]
+  },
+  {
+    "name": "Property",
+    "expressions": [],
+    "properties": [
+      "value",
+      "key",
+      "Request"
+    ]
+  },
+  {
+    "name": "ParameterType",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "BehaviorModelState",
+    "expressions": [],
+    "properties": [
+      "eId",
+      "Transition"
+    ]
+  },
+  {
+    "name": "WorkloadModel",
+    "expressions": [],
+    "properties": [
+      "workloadIntensity",
+      "applicationModel",
+      "behaviorModels",
+      "behaviorMix"
+    ]
+  },
+  {
+    "name": "Action",
+    "expressions": [],
+    "properties": [
+      "ApplicationTransition",
+      "actionParameter"
+    ]
+  },
+  {
+    "name": "Parameter",
+    "expressions": [],
+    "properties": [
+      "name",
+      "parameterType",
+      "value",
+      "Request"
+    ]
+  },
+  {
+    "name": "JUnitRequest",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "SOAPRequest",
+    "expressions": [],
+    "properties": []
+  }
+]

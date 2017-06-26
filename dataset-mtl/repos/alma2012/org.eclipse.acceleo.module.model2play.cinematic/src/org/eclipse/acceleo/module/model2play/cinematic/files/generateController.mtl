@@ -1,0 +1,61 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module htmlActionStateFile.
+ */]
+[module generateController('http://www.obeonetwork.org/dsl/cinematic/3.0.0')]
+
+[import org::eclipse::acceleo::module::model2play::cinematic::common::controllerMethodViewState]
+[import org::eclipse::acceleo::module::model2play::soa::requests::requests]
+[import org::eclipse::acceleo::module::model2play::cinematic::common::utils]
+
+[**
+ * The documentation of the template genHtmlActionStateFile.
+ * @param aActionState
+ */]
+[template public generateController(aCinematicRoot : CinematicRoot)]
+
+[file ('app/controllers/MainController', false, 'UTF-8')]
+
+package controllers;
+
+import play.mvc.Controller;
+import play.mvc.Result;
+
+public class MainController extends Controller {
+
+	<!--[protected ('completing the controller-->')] 
+	
+	<!--[/protected]-->
+
+[for (aViewState : ViewState | aCinematicRoot.eAllContents(ViewState))]
+	[aViewState.controllerMethodViewState()/]
+[/for]
+
+[for (anActionState : ActionState | aCinematicRoot.eAllContents(ActionState))]
+	[anActionState.controllerMethodActionState()/]
+[/for]
+
+};
+
+[/file][/template]
+
+[comment : On notera qu'il n'y a qu'un FlowAction par ActionState, et qu'une operation par FlowAction. /]
+[template public controllerMethodActionState(anActionState : ActionState)]
+public static Result [anActionState.name.replace(' ', '_').toLower()/]() {
+
+	[for(anActionState.actions->first().operations->first().input)]
+	[get_parameter_from_post()/]
+	[/for]
+
+	<!--[protected ('completing the fonction-->')] 
+	
+	<!--[/protected]-->
+	[for(anActionState.actions->first().operations->first().output)][type.name/][if (self <> anActionState.actions->first().operations->first().output->last())],[/if][/for] [for(anActionState.actions->first().operations->first().output)][name/] =[if (self <> anActionState.actions->first().operations->first().output->last())],[/if][/for] [if (anActionState.actions->first().operations->notEmpty())][anActionState.actions->first().operations->first().service_method_call()/];[/if]
+	[comment : En partant du principe que les parametres du render == les parametrezs de l'action precedente. /]
+	return ok( views.html.[anActionState.name.replace(' ', '')/].render([for(anActionState.actions->first().operations->first().output)][name/][if (self <> anActionState.actions->first().operations->first().output->last())],[/if][/for]);
+}
+
+[/template]
+
+
+

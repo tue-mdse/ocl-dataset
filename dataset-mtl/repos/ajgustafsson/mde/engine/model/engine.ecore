@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="Engine" nsURI="Group2" nsPrefix="G2">
+  <eAnnotations source="http://www.eclipse.org/OCL/Import">
+    <details key="ecore" value="http://www.eclipse.org/emf/2002/Ecore#/"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="invocationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="settingDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="Workflow">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="numberOfOutgoingFromSplitPlusTheDifferencesBetweenNumberOfMergesAndSplitsEqualsNumberOfIngoingToMerge numberOfOutgoingFromSwitchAndIfElsePlusTheDifferencesBetweenNumberOfWaitForOneAndIfElseMinusSwitchesEqualsNumberOfIngoingToWaitForOne startExistsOnce endExistsOnce onlyOneTransitionAllowedToReferenceSameTask uniqeNamesForTasks"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="numberOfOutgoingFromSplitPlusTheDifferencesBetweenNumberOfMergesAndSplitsEqualsNumberOfIngoingToMerge"
+          value="&#xA;&#x9;&#x9;&#x9;let numberOfSplits : Integer = self.nodes->select(t| t.oclIsKindOf(Split))->size(),&#xA;&#x9;&#x9;&#x9;numberOfMerges : Integer = self.nodes->select(t| t.oclIsKindOf(Merge))->size(),&#xA;&#x9;&#x9;&#x9;numberOfOutgoingSplits : Integer = self.nodes->select(t| t.oclIsKindOf(Split))->collect(s: Split | s.tasks->size())->sum(),&#xA;&#x9;&#x9;&#x9;numberOfIngoingMerge : Integer = self.nodes->select(t| t.oclIsKindOf(Merge))->collect(m: Merge | m.previousTasks->size())->sum() in&#xA;&#x9;&#x9;&#x9;&#x9;numberOfIngoingMerge = numberOfOutgoingSplits + numberOfMerges - numberOfSplits"/>
+      <details key="numberOfOutgoingFromSwitchAndIfElsePlusTheDifferencesBetweenNumberOfWaitForOneAndIfElseMinusSwitchesEqualsNumberOfIngoingToWaitForOne"
+          value="&#xA;&#x9;&#x9;&#x9;let numberOfIfElse : Integer = self.nodes->select(t| t.oclIsKindOf(IfElse))->size(),&#xA;&#x9;&#x9;&#x9;numberOfSwitch : Integer = self.nodes->select(t| t.oclIsKindOf(Switch))->size(),&#xA;&#x9;&#x9;&#x9;numberOfWaitForOne : Integer = self.nodes->select(t| t.oclIsKindOf(WaitForOne))->size(), &#xA;&#x9;&#x9;&#x9;numberOfOutgoingSwitch : Integer = self.nodes->select(t| t.oclIsKindOf(Switch))->collect(s: Switch | s.tasks->size())->sum(),&#xA;&#x9;&#x9;&#x9;numberOfOutgoingIfElse : Integer = self.nodes->select(t| t.oclIsKindOf(IfElse))->collect(s: IfElse | s.tasks->size())->sum(),&#xA;&#x9;&#x9;&#x9;numberOfIngoingWaitForOne : Integer = self.nodes->select(t| t.oclIsKindOf(WaitForOne))->collect(s: WaitForOne | s.previousTasks->size())->sum() in&#xA;&#x9;&#x9;&#x9;&#x9;numberOfIngoingWaitForOne = numberOfOutgoingSwitch + numberOfOutgoingIfElse + numberOfWaitForOne - numberOfIfElse - numberOfSwitch"/>
+      <details key="startExistsOnce" value="&#xA;&#x9;&#x9;&#x9;self.nodes->select(n| n.oclIsKindOf(Task))->select(t: Task | t.start = true)->size() = 1"/>
+      <details key="endExistsOnce" value="&#xA;&#x9;&#x9;&#x9;self.nodes->select(n| n.oclIsKindOf(Task))->select(t: Task | t.end = true)->size() = 1"/>
+      <details key="onlyOneTransitionAllowedToReferenceSameTask" value="&#xA;&#x9;&#x9;&#x9;let allRefs : Bag = self.nodes->select(t| t.oclIsKindOf(Split))->collect(s: Split | s.tasks)->&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;union(self.nodes->select(t| t.oclIsKindOf(Merge))->collect(m: Merge | m.task))->&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;union(self.nodes->select(t| t.oclIsKindOf(Switch))->collect(s: Switch | s.tasks))->&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;union(self.nodes->select(t| t.oclIsKindOf(IfElse))->collect(i: IfElse | i.tasks))->&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;union(self.nodes->select(t| t.oclIsKindOf(WaitForOne))->collect(w: WaitForOne | w.task))->&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;union(self.nodes->select(t| t.oclIsKindOf(Simple))->collect(s: Simple | s.task)),&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#xA;&#x9;&#x9;&#x9;uniqueRef : Set = self.nodes->select(t| t.oclIsKindOf(Split))->collect(s: Split | s.tasks)->asSet()->&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;union(self.nodes->select(t| t.oclIsKindOf(Merge))->collect(m: Merge | m.task)->asSet())->&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;union(self.nodes->select(t| t.oclIsKindOf(Switch))->collect(s: Switch | s.tasks)->asSet())->&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;union(self.nodes->select(t| t.oclIsKindOf(IfElse))->collect(i: IfElse | i.tasks)->asSet())->&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;union(self.nodes->select(t| t.oclIsKindOf(WaitForOne))->collect(w: WaitForOne | w.task)->asSet())->&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;union(self.nodes->select(t| t.oclIsKindOf(Simple))->collect(s: Simple | s.task)->asSet())&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;in&#xA;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9; uniqueRef->size() = allRefs->size()"/>
+      <details key="uniqeNamesForTasks" value="&#xA;&#x9;&#x9;&#x9;self.nodes->select(t | t.oclIsKindOf(Task))->forAll(p1, p2 | p1 &lt;> p2 implies p1.name &lt;> p2.name)"/>
+    </eAnnotations>
+    <eOperations name="start">
+      <eParameters name="user" eType="#//User"/>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="nodes" upperBound="-1"
+        eType="#//Node" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Node" abstract="true" interface="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="nameMustBePresent"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="nameMustBePresent" value="&#xA;&#x9;&#x9;&#x9;self.name.oclIsUndefined() = false "/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Task" eSuperTypes="#//Node">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="noOutReferencesForEnd noMoreThanOneOutReferenceForTasks"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="noOutReferencesForEnd" value="&#xA;&#x9;&#x9;&#x9;if self.end = true then &#xA;&#x9;&#x9;&#x9;&#x9;self.transition->size() = 0&#xA;&#x9;&#x9;&#x9;else &#xA;&#x9;&#x9;&#x9;&#x9;true&#xA;&#x9;&#x9;&#x9;endif"/>
+      <details key="noMoreThanOneOutReferenceForTasks" value="&#xA;&#x9;&#x9;&#x9;self.transition->size() &lt; 2"/>
+    </eAnnotations>
+    <eOperations name="doJob"/>
+    <eOperations name="setReady"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="state" eType="#//TaskState"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="end" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="start" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+        defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="permission" eType="#//Permission"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="transition" upperBound="-1"
+        eType="#//Transition" eOpposite="#//Transition/previousTasks"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="Result" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="data" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="previousTasks" upperBound="-1"
+        eType="#//Task"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Transition" abstract="true" interface="true"
+      eSuperTypes="#//Node">
+    <eOperations name="transit"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="previousTasks" upperBound="-1"
+        eType="#//Task" eOpposite="#//Task/transition"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Split" eSuperTypes="#//Transition">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="splitMustHaveOneIncomingTask noOutReferencesToStart"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="splitMustHaveOneIncomingTask" value="&#xA;&#x9;&#x9;&#x9;self.previousTasks->size() = 1"/>
+      <details key="noOutReferencesToStart" value="&#xA;&#x9;&#x9;&#x9;self.tasks->select(t | t.start = true)->size() = 0"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="tasks" lowerBound="2" upperBound="-1"
+        eType="#//Task"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Merge" eSuperTypes="#//Transition">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="mergeMustHaveMoreThanOneIncomingTask noOutReferencesToStart"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="mergeMustHaveMoreThanOneIncomingTask" value="&#xA;&#x9;&#x9;&#x9;self.previousTasks->size() > 1"/>
+      <details key="noOutReferencesToStart" value="&#xA;&#x9;&#x9;&#x9;self.task->select(t | t.start = true)->size() = 0"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="task" lowerBound="1" eType="#//Task"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Simple" eSuperTypes="#//Transition">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="simpleMustHaveOneIncomingTask noOutReferencesToStart"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="simpleMustHaveOneIncomingTask" value="&#xA;&#x9;&#x9;&#x9;self.previousTasks->size() = 1"/>
+      <details key="noOutReferencesToStart" value="&#xA;&#x9;&#x9;&#x9;self.task->select(t | t.start = true)->size() = 0"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="task" lowerBound="1" eType="#//Task"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="IfElse" eSuperTypes="#//Transition">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="ifElseMustHaveOneIncomingTask noOutReferencesToStart"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="ifElseMustHaveOneIncomingTask" value="&#xA;&#x9;&#x9;&#x9;self.previousTasks->size() = 1"/>
+      <details key="noOutReferencesToStart" value="&#xA;&#x9;&#x9;&#x9;self.tasks->select(t | t.start = true)->size() = 0"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="tasks" lowerBound="2" upperBound="2"
+        eType="#//Task"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="TaskState">
+    <eLiterals name="NOT_PROCESSED"/>
+    <eLiterals name="PROCESSING" value="1"/>
+    <eLiterals name="PROCESSED" value="2"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Switch" eSuperTypes="#//Transition">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="switchMustHaveOneIncomingTask noOutReferencesToStart"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="switchMustHaveOneIncomingTask" value="&#xA;&#x9;&#x9;&#x9;self.previousTasks->size() = 1"/>
+      <details key="noOutReferencesToStart" value="&#xA;&#x9;&#x9;&#x9;self.tasks->select(t | t.start = true)->size() = 0"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="tasks" lowerBound="3" upperBound="-1"
+        eType="#//Task"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="WaitForOne" eSuperTypes="#//Transition">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="waitForOneMustHaveTwoIncomingTasks noOutReferencesToStart"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="waitForOneMustHaveTwoIncomingTasks" value="&#xA;&#x9;&#x9;&#x9;self.previousTasks->size() > 1"/>
+      <details key="noOutReferencesToStart" value="&#xA;&#x9;&#x9;&#x9;self.task->select(t | t.start = true)->size() = 0"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="task" lowerBound="1" eType="#//Task"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="User">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="groups" upperBound="-1"
+        eType="#//UserGroup"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="MainSystem">
+    <eOperations name="start">
+      <eParameters name="userName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+      <eParameters name="workflowName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="workflows" upperBound="-1"
+        eType="#//Workflow" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="users" upperBound="-1"
+        eType="#//User" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="userGroups" upperBound="-1"
+        eType="#//UserGroup" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="permissions" upperBound="-1"
+        eType="#//Permission" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="UserGroup">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="permissions" upperBound="-1"
+        eType="#//Permission"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Permission">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+</ecore:EPackage>

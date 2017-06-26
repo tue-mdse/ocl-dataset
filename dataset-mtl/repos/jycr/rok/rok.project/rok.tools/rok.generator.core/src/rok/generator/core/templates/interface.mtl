@@ -1,0 +1,58 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generate.
+ */]
+[module interface('http://www.eclipse.org/emf/2002/Ecore')]
+[import rok::generator::core::common::common /]
+
+[template public ecoreToJavaType(c : EParameter) post (clearSpace())]
+[if (c.eGenericType.eClassifier.oclIsUndefined())]
+[c.eGenericType.eTypeParameter.name/]
+[else]
+[c.eGenericType.eClassifier.ecoreToJavaType()/]
+[/if]
+[/template]
+
+[template public ecoreToJavaType(c : ENamedElement) post (clearSpace())]
+[if (
+	c.name = 'EBoolean'
+	or c.name = 'EInt'
+	or c.name = 'ELong'
+	or c.name = 'EDouble'
+	or c.name = 'EFloat'
+	or c.name = 'EShort'
+	or c.name = 'EByte'
+)]
+	[c.name.replaceAll('^E', '').toLower()/]
+[else]
+	[c.name.replaceAll('^E([A-Z][a-z])|Object$', '$1')/]
+[/if]
+[/template]
+
+[template public returnType(op : EOperation) post (clearSpace())]
+[if (not(op.eGenericType.eTypeParameter.oclIsUndefined()))]
+	[op.eGenericType.eTypeParameter.ecoreToJavaType()/]
+[elseif (not(op.eGenericType.eClassifier.oclIsUndefined()))]
+	[op.eGenericType.eClassifier.ecoreToJavaType()/]
+[else]
+	void
+[/if]
+[/template]
+
+[template public generateInterface(c : EClass)]
+[file (c.packageFullName('/')+'/'+c.name+'.java', false, 'UTF-8')]
+package [c.packageFullName('.')/];
+
+// [protected ('imports')] 
+// [/protected]
+
+[c.documentation()/]
+public interface [name.toUpperFirst()/][generics(c)/] {
+
+[for (op : EOperation | c.eOperations)]
+	public [op.returnType()/] [op.name/]([for (p : EParameter | eParameters) separator (', ')]final [p.ecoreToJavaType()/] [p.name/][/for]);
+
+[/for]
+}
+[/file]
+[/template]

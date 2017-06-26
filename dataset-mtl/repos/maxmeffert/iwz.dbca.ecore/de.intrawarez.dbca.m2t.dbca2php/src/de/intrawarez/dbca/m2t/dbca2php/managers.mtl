@@ -1,0 +1,147 @@
+[comment encoding = UTF-8 /]
+[module managers('http://www.intrawarez.de/dbca')]
+
+[import de::intrawarez::dbca::m2t::common::database/]
+[import de::intrawarez::dbca::m2t::common::entities/]
+[import de::intrawarez::dbca::m2t::common::attributes/]
+[import de::intrawarez::dbca::m2t::common::relationships/]
+[import de::intrawarez::dbca::m2t::common::accessors/]
+
+[import de::intrawarez::dbca::m2t::dbca2php::names/]
+
+[template private generateAbstractEntityManager(db : Database)]
+[file ('/server/php/src/EntityManager.php', false, 'UTF-8')]
+<?php
+
+abstract class EntityManager {
+
+	final static public function create () {
+
+		return new static(Entitybase::create());
+
+	}
+
+	abstract public function selectAll ($depth=0);
+	abstract public function selectOne (\Entity $entity, $depth=0);
+	abstract public function insertOne (\Entity $entity);
+	abstract public function updateOne (\Entity $entity);
+	abstract public function deleteOne (\Entity $entity);
+	
+	/**
+	 * @var Entitybase
+	 */
+	private $eb;
+
+	final private function __construct (Entitybase $eb) {
+
+		$this->eb = $eb;
+
+	}
+	
+	/**
+	 * @returns Entitybase
+	 */
+	final protected function getEntitybase () {
+
+		return $this->eb;
+
+	}
+
+	final public function insertAll (\Iterator $entities) {
+
+		$results = new \ArrayIterator();
+
+		foreach ($entities as $entity) {
+
+			$result = $this->insertOne($entity);
+
+			$results->append($result);
+
+		}
+
+		return $results;
+	
+	}
+
+	final public function updateAll (\Iterator $entities) {
+
+		foreach ($entities as $entity) {
+
+			$this->updateOne($entity);
+
+		}
+	
+	}
+
+	final public function deleteAll (\Iterator $entities) {
+
+		foreach ($entities as $entity) {
+
+			$this->deleteOne($entity);
+
+		}
+	
+	}
+
+}
+
+?>
+[/file]
+[/template]
+
+
+
+[template public generateEntityManager(e : Entity)]
+[file ('/server/php/src/managers/'+e.name+'Manager.php', false, 'UTF-8')]
+<?php
+
+namespace managers {
+
+	class [e.phpEntityManagerName()/] extends \EntityManager {
+				
+		public function selectAll ($depth=0) {
+			
+			return $this->getEntitybase()->select[e.phpName()/](null,$depth);
+
+		}
+		
+		public function selectOne (\Entity $entity,$depth=0) {
+						
+			return $this->getEntitybase()->select[e.phpName()/]($entity,$depth);
+
+		}
+		
+		public function insertOne (\Entity $entity) {
+		
+			return $this->getEntitybase()->insert[e.phpName()/]($entity);
+
+		}
+		
+		public function updateOne (\Entity $entity) {
+		
+			$this->getEntitybase()->update[e.phpName()/]($entity);
+		
+		}
+		
+		public function deleteOne (\Entity $entity) {
+		
+			$this->getEntitybase()->delete[e.phpName()/]($entity);
+		
+		}
+		
+	}
+
+}
+
+?>
+[/file]
+[/template]
+
+
+
+
+
+[template public generateEntityManagers(db : Database)]
+[db.generateAbstractEntityManager()/]
+[db.selectEntities()->select(not isAbstractEntity()).generateEntityManager()/]
+[/template]

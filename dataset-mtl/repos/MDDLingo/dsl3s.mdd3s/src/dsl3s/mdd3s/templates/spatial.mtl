@@ -1,0 +1,107 @@
+[comment encoding = UTF-8 /]
+[module spatial('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import dsl3s::mdd3s::templates::services/]
+
+[comment
+Date: 09-08-2012    Author: Luís de Sousa  (luis.a.de.sousa@gmail.com)
+Spatial class.
+/]
+
+[template public spatial(c : Class) ? (c.hasStereotype('Spatial'))]
+
+[file (c.name.concat('.java'), false, 'UTF-8')]
+
+import ec.util.MersenneTwisterFast;
+import sim.engine.SimState;
+import sim.engine.Steppable;
+import sim.engine.Stoppable;
+import sim.util.geo.MasonGeometry;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+
+public class [c.name/] extends MasonGeometry implements Steppable, Stoppable {
+
+  [if c.getTaggedValue(c, 'Spatial', 'stepVariation').isNotNull()] 
+	public static  Double stepVar = new Double([c.getTaggedValue(c, 'Spatial', 'stepVariation')/]);
+  [/if]
+  [if c.getTaggedValue(c, 'Spatial', 'maxValue').isNotNull()]
+	public static  Double valueMax = new Double([c.getTaggedValue(c, 'Spatial', 'maxValue')/]);
+  [else]
+    public static  Double valueMax = Double.MAX_VALUE;
+  [/if]
+  [if c.getTaggedValue(c, 'Spatial', 'minValue').isNotNull()]
+	public static  Double valueMin = new Double([c.getTaggedValue(c, 'Spatial', 'minValue')/]);
+  [else]
+    public static  Double valueMin = - Double.MAX_VALUE;
+  [/if]
+
+	protected Coordinate location;
+	public Coordinate getLocation() {return location;}
+
+	protected Variable var = new Variable(new Double([c.getTaggedValue(c, 'Spatial', 'initValue')/]), valueMin, valueMax);
+	public void setValue(Double newValue) {var.setValue(newValue);}
+	public Double getValue() {return var.getValue();}
+	
+	public Double supplyPercent(Double percent, Double impact, Double max) 
+	{
+		return var.supplyPercent(percent, impact, max);
+	}
+	
+	public Double supplyValue(Double val, Double impact, Double max) 
+	{
+		return var.supplyValue(val, impact, max);
+	}
+
+	private Stoppable stopper = null;
+    public void setStopper(Stoppable stopper) {this.stopper = stopper;}
+    public void stop() {stopper.stop();}
+
+	public [c.name/](Geometry geom) 
+	{
+		super();
+		this.geometry = geom;
+		location = geom.getCentroid().getCoordinate();
+	}
+	
+	public [c.name/](Double init, Geometry geom) 
+	{
+		this(geom);
+		var.setValue(init);
+	}
+
+	public [c.name/](MersenneTwisterFast randGen, Geometry geom) 
+	{
+		super();
+		this.geometry = geom;
+		location = geom.getCentroid().getCoordinate();
+		var.setRandom(randGen);
+	}
+	
+   
+	//@Override
+	public void step(SimState state) 
+	{ 
+  [if c.getTaggedValue(c, 'Spatial', 'stepVariation').isNotNull()] 
+		var.setValue(var.getValue() + stepVar); 
+  [/if]
+	}
+
+
+	[comment Makes sense? Must rethink this. /]
+	// This empty perish method facilitates things in the Animat Harvest process
+  [for (assS:Association | c.getAssociations())]
+   [for (e:Element | assS.relatedElement) ]
+	[let sim: Class = e.oclAsType(Class)]
+	 [if (sim.isNotNull())]
+	  [if (sim.hasStereotype('Simulation'))]
+	protected void perish([sim.name/] sim) {}
+	  [/if]
+	 [/if]
+    [/let]
+   [/for]
+  [/for]
+
+}
+
+[/file]
+[/template]

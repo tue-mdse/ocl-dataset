@@ -1,0 +1,58 @@
+[comment encoding = UTF-8 /]
+[module sidemenu(
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::files/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::names/]
+
+
+[template public generateMenu(menu : Menu)]
+[file(menu.menuFilename(), false)]
+{% trans_default_domain "navigation" %}
+<section  class="[menu.styleClass()/]" id="[menu.instanceName()/]">
+ [menu.generateMenuEntries()/]
+</section>
+[/file]
+[/template]
+
+
+[template private generateMenuEntries(menu : Menu)
+	? (menu.oclIsTypeOf(DynamicMenu)) post(trim())]
+[let dynamicMenu : DynamicMenu = menu.oclAsType(DynamicMenu)]
+[if (dynamicMenu.title.oclIsUndefined())]
+<h1 class="[dynamicMenu.captionClass/][if (dynamicMenu.omitCaption)] hidden[/if]">{{ 'label.[dynamicMenu.id()/]' | trans }}</h1>
+[else]
+<h1 class="[dynamicMenu.captionClass/][if (dynamicMenu.omitCaption)] hidden[/if]">{{ [dynamicMenu.instanceName()/].[comment dynamicMenu dynamicTitle modelPropertyName()/] }}</h1>
+[/if]
+<ul class="[dynamicMenu.layoutClass/]">
+ [menu.entries.generateMenuEntry()/]
+</ul>
+[/let]
+[/template]
+
+[template private generateMenuEntries(menu : Menu)
+	? (menu.oclIsTypeOf(ContextMenu)) post(trim())]
+[let contextMenu : ContextMenu = menu.oclAsType(ContextMenu)]
+<h1 class="[contextMenu.captionClass/][if (contextMenu.omitCaption)] hidden[/if]">{{ 'label.[contextMenu.id()/]' | trans }}</h1>
+<ul class="[contextMenu.layoutClass/]">
+[for (entry : MenuEntry | menu.entries)]
+ [entry.generateMenuEntry()/]
+[/for]
+</ul>
+[/let]
+[/template]
+
+
+[template private generateMenuEntry(entry : MenuEntry)
+	? (entry.oclIsTypeOf(ActionMenuEntry)) post(trim())]
+[let entry : ActionMenuEntry = entry.oclAsType(ActionMenuEntry)]
+[if (not entry.requiresRole.oclIsUndefined())]
+{% if is_granted('[entry.requiresRole/]') %}[/if]<li>[if (not entry.action.oclIsUndefined())]
+<a href="{{ path('[entry.action.routeName()/]'[if (not entry.query.oclIsUndefined())]
+, {[for (parameter : QueryParameter | entry.query.parameters) separator(', ')]
+'[parameter.formal.name/]': '[parameter.value/]'[/for]}[/if]) }}">{{ '[entry.partOf.id()/].labels.[entry.id()/]' | trans }}</a>[else]
+{{ '[entry.partOf.id()/].labels.[entry.id()/]' | trans }}[/if]</li>[if (not entry.requiresRole.oclIsUndefined())]
+{% endif %}
+[/if]
+[/let]
+[/template]

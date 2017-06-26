@@ -1,0 +1,69 @@
+[module webserviceinterface('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(class : Class)]
+[if (class.isService() and ownedOperation->select(isRemote())->notEmpty())]
+[class.pathToMainJava()/]/[class.servicePackage().toPath()/]/I[class.name/]WebService.java
+[/if]
+
+[/template][/comment]
+
+
+[template public generateWebServiceInterface(class : Class)? (class.isService() and ownedOperation->select(isRemote())->notEmpty())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(), class.servicePackage().toPath(), 'I'.concat(class.name).concat('WebService.java')), false))]
+package [class.servicePackage()/];
+
+// [protected ('imports')] 
+// for import
+[for (classifier:Classifier|class.operationsParametersTypes())]
+	[if (classifier.isEntity())]
+import [classifier.entityPackage()/].[classifier.name/];
+	[else]
+import [classifier.getCompleteName()/];	
+	[/if]
+[/for]
+
+[class.genCollectionImports()/]
+
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().isService() and class.superClass->select(ownedOperation->select(isRemote())->notEmpty())->notEmpty())]
+import [superClass.servicePackage()/].I[superClass.name/];	
+[/if]
+
+import org.sharengo.exceptions.TechnicalException;
+
+import java.util.Collection;
+
+// [/protected] for import
+
+[class.generateJavadoc()/]
+public interface I[class.name/]WebService[class.extensions()/] {
+[for (oper:Operation|class.ownedOperation->select(isRemote()))]
+	/**[comment 
+	 generateJavadocBody /]
+	 * @see [class.servicePackage()/].I[class.name/]#[oper.name/]
+ 	 */
+	public [oper.generateReturn()/] [oper.name/]([oper.generateRawParameters()/]) throws TechnicalException[oper.genExceptions()/];
+[/for]
+}
+[/file]
+[/template]
+
+
+[template public extensions(class : Class)]
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().isService() and class.superClass.ownedOperation->select(isRemote())->notEmpty())] extends I[class.superClass.name/]WebService[/if]
+[/template]

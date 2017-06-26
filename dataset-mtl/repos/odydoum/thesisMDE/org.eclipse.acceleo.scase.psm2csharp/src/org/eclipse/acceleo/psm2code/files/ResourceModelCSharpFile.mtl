@@ -1,0 +1,120 @@
+[comment encoding = UTF-8 /]
+[module ResourceModelCSharpFile('platform:/plugin/PIM2DotNetPlugin/metamodels/PSMMetamodel.ecore')]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyFileHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyClassHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyPropertiesHelpers/]
+
+[template public generateResourceModelClasses(aCSharpResourceModel : CSharpResourceModel)]
+
+[file (aCSharpResourceModel.genModelFileName(), false, 'UTF-8')]
+[aCSharpResourceModel.genFileDocumentation(aCSharpResourceModel.Rbrief() , aCSharpResourceModel.Rdetails())/]
+namespace [aCSharpResourceModel.ancestors(RESTfulServicePSM).name/].Models
+{
+	using System;
+	using System.Collections.Generic;
+	using System.ComponentModel.DataAnnotations;
+	using System.ComponentModel.DataAnnotations.Schema;
+	using System.Data.Entity.Spatial;
+	using System.Runtime.Serialization;
+	
+	[aCSharpResourceModel.genClassDocumentation(aCSharpResourceModel.RCbrief() , '')/]
+	[for (a: EntityAnnotation | aCSharpResourceModel.CSharpRModelHasEntityAnnotation) separator('\n')]
+	[a.EntityAnnotationText/]
+	[/for]
+	[aCSharpResourceModel.CSharpRModelHasDataAnnotation.dataContractAnnotationText/]	
+	public class [aCSharpResourceModel.name/]	
+	{
+	[for (p: PSMComponentProperty | aCSharpResourceModel.CSharpRModelHasProperty) separator('\n')]
+		private [getType(p , aCSharpResourceModel)/][if (aCSharpResourceModel.checkIfManyFKeys() and (p.bIsForeignKey))]?[/if] [p.correspondingField/] ;
+
+		[if (aCSharpResourceModel.propertyHasAccessors(p))]
+		[p.genPropDocumentation(p.Pbrief(aCSharpResourceModel) , p.Pdetails(aCSharpResourceModel))/]
+		[for (a: EntityAnnotation | p.PropertyHasEntityAnnotation) separator('\n')]
+		[a.EntityAnnotationText/]
+		[/for]
+		[if (not p.PropertyHasDataAnnotation.oclIsUndefined())]
+		[p.PropertyHasDataAnnotation.dataContractAnnotationText/]
+		[/if]		
+		public [genVirtual(p , aCSharpResourceModel)/] [getType(p , aCSharpResourceModel)/][if (aCSharpResourceModel.checkIfManyFKeys() and (p.bIsForeignKey))]?[/if] [p.name/] {
+			[if (aCSharpResourceModel.pHasGet(p))]
+			get
+	            {  [if (not p.bIsUnique) ]
+
+					if ( [p.correspondingField/] == null)
+					{ 
+						[p.correspondingField/] = new List<[p.getAccessType()/]>();
+					}
+					return [p.correspondingField/]; 
+				}
+[else]return [p.correspondingField/]; }
+			[/if][/if]
+			[if (aCSharpResourceModel.pHasSet(p))]
+	        set
+	            { [p.correspondingField/] =[if (not p.bIsUnique) ] new List<[p.getAccessType()/]>(value)[else] value[/if]; }
+        }
+	[/if][/if]
+	[/for]
+
+	}
+
+	[for (p: PSMComponentProperty | aCSharpResourceModel.CSharpRModelHasProperty -> select (p | (not p.bIsUnique) and (not (p.name.startsWith('setOf') or p.name = 'linklist')))) separator('\n')]
+	[p.genClassDocumentation(p.PCbrief() , '')/]
+	['[DataContract]'/]
+    public class [aCSharpResourceModel.name/][p.name.toUpperFirst()/]
+    {
+        [ '[' /]Key, Column(Order = 1), DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+		['[DataMember]'/]
+        public int [p.name/]Id { get; set; }
+	
+		['[DataMember]'/]
+        public [p.type/] [p.name/] { get; set; }
+		
+		['[DataMember]'/]
+        [ '[' /]Key, Column(Order = 2)]
+        public int [aCSharpResourceModel.name.toLowerFirst()/]Id { get; set; }
+
+        [ '[' /]ForeignKey("[aCSharpResourceModel.name.toLowerFirst()/]Id")]
+        public virtual [aCSharpResourceModel.name/] [aCSharpResourceModel.name.toLowerFirst()/] { get; set; }
+    }
+	[/for]
+
+}
+[/file]
+[/template]
+
+[template public genModelFileName(aCSharpResourceModel : CSharpResourceModel)]
+	[aCSharpResourceModel.ancestors(RESTfulServicePSM).name/]/[aCSharpResourceModel.ancestors(RESTfulServicePSM).name/]/Models/[aCSharpResourceModel.name/].cs
+[/template]
+
+[template private getType(aProperty : PSMComponentProperty , aCSharpResourceModel : CSharpResourceModel)]
+[if (not aProperty.bIsUnique)]ICollection<[/if][if ((not aProperty.bIsUnique) and (not (aProperty.name.startsWith('setOf') or aProperty.name = 'linklist'))) ][aCSharpResourceModel.name/][aProperty.name.toUpperFirst()/][else][aProperty.type/][/if][if (not aProperty.bIsUnique)]>[/if]
+[/template]
+
+[query private getAccessType(p : PSMComponentProperty) : String = 
+ 	if (not (p.bIsUnique or p.type = 'HypermediaLink' or p.bIsNavigationProperty) ) 
+	then p.eContainer(CSharpResourceModel).name.concat(p.name.toUpperFirst()) 
+	else p.type 
+	endif
+/]
+
+[comment Makes navigation properties virtual in order to have the option of proxies (disabled by default)/]
+[template private genVirtual(aProperty : PSMComponentProperty , aCSharpResourceModel : CSharpResourceModel)]
+[if (aCSharpResourceModel.siblings(CSharpResourceModel) -> one(m | m.name = aProperty.type) )]virtual[/if]
+[/template]
+
+[comment I have to do this because EF in VS may throw an exception/]
+[query private checkIfManyFKeys(aCSharpResourceModel : CSharpResourceModel) : Boolean = 
+ 	aCSharpResourceModel.CSharpRModelHasProperty -> select(p | p.bIsForeignKey) -> size() > 1
+/]
+
+[query private propertyHasAccessors(aCSharpResourceModel : CSharpResourceModel , p : PSMComponentProperty) : Boolean = 
+ 	aCSharpResourceModel.pHasGet(p) or aCSharpResourceModel.pHasSet(p)
+/]
+
+[query private pHasGet(aCSharpResourceModel : CSharpResourceModel , p : PSMComponentProperty) : Boolean = 
+ 	aCSharpResourceModel.CSharpRModelHasGetter -> select(g | g.getsProperty = p) -> notEmpty() 
+/]
+
+[query private pHasSet(aCSharpResourceModel : CSharpResourceModel , p : PSMComponentProperty) : Boolean = 
+ 	aCSharpResourceModel.CSharpRModelHasSetter -> select(s | s.setsProperty = p) -> notEmpty()
+/]

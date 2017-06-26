@@ -1,0 +1,42 @@
+[comment encoding = UTF-8 /]
+
+[module generateBinderFactory('http://www.eclipse.org/emf/2002/Ecore', 'http://org.eclipse.gmt.emfacade/model/emfacade.ecore', 'http://www.eclipse.org/xtext/common/JavaVMTypes')/]
+
+[import org::eclipse::gmt::emfacade::tests::util /]
+
+[template public generateBinderFactory(facadeModel : FacadeModel)]
+
+	[comment @main /]
+
+	[let modelPackageName : String = facadeModel.ePackages->at(1).name]
+	[let binderFactoryName : String = modelPackageName.toUpperFirst() + 'BinderFactory']
+		[file (binderFactoryName + '.java', false, 'UTF-8')]
+package org.eclipse.gmt.emfacade.tests.binders_gen;
+
+import org.eclipse.gmt.emfacade.builder.IBinder;
+import org.eclipse.gmt.emfacade.builder.BinderFactory;
+
+			[for (eClassMapping : EClassMapping | facadeModel.classMappings)]
+				[let eClass : EClass = eClassMapping.eClass]
+import [facadeModel.basePackage + '.' + eClass.ePackage.name + '.' + eClass.name/];
+import [fullName(eClassMapping.jClass)/];
+				[/let]
+			[/for]
+
+public class [binderFactoryName/] extends BinderFactory {
+
+	public IBinder<?, ?> createBinder(org.eclipse.emf.ecore.EObject model) {
+		return new [facadeModel.basePackage/].[modelPackageName/].util.[modelPackageName.toUpperFirst()/]Switch<IBinder<?, ?>>() {
+			[for (eClassMapping : EClassMapping | facadeModel.classMappings)]
+			@Override
+			public IBinder<?, ?> case[eClassMapping.eClass.name/]([eClassMapping.eClass.name/] object) {
+				return new [binderClassName(eClassMapping.eClass)/]<[eClassMapping.eClass.name/], [eClassMapping.jClass.simpleName/]>();
+			}
+			[/for]
+		}.doSwitch(model);
+	}
+}
+		[/file]
+	[/let]
+	[/let]
+[/template]

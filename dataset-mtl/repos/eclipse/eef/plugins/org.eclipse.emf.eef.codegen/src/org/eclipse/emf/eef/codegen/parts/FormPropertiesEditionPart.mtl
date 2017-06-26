@@ -1,0 +1,371 @@
+[comment encoding = UTF-8
+ *******************************************************************************
+ * Copyright (c) 2008-2009 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module FormPropertiesEditionPart('http://www.eclipse.org/emf/eef/components/1.0.0','http://www.eclipse.org/emf/eef/mapping/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/eef/views/1.0.0', 'http://www.eclipse.org/emf/eef/generation/1.0.0')/]
+
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::services::viewCommon /]
+[import org::eclipse::emf::eef::codegen::widgets::api::widgetGettersSetters /]
+[import org::eclipse::emf::eef::codegen::widgets::api::widgetFormImpl /]
+[import org::eclipse::emf::eef::codegen::services::imports/]
+
+[template public FormPropertiesEdionPart(peContext : PropertiesEditionContext, basePackage : String)]
+[for (inputPEC : PropertiesEditionComponent | peContext.eAllContents(PropertiesEditionComponent))]
+[for (view : View | inputPEC.involvedViews()) ? (view.oclIsTypeOf(View))][let pec : PropertiesEditionComponent = if (inputPEC.views->includes(view))
+	then inputPEC
+	else inputPEC.referencedBinding.binding->select(views->includes(view))->first().oclAsType(PropertiesEditionComponent)
+	endif]
+[if (view.mustBeGenerated(inputPEC))]
+[peContext.ViewPropertiesEditionPartForm(pec, view, basePackage, inputPEC)/]
+[/if]
+[/let][/for]
+[for (view : View | inputPEC.involvedViews()) ? (inputPEC.explicit and view.oclIsTypeOf(CustomView))][let pec : PropertiesEditionComponent = if (inputPEC.views->includes(view))
+	then inputPEC
+	else inputPEC.referencedBinding.binding->select(views->includes(view))->first().oclAsType(PropertiesEditionComponent)
+	endif]
+[peContext.CustomViewPropertiesEditionPartForm(pec, view, basePackage, inputPEC)/]
+[/let][/for]
+[/for]
+[/template]
+
+[template private ViewPropertiesEditionPartForm(peContext : PropertiesEditionContext, pec : PropertiesEditionComponent, view : View, basePackage : String, inputPEC : PropertiesEditionComponent) ]
+[peContext.initializeImportManager(view.partsFormPackage(), view.pepFormClass())/]
+
+[comment]Widget Imports[/comment]
+[for (widget : Widget | view.eAllContents(ElementEditor).representation->select(not oclIsUndefined())->asSet())]
+[widget.manageImports(pec, view, basePackage)/]
+[/for]
+[for (widget : Widget | view.eAllContents(views::Container).representation->asSet()) ? (not widget.oclIsUndefined())]
+[widget.manageImports(pec, view, basePackage)/]
+[/for]
+[for (widget : Widget | view.eAllContents(views::Container).representation->asSet()) ? (not widget.oclIsUndefined())]
+[widget.manageImports(pec, view, basePackage)/]
+[/for]
+[comment][for (widget : Widget | view.eAllContents(ViewReference).view.eAllContents(ElementEditor).representation->asSet())]
+[widget.manageImports(pec, view, basePackage)/]
+[/for][/comment]
+
+[file (view.fullFilePath(), false)]
+[peContext.associatedGenModel().licenceText().trim()/]
+package [view.partsFormPackage()/];[addImports(Sequence{
+	'org.eclipse.swt.layout.GridLayout',
+	'org.eclipse.swt.widgets.Composite',
+	'org.eclipse.ui.forms.widgets.Form',
+	'org.eclipse.ui.forms.widgets.FormToolkit',
+	'org.eclipse.ui.forms.widgets.ScrolledForm',
+	'org.eclipse.emf.eef.runtime.part.impl.SectionPropertiesEditingPart',
+	'org.eclipse.emf.eef.runtime.api.notify.IPropertiesEditionEvent',
+	'org.eclipse.emf.eef.runtime.api.component.IPropertiesEditionComponent',
+	'org.eclipse.emf.eef.runtime.api.parts.IFormPropertiesEditionPart',
+	'org.eclipse.emf.eef.runtime.ui.parts.PartComposer'})/]
+
+[let content : String = peContext.fileContent(pec, view, basePackage, inputPEC)]
+[if (peContext.associatedGenModel().useJMergeForUserCode)]
+[peContext.genSortedImports()/]
+[peContext.additionalImports(pec, view, basePackage)/]
+[else]
+// [protected ('for imports')]
+[peContext.genSortedImports()/]
+[peContext.additionalImports(pec, view, basePackage)/]
+// [/protected]
+[/if]
+
+[content/]
+[/let]
+[/file]
+[/template]
+
+[template private fileContent(peContext : PropertiesEditionContext, pec : PropertiesEditionComponent, view : View, basePackage : String, inputPEC : PropertiesEditionComponent) ]
+/**
+ * [peContext.associatedGenModel().authorText().trim()/]
+ * [peContext.associatedGenModel().generationMark()/]
+ */
+public class [view.pepFormClass()/] extends [include(view.formQualifiedSuperclass())/] implements IFormPropertiesEditionPart, [include(view.pepQualifiedInterface())/] {
+
+[for (editor : ElementEditor | view.eAllContents(ElementEditor))]
+[editor.widgetDeclaration()/]
+[/for]
+[comment managing ViewReferences/]
+[view.widgetDeclarationForViewReference()/]
+[comment managing SubViews/]
+[view.widgetDeclarationForSubViews()/]
+
+	/**
+	 * For {@link ISection} use only.
+	 */
+	public [view.pepFormClass()/]() { super(); }
+
+	/**
+	 * Default constructor
+	 * @param editionComponent the {@link IPropertiesEditionComponent} that manage this part
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public [view.pepFormClass()/](IPropertiesEditionComponent editionComponent) {
+		super(editionComponent);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.api.parts.IFormPropertiesEditionPart#
+	 *  createFigure(org.eclipse.swt.widgets.Composite, org.eclipse.ui.forms.widgets.FormToolkit)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public Composite createFigure(final Composite parent, final FormToolkit widgetFactory) {
+		ScrolledForm scrolledForm = widgetFactory.createScrolledForm(parent);
+		Form form = scrolledForm.getForm();
+		view = form.getBody();
+		GridLayout layout = new GridLayout();
+		layout.numColumns = 3;
+		view.setLayout(layout);
+		createControls(widgetFactory, view);
+		return scrolledForm;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.api.parts.IFormPropertiesEditionPart#
+	 *  createControls(org.eclipse.ui.forms.widgets.FormToolkit, org.eclipse.swt.widgets.Composite)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public void createControls(final FormToolkit widgetFactory, Composite view) {
+		[view.compositionSequence()/]
+		composer = new PartComposer([view.compositionStepName()/]) {
+
+			@Override
+			public Composite addToPart(Composite parent, Object key) {
+				[for (aView : ViewElement | view.eAllContents(ViewElement)->select(owningView() = view))]
+					[if (oclIsKindOf(CustomElementEditor))]
+				// [protected ('for '.concat(aView.name).concat(' addToPart creation'))]
+				
+				// [/protected]
+					[else]
+				if (key == [aView.editorID()/][if (aView.oclIsKindOf(Container))].class[/if]) {
+					[aView.implementation()/]
+				}
+					[/if]
+				[/for]
+				return parent;
+			}
+		};
+		composer.compose(view);
+[comment][for (aView : ViewElement | view.elements)]
+[aView.implementation()/]
+
+[/for]
+[if (not peContext.associatedGenModel().useJMergeForUserCode)]
+		// [protected ('for additional ui definition')]
+		
+		// [/protected]
+[/if]
+[/comment]
+	}
+[for (aView : ViewElement | view.eAllContents(ViewElement)->select(not oclIsTypeOf(CustomElementEditor) and owningView() = view))]
+[aView.additionalImplementation(pec, inputPEC)/]
+
+[/for]
+[for (subView : View | view.elements->filter(View))]
+[subView.additionalImplementation(pec, inputPEC)/]
+
+[/for]
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.api.notify.IPropertiesEditionListener#firePropertiesChanged(org.eclipse.emf.eef.runtime.api.notify.IPropertiesEditionEvent)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public void firePropertiesChanged(IPropertiesEditionEvent event) {
+[if (not peContext.associatedGenModel().useJMergeForUserCode)]
+		// [protected ('for tab synchronization')]
+		
+		// [/protected]
+[/if]
+	}
+
+[for (elementEditor : ElementEditor | view.eAllContents(ElementEditor)->select(not oclIsTypeOf(CustomElementEditor) and owningView() = view))]
+[elementEditor.getterImplementation(fullPartInterfacePath(pec.model.eefPackage(basePackage), view.pepInterface()))/]
+
+[elementEditor.setterImplementation(fullPartInterfacePath(pec.model.eefPackage(basePackage), view.pepInterface()))/]
+
+[/for]
+
+[comment managing viewReference/]
+[view.elementEditorGetterSettersForViewReference(pec, basePackage)/]
+
+[comment managing subView/]
+[view.elementEditorGetterSettersForSubViews(pec, basePackage)/]
+
+[if (not peContext.associatedGenModel().useJMergeForUserCode)]
+[for (viewElement : ViewElement | view.eAllContents(CustomElementEditor)->select(owningView() = view))]
+	// [protected ('for '.concat(viewElement.name).concat(' specific getters and setters implementation'))]
+	
+	// [/protected]
+
+[/for]
+[/if]
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @see org.eclipse.emf.eef.runtime.api.parts.IPropertiesEditionPart#getTitle()
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public String getTitle() {
+		return [include(view.owningViewsRepository().qualifiedMessagesProvider())/].[view.name.toJavaClassifier()/]_Part_Title;
+	}
+
+[view.additionalMethods()/]
+
+}
+[/template]
+
+[template private CustomViewPropertiesEditionPartForm(peContext : PropertiesEditionContext, pec : PropertiesEditionComponent, view : View, basePackage : String, inputPEC : PropertiesEditionComponent) ]
+[peContext.initializeImportManager(view.partsFormPackage(), view.pepFormClass())/]
+[file (view.fullFilePath(), false)]
+[peContext.associatedGenModel().licenceText().trim()/]
+package [view.partsFormPackage()/];[addImports(Sequence{
+	'org.eclipse.emf.eef.runtime.api.component.IPropertiesEditionComponent',
+	'org.eclipse.emf.eef.runtime.api.parts.IFormPropertiesEditionPart',
+	'org.eclipse.emf.eef.runtime.impl.parts.CompositePropertiesEditionPart',
+	'org.eclipse.emf.eef.runtime.api.notify.IPropertiesEditionEvent',
+	'org.eclipse.swt.SWT',
+	'org.eclipse.swt.layout.GridLayout',
+	'org.eclipse.swt.widgets.Composite',
+	'org.eclipse.ui.forms.widgets.Form',
+	'org.eclipse.ui.forms.widgets.ScrolledForm',
+	'org.eclipse.ui.forms.widgets.FormToolkit'})/]
+
+[let content : String = peContext.fileContentCompositePart(pec, view)]
+[if (peContext.associatedGenModel().useJMergeForUserCode)]
+[peContext.genSortedImports()/]
+[peContext.additionalImports(pec, view, basePackage)/]
+[else]
+// [protected ('for imports')]
+[peContext.genSortedImports()/]
+[peContext.additionalImports(pec, view, basePackage)/]
+
+// [/protected]
+[/if]
+[content/]
+[/let]
+[/file]
+[/template]
+
+[template private fileContentCompositePart(peContext : PropertiesEditionContext, pec : PropertiesEditionComponent, view : View) ]
+/**
+ * [peContext.associatedGenModel().authorText().trim()/]
+ * [peContext.associatedGenModel().generationMark()/]
+ */
+public class [view.pepFormClass()/] extends CompositePropertiesEditionPart implements IFormPropertiesEditionPart, [include(view.pepQualifiedInterface())/] {
+
+	[if (not peContext.associatedGenModel().useJMergeForUserCode)]
+	// [protected ('widgets declaration')]
+	
+	// [/protected]
+	[/if]
+	/**
+	 * Default constructor
+	 * @param editionComponent the {@link IPropertiesEditionComponent} that manage this part
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public [view.pepFormClass()/](IPropertiesEditionComponent editionComponent) {
+		super(editionComponent);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.api.parts.IFormPropertiesEditionPart#
+	 *  createFigure(org.eclipse.swt.widgets.Composite, org.eclipse.ui.forms.widgets.FormToolkit)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public Composite createFigure(final Composite parent, final FormToolkit widgetFactory) {
+		ScrolledForm scrolledForm = widgetFactory.createScrolledForm(parent);
+		Form form = scrolledForm.getForm();
+		view = form.getBody();
+		GridLayout layout = new GridLayout();
+		layout.numColumns = 3;
+		view.setLayout(layout);
+		createControls(widgetFactory, view);
+		return scrolledForm;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.api.parts.IFormPropertiesEditionPart#
+	 *  createControls(org.eclipse.ui.forms.widgets.FormToolkit, org.eclipse.swt.widgets.Composite)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public void createControls(final FormToolkit widgetFactory, Composite p_view) {
+		view = widgetFactory.createComposite(p_view, SWT.NONE);
+		GridLayout layout = new GridLayout();
+		layout.numColumns = 1;
+		view.setLayout(layout);
+		[if (not peContext.associatedGenModel().useJMergeForUserCode)]
+		// [protected ('view visual definition')]
+		
+		// [/protected]
+		[/if]
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.api.notify.IPropertiesEditionListener#firePropertiesChanged(org.eclipse.emf.eef.runtime.api.notify.IPropertiesEditionEvent)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public void firePropertiesChanged(IPropertiesEditionEvent event) {
+		[if (not peContext.associatedGenModel().useJMergeForUserCode)]
+		// [protected ('for tab synchronization')]
+		
+		// [/protected]
+		[/if]
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * @see org.eclipse.emf.eef.runtime.api.parts.IPropertiesEditionPart#getTitle()
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public String getTitle() {
+		[if (not peContext.associatedGenModel().useJMergeForUserCode)]
+		// [protected ('for title')]
+		return "CustomTitle";
+		// [/protected]
+		[else]
+		return "CustomTitle";
+		[/if]
+	}
+
+[view.additionalMethods()/]
+
+}
+[/template]
+
+[template public additionalMethods(view : View)]
+	[if (not view.owningViewsRepository().associatedGenModel().useJMergeForUserCode)]
+	// [protected ('additional methods')]
+	
+	// [/protected]
+	[/if]
+[/template]
+
+[template public fullFilePath(view : View)]
+[view.pepFormQualifiedClass().toPath()/].java
+[/template]
+
+[comment overrides this template if additional imports are needed/]
+[template public additionalImports (peContext : PropertiesEditionContext, pec : PropertiesEditionComponent, view : View, basePackage : String)/]

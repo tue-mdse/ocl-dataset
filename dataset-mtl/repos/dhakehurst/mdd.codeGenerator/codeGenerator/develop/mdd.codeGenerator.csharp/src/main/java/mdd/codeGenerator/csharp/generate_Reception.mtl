@@ -1,0 +1,90 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_Reception('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Behaviour /]
+
+[template public generateSignatureAndSignal(r : Reception, srcDir:String)]
+[r.generateSignature()/] [if self.signal.oclIsUndefined()][r.generateSignal(srcDir)/][/if]
+[/template]
+
+[template public generateSignature(r : Reception)]
+void rx_[r.name/]([r.gen_Parameters()/])
+[/template]
+
+[template public generate(r : Reception)]
+/// <summary> Reception Description </summary>
+public void rx_[r.name/]([r.gen_Parameters()/]) {
+    this._fw_eventQueue.Add( new [r.signalName()/]( [r.generateArguments()/] ) );
+}
+[/template]
+
+[query public signalName(r : Reception) : String =
+  if self.signal.oclIsUndefined() then
+	self.namespace.namespace.qualifiedName('.')+'.'+self.name
+  else
+    self.signal.qualifiedName('.')
+  endif
+/]
+
+[template public gen_Parameters(r : Reception)]
+[for (p : Parameter | r.ownedParameter) separator (',')]
+[p.typeName()/] [p.name/][/for]
+[/template]
+
+[template public generateArguments(r : Reception)]
+[for (p : Parameter | r.ownedParameter) separator (',')]
+[p.name/][/for]
+[/template]
+
+[template public generateSignal(arg : Reception, srcDir:String)]
+[file (srcDir+getProperty('artifact.codeFolder')+'/'+self.namespace.namespace.qualifiedName('/')+'/'+self.name+'_Signal.cs', false, 'UTF-8')]
+namespace [self.namespace.namespace.qualifiedName('.')/] {
+
+	/// <summary> Signal Description </summary>
+	public class [self.name/]
+	{
+	  /// <summary> Constructor Description </summary>
+	  public [self.name/]( [self.gen_Parameters()/] ) {
+	    [for (p : Parameter | self.ownedParameter)]
+	      this.[p.name/] = [p.name/];
+	    [/for]
+	  }
+	
+	  // --- Properties ---
+	  [for (pr : Parameter | self.ownedParameter)]
+		[pr.generate()/]
+	  [/for]
+	
+	}
+}
+[/file]
+[/template]
+
+[template public generate(pr : Parameter)]
+[if pr.isCollection()]
+private [pr.typeName()/] _[pr.name/];
+/// <summary> Property Description </summary>
+public [pr.typeName()/] [pr.name/] {
+  get { return this._[pr.name/];}
+  set { this._[pr.name/] = value; }
+}
+[else]
+private [pr.typeName()/] _[pr.name/];
+/// <summary> Property Description </summary>
+public [pr.typeName()/] [pr.name/] {
+  get { return this._[pr.name/];}
+  set { this._[pr.name/] = value; }
+}
+[/if]
+[/template]

@@ -1,0 +1,93 @@
+[module servicexfiremocktest('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template public fullFilePath(class : Class)]
+[if (not class.hasStereotype(getProperty('Extern')) and class.hasStereotype(getProperty('Service')))]
+	[if (class.hasRemoteOperations())]
+[class.pathToTestJava()/]/[class.serviceImplPackage().toPath()/]/Mock[class.name/]WebService.java
+	[/if]
+[/if]
+
+[/template][/comment]
+
+
+[template public generateServiceFireMockTest(class : Class)? ((not class.hasStereotype(getProperty('Extern')) and class.hasStereotype(getProperty('Service'))) and class.hasRemoteOperations())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToTestJava(), class.serviceImplPackage().toPath(), 'Mock'.concat(class.name).concat('WebService.java')), false))]
+package [class.serviceImplPackage()/];
+
+// [protected ('imports')] 
+// for import
+[for (classifier:Classifier|class.operationsParametersTypes())]
+	[if (classifier.hasStereotype(getProperty('Entity')))]
+import [classifier.entityPackage()/].[name/];
+	[else]
+import [classifier.getCompleteName()/];	
+	[/if]
+[/for]
+
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().hasStereotype(getProperty('Service')))]
+	[if (class.hasRemoteOperations())]
+import [class.superClass.servicePackage()/].I[superClass.name/];
+	[/if]
+[/if]
+
+import [class.servicePackage()/].I[class.name/];
+import [class.servicePackage()/].I[class.name/]WebService;
+
+import org.sharengo.exceptions.TechnicalException;
+
+import java.util.Collection;
+
+// [/protected] for import
+
+public class Mock[class.name/]WebService implements I[class.name/] {
+	I[class.name/]WebService [class.name.toLowerFirst()/]WebService = null;
+		
+	public Mock[class.name/]WebService(I[class.name/]WebService process) {
+		this.[class.name.toLowerFirst()/]WebService=process;
+	}	
+
+	[class.getAllOperations()->filter(Operation).genOperations()/]	
+	
+}
+[/file]
+[/template]
+
+
+[template public genOperations(operation : Operation)]
+
+[operation.generateJavadoc()/]
+public [operation.generateReturn()/] [operation.name/]([operation.generateRawParameters()/]) throws TechnicalException[operation.genExceptions()/]{
+[if (operation.hasStereotype(getProperty('Remote')) = 'true')]
+		[if (operation.returnResult() <> null)]return [/if][operation.eContainer(Class).name.toLowerFirst()/]WebService.[operation.name/]([operation.genParameters()/]);
+[else]
+		throw new UnsupportedOperationException("WebService Mock cannot support non remote operation");
+[/if]
+}
+[/template]
+
+
+[template public genParameters(operation : Operation)]
+[if (getRealParameters()->notEmpty())][operation.getRealParameters().name->sep(', ')/][/if]
+[/template]
+
+
+[template public extensions(class : Class)]
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().hasStereotype(getProperty('Service')) = 'true' and class.superClass.hasRemoteOperations() = 'true')] extends I[class.superClass.name/]WebService[/if]
+[/template]
+

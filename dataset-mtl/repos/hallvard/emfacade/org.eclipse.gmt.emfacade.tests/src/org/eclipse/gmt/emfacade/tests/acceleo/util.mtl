@@ -1,0 +1,94 @@
+[comment encoding = UTF-8 /]
+
+[module util('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/xtext/common/JavaVMTypes', 'http://org.eclipse.gmt.emfacade/model/emfacade.ecore')/]
+
+[query public ePackageName(ePackage : EPackage) : String =
+	ePackage.name.toUpperFirst() + 'Package'
+/]
+
+[query public ePackageName(eClass : EClass) : String =
+	ePackageName(eClass.ePackage)
+/]
+
+[query public eInstance(ePackage : EPackage) : String =
+	if ePackage.oclIsUndefined() then 'null' else ePackageName(ePackage) + '.eINSTANCE' endif
+/]
+
+[query public eInstance(eClass : EClass) : String =
+	if eClass.oclIsUndefined() then 'null' else ePackageName(eClass) + '.eINSTANCE.get' + eClass.name endif
+/]
+
+[query public eInstance(eFeature : EStructuralFeature) : String =
+	if eFeature.oclIsUndefined() then 'null' else eInstance(eFeature.eContainingClass) + '_' + eFeature.name.toUpperFirst() endif
+/]
+
+[query public packageName(fullName : String) : String =
+	let pos : Integer = fullName.lastIndex('.') in
+		fullName.substring(1, pos - 1)
+/]
+
+[query public typeName2ClassName(typeName : String) : String =
+	let javaTypeClasses : Sequence(String) = Sequence{
+		'boolean', 'Boolean', 'char', 'Character',
+		'byte', 'Byte', 'short', 'Short', 'int', 'Integer', 'long', 'Long',
+		'float', 'Float', 'double', 'Double'
+	} in
+	let className : String = if javaTypeClasses->includes(typeName) then javaTypeClasses->at(javaTypeClasses->indexOf(typeName) + 1) else typeName endif in
+		simplifyTypeName(className)
+/]
+
+[query public simplifyTypeName(typeName : String) : String =
+	let prefix : String = 'java.lang.' in
+		if typeName.startsWith(prefix) then typeName.substring(prefix.size() + 1) else typeName endif
+/]
+
+[query public eTypeEClassName(eType : EClassifier) : String =
+	if eType.oclIsKindOf(EDataType) then
+		typeName2ClassName(eType.instanceClassName)
+	else
+		eType.name
+	endif
+/]
+
+[query public eTypeJClassName(eType : EClassifier) : String =
+	if eType.oclIsKindOf(EDataType) then
+		typeName2ClassName(eType.instanceClassName)
+	else
+		eType.name.substring(2)
+	endif
+/]
+
+[comment
+[query public classFullName(classDeclaration : ClassDeclaration) : String =
+	packageFullName(classDeclaration._package, classDeclaration.name)
+
+[query public packageFullName(pack : Package, suffix : String) : String =
+	if pack.oclIsUndefined() then suffix else let suffix : String = (if suffix.size() = 0 then pack.name else pack.name + '.' + suffix endif) in packageFullName(pack._package, suffix) endif
+/]
+
+[query public fullName(namedElement : JvmMember) : String =
+	namedElement.getQualifiedName()
+/]
+
+[query public binderClassName(eClass : EClass) : String =
+	eClass.name + 'Binder'
+/]
+
+[query public strategyClassName(mapping : EFeatureMapping) : String =
+	let strategy : FeatureMappingStrategy = mapping.strategy in
+	let className : String = strategy.eClass().name in
+		let classType : String = if mapping.eFeature.oclIsTypeOf(EReference) then 'EClass' else 'EDataType' endif in
+			className.substitute('Strategy', classType + 'Strategy')
+/]
+
+[query public featureMappingEName(mapping : EFeatureMapping) : String =
+	eTypeEClassName(mapping.eFeature.eType)
+/]
+
+[query public featureMappingJName(mapping : EFeatureMapping) : String =
+	eTypeJClassName(mapping.eFeature.eType)
+/]
+
+[template public generateJClassImports(jClass : JvmGenericType)]
+import [packageName(fullName(jClass))/].*;
+[/template]

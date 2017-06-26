@@ -1,0 +1,161 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module centralServer.
+ */]
+[module centralServer('http://www.observability.com/emf')]
+
+
+[**
+ * The documentation of the template generateCentralServer.
+ * @param aModel
+ */]
+[template public generateCentralServer(aModel : Model)]
+
+[file (aModel.serverIP + '_collectd.conf', false, 'UTF-8')]
+Interval [aModel.interval/] 
+Hostname [aModel.serverIP/] 
+
+LoadPlugin "load"
+
+LoadPlugin "cpu"
+<Plugin "cpu">
+	ReportByState true 
+	ReportByCpu true 
+	ValuesPercentage false 
+</Plugin>
+
+LoadPlugin "memory"
+<Plugin "memory">
+	ValuesAbsolute true 
+	ValuesPercentage false 
+</Plugin>
+
+
+LoadPlugin "logfile" 
+<Plugin "logfile">
+  LogLevel "info" 
+  File "/home/ubuntu/collectd/log/collectd.log"  
+  Timestamp true 
+  PrintSeverity true 
+</Plugin>
+
+LoadPlugin "csv"
+<Plugin "csv">
+  DataDir "/home/ubuntu/collectd/csv"  
+  StoreRates true 
+</Plugin>
+
+LoadPlugin "network"
+#The Listen parameter in network plugin should have the same hostname as defined in the top part of conf file.
+<Plugin "network">
+  Listen [aModel.serverIP/]
+</Plugin>
+
+LoadPlugin "write_graphite"
+<Plugin "write_graphite">
+    <Node "graphing">
+        Host "localhost" 
+        Port "2003" 
+        Protocol "tcp"  
+        LogSendErrors true 
+        Prefix "collectd." 
+        StoreRates true 
+        AlwaysAppendDS false 
+        EscapeCharacter "_" 
+    </Node>
+</Plugin>
+
+#Aggregation general setting
+LoadPlugin obsaggregation
+<LoadPlugin obsaggregation>
+    Interval [aModel.interval/]
+</LoadPlugin>
+
+<Plugin "aggregation">
+	[for (aCluster : DatabaseCluster | aModel.clusters)]
+		[for(aMachine : NodeMachine | aCluster.machines)]
+			[for(aMetric : Metric | aCluster.collectedMetrics)]
+				[if (aMetric.oclIsKindOf(AggregatedMetric))]
+	<Aggregation>
+					[for (keyValue : KeyValue | aMetric.keyValues)]
+		[keyValue.key/] [keyValue.value/]
+					[/for]
+		
+					[let element : Element = aMetric.elements->at(1)]
+						[for (kv : KeyValue | element.keyValues)]
+		[kv.key/] [kv.value/]
+						[/for]
+				
+						[for (e : Element | element.elements)]
+		<[e.name/] [e.value/]>
+							[for (kv : KeyValue | e.keyValues)]
+			[kv.key/] [kv.value/]
+							[/for]
+		</[e.name/]>
+						[/for]
+					[/let]
+		[let aggMetric : AggregatedMetric = aMetric.oclAsType(AggregatedMetric)]
+		CalculateNum [aggMetric.calculateNum/]
+		CalculateSum [aggMetric.calculateSum/]
+		CalculateAverage [aggMetric.calculateAvg/]
+		CalculateMinimum [aggMetric.calculateMin/]
+		CalculateMaximum [aggMetric.calculateMax/]
+		CalculateStddev [aggMetric.calculateStddev/]	
+		[/let]
+	</Aggregation>
+
+
+				[/if]
+			[/for]
+		[/for]
+	[/for]
+</Plugin>
+
+LoadPlugin java
+#Missing Deamon
+
+	[for (feature:Feature | aModel.features)]
+		[let element:Element = feature.elements->at(1)]
+<[element.name/] [element.value/]>
+			[for(keyValue : KeyValue | element.keyValues)]
+	[keyValue.key/] [keyValue.value/]
+			[/for]
+			
+			[for (e : Element | element.elements)]
+	<[e.name/] [e.value/]>
+				[for (kv : KeyValue | e.keyValues)]
+		[kv.key/] [kv.value/]
+				[/for]
+	</[e.name/]>
+			[/for]
+</[element.name/]>
+		[/let]
+	[/for]
+
+#the plugin that sends notifications about the central server
+#Cpu and memory metrics should be hardcoded
+LoadPlugin "threshold"
+<Plugin "threshold">
+    <Type "cpu"> 
+     WarningMin    0.2 
+     WarningMax    0.8 
+     FailureMin    0.1 
+     FailureMax    0.9 
+     Invert false 
+     Instance "system" 
+    </Type>
+ </Plugin>
+ 
+ <Plugin "threshold">
+    <Type "memory"> 
+     WarningMin    0.2 
+     WarningMax    0.8 
+     FailureMin    0.1 
+     FailureMax    0.9 
+     Invert false 
+     Instance "?" 
+    </Type>
+ </Plugin>
+	
+[/file]
+[/template]

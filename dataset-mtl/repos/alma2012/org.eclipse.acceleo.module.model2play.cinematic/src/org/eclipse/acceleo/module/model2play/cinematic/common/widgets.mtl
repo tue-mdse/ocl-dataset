@@ -1,0 +1,114 @@
+[comment encoding = UTF-8 /]
+[module widgets('http://www.obeonetwork.org/dsl/cinematic/3.0.0')]
+
+[template public generateContainer(viewContainer : ViewContainer) ? (viewContainer.widget.name.equalsIgnoreCase('Table'))]
+<div align="left">	
+	<h3> [viewContainer.label/] </h3>
+
+	<table BORDER="1">
+	   <tr>
+		[viewContainer.viewElements.genWidgetWithPrefixAndSuffix('<th>', '</th>\n')/]
+		</tr>
+		<!--[protected ('completing the table-->')] 
+	
+		<!--[/protected]--> 
+	</table>
+	<br>
+	<!--[protected ('completing description of container-->')] 
+	
+	<!--[/protected]--> 
+</div>
+[/template]
+
+[template public generateContainer(viewContainer : ViewContainer) ? (viewContainer.widget.name.equalsIgnoreCase('Panel'))]
+[viewContainer.eContainer(CinematicRoot).getTransitionsOnEvent(viewContainer.getSubmitButton().getOnClickEvent())->first().genForm()/] {
+	[viewContainer.generateWidgetsForContainer()/]
+	<!--[protected ('completing the panel-->')] 
+	
+	<!--[/protected]-->
+}
+[/template]
+
+[comment : un simple widget dans une page, suivi d'un <br>. Les \n servent a l'indentation. /]
+[template public generateWidgetsForContainer(viewContainer : ViewContainer)]
+[viewContainer.viewElements.genWidgetWithPrefixAndSuffix('', '\n<br>\n')/]
+[/template]
+
+[template public genForm(transition : Transition)]
+['@'/]helper.form(action = routes.MainController.[transition.to.actions->first().name/]())
+[/template]
+
+[template public genWidgetWithPrefixAndSuffix(viewElement : ViewElement, prefix : String, suffix : String)]
+[prefix/][viewElement.genWidget()/][suffix/]
+[/template]
+
+[template public genWidget(viewElement : ViewElement) ? (viewElement.isImage())]
+
+	<!--[protected ('describing the image-->')] 
+	<IMG SRC="" WIDTH=50 HEIGHT=40 ALT="" TITLE="">
+	<!--[/protected]-->
+
+[/template]
+
+[template public genWidget(viewElement : ViewElement) ? (viewElement.isLabel())]
+<label>[viewElement.label/]</label>
+[/template]
+
+[template public genWidget(viewElement : ViewElement) ? (viewElement.isCombo())]
+<label>[viewElement.label/]</label> <select name="[viewElement.label/]" size="1"/>
+[/template]
+
+[template public genWidget(viewElement : ViewElement) ? (viewElement.isButton())]
+<input type="submit" value="[viewElement.label/]">
+[/template]
+
+[template public genWidget(viewElement : ViewElement) ? (viewElement.isLink())]
+<a href="[viewElement.label/]">[viewElement.label/]</a>
+[/template]
+
+[template public genWidget(viewElement : ViewElement) ? (viewElement.isTextarea())]
+
+<!--[protected ('describing textarea-->')] 
+<textarea rows="3" cols="5"/>
+<!--[/protected]-->
+
+[/template]
+
+[template public genWidget(viewElement : ViewElement) ? (viewElement.isText())]
+['@'/]helper.inputText(myForm("[viewElement.label/]"))
+[/template]
+
+[template public genWidget(viewElement : ViewElement) ? (viewElement.isPassword())]
+['@'/]helper.inputPassword(myForm("[viewElement.label/]"))
+[/template]
+
+
+[query private getTransitionsOnEvent(root : CinematicRoot, viewEvent : ViewEvent) : Sequence(Transition) =
+root.flows.transitions->select(on->includes(viewEvent))
+ /]
+
+[query private getSubmitButton(viewContainer : ViewContainer) : ViewElement =
+viewContainer.viewElements->select((widget.name='Button') and (name='submit'))->first()
+/]
+
+[query private getOnClickEvent(viewElement : ViewElement) : ViewEvent =
+viewElement.events->select(type.name = 'onClick')->first()
+ /]
+
+[query public isPage(container : ViewContainer) : Boolean = container.hasWidgetOfType('Page') /]
+[query public isPanel(container : ViewContainer) : Boolean = container.hasWidgetOfType('Panel') /]
+[query public isTable(container : ViewContainer) : Boolean = container.hasWidgetOfType('Table') /]
+
+[query public isLink(viewElement : ViewElement) : Boolean = viewElement.hasWidgetOfType('Link') /]
+[query public isText(viewElement : ViewElement) : Boolean = viewElement.hasWidgetOfType('Text') /]
+[query public isImage(viewElement : ViewElement) : Boolean = viewElement.hasWidgetOfType('Image') /]
+[query public isRadio(viewElement : ViewElement) : Boolean = viewElement.hasWidgetOfType('Radio') /]
+[query public isLabel(viewElement : ViewElement) : Boolean = viewElement.hasWidgetOfType('Label') /]
+[query public isCombo(viewElement : ViewElement) : Boolean = viewElement.hasWidgetOfType('Combo') /]
+[query public isButton(viewElement : ViewElement) : Boolean = viewElement.hasWidgetOfType('Button') /]
+[query public isCheckbox(viewElement : ViewElement) : Boolean = viewElement.hasWidgetOfType('Checkbox') /]
+[query public isPassword(viewElement : ViewElement) : Boolean = viewElement.hasWidgetOfType('Password') /]
+[query public isTextarea(viewElement : ViewElement) : Boolean = viewElement.hasWidgetOfType('Textarea') /]
+
+[query public hasWidgetOfType(element : AbstractViewElement, typeName : String) : Boolean = widget.name = typeName /]
+

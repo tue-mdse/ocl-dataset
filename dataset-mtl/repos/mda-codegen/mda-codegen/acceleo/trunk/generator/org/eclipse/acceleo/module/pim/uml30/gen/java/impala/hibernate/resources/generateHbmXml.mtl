@@ -1,0 +1,307 @@
+[comment encoding = UTF-8 /]
+[module generateHbmXml('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::hibernate::common::hibernatePathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::hibernate::daohibernatecommon/]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+[import org::acceleo::module::pim::uml21::gen::sql::services::sqltypeservices /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::build::common::entityUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::compositeUtil /]
+[query public toSqlNotation(arg0 : String) : String =
+arg0
+ /]
+
+[template public generateHbmXml(aModel : Model, resourceFoler : String)]
+	[file (aModel.generateProjectFolder().concat(resourceFoler).concat('/').concat(aModel.generateSpecificProjectFolder('').concat('.hbm.xml')), false, 'UTF-8')]
+[comment This template is called by the main module file /]
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping
+    PUBLIC "-//Hibernate/Hibernate Mapping DTD//EN"
+    "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping> 
+[for (anEntity:Class | aModel.eAllContents(Class)->select(anEntity:Class|anEntity.isEntity() and anEntity.hasNoEntityParent()))]
+	[let arg : String = anEntity.name.concat('Object')]
+    <class 
+        name="[anEntity.generateJavaPackage()/].[anEntity.name/]Impl" 
+        table="[anEntity.name.toSqlNotation()/]s" 
+        dynamic-update="true">
+		<!-- ID from the model -->
+		[if (anEntity.getPKAttribute()->size()>1)]
+		<composite-id name="id" class="[if (anEntity.getCompositeKeyClass().generateJavaPackage()->notEmpty())][anEntity.getCompositeKeyClass().generateJavaPackage()/].[/if][anEntity.getPrimaryTypeName()/]">
+			[for (aPkProp : Property | anEntity.getCompositeKeyClass().ownedAttribute)]
+				<key-property name="[aPkProp.name.toLowerFirst()/]" column="[anEntity.name.toLower()/]_[aPkProp.name.toLower()/]_id"/>
+			[/for]
+		</composite-id>
+		[elseif (anEntity.getPKAttribute()->size()=1)]
+		<id name="[anEntity.getPKAttribute().name/]" type="[anEntity.getPKAttribute().type.convertToJavaType()/]" column="[anEntity.name.toLower()/]_[anEntity.getPKAttribute().name.toLower()/]_id">
+            <generator class="sequence">
+                <param name="sequence">SEQ_[anEntity.getPKAttribute().name.toSqlNotation()/]</param>
+            </generator>
+		</id>
+		[else]
+ 		<id name="id" type="[anEntity.defaultPKType()/]" column="[anEntity.name.toLower()/]_id">
+            <generator class="identity">
+            </generator>
+        </id>
+		[/if]
+
+        <!-- Properties -->
+		[if (anEntity.getSimpleFields()->notEmpty())]
+			[for (prop:Property|anEntity.getSimpleFields()) ]
+				[if (prop.type.oclIsTypeOf(Enumeration))]
+[prop.genProperties()/]
+				[else]
+[prop.genProperties()/]
+				[/if]
+			[/for]
+		[/if]
+
+        <!-- Associations -->
+[anEntity.getOppositeAttributes(false)->select(aProperty:Property|not aProperty.isPK() and not aProperty.type.isSimpleType()).genAssociations(arg)/]
+[comment][anEntity.getOppositeAttributes()->select(aProperty:Property|not aProperty.isPK() and not aProperty.type.isSimpleType()).genAssociations(arg)/][/comment]
+
+        <!-- Inheritance -->
+[filterWithStereotype(anEntity.subClass(), getProperty('Entity'))->filter(Class).genInheritance(anEntity, arg)/]
+    </class>
+	[/let]
+[/for]
+
+</hibernate-mapping>
+[/file]
+[/template]
+
+
+[template public genProperties(property:Property)]
+[if (not (property.isDerived) and property.upper = 1)]
+        <property name="[property.name/]">
+            <column name="[property.name.toSqlNotation()/]"/>
+	[if (property.type.oclIsTypeOf(Enumeration))]
+			<type name="org.hibernate.type.EnumType">
+				<param name="enumClass">[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name.toUpperFirst()/]</param>
+				<param name="type">12</param>
+			</type>
+	[/if]
+        </property>
+[/if]
+
+[/template]
+
+
+[template public genAssociations(property:Property, arg:String)]
+[comment  n---n /]
+[if (property.opposite = null)]
+[comment  |n|-->n /]
+	[if (property.upper = 1)]
+[comment  |n|-->1 /]
+		[if (property.oppositeAttribute().upper = 1)]
+[comment  |1|-->1 /]   
+			[if (property.isNavigable())]
+	[property.genDiagram(arg)/]
+        <many-to-one 
+            name="[property.name/]" 
+            class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl" 
+            column="[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]"
+            cascade="persist,merge,save-update[if (property.isComposite)],delete[/if]"
+            [if (property.lower > 0)]unique="true" [else]unique="true" not-found="ignore" [/if]/>
+			[/if]     
+		[else]
+[comment  |*|-->1 /]        
+	[property.genDiagram(arg)/]
+        <many-to-one 
+            name="[property.name/]" 
+            class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl" 
+            column="[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]"
+            />
+		[/if]
+	[else]
+[comment  n-->* /]
+		[if (property.oppositeAttribute().upper = 1)]
+[comment  |1|-->* /]        
+	[property.genDiagram(arg)/]
+			[if (property.isOrdered)]
+        <list name="[property.name/]" lazy="true"[if (property.isComposite or property.aggregation = 'shared')] cascade="all"[/if]>
+            <key column="[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]"/>             
+            <list-index column="IDX"/>            
+            <one-to-many class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl"/>
+        </list>                
+			[else]
+                <!-- Aggregation Type : [property.aggregation/] -->
+        <set name="[property.name/]" lazy="true"[if (property.isComposite or property.aggregation = 'shared')] cascade="all"[/if]> 
+            <key column="[property.oppositeAttribute().type.name.toSqlNotation()/]_[property.oppositeAttribute().name.toSqlNotation()/]"/>            
+            <one-to-many class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl"/>
+        </set>
+			[/if]
+		[else]
+[comment  |*|-->* /]        
+	[property.genDiagram(arg)/]
+			[if (property.isOrdered)]
+        <list name="[name/]" table="[property.oppositeAttribute().type.name.toSqlNotation()/]_[name.toSqlNotation()/]">
+            <key column="[property.oppositeAttribute().type.name.toSqlNotation()/]_ID"/>
+            <index column="IDX"/>
+            <many-to-many                 
+                class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl"
+                column="[property.type.name.toSqlNotation() /]_ID"/>
+         </list>                
+			[else]
+        <set name="[property.name/]" table="[property.oppositeAttribute().type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]">
+            <key column="[property.oppositeAttribute().type.name.toSqlNotation()/]_ID"/>
+            <many-to-many                 
+                class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl"
+                column="[property.type.name.toSqlNotation()/]_ID"/>
+         </set>
+			[/if]
+		[/if]
+	[/if]
+[else]
+[comment  n<-->n /]
+	[if (property.upper = 1)]
+[comment  n<-->1 /]	
+		[if (property.oppositeAttribute().upper = 1)]
+[comment  1<-->1 /]
+			[if ((property.lower = 0 and property.oppositeAttribute().lower = 1) or (not ((property.lower = 0 and property.oppositeAttribute().lower = 1)) and property.isMainEndPoint() = 'false'))]
+ [comment  test for recursive /]
+[comment  |1|<-->1 /]        
+	[property.genDiagram(arg)/]
+        <one-to-one 
+            name="[property.name/]"             
+            class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl" 
+            property-ref="[property.opposite.name/]"
+            cascade="all"/>
+			[else]
+[comment  1<-->|1| /]        
+	[property.genDiagram(arg)/]
+        <many-to-one 
+            name="[property.name/]"             
+            class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl" 
+            column="FK_[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_ID"
+            cascade="all"
+				[if (property.lower > 0)]unique="true"[/if]/>
+			[/if]
+		[else]
+[comment  *<-->1 /][comment if (    isMainEndPoint()  == "true" || opposite.upper != 1 ){/][comment  |*|<-->1 /]        
+	[property.genDiagram(arg)/]
+        <many-to-one             
+            class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl"
+            column="FK_[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_ID"
+            name="[property.name/]"
+			[if (property.opposite.isComposite())] cascade="all"[/if]
+			[if (property.opposite.isOrdered)] not-null="true" insert="false" update="false"[/if]
+            />
+[comment  <%}else{%>
+                <%-*<-->|1|-%>
+        <%genDiagram("* {-} 1")%>
+        <set name="<%name%>" inverse="true">
+            <key column="FK_<%type.name.toSqlNotation()%>_<%name.toSqlNotation()%>_ID"/>
+            <one-to-many class="<%baseImports%>.<%projectName%>.business.<%type.package.normalizedName%>.<%type.name%>"/>
+         </set> /][comment }/]
+		[/if]
+	[else]
+        [comment  n<-->* /] [comment  the case *<-->1 has already be traited /]
+         [if (property.oppositeAttribute().upper = 1)]
+         [comment  |1|<-->* /]        
+	[property.genDiagram(arg)/]
+         	[if (isOrdered)]
+         		        <list name="[property.name/]" [if (property.isComposite())] cascade="all-delete-orphan"[/if]>
+         		            <key column="FK_[property.oppositeAttribute().type.name.toSqlNotation()/]_[property.oppositeAttribute().name.toSqlNotation()/]_ID" not-null="true"/>
+         		            <list-index column="[property.name.toSqlNotation()/]_IDX"/>
+         		            <one-to-many class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl"/>
+         		         </list>
+         	[else]
+         		        <set name="[property.name/]" inverse="true"[if (property.isComposite())] cascade="all-delete-orphan"[/if]>
+                     <key column="[property.opposite.type.name.toSqlNotation()/]_[opposite.name.toSqlNotation() /]"/>            
+                     <one-to-many class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl"/>
+                  </set>
+         	[/if]
+         [else]
+         [comment  *<-->* /]            
+         	[if (property.isMainEndPoint() = 'true')]
+         [comment  |*|<-->* /]        
+	[property.genDiagram(arg)/]
+                 <set name="[property.name/]" table="[property.name.toSqlNotation()/]_[property.opposite.name.toSqlNotation()/]">
+                     <key column="[property.name.toSqlNotation()/]"/>
+                     <many-to-many                 
+                         class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl"
+                         column="[property.name.toSqlNotation()/]_ID"/>
+                  </set>
+         	[else]
+         [comment  *<-->|*| /]        
+	[genDiagram(arg)/]
+                 <set name="[property.name/]" inverse="true">
+                     <key column="[property.name.toSqlNotation()/]"/>
+                     <many-to-many                 
+                         class="[if (property.type.generateJavaPackage().trim().size()>0)][property.type.generateJavaPackage()/].[/if][property.type.name/]Impl"
+                         column="[property.name.toSqlNotation()/]_ID"/>
+                  </set>
+         	[/if]
+         [/if]
+     [/if]
+[/if]
+
+[/template]
+
+
+[template public genInheritance(childClass:Class, parentClass:Class, arg:String)]
+        <joined-subclass            
+            name="[if (childClass.generateJavaPackage().trim().size()>0)][childClass.generateJavaPackage()/].[/if][childClass.name/]Impl" 
+            table="[childClass.name.toSqlNotation()/]s"
+            dynamic-update="true">
+		[if (parentClass.hasPrimaryKey())]
+			[for (aPK : Property | parentClass.getPrimaryProperties(Sequence{})) ]
+				[if (aPK.type.oclIsTypeOf(Enumeration))]
+ 		<key column="[parentClass.name.toLower()/]_[aPK.name.toLower()/]_id"/>
+				[else]
+ 		<key column="[parentClass.name.toLower()/]_[aPK.name.toLower()/]_id"/>
+				[/if]
+			[/for]
+		[else]
+ 		<key column="[parentClass.name.toLower()/]_id"/>
+		[/if]
+
+
+            [comment][for (aPK : Property | parentClass.getPrimaryProperties(Sequence{}))]
+            <key column="FK_INHERITS_[aPK.name.toSqlNotation()/]_ID"/>
+            [/for][/comment]
+            
+            
+            <!-- Properties -->
+[childClass.ownedAttribute.genProperties()/]
+
+            <!-- Associations -->
+[childClass.getOppositeAttributes()->select(aProperty:Property|not aProperty.isPK() and not aProperty.type.isSimpleType()).genAssociations(arg)/]
+
+            <!-- Inheritance -->
+[childClass.subClass().genInheritance(childClass, arg)/]
+        </joined-subclass>
+[/template]
+
+
+[template public genDiagram(property:Property, arg:String)]
+
+        <!--  _[repeat('_', property.oppositeAttribute().type.name.toSqlNotation().size())/]_     [repeat(' ', arg.size())/] _[repeat('_', type.name.toSqlNotation().size())/]_
+             | [property.oppositeAttribute().type.name.toSqlNotation()/] |- [arg/] -| [type.name.toSqlNotation()/] |
+              _[repeat('_', oppositeAttribute().type.name.toSqlNotation().size())/]_     [repeat(' ', arg.size())/] _[repeat('_', type.name.toSqlNotation().size())/]_
+        -->
+[/template]
+
+
+[query public isMainEndPoint(property:Property) : Boolean =
+if (property.aggregation = 'composite' or 
+	(property.oppositeAttribute().aggregation <> 'composite' and 
+	(compare(property.class.name, property.type.name) > 0 or 
+	(property.class = property.type and compare(property.name, property.opposite.name) > 0)))) then 
+	true 
+else 
+	false 
+endif
+/]
+
+
+

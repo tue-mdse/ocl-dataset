@@ -1,0 +1,57 @@
+[comment encoding = UTF-8 /]
+[module config('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::ios::common::xisMobileUtils/]
+
+[template public generateConfigFiles(m : Model)]
+
+[m.generateAppDelegate()/]
+
+[/template]
+
+[template private generateAppDelegate(m : Model)]
+
+[file (m.name + 'AppDelegate.h', false, 'UTF-8')]
+
+#import <UIKit/UIKit.h>
+#import "[getMainView(m)/]Controller.h"
+
+@interface [m.name/]AppDelegate : UIResponder <UIApplicationDelegate>
+
+@property (strong, nonatomic) UIWindow *window;
+[let spaces : OrderedSet(Class) = m.getAllXisInteractionSpaces()][if (spaces->size() > 1)]@property (nonatomic,retain) UINavigationController *navigationController;[/if][/let]
+
+@end
+
+[/file]
+
+[file (m.name + 'AppDelegate.m', false, 'UTF-8')]
+
+#import "[m.name/]AppDelegate.h"
+
+@implementation [m.name/]AppDelegate
+
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{
+    self.window = ['['/]['['/]UIWindow alloc[']'/] initWithFrame:['['/]['['/]UIScreen mainScreen[']'/] bounds[']'/][']'/];
+    // Override point for customization after application launch.
+    self.window.backgroundColor = ['['/]UIColor whiteColor[']'/];
+    [m.getMainView().toUpperFirst()/]Controller *[m.getMainView().toLowerFirst()/]Controller = ['['/]['['/][m.getMainView().toUpperFirst()/]Controller alloc[']'/] init[']'/];
+	[let spaces : OrderedSet(Class) = m.getAllXisInteractionSpaces()] [if (spaces->size() > 1)]
+    self.navigationController = ['['/]['['/]UINavigationController alloc[']'/]initWithRootViewController:[m.getMainView().toLowerFirst()/]Controller[']'/];
+    ['['/]self.window setRootViewController:self.navigationController[']'/];
+	[else]self.window.rootViewController = [m.getMainView().toLowerFirst()/]Controller;
+	[/if]
+[/let]
+   ['['/]self.window makeKeyAndVisible[']'/];
+    return YES;
+}
+@end
+[/file]
+[/template]
+
+[template public getMainView(m : Model)]
+[let spaces : OrderedSet(Class) = m.getAllXisInteractionSpaces()][for (c : Class | spaces)][if (c.isMainScreen())][c.name/][/if][/for][/let]
+[/template]
+
+

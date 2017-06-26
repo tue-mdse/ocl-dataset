@@ -1,0 +1,116 @@
+[comment encoding = UTF-8 /]
+[module util_sr('http://www.eclipse.org/uml2/4.0.0/UML',
+				'http://www.eclipse.org/papyrus/0.7.0/SysML/PortAndFlows')]
+
+[import org::eclipse::acceleo::module::tres_gen::requests::util_general /]
+
+[**
+ * 
+ */]
+[query public
+getNumberOfOutSRPorts(class : Class) : Integer = class.getOutSRPorts()->size()/]
+
+[**
+ * 
+ */]
+[query public
+getOutSRPorts(class : Class) : Set(Port) = class.ownedPort->select(p|p.getValueOfStereotypeProperty('Functional::SRPort','direction')=FlowDirection::_out)/]
+
+[**
+ * 
+ */]
+[query public
+getNumberOfInSRPorts(class : Class) : Integer = class.getInSRPorts()->size()/]
+
+[**
+ * 
+ */]
+[query public
+getInSRPorts(class : Class) : Set(Port) = class.ownedPort->select(p|p.getValueOfStereotypeProperty('Functional::SRPort','direction')=FlowDirection::_in)/]
+
+[**
+ * 
+ */]
+[query public
+sortPortsByIndex(port_set: Set(Port)) : OrderedSet(Port) = port_set->sortedBy(getValueOfStereotypePropertyInteger('Functional::SRPort', 'index'))/]
+
+[**
+ * 
+ */]
+[query public
+getFunctionToTaskMapsFromPack(mapp: Package) : Set(Abstraction) = mapp.ownedElement->select(e|e.oclIsKindOf(Abstraction)).oclAsType(Abstraction)->select(e | e.hasStereotypeApplied('Mapping::Allocation::FunctionToThreadMap'))->asSet()/]
+
+[**
+ * 
+ */]
+[query public
+sortFunctionToTaskMapsByMapOrder(abst_set: Set(Abstraction)) : OrderedSet(Abstraction) = abst_set->sortedBy(getValueOfStereotypePropertyInteger('Mapping::Allocation::FunctionToThreadMap', 'mapOrder'))/]
+
+[**
+ * 
+ */]
+[query public
+getTaskToCpuMapsFromPack(mapp: Package) : Set(Abstraction) = mapp.ownedElement->select(e|e.oclIsKindOf(Abstraction)).oclAsType(Abstraction)->select(e | e.hasStereotypeApplied('Mapping::Allocation::ThreadToCPUMap'))->asSet()/]
+
+[**
+ * 
+ */]
+[query public
+sortTaskToCpuMapsByTaskSetIdx(abst_set: Set(Abstraction)) : OrderedSet(Abstraction) = abst_set->sortedBy(getValueOfStereotypePropertyInteger('Mapping::Allocation::ThreadToCPUMap', 'taskSetIdx'))/]
+
+[**
+ * 
+ */]
+[query public
+getRtosDeploymentFromPack(plap: Package) : Sequence(Abstraction) = plap.ownedElement->select(e|e.oclIsKindOf(Abstraction)).oclAsType(Abstraction)->select(e | e.hasStereotypeApplied('BswResources::BswAllocation::BswRTOSAllocate'))->asSequence()/]
+
+
+[**
+ * 
+ */]
+[query public
+getSchedulerFromRtos(rtos: Class) : Class = rtos.ownedElement->select(e | e.oclIsKindOf(Property)).oclAsType(Property).type->select(e | e.hasStereotypeApplied('BswResources::BswRTOS::BswScheduler')).oclAsType(Class)->asSequence()->first()/]
+
+[**
+ * 
+ */]
+[query public
+getIndexOfSourcePort(conn: Connector) : Integer = conn.end->first().role.getValueOfStereotypePropertyInteger('Functional::SRPort', 'index')/]
+
+[**
+ * 
+ */]
+[query public
+getIndexOfDestinationPort(conn: Connector) : Integer = conn.end->last().role.getValueOfStereotypePropertyInteger('Functional::SRPort', 'index')/]
+
+[**
+ * 
+ */]
+[query public
+generateConsumerName(subsys: Class) : String =  (if (subsys.hasStereotypeApplied('Functional::SRSubsystem')) then 'SS_' else '' endif) + subsys.name/]
+
+[**
+ * Transform a complex task identifier into a simplified one (one char)
+ * @param tsk Class instance representing a task whose complex identifier must be converted into a simpler one
+ */]
+[query public
+getTaskIdShort(tsk: Class) : String = tsk.getTaskIdLong().first(1)/]
+
+[**
+ * Transform a complex task identifier into a simplified one (three chars)
+ * @param tsk Class instance representing a task whose complex identifier must be converted into a simpler one
+ */]
+[query public
+getTaskIdLong(tsk: Class) : String = tsk.name.last(3)/]
+
+[**
+ * 
+ */]
+[query public
+getTaskPeriodString(tsk : Class) : String = tsk.getValueOfStereotypeProperty('Mapping::Concurrency::PeriodicThread', 'period').toString()/]
+
+[**
+ * 
+ */]
+[query public
+getTaskPriorityString(tsk : Class) : String = tsk.getValueOfStereotypeProperty('Mapping::Concurrency::PeriodicThread', 'priority').toString()/]

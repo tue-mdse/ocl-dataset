@@ -1,0 +1,61 @@
+[comment encoding = UTF-8 /]
+[module slovakia('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::acceleo::module::publicdocs::common::util/]
+[import org::eclipse::acceleo::module::publicdocs::common::schema/]
+[import org::eclipse::acceleo::module::publicdocs::common::complextype /]
+
+[template public generateFormSlovakia(model : Model){
+pack:PackageableElement = model.getPackageWithName('formSlovakia');
+version: String = getVersion('xsd');
+}] 
+[generateXSDFile(model, 'path_ms', pack.oclAsType(Package), '-', version)/]
+[/template]
+
+[template public generateXSDFile(model: Model, path : String, pack : Package, suffix : String, version: String )]
+[file (getFilenameXSD(path, pack.name, suffix, version), false, 'UTF-8')]
+[beginSchema('forms,udt', pack, version)/]
+	[importXSD('forms,udt-ms')/]
+	[generateContentAggregatedComponents(pack)/]
+	[endSchema(pack, version)/]
+[/file]
+[/template]
+
+[template public generateContentAggregatedComponents(pack : Package)]
+[let pElements : Sequence(Class) = pack.ownedType->asSequence()]
+[for (packageableElement: PackageableElement | pElements->sortedBy(name))]
+[generatePackageableElement(packageableElement)/]
+[/for]
+[/let]
+[/template]
+
+[template public generatePackageableElement(packageableElement : PackageableElement)]
+[if packageableElement.oclIsTypeOf(Class)]
+[generateType(packageableElement.oclAsType(Class))/]
+[/if]
+[/template]
+
+[template public generateType(class : Class) { 
+NDR : String = getNDR('usecorevocstypes');
+pack : Package = class.owner.oclAsType(Package);}]
+[debug('Type:'+class.name)/]
+[if not isLocal(class)]
+	[if(class.general->isEmpty())]
+	[debug('Ground:'+class.name)/]
+[generateComplextype_ground(class, NDR)/]
+	[else]
+		[if class.generalization.general.oclAsType(Class).ownedAttribute->isEmpty()]
+		[debug('ExtendedType:'+class.name)/]
+[generateComplextype_extension_complexcontent(class, NDR)/]
+		[else]
+		[debug('RestrictedType:'+class.name)/]
+[generateComplextype_restriction_complexcontent(class, NDR)/]
+		[/if]
+	[/if]
+[else]
+	[if class.isChoice()]
+[generateComplextype_ground(class, NDR)/]
+	[/if]
+[/if]
+
+[/template]

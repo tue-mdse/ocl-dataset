@@ -1,0 +1,211 @@
+[comment encoding = UTF-8 /]
+[module generate('/tudor.lu.modeling.transformation.tauHCI/src-gen/tudor/lu/modeling/transformation/TauHCI.ecore')/]
+
+[template public generate(aModel : Model)]
+	
+	[comment @main /]
+	[file ('TaskToCUI'.concat('.atl'), false, 'UTF-8')]
+	-- @path CUI=/lu.tudor.genius.transformation/metamodel/CUI.ecore
+	-- @nsURI TDA=http://tudor.lu/tda
+	-- @lib LibID=/lu.tudor.genius.transformation/transformation/Library/TaskIdCreator.atl
+	-- @lib LibTask4CUI=/lu.tudor.genius.transformation/transformation/Library/TaskCUILibrary.atl
+	
+	-- This transformation as been generated from Task/CUI specific Transformation model
+	-- By Acceleo Template
+	module TdaToDetailedCui;
+	create OUT : CUI from IN : TDA;
+
+	[comment Reusing the Helper --> could use an ATL library here!!!! /]
+	helper def : CreateId : Map(TDA!Task, Integer) = 
+	TDA!Task.allInstancesFrom('IN')->iterate(e; mapid: Map(TDA!Task,Integer) = Map{} |
+			mapid.including(e, mapid.getValues()->size()+1)
+		);
+
+	helper context TDA!Task  def : getDirectSubTasks : Sequence(TDA!Task) = if(self.operator.oclIsUndefined()) then Sequence{} else self.operator.subTasks endif;
+
+	-- A task is interactively valid if it contains an interaction auitype, if it is clearly identified as interactive type and if it manipulates
+	-- at least one interaction concept.
+	--- @return true if the task is interactive and it is manipulated concepts.
+	helper context TDA!Task def : isInteractivelyValid() : Boolean =  self.type=#"interactive"
+	and not self.associations.oclIsUndefined()
+	and self.associations.notEmpty()
+	;
+
+	--- @return true if the current task is not a leaf task nor the root task.
+	helper context TDA!Task def : isNotLeafNorRoot() : Boolean =   not self.operator.oclIsUndefined()
+			              									and not(self.superOperator.oclIsUndefined());
+
+
+	helper context TDA!Task def: getID() : Integer = thisModule.CreateId.get(self);
+
+
+	helper def : DomainAttributeToInteractor(input:TDA!LinkableConceptElement) : Sequence(CUI!GraphicalInteractor) = 
+		if(input.oclIsKindOf(TDA!DomainAttribute)) then
+			if(input.type=#"document") then thisModule.DomainImageToImageField(input) else 
+				if(input.type=#"text") then thisModule.DomainTextToTextArea(input) else
+					if(input.type=#"string") then thisModule.DomainStringToTextfield(input) else 
+						if(input.type=#"date") then thisModule.DomainDateToDateField(input) else Sequence{}
+					endif
+					endif
+					endif
+				endif
+		else 
+			Sequence{}
+		endif;
+	
+	[comment Rule Definition Part /]
+	rule ModelToModel {
+		from
+			modin : TDA!TDAModel
+		to 
+			modout : CUI!CuiModel(
+				cuiObjects <- modin.mainTask
+		)
+	}
+	
+	[comment This task can be inserted later on on DSTL /]
+	--- Create an "interaction" Space for Root of the Task tree; Space is used to describe an application or service interaction space
+	rule MainTaskToSpace {
+		from
+			maintsk : TDA!Task(maintsk.superOperator.oclIsUndefined())
+		to 
+			win : CUI!Space (
+				name <- maintsk.name,
+				id <-maintsk.getID(),
+				containedObjects <- maintsk.getDirectSubTasks
+			)
+	}
+	-- *************************END OF HANDWRITTEN CODE***********************************---
+	[comment Inserting Specified in DSTL Elements /]
+-- ***********************************************
+-- General transformation Rules
+-- ***********************************************
+[for (it : Rule | aModel.rules)]
+[it.gRule()/]
+[/for]
+
+-- ***********************************************
+-- Specific transformation Rules
+-- ***********************************************
+[for (it : Specific | aModel.specificRules)]
+[it.specRule()/]
+[/for]
+
+-- ***********************************************
+-- Domain Attribute transformation - Lazy Rules 
+-- ***********************************************
+[for (it : Domain | aModel.domainRules)]
+	[it.domRule()/]
+[/for]
+
+	[/file]
+	
+[/template]
+
+[template private gRule(rule : Rule)]
+ rule [rule.auitype.concat('To').concat(nameString(rule.uielement))/] {
+		from
+			
+			in_tsk : TDA!Task([if (rule.auitype.equalsIgnoreCase('Root'))]
+						(maintsk.superOperator.oclIsUndefined()) [else] 
+  in_tsk.auiType=#"[rule.auitype/]"
+						[if (rule.interactivelyValid.equalsIgnoreCase('interactive'))]
+  and in_tsk.isInteractivelyValid()
+						[/if] 
+						[if (rule.interactivelyValid.equalsIgnoreCase('notinteractive'))]
+  and in_tsk.type=#"abstract" [comment modify here the behavior to model type element /]
+  and in_tsk.isNotLeafNorRoot() [comment adding this to avoid duplicate rule execution /]
+						[/if] 
+					[/if]
+					)
+		to
+		   [rule.uielement.cOutPattern()/]				
+	[comment add concept and inner class here /]			
+	}
+[/template]
+
+[template private specRule(srule : Specific)]
+[comment here i just consider the first element but could be many/]
+ rule Specific_TaskName[srule.taskName.replaceAll(' ', '').concat('To').concat(nameString(srule.uielement->first())) /] {
+	from
+		in_tsk : TDA!Task(in_tsk.name='[srule.taskName/]')
+	to
+		[srule.uielement->first().cOutPattern()/]
+[comment add concept and inner class here /]	
+	}
+[/template]
+
+
+[template private domRule(domain : Domain)]
+ lazy rule Domain[domain.domainType.concat('To').concat(nameString(domain.uielement))/] {
+	from
+		in_dom : TDA!DomainAttribute
+	to
+		[domain.uielement.domOutPattern() /]
+ }
+
+[/template]
+
+[template private cOutPattern(elem: UIElement)]
+		out : CUI![nameString(elem)/] (
+				name <- in_tsk.name,
+				id <-in_tsk.getID()[cBindings(elem)/]
+)
+[/template]
+
+[template private domOutPattern(elem: UIElement)]
+	out : CUI![nameString(elem)/] (
+			name <- in_dom.name,
+			labelPrefix <- if(in_dom.istypePromoted) then in_dom.name else '' endif
+	)
+[/template]
+
+
+[template private nameString(elem: UIElement)]
+[comment dispatcher template can be generated from CUI M2/]
+[if (elem.oclIsTypeOf(Button))]
+Button 
+		[/if]
+		 [if (elem.oclIsTypeOf(Window))]
+Windows 
+		 [/if]
+		 [if (elem.oclIsTypeOf(Panel))]
+Panel 
+		 [/if]
+         [if (elem.oclIsTypeOf(ListElementSelector))]
+ListElementSelector 
+		 [/if]
+		 [if (elem.oclIsTypeOf(DataField))]
+Datafield 
+		 [/if]
+		[if (elem.oclIsTypeOf(ImageField))]
+ImageField
+		[/if]
+		[if (elem.oclIsTypeOf(TextArea))]
+TextArea
+		[/if]
+		[if (elem.oclIsTypeOf(TextField))]
+TextField
+		[/if]
+[/template]
+
+
+[template private cBindings(elem: UIElement)]
+		 [if (elem.oclIsTypeOf(Window))]
+,
+containedObjects <- in_tsk.getDirectSubTasks,
+containedObjects <- in_tsk.associations->collect(e | thisModule.DomainAttributeToInteractor(e.manipulatedConcepts)) 
+		 [/if]
+		 [if (elem.oclIsTypeOf(Panel))]
+,
+containedObjects <- in_tsk.getDirectSubTasks,
+[comment if element are contained like : output task but not abstract container /]
+containedObjects <- in_tsk.associations->collect(e | thisModule.DomainAttributeToInteractor(e.manipulatedConcepts)) 
+		 [/if]
+         [if (elem.oclIsTypeOf(ListElementSelector))]
+,
+containedElements <- in_tsk.associations->collect(e | thisModule.DomainAttributeToInteractor(e.manipulatedConcepts))
+		 [/if]
+[/template]
+
+

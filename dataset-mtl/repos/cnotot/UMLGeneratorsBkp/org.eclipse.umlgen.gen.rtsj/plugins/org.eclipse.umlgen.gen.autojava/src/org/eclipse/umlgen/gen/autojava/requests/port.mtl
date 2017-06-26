@@ -1,0 +1,54 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2012, 2014 CNES and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Cedric Notot (Obeo) - initial API and implementation
+[/comment]
+
+[module port('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::umlgen::gen::autojava::specific::lib::requests::common /]
+[import org::eclipse::umlgen::gen::autojava::requests::common /]
+[import org::eclipse::umlgen::gen::autojava::services::utilServices /]
+[import org::eclipse::umlgen::gen::autojava::services::umlServices /]
+
+[query public getAllPortInterfaces(aPort : Port) : Sequence(Interface) = aPort.getInterfacesPortProvider()->union(aPort.getInterfacesPortUser()) /]
+
+[query public getInterfacesPortProvider(aPort : Port) : Sequence(Interface) = aPort.get('provided')->filter(Interface) /]
+
+[query public getInterfacesPortUser(aPort : Port) : Sequence(Interface) = minimize(aPort.get('clientDependency')->filter(Dependency).get('supplier'))->filter(Interface) /]
+
+[query public isUserSync(aPort : Port) : Boolean = not aPort.isEventData() and not aPort.isAsynchronous() and aPort.provided->isEmpty() /]
+
+[query public isProviderSync(aPort : Port) : Boolean = not aPort.isEventData() and not aPort.isAsynchronous() and aPort.provided->notEmpty() /]
+
+[query public isUserASync(aPort : Port) : Boolean = aPort.isAsynchronous() and aPort.provided->isEmpty() /]
+
+[query public isProviderASync(aPort : Port) : Boolean = aPort.isAsynchronous() and aPort.provided->notEmpty() /]
+
+[query public isEmitter(aPort : Port) : Boolean = aPort.isEventData() and aPort.provided->isEmpty() /]
+
+[query public isReceiver(aPort : Port) : Boolean = aPort.isEventData() and aPort.provided->notEmpty() /]
+
+[query public isAsynchronous(aPort : Port) : Boolean = aPort.getAllPortInterfaces()->select(anInterface : Interface | anInterface.isAsynchronous())->notEmpty() /]
+
+[query public isSynchronous(aPort : Port) : Boolean = aPort.getAllPortInterfaces()->select(anInterface : Interface | anInterface.getStereotypeApplications()->isEmpty())->notEmpty() /]
+
+[query public isEventData(aPort : Port) : Boolean = aPort.getAllPortInterfaces()->select(anInterface : Interface | anInterface.isEventData())->notEmpty() /]
+
+[query public isLossyBuffer(aPort : Port) : Boolean = aPort.hasStereotype('RTSJ::LossyBuffer') /]
+
+[query public getInterfacesPortProvider(aClass : Class) : Sequence(Interface) = minimize(aClass.get('ownedPort')->filter(Port).getInterfacesPortProvider())->filter(Interface) /]
+
+[query public getInterfacesPortUser(aClass : Class) : Sequence(Interface) = minimize(aClass.get('ownedPort')->filter(Port).getInterfacesPortUser())->filter(Interface) /]
+
+[query public getAsyncInterfacesPortProvider(aClass : Class) : Sequence(Interface) = aClass.getInterfacesPortProvider()->select(anInterface : Interface | anInterface.isAsynchronous()) /]
+
+[query public getAllProvidedInterfaces(aClass : Class) : Sequence(Interface) = minimize(aClass.getInterfaces()->union(aClass.getInterfacesPortProvider()))->filter(Interface) /]
+
+[query public getInterfacesRealization(aClass : Class) : Sequence(Interface) = aClass.getAllProvidedInterfaces()->select(anInterface : Interface | not anInterface.isEventData()) /]

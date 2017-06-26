@@ -1,0 +1,108 @@
+[comment encoding = UTF-8 /]
+[comment]
+/*****************************************************************************
+ * Copyright (c) 2013 INTEMPORA S.A.
+ *
+ * This software is a computer program whose purpose is to transform RobotML models
+ * into RTMaps diagrams and RTMaps components via source code generation techniques.
+ * 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *  Nicolas DU LAC (INTEMPORA) - Initial API and implementation
+ *
+ *****************************************************************************/
+[/comment]
+[module generate_rtmaps('http://www.eclipse.org/uml2/3.0.0/UML', 'http://Papyrus/RobotML/1')]
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::GeneralQueries /]
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::ArchitectureQueries /]
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::DeploymentQueries /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_component_cpp /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_component_hpp /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_robotml_primitive_datatypes_h /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_robotml_datatypes_h /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_model_datatypes_h /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_macrocomponent_rtmc /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_diagram_rtd /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_makefile /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_pckinfo /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_vc2005_project_vcproj /] 
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_vc2005_solution_sln /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_vc2008_project_vcproj /] 
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_vc2008_solution_sln /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_vc2010_project_vcxproj /] 
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_vc2010_project_vcxproj_filters /] 
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::files::generate_rtmaps_vc2010_solution_sln /]
+
+[template public generateRTMapsDiagram(model : Model)]
+[comment @main/]
+
+[comment]RTMaps main diagram generation[/comment]
+	[if (isRootModel(model))]
+		[generateRTMapsDiagramRTD(model)/]
+	
+		[generateRTMapsMakefile(model) /]
+	
+		[generateRTMapsPckInfo(model) /]
+	
+		[generateRTMapsVC2005ProjectVCPROJ(model) /]
+		[generateRTMapsVC2008ProjectVCPROJ(model) /]
+		[generateRTMapsVC2010ProjectVCXPROJ(model) /]
+		[generateRTMapsVC2010ProjectVCXPROJFILTERS(model) /]
+	
+		[generateRTMapsVC2005SolutionSLN(model) /]
+		[generateRTMapsVC2008SolutionSLN(model) /]
+		[generateRTMapsVC2010SolutionSLN(model) /]
+	
+		[generateRTMapsRobotMLPrimitiveDataTypes(model)/]
+		[generateRTMapsRobotMLDataTypes(model) /]
+		[generateRTMapsModelDataTypes(model) /]
+
+		[comment]For all classes in the model, generate either a component cpp and h source code, or a macro-component.[/comment]
+		[comment]
+		[file ('zob.txt', false, 'UTF-8')]
+		[let seq : Sequence(Package)  = getDeploymentPlanPackagesInModel(model)]
+		[for (pck : Package | seq)]
+			Found a Deployment Plan !!! YEeEEHAAA !! : [pck.name/]
+		[/for]
+		[/let]
+		[let comps : Sequence(Class) = getDefinedComponentsForPlatform(model,'rtmaps')]
+			[for (comp : Class | comps)]
+				Found a class deployed on RTMaps: [comp.name/]
+			[/for]
+		[/let]
+-------------------------------------------------------------------------------
+		[let comps : Sequence(Class) = getDefinedComponentsForPlatform2(model,'rtmaps')]
+			[for (comp : Class | comps)]
+				Found a class deployed on RTMaps: [comp.name/]
+			[/for]
+		[/let]
+-------------------------------------------------------------------
+		[let instspecs : Sequence(InstanceSpecification) = getInstanceSpecificationsForPlatform(model,'rtmaps')]
+			[for (instspec : InstanceSpecification | instspecs)]
+				Found an instance spec for RTMaps: [instspec.name/]
+			[/for]
+		[/let]
+-------------------------------------------------------------------
+		[let instspecs : Sequence(InstanceSpecification) = getInstanceSpecificationsForPlatform2(model,'rtmaps')]
+			[for (instspec : InstanceSpecification | instspecs)]
+				Found an instance spec for RTMaps: [instspec.name/]
+			[/for]
+		[/let]
+		[/file]
+		[/comment]
+		[for (elt: NamedElement | getComponentModels(model))]
+			[let c : Class = elt.oclAsType(Class)]
+			[if (isMacroComponent(c) = false)]
+				[generateRTMapsComponentHpp(c,model)/]
+				[generateRTMapsComponentCpp(c,model)/]
+			[/if]
+			[/let]
+		[/for]
+
+		[generateRTMapsMacroComponentPackage(model)/]
+	[/if]
+[/template]

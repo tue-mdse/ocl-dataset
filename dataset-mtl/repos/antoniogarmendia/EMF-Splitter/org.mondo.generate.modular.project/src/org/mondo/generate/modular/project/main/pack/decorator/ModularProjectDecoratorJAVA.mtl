@@ -1,0 +1,110 @@
+[comment encoding = UTF-8 /]
+[module ModularProjectDecoratorJAVA('http://www.eclipse.org/emf/2002/Ecore','http://mondo.org/runtimePatterns','http://www.eclipse.org/emf/2002/GenModel')]
+[import org::mondo::generate::modular::project::main::requests::global_queriesModularProject /]
+
+[template public ModularProjectDecorator(anProjectName : String, anPackageName : String, anPatternInstance : PatternInstance,anEObjectGenModel : GenModel)]
+
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name') + '.' + anPatternInstance.Get_ProjectClassRoleInstance().element.name).replaceAll('\\.','/').concat('/decorator/').concat('ModularProjectDecorator.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/].decorator;
+
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IProjectNature;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.viewers.IDecoration;
+import org.eclipse.jface.viewers.ILabelProviderListener;
+import org.eclipse.jface.viewers.ILightweightLabelDecorator;
+import [anProjectName.toLower()/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/].XMI_File;
+import [anProjectName.toLower()/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/].wizard.[anPatternInstance.Get_ProjectClass().name/]NewProjectNature;
+import org.eclipse.ui.plugin.AbstractUIPlugin;
+
+[ for(c : ClassRoleInstance | anPatternInstance.Get_FolderClassRoleInstance()->union(anPatternInstance.Get_ProjectClassRoleInstance()->asSequence())->union(anPatternInstance.Get_ProjectClassRoleInstance()
+																						 ->select(anClassRoleInstance : ClassRoleInstance | anClassRoleInstance.referenceInstances
+																						 ->select(ref : ReferenceRoleInstance | ref.element.eType.name.toString() = anClassRoleInstance.element.name.toString())->size() > 0)->asSequence()))]
+import [generateEClassImport(c.element)/];
+[ /for]
+
+public class ModularProjectDecorator implements ILightweightLabelDecorator {
+
+	@Override
+	public void addListener(ILabelProviderListener arg0) {
+	
+	}
+
+	@Override
+	public void dispose() {
+	
+	}
+
+	@Override
+	public boolean isLabelProperty(Object arg0, String arg1) {
+
+		return false;
+	}
+
+	@Override
+	public void removeListener(ILabelProviderListener listener) {
+	
+	}
+	
+	[ for(c : ClassRoleInstance | anPatternInstance.Get_FolderClassRoleInstance()->union(anPatternInstance.Get_ProjectClassRoleInstance()->asSequence())
+																						 ->union(anPatternInstance.Get_ProjectClassRoleInstance()
+																						 ->select(anClassRoleInstance : ClassRoleInstance | anClassRoleInstance.referenceInstances
+																						 ->select(ref : ReferenceRoleInstance | ref.element.eType.name.toString() = anClassRoleInstance.element.name.toString())->size() > 0)->asSequence()))]
+	private static final ImageDescriptor PACKAGE_[c.element.name /];  
+	[/for]  
+	static {  
+	 [ for(c : ClassRoleInstance | anPatternInstance.Get_FolderClassRoleInstance()->union(anPatternInstance.Get_ProjectClassRoleInstance()->asSequence())
+																						->union(anPatternInstance.Get_ProjectClassRoleInstance()
+																						 ->select(anClassRoleInstance : ClassRoleInstance | anClassRoleInstance.referenceInstances
+																						 ->select(ref : ReferenceRoleInstance | ref.element.eType.name.toString() = anClassRoleInstance.element.name.toString())->size() > 0)->asSequence()))]
+		[if(c.Get_ClassRoleInstance_EAttribute('icon').equalsIgnoreCase(getProperty('def_path_icon'))=false and c.Get_ClassRoleInstance_EAttribute('icon').equalsIgnoreCase(getProperty(''))=false)]
+	 	PACKAGE_[c.element.name /] = AbstractUIPlugin.imageDescriptorFromPlugin("[anProjectName/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/]", "[c.Get_ClassRoleInstance_EAttribute('icon')/]");
+		[else]
+			[if(c=anPatternInstance.Get_ProjectClassRoleInstance())]
+		PACKAGE_[c.element.name /] = AbstractUIPlugin.imageDescriptorFromPlugin("[anProjectName/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/]", "[getProperty('def_pro_icon')/]");
+			[else]
+		PACKAGE_[c.element.name /] = AbstractUIPlugin.imageDescriptorFromPlugin("[anProjectName/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/]", "[getProperty('def_folder_icon')/]");
+			[/if]
+		[/if]
+	 [/for]	   
+	}  	
+	
+	
+	@Override
+	public void decorate(Object element, IDecoration decoration) {
+		
+		if(element instanceof IFolder)
+		{
+			try{
+				IFolder folder = (IFolder)element;
+				IProjectNature nature = folder.getProject().getNature([anPatternInstance.Get_ProjectClass().name/]NewProjectNature.ID);
+				if(nature!=null){
+					//Search XMI
+					IFile file = folder.getFile(folder.getName().concat(".xmi"));
+					if(file.exists()){
+						XMI_File file_xmi = new XMI_File(URI.createFileURI(file.getFullPath().toString()));
+						EObject root = file_xmi.Get_Root();
+						[ for(c : ClassRoleInstance | anPatternInstance.Get_FolderClassRoleInstance()->union(anPatternInstance.Get_ProjectClassRoleInstance()->asSequence())
+																						 ->union(anPatternInstance.Get_ProjectClassRoleInstance()
+																						 ->select(anClassRoleInstance : ClassRoleInstance | anClassRoleInstance.referenceInstances
+																						 ->select(ref : ReferenceRoleInstance | ref.element.eType.name.toString() = anClassRoleInstance.element.name.toString())->size() > 0)->asSequence()))] 
+						if(root instanceof [c.element.name/])
+							decoration.addOverlay(PACKAGE_[ c.element.name /], IDecoration.BOTTOM_LEFT);
+						[/for]
+					}						
+				}
+				
+			}catch(Throwable th){
+					//Ignore if file is not found 
+			}
+		}
+		
+	}
+}
+[/file]
+
+
+[/template]

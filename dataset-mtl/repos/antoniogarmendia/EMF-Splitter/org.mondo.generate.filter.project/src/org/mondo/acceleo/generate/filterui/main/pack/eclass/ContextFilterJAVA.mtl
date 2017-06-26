@@ -1,0 +1,42 @@
+[comment encoding = UTF-8 /]
+[module ContextFilterJAVA('http://www.eclipse.org/emf/2002/Ecore','http://mondo.org/runtimePatterns')]
+[import org::mondo::acceleo::generate::filterui::requests::global_queriesFilterUI /]
+
+[template public ContextFilter(anProjectName : EString, anPatternInstance : PatternInstance,anEPackage : EPackage)]
+
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name')).replaceAll('\\.','/').concat('/eclass/').concat('ContextFilterRoot.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].eclass;
+
+import org.eclipse.emf.common.util.BasicEList;
+import org.eclipse.emf.common.util.EList;
+import org.eclipse.emf.ecore.EObject;
+import org.mondo.modular.filterui.ext.IObtainClassFeatures;
+
+public class ContextFilterRoot {
+	
+	private EList<IObtainClassFeatures> list_feat;
+
+	public ContextFilterRoot() {
+		
+		list_feat = new BasicEList<IObtainClassFeatures>();
+		[for (anEClass : EClass| anEPackage.eAllContents(EClass) )]
+		list_feat.add(new [anEClass.name.toString() /]Filter());	
+		[/for]	
+	}	
+	
+	public IObtainClassFeatures ListClasses(EObject anEObject)
+	{
+		for (IObtainClassFeatures anObtainClassFeatures : list_feat) {
+			if(anObtainClassFeatures.isIstanceEObject(anEObject))
+				return anObtainClassFeatures;
+		}		
+		return null;		
+	}
+	
+	
+
+}
+
+[/file]
+
+[/template]

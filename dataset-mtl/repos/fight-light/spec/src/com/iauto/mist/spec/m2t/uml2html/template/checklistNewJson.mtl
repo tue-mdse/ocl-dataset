@@ -1,0 +1,319 @@
+[comment encoding = UTF-8 /]
+[module checklistNewJson('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import com::iauto::mist::spec::m2t::uml2html::query::commonQuery/]
+[import com::iauto::mist::spec::m2t::uml2html::template::stateOperJson/]
+
+[template public genChecklistNewStateJson(aModel : Model)]
+[genHardOrIntObjLoad(aModel)/]
+[file ('checklistNewStates.json', false, 'UTF-8')]
+{
+[for (asm : StateMachine | aModel.getAllStateMachine()->sortedBy(name))]
+[let condition : Boolean = asm.submachineState->size() > 1]
+	[for (is : State | asm.region.getAllVertex()->selectByType(State)->select(region->isEmpty() and submachine->isEmpty())->sortedBy(name))]
+[let specState : Sequence(String) = Sequence{}]
+[genSpecState(is, specState)/]
+"[if(specState->at(4).isNotNullCheck())][specState->at(4).xlsNameEscape()/] [/if][specState->at(3).xlsNameEscape()/]":{
+	"screen_id":"[specState->at(4).otherEscapeText().escapeTextForOperAndCL()/]",
+	"screen_name":"[specState->at(3).otherEscapeText().escapeTextForOperAndCL()/]",
+	"transitions":{
+      [is.genTransition(asm, condition, aModel)/]
+      [appendDefaultTrans(is, aModel, '1')/]
+    }
+},
+[/let]
+	[/for]
+[/let]
+[/for]
+}
+[/file]
+[/template]
+
+[template private genTransition(is : Vertex, asm : StateMachine, condition : Boolean, aModel : Model)]
+[let outgoings : Sequence(Transition) = Sequence{}]
+[genOutgoings(is,outgoings)/]
+[for (it : Transition | outgoings->select(checkTransition())->select(visibility<>VisibilityKind::private or visibility=null)->select(filterTrans())->sortedBy(name))]
+[if (condition and not (it.containingStateMachine() = asm))]
+    [let states : Sequence(State) = asm.submachineState -> select(getOutGoings().name->includes(it.name))->asSequence()]
+    [if (states->notEmpty())]
+		[for (sms : State | states)]
+			[let curTrans : Transition = sms.getOutGoings()->select(name = it.name)->select(filterTrans())->asSequence()->at(1)]
+			[if (curTrans->notEmpty())]
+"[curTrans.name.otherEscapeText().escapeTextForOperAndCL()/]":{
+[if(checkSameNameTransExist(curTrans.name))]
+[let transInfo : Sequence(String) = Sequence{}]
+[delCoverTransFromDefault(curTrans.name, transInfo, aModel)/]
+	"condition":"[sms.name.otherEscapeText().escapeTextForOperAndCL()/]",
+[comment]	"imageName":"[let ic : Constraint = curTrans.ownedRule->any(name='image')][let ils : LiteralString = ic.specification][if (ils.name.getBasicImagePath()<>null)][ils.name/][/if][/let][/let]",[/comment]
+[comment]    "imageName":"[let transImage : String = genTransImage(is.oclAsType(State), curTrans)][if (transImage<>null and transImage<>'')][transImage.getBasicImagePath()/][/if][/let]",[/comment]
+    "imageName":"[if is.oclIsTypeOf(State)][let transImage : String = is.oclAsType(State).genTransImage(curTrans)][if (transImage.isNotNullCheck())][transImage.getBasicImagePath()/][else][transInfo->at(2).getBasicImagePath()/][/if][/let][else][let ic : Constraint = curTrans.ownedRule->any(name='image')][let ils : LiteralString = ic.specification][if (ils.name.isNotNullCheck())][ils.name.getBasicImagePath()/][else][transInfo->at(2).getBasicImagePath()/][/if][/let][/let][/if]",
+[comment]    "operationName":"[let ic : Constraint = curTrans.ownedRule->any(name='info')][let ils : LiteralString = ic.specification][if (ils.name<>null)][ils.name.otherEscapeText().escapeTextForOperAndCL()/][/if][/let][/let]",   	[/comment]
+	"operationName":"[if curTrans.getOwnedRuleConstraintName('info').isNotNullCheck()][curTrans.getOwnedRuleConstraintName('info')/][else][transInfo->at(3).otherEscapeText().escapeTextForOperAndCL()/][/if]",
+[comment]	"operationInfo":"[let ic : Constraint = curTrans.ownedRule->any(name='info')][let ils : LiteralString = ic.specification][if (ils.value<>null)][ils.value.otherEscapeText().escapeTextForOperAndCL()/][/if][/let][/let]",[/comment]
+    "operationInfo":"[if curTrans.getOwnedRuleConstraintValue('info').isNotNullCheck()][curTrans.getOwnedRuleConstraintValue('info')/][else][transInfo->at(4).otherEscapeText().escapeTextForOperAndCL()/][/if]",
+	"transKind":"[if (curTrans.source = curTrans.target)]internal[else]external[/if]",
+	[genTransTarget(curTrans, asm, is, transInfo->at(9).otherEscapeText().escapeTextForOperAndCL(), aModel)/]
+[/let]
+[else]
+	"condition":"[sms.name.otherEscapeText().escapeTextForOperAndCL()/]",
+    "imageName":"[if is.oclIsTypeOf(State)][let transImage : String = is.oclAsType(State).genTransImage(curTrans)][if (transImage.isNotNullCheck())][transImage.getBasicImagePath()/][/if][/let][else][let ic : Constraint = curTrans.ownedRule->any(name='image')][let ils : LiteralString = ic.specification][if (ils.name.isNotNullCheck())][ils.name.getBasicImagePath()/][/if][/let][/let][/if]",
+    "operationName":"[curTrans.getOwnedRuleConstraintName('info')/]",   	
+	"operationInfo":"[curTrans.getOwnedRuleConstraintValue('info')/]",
+	"transKind":"[if (curTrans.source = curTrans.target)]internal[else]external[/if]",
+	[genTransTarget(curTrans, asm, is, '', aModel)/]
+[/if]
+},
+			[/if]
+			[/let]
+		[/for]
+	[/if]
+	[/let]
+[else]
+"[it.name.otherEscapeText().escapeTextForOperAndCL()/]":{
+[if(checkSameNameTransExist(it.name))]
+[let transInfo : Sequence(String) = Sequence{}]
+[delCoverTransFromDefault(it.name, transInfo, aModel)/]
+	"condition":"",
+[comment]	"imageName":"[let ic : Constraint = it.ownedRule->any(name='image')][let ils : LiteralString = ic.specification][if (ils.name<>null)][ils.name.getBasicImagePath()/][/if][/let][/let]",[/comment]
+[comment]    "imageName":"[let transImage : String = genTransImage(is.oclAsType(State), it)][if (transImage<>null and transImage<>'')][transImage.getBasicImagePath()/][/if][/let]",[/comment]
+    "imageName":"[if is.oclIsTypeOf(State)][let transImage : String = is.oclAsType(State).genTransImage(it)][if (transImage.isNotNullCheck())][transImage.getBasicImagePath()/][else][transInfo->at(2).getBasicImagePath()/][/if][/let][else][let ic : Constraint = it.ownedRule->any(name='image')][let ils : LiteralString = ic.specification][if (ils.name.isNotNullCheck())][ils.name.getBasicImagePath()/][else][transInfo->at(2).getBasicImagePath()/][/if][/let][/let][/if]",
+[comment]    "operationName":"[let ic : Constraint = it.ownedRule->any(name='info')][let ils : LiteralString = ic.specification][if (ils.name<>null)][ils.name.otherEscapeText().escapeTextForOperAndCL()/][/if][/let][/let]",   	[/comment]
+    "operationName":"[if it.getOwnedRuleConstraintName('info').isNotNullCheck()][it.getOwnedRuleConstraintName('info')/][else][transInfo->at(3).otherEscapeText().escapeTextForOperAndCL()/][/if]",   	
+[if (condition and not (it.containingStateMachine() = asm))]
+[comment]	"operationInfo":[genOperationInfo(asm)/][/comment]
+	"operationInfo":[if(genOperationInfo(asm)<>'')][genOperationInfo(asm)/][else]"[transInfo->at(4).otherEscapeText().escapeTextForOperAndCL()/]"[/if]
+[else]
+[comment]	"operationInfo":"[let ic : Constraint = it.ownedRule->any(name='info')][let ils : LiteralString = ic.specification][if (ils.value<>null)][ils.value.otherEscapeText().escapeTextForOperAndCL()/][/if][/let][/let]",[/comment]
+	"operationInfo":"[if it.getOwnedRuleConstraintValue('info').isNotNullCheck()][it.getOwnedRuleConstraintValue('info')/][else][transInfo->at(4).otherEscapeText().escapeTextForOperAndCL()/][/if]",
+[/if]
+	"transKind":"[if (it.source = it.target)]internal[else]external[/if]",
+	[genTransTarget(it, asm, is, transInfo->at(9).otherEscapeText().escapeTextForOperAndCL(), aModel)/]
+[/let]
+[else]
+	"condition":"",
+    "imageName":"[if is.oclIsTypeOf(State)][let transImage : String = is.oclAsType(State).genTransImage(it)][if (transImage.isNotNullCheck())][transImage.getBasicImagePath()/][/if][/let][else][let ic : Constraint = it.ownedRule->any(name='image')][let ils : LiteralString = ic.specification][if (ils.name.isNotNullCheck())][ils.name.getBasicImagePath()/][/if][/let][/let][/if]",
+    "operationName":"[it.getOwnedRuleConstraintName('info')/]",   	
+[if (condition and not (it.containingStateMachine() = asm))]
+	"operationInfo":[genOperationInfo(asm)/]
+[else]
+	"operationInfo":"[it.getOwnedRuleConstraintValue('info')/]",
+[/if]
+	"transKind":"[if (it.source = it.target)]internal[else]external[/if]",
+	[genTransTarget(it, asm, is, '', aModel)/]
+[/if]
+},
+[/if]
+[/for]
+[/let]
+[/template]
+
+[template public genGuards(transition : Transition, asm : StateMachine, is : Vertex, aModel : Model)]
+[if (transition.target->notEmpty())]
+  [if (isExitPoint(transition.target))]
+	[for (it : Transition | transition.containingStateMachine().submachineState.connection->select(exit->includes(transition.target)).outgoing->select(checkTransition()))]
+[genGuardsLogic(it, it, asm, is, aModel)/]  
+	[/for]
+  [else]
+[genGuardsLogic(transition, null, asm, is, aModel)/]
+  [/if]
+[/if]
+[/template]
+
+[template public genGuardsLogic(transition : Transition, first_transition : Transition, asm : StateMachine, is : Vertex, aModel : Model)]
+[let transitionEnd : Transition = transition.getTransitionEnd()]
+[if (isChioce(transitionEnd.target))]
+  [for (it : Transition | transitionEnd.target.outgoing->select(checkTransition())->select(filterTrans())->sortedBy(name))]
+[genGuardsTemplate(it, first_transition, asm, is, aModel)/]
+  [/for]
+[/if]
+[/let]
+[/template]
+
+[template public genGuardsTemplate(it : Transition, transition : Transition, asm : StateMachine, is : Vertex, aModel : Model)]
+"[it.name.otherEscapeText().escapeTextForOperAndCL()/]":{
+[if(checkSameNameTransExist(it.name))]
+[let transInfo : Sequence(String) = Sequence{}]
+[delCoverTransFromDefault(it.name, transInfo, aModel)/]
+[comment]	"imageName":"[let ic : Constraint = it.ownedRule->any(name='image')][let ils : LiteralString = ic.specification][if (ils.name<>null)][ils.name.getBasicImagePath()/][/if][/let][/let]",[/comment]
+[comment]    "imageName":"[let transImage : String = genTransImage(is.oclAsType(State), it)][if (transImage<>null and transImage<>'')][transImage.getBasicImagePath()/][/if][/let]",[/comment]
+    "imageName":"[if is.oclIsTypeOf(State)][let transImage : String = is.oclAsType(State).genTransImage(it)][if (transImage.isNotNullCheck())][transImage.getBasicImagePath()/][else][transInfo->at(2).getBasicImagePath()/][/if][/let][else][let ic : Constraint = it.ownedRule->any(name='image')][let ils : LiteralString = ic.specification][if (ils.name.isNotNullCheck())][ils.name.getBasicImagePath()/][else][transInfo->at(2).getBasicImagePath()/][/if][/let][/let][/if]",
+[comment]	"operationName":"[let ic : Constraint = it.ownedRule->any(name='info')][let ils : LiteralString = ic.specification][if (ils.name<>null)][ils.name.otherEscapeText().escapeTextForOperAndCL()/][/if][/let][/let]",[/comment]
+	"operationName":"[if it.getOwnedRuleConstraintName('info').isNotNullCheck()][it.getOwnedRuleConstraintName('info')/][else][transInfo->at(3).otherEscapeText().escapeTextForOperAndCL()/][/if]",
+[comment]	"operationInfo":"[let ic : Constraint = it.ownedRule->any(name='info')][let ils : LiteralString = ic.specification][if (ils.value<>null)][ils.value.otherEscapeText().escapeTextForOperAndCL()/][/if][/let][/let]",[/comment]
+	"operationInfo":"[if it.getOwnedRuleConstraintValue('info').isNotNullCheck()][it.getOwnedRuleConstraintValue('info')/][else][transInfo->at(4).otherEscapeText().escapeTextForOperAndCL()/][/if]",
+	"transKind":"[if (it.source = it.target)]internal[else]external[/if]",
+	[genTransTarget(it, asm, is, transInfo->at(9).otherEscapeText().escapeTextForOperAndCL(), aModel)/]
+[/let]
+[else]
+    "imageName":"[if is.oclIsTypeOf(State)][let transImage : String = is.oclAsType(State).genTransImage(it)][if (transImage.isNotNullCheck())][transImage.getBasicImagePath()/][/if][/let][else][let ic : Constraint = it.ownedRule->any(name='image')][let ils : LiteralString = ic.specification][if (ils.name.isNotNullCheck())][ils.name.getBasicImagePath()/][/if][/let][/let][/if]",
+	"operationName":"[it.getOwnedRuleConstraintName('info')/]",
+	"operationInfo":"[it.getOwnedRuleConstraintValue('info')/]",
+	"transKind":"[if (it.source = it.target)]internal[else]external[/if]",
+	[genTransTarget(it, asm, is, '', aModel)/]
+[/if]
+},
+[/template]
+
+[query public isExitPoint(vertex : Vertex) : Boolean =  
+	vertex.oclIsTypeOf(Pseudostate) and vertex.oclAsType(Pseudostate).kind = PseudostateKind::exitPoint
+/]
+
+[query public isChioce(vertex : Vertex) : Boolean =  
+	vertex.oclIsTypeOf(Pseudostate) and vertex.oclAsType(Pseudostate).kind = PseudostateKind::choice
+/]
+
+[template public genOperationInfo(it : Transition, asm : StateMachine)]
+[let transtions : Sequence(Transition) = asm.submachineState.getOutGoingSameWithIt(it)->excluding(null)->asSequence()]
+[if (transtions->size() > 1 and transtions.ownedRule->select(name = 'info').specification.oclAsType(LiteralString)->select(value <> null).value.escapeTextForOperAndCL()->asSet()->size() > 1)]
+{
+[for (transition : Transition | transtions)]
+[comment]  "[transition.containingStateMachine().name/]":"[let ic : Constraint = transition.ownedRule->any(name='info')][let ils : LiteralString = ic.specification][if (ils.value<>null)][ils.value.otherEscapeText().escapeTextForOperAndCL()/][/if][/let][/let]",[/comment]
+  "[transition.containingStateMachine().name/]":"[it.getOwnedRuleConstraintValue('info')/]",
+[/for]
+},
+[else]
+[comment]"[let ic : Constraint = it.ownedRule->any(name='info')][let ils : LiteralString = ic.specification][if (ils.value<>null)][ils.value.otherEscapeText().escapeTextForOperAndCL()/][/if][/let][/let]",[/comment]
+"[it.getOwnedRuleConstraintValue('info')/]",
+[/if]
+[/let]
+[/template]
+
+[query public getOutGoings(state : State) : Set(Transition) = 
+	if state.container->notEmpty() and state.container.state->notEmpty() then state.outgoing->union(getOutGoings(state.container.state))
+	else  if state.containingStateMachine().submachineState->notEmpty() then state.outgoing->union(state.containingStateMachine().submachineState.getOutGoings())
+          else state.outgoing
+          endif
+	endif
+ /]
+
+[query public getOutGoingSameWithIt(state : State, it : Transition) : Transition = 
+    let sequence : Sequence(Transition) = state.outgoing->select(name = it.name)->asSequence()->excluding(null) in
+    if sequence->notEmpty() then sequence->at(1)
+    else 
+        if state.container->notEmpty() and state.container.state->notEmpty() then getOutGoingSameWithIt(state.container.state, it)
+        else
+            null
+        endif
+     endif
+ /]
+
+[template public genTransTarget(it : Transition, asm : StateMachine, is : Vertex, defaultTagVlu : String, aModel : Model)]
+[let it2 : Transition = it.getTransitionEnd()]
+	[if (it2.target.oclIsTypeOf(State))]
+[comment]"target_id":"[it2.target.oclAsType(State).getMajorIdByPageFile()/]",[/comment]
+"target_id":"[if(it.getTransSpecValue().isNotNullCheck())][it.getTransSpecValue()/][else][defaultTagVlu/][/if]",
+"target_name":"[it2.getTargetName().otherEscapeText().escapeTextForOperAndCL()/]"
+	[else]
+		[if (it2.target.oclIsTypeOf(Pseudostate))]
+			[if (it2.target.isChioce())]
+"target_id":"",
+"target_name":"",
+"guards": {     
+	[genGuards(it, asm, is, aModel)/]
+}
+			[else]
+[comment]"target_id":"",[/comment]
+"target_id":"[if(it2.getExpectValue().otherEscapeText().escapeTextForOperAndCL().isNotNullCheck())][it2.getExpectValue().otherEscapeText().escapeTextForOperAndCL()/][else][defaultTagVlu/][/if]",
+"target_name":"[it2.getTargetName().otherEscapeText().escapeTextForOperAndCL()/]"
+			[/if]
+		[/if]
+	[/if]
+[else]
+[comment]"target_id":"",[/comment]
+"target_id":"[if(it.getSelfTransSpecValue().isNotNullCheck())][it.getSelfTransSpecValue()/][else][defaultTagVlu/][/if]",
+"target_name":""
+[/let]
+[/template]
+
+[template private genOutgoings(is : State , icontext : String,list : Sequence(Transition))]
+[    invoke('com.iauto.mist.spec.m2t.uml2html.util.utils', 'genOutgoings(org.eclipse.uml2.uml.State,java.lang.String, java.util.List)', Sequence{is,icontext,list})/]
+[/template]
+
+[template private genOutgoings(is : Vertex , list : Sequence(Transition))]
+[    invoke('com.iauto.mist.spec.m2t.uml2html.util.utils', 'genOutgoingsForStateListExtend(org.eclipse.uml2.uml.Vertex, java.util.List, java.lang.String)', Sequence{is,list,'false'})/]
+[/template]
+
+[template private genSpecState(is : State , list : Sequence(String))]
+[    invoke('com.iauto.mist.spec.common.plugin.util.AtlDataTracker', 'getSingleStateDataByPage(org.eclipse.uml2.uml.State, java.util.List)', Sequence{is,list})/]
+[/template]
+
+[comment][query public getTargetId(is : State) : String = 
+if is.ownedRule->any(name='id')->notEmpty() and is.ownedRule->any(name='id').oclIsTypeOf(Constraint) then
+    let ic : Constraint = is.ownedRule->any(name='id').oclAsType(Constraint) in 
+        if ic.specification->notEmpty() and ic.specification.oclIsTypeOf(LiteralString) then
+            let ils : LiteralString = ic.specification.oclAsType(LiteralString) in
+                if ils.value <> null and ils.value <> '' then
+                    ils.value
+                else
+                    ''
+                endif
+        else
+            ''
+        endif
+else
+    ''
+endif
+ /][/comment]
+
+[query public getMajorNameByPageFile(is : State) : String = 
+	 invoke('com.iauto.mist.spec.common.plugin.util.AtlDataTracker', 'getCommonQueryMajorName(org.eclipse.uml2.uml.State)', Sequence{is})
+ /]
+
+[query public getTargetName(it : Transition) : String = 
+if it.target.oclIsTypeOf(State) then
+	let is : State = it.target.oclAsType(State) in
+		is.getMajorNameByPageFile()
+else
+	if it.target.oclIsTypeOf(Pseudostate) and it.target.oclAsType(Pseudostate).kind=PseudostateKind::shallowHistory then
+		it.target.name
+	else
+		if it.target.oclIsTypeOf(Pseudostate) and it.target.oclAsType(Pseudostate).kind=PseudostateKind::terminate then
+			'アプリ終了'
+		else
+			if it.target.oclIsTypeOf(Pseudostate) and it.target.oclAsType(Pseudostate).kind=PseudostateKind::choice then
+				it.target.name
+			else
+				if it.target.oclIsTypeOf(ConnectionPointReference) then
+					let is : State = it.target.oclAsType(ConnectionPointReference).state in
+						is.getMajorNameByPageFile()
+				else
+					null
+				endif
+			endif
+		endif
+	endif
+endif
+ /]
+
+[query public filterTrans(it : Transition) : Boolean = 
+if it->notEmpty() and it.name->notEmpty() then
+	let itName : String = it.name in
+	if itName.startsWith('interrupt_') or itName.startsWith('INT@') then
+		false
+	else
+		if itName.startsWith('HDKey_') or itName.startsWith('HDK@') then
+			if itName.equalsIgnoreCase('HDK@back') then
+				true
+			else
+				false
+			endif
+		else
+			true
+		endif
+	endif
+else
+	false
+endif
+ /]
+
+[query public genTransImage(is : State, it : Transition) : String =  
+	 invoke('com.iauto.mist.spec.common.plugin.util.AtlDataTracker', 'getStatePageTriggerTransitonImage(org.eclipse.uml2.uml.State, org.eclipse.uml2.uml.Transition)', Sequence{is, it})
+/]
+
+[template private delCoverTransFromDefault(transName : String, transInfo : Sequence(String), aModel : Model)]
+[    invoke('com.iauto.mist.spec.m2t.uml2html.util.utils', 'delCoverTransFromDefault(java.lang.String, java.util.List, org.eclipse.uml2.uml.Model)', Sequence{transName, transInfo, aModel})/]
+[/template]
+
+[template private genHardOrIntObjLoad(aModel : Model)]
+[    invoke('com.iauto.mist.spec.m2t.uml2html.util.utils', 'initJsObjLoad(org.eclipse.uml2.uml.Model)', Sequence{aModel})/]
+[/template]

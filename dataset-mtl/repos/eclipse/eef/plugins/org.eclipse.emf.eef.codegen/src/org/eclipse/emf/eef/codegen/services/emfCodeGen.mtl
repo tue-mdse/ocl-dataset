@@ -1,0 +1,145 @@
+[comment encoding=UTF-8 
+ *******************************************************************************
+ * Copyright (c) 2008-2009 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module emfCodeGen('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel')/]
+
+[import org::eclipse::emf::eef::codegen::services::imports /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenPackage /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenClass /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenClassifier /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenFeature /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenDataType /]
+
+[comment --------------------------------------------------------------------------
+  Names
+ ---------------------------------------------------------------------------------- /]
+
+[template public metamodelPackage(ePackage : EPackage)]
+[ePackage.getGenPackage().getPackageInterfaceName()/]
+[/template]
+
+[template public qualifiedMetamodelPackage(ePackage : EPackage)]
+[if (ePackage.nsURI='http://www.eclipse.org/emf/2003/XMLType')]
+org.eclipse.emf.ecore.xml.type.XMLTypePackage
+[else]
+[ePackage.getGenPackage().getQualifiedPackageInterfaceName()/]
+[/if]
+[/template]
+
+[template public completePackage(ePackage : EPackage)]
+[ePackage.getGenPackage().getQualifiedPackageName()/]
+[/template]
+
+[template public getQualifiedFactoryInterfaceName(eClassifier : EClassifier)]
+[eClassifier.ePackage.getGenPackage().getQualifiedFactoryInterfaceName()/]
+[/template]
+
+[query public metamodelPrefix(ePackage : EPackage) : String = ePackage.getGenPackage().prefix/]
+
+[query public name(eClassifier : EClassifier) : String = let qualifiedName : String = eClassifier.qualifiedName() in 
+qualifiedName.substring(qualifiedName.lastIndex('.') + 1)/]
+
+ [query public qualifiedName(eClassifier : EClassifier) : String =  
+if eClassifier.oclIsTypeOf(EClass) 
+ then 
+  let genClass : GenClass = eClassifier.oclAsType(EClass).getGenClass() in
+   genClass.getQualifiedInterfaceName()
+ else eClassifier.ePackage.completePackage() + '.' + eClassifier.name
+endif/]
+
+[comment --------------------------------------------------------------------------
+  Accessors
+ ---------------------------------------------------------------------------------- /]
+
+[template public metamodelGetter(eClassifier : EClassifier)]
+[eClassifier.eInverse(GenClassifier).getQualifiedClassifierAccessor()/]
+[/template]
+
+[template public metamodelGetter(eDataType : EDataType) post (trim())]
+[if (self.ePackage.nsURI='http://www.eclipse.org/emf/2003/XMLType')]
+XMLTypePackage.Literals.[eDataType.getFormattedName()/]
+[else]
+[eDataType.getGenDataType().getQualifiedClassifierAccessor()/]	
+[/if]
+[/template]
+
+[template public metamodelGetter(eClass : EClass)]
+[eClass.getGenClass().getQualifiedClassifierAccessor()/]
+[/template]
+
+[template public metamodelGetter(e : EStructuralFeature)]
+[e.getGenFeature().getQualifiedFeatureAccessorName()/]()
+[/template]
+
+[template public metamodelGetter(e : EReference)]
+[e.getGenFeature().getQualifiedFeatureAccessorName()/]()
+[/template]
+
+[template public metamodelStrictFilterGetter(eClass : EClassifier) post (trim())]
+[if (eClass.eInverse(GenClassifier).oclAsType(GenClassifier).genPackage.genModel->first().toString() <> eClass.getImportGenModel())]
+	[eClass.initializeImportManagerForGenmodel(eClass.eInverse(GenClassifier).oclAsType(GenClassifier).genPackage.genModel->first(), '', '')/]
+[/if]
+[eClass.eInverse(GenClassifier).getQualifiedClassifierAccessor()/]
+[/template]
+
+[template public factoryCreator(eClassifier : EClassifier) post (trim())]
+[if (eClassifier.oclIsTypeOf(EClass))]
+[let genClass : GenClass = eClassifier.oclAsType(EClass).getGenClass()]
+[if (genClass.isMapEntry())]
+	[genClass.genPackage.getQualifiedEFactoryInstanceAccessor()/].create([genClass.getQualifiedClassifierAccessor()/])
+[else]
+	[genClass.genPackage.getQualifiedFactoryInstanceAccessor()/].create[genClass.getName()/]()
+[/if]
+[/let]
+[/if]
+[/template]
+
+[template public ecorePackageSignature(e : EStructuralFeature)]
+[e.getGenFeature().getFeatureAccessorName()/]
+[/template]
+
+[comment --------------------------------------------------------------------------
+  Utilities to retrieve EMF Gen elements
+ ---------------------------------------------------------------------------------- /]
+
+[query private getEcoreGenModel(arg0 : EObject) : GenModel
+	= invoke('org.eclipse.emf.eef.codegen.services.EcoreService', 'getEcoreGenModel(org.eclipse.emf.ecore.EObject)', Sequence{arg0}) /]
+
+[query private getGenPackage(ePackage : EPackage) : GenPackage =
+if ePackage.nsURI = 'http://www.eclipse.org/emf/2002/Ecore'
+	then self.getEcoreGenModel().genPackages -> first()
+	else self.eInverse(GenPackage) -> first() 
+endif/]
+
+[comment]NOTE: in the ecore case, as the metamodel and genmodel cannot be in the same resourceSet, we use a basic name comparison[/comment]
+[query private getGenFeature(eStructuralFeature : EStructuralFeature) : GenFeature = 
+if self.eContainingClass.ePackage.nsURI = 'http://www.eclipse.org/emf/2002/Ecore'
+	then self.eContainingClass.getGenClass().genFeatures -> select(ecoreFeature.name = eStructuralFeature.name) -> first()
+	else self.eInverse(GenFeature) -> first() 
+endif/]
+
+[comment]NOTE: in the ecore case, as the metamodel and genmodel cannot be in the same resourceSet, we use a basic name comparison[/comment]
+[query private getGenClass (eClass : EClass) : GenClass =
+if self.ePackage.nsURI = 'http://www.eclipse.org/emf/2002/Ecore'
+	then self.ePackage.getGenPackage().genClasses -> select(ecoreClass.name = eClass.name) -> first()
+	else self.eInverse(GenClass) -> first() 
+endif/]
+
+[comment]NOTE: in the ecore case, as the metamodel and genmodel cannot be in the same resourceSet, we use a basic name comparison[/comment]
+[query private getGenDataType(eDataType : EDataType) : GenDataType =
+if self.ePackage.nsURI = 'http://www.eclipse.org/emf/2002/Ecore'
+	then self.ePackage.getGenPackage().genDataTypes -> select(ecoreDataType.name = eDataType.name) -> first()
+	else self.eInverse(GenDataType) -> first() 
+endif/]
+
+[query public getFormattedName(e : EDataType) : String
+	= invoke('org.eclipse.emf.eef.codegen.services.EcoreService', 'getFormattedName(java.lang.String)', Sequence{e.name}) /]

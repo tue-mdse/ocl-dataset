@@ -1,0 +1,185 @@
+[comment encoding = UTF-8 /]
+[comment]
+/*****************************************************************************
+ * Copyright (c) 2013 INTEMPORA S.A.
+ *
+ * This software is a computer program whose purpose is to transform RobotML models
+ * into RTMaps diagrams and RTMaps components via source code generation techniques.
+ * 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *  Nicolas DU LAC (INTEMPORA) - Initial API and implementation
+ *
+ *****************************************************************************/
+[/comment]
+[module generate_rtmaps_diagram_rtd('http://www.eclipse.org/uml2/3.0.0/UML', 'http://Papyrus/RobotML/1')]
+
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::GeneralQueries /]
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::ArchitectureQueries /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::RTMapsDataTypeQueries /]
+
+
+[template public generateRTMapsDiagramRTD(model : Model) {vert_spacing : Integer = 50; hor_spacing : Integer = 50;}]
+
+
+	[file (model.name + '.rtd', false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<RTMapsDiagram xmlns="http://schemas.intempora.com/RTMaps/2011/RTMapsFiles" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" EngineVersion="4.1" version="4.1" xsi:schemaLocation="http://schemas.intempora.com/RTMaps/2011/RTMapsFiles http://www.intempora.com/schemas/RTMaps/2011/RTMapsDiagram.xsd http://schemas.intempora.com/RTMaps/2011/RTMapsFiles http://www.intempora.com/schemas/RTMaps/2011/RTMapsDiagram_RTBoardView.xsd">
+  <RequiredPackages>
+    <File><!['['/]CDATA['['/]/dummy/absolute/path/for/rtmaps_[model.name/].pck[']'/][']'/]>
+      <Relative><!['['/]CDATA['['/]%RTMAPS_DIAGRAMDIR%/user_sdk/[getPckOutputDir('dummy')/]rtmaps_[model.name/].pck[']'/][']'/]></Relative>
+    </File>
+  </RequiredPackages>
+  <RequiredMacroPackages>
+	[for (elt: NamedElement | getComponentModels(model))]
+		[let c : Class = elt.oclAsType(Class)]
+		[if (c.hasRTMapsNativeImplementation() = true)]
+		<File><!['['/]CDATA['['/][c.getRTMapsNativeLibraryPathFromGenericAttribute()/][']'/][']'/]>
+	      <Relative><!['['/]CDATA['['/][c.getRTMapsNativeLibraryPathFromGenericAttribute()/][']'/][']'/]></Relative>
+	    </File>
+		[elseif (isMacroComponent(c))]
+    <File><!['['/]CDATA['['/]/dummy/absolute/path/for/[c.name + '.rtmc'/][']'/][']'/]>
+      <Relative><!['['/]CDATA['['/]%RTMAPS_DIAGRAMDIR%/[c.name + '.rtmc'/][']'/][']'/]></Relative>
+    </File>
+		[/if]
+		[/let]
+	[/for]
+  </RequiredMacroPackages>
+  <MacroComponentDefinitions/>
+  <EngineProperties>
+    <Property LongName="Engine.startTimespeed" Type="1">1000</Property>
+    <Property LongName="Engine.startTime" Type="1">0</Property>
+    <Property LongName="Engine.session" Type="3"><!['['/]CDATA['['/]unspecified[']'/][']'/]></Property>
+    <Property LongName="Engine.recordingAtStart" Type="0">true</Property>
+    <Property LongName="Engine.recording" Type="0">true</Property>
+    <Property LongName="Engine.sequentialStart" Type="0">false</Property>
+    <Property LongName="Engine.autoDetectStartTime" Type="0">true</Property>
+    <Property LongName="Engine.coreFunctionsToSaveInDiag" Type="4"><!['['/]CDATA['['/]0|-1[']'/][']'/]></Property>
+  </EngineProperties>
+  <ClocksManagement>
+    <Property LongName="ClocksManagement.activeClock" Type="4"><!['['/]CDATA['['/]1|0|RTMaps_standard_clock[']'/][']'/]></Property>
+  </ClocksManagement>
+  [comment]
+	<MacroComponent InstanceName="my_macro_component_6" Model="my_macro_component" x="528" y="264" z="0">
+	    <InputPropertyOverload LongName="input_1.readerType" Type="1">0</InputPropertyOverload>
+	    <InputPropertyOverload LongName="input_1.subsampling" Type="1">1</InputPropertyOverload>
+	    <OutputPropertyOverload LongName="output_1.subsampling" Type="1">1</OutputPropertyOverload>
+	    <OutputPropertyOverload LongName="output_1.fifosize" Type="1">16</OutputPropertyOverload>
+	    <OutputPropertyOverload LongName="output_1.periodic" Type="0">false</OutputPropertyOverload>
+  	</MacroComponent>
+	[/comment]
+	[let main_comp : Class = getRootClassForModel(model)]
+			[for (prop: Property | getLevel1SubComponentsForComponent(main_comp))]
+				[if (prop.type.oclAsType(Class).hasRTMapsNativeImplementation() = true)]
+			    <MacroComponent InstanceName="[prop.name/]" Model="[prop.type.oclAsType(Class).getRTMapsNativeComponentNameFromGenericAttribute()/]" x="[i * hor_spacing + 50/]" y="[i * vert_spacing/]" z="0">
+			      [comment]
+				  <InputPropertyOverload LongName="stream_in.readerType" Type="1">0</InputPropertyOverload>
+			      <OutputPropertyOverload LongName="position.fifosize" Type="1">16</OutputPropertyOverload>
+				  [/comment]
+				  [for (p : Port | getOutputPortsForElement(prop.type.oclAsType(Element)))]
+					[let buffsize : Integer = getOutputPortBufferSize(p)]
+					[if (buffsize > 0)]
+				      <OutputPropertyOverload LongName="[p.name/].fifosize" Type="1">[buffsize/]</OutputPropertyOverload>
+					[/if]
+					[/let]
+				  [/for]
+			    </MacroComponent>					
+				[elseif  (isMacroComponent(prop.type.oclAsType(Class)))]
+			    <MacroComponent InstanceName="[prop.name/]" Model="macro_[prop.type.name/]" x="[i * hor_spacing + 50/]" y="[i * vert_spacing/]" z="0">
+			      [comment]
+				  <InputPropertyOverload LongName="stream_in.readerType" Type="1">0</InputPropertyOverload>
+			      <OutputPropertyOverload LongName="position.fifosize" Type="1">16</OutputPropertyOverload>
+				  [/comment]
+				  [for (p : Port | getOutputPortsForElement(prop.type.oclAsType(Element)))]
+					[let buffsize : Integer = getOutputPortBufferSize(p)]
+					[if (buffsize > 0)]
+				      <OutputPropertyOverload LongName="[p.name/].fifosize" Type="1">[buffsize/]</OutputPropertyOverload>
+					[/if]
+					[/let]
+				  [/for]
+			    </MacroComponent>
+				[/if]
+			[/for]
+			[for (prop: Property | getLevel1SubComponentsForComponent(main_comp))]
+				[if (prop.type.oclAsType(Class).hasRTMapsNativeImplementation() = true)]
+					[comment]Do nothing: it will be instanciated as a native macro-component.[/comment]
+				[elseif (isMacroComponent(prop.type.oclAsType(Class))=false)]
+		    	<Component InstanceName="[prop.name/]" Model="[prop.type.name/]" x="[i * hor_spacing/]" y="[i * vert_spacing/]" z="0">
+				  [comment]
+			      <Input LongName="RGB2YUV_7.input" Name="input">
+			        <Property LongName="RGB2YUV_7.input.readerType" Type="1">0</Property>
+			        <Property LongName="RGB2YUV_7.input.subsampling" Type="1">1</Property>
+			      </Input>
+				  [/comment]
+				  [for (p : Port | getOutputPortsForElement(prop.type.oclAsType(Element)))]
+					[let buffsize : Integer = getOutputPortBufferSize(p)]
+					[if (buffsize > 0)]
+				      <Output LongName="[prop.name/].[p.name/]" Name="[p.name/]">
+				        <Property LongName="[prop.name/].[p.name/].fifosize" Type="1">[buffsize/]</Property>
+				        <Property LongName="[prop.name/].[p.name/].periodic" Type="0">false</Property>
+				        <Property LongName="[prop.name/].[p.name/].subsampling" Type="1">1</Property>
+				      </Output>
+					[/if]
+					[/let]
+				  [/for]
+				[comment]
+			      <Property LongName="RGB2YUV_7.planar" Type="0">false</Property>
+				[/comment]
+		    	</Component>
+				[/if]
+			[/for]
+	[comment]
+	[for (elt: NamedElement | getElementsWithStereotype(model,'Sensor'))]
+		[let c : Class = elt.oclAsType(Class)]
+		  <Component InstanceName="[c.name/]_i" Model="[c.name/]" x="100" y="[i * vert_spacing/]" z="0">
+		  </Component>
+		[/let]
+	[/for]
+	[for (elt: NamedElement | getElementsWithStereotype(model,'System'))]
+		[let c : Class = elt.oclAsType(Class)]
+		  <Component InstanceName="[c.name/]_i" Model="[c.name/]" x="300" y="[i * vert_spacing/]" z="0">
+		  </Component>
+		[/let]
+	[/for]
+	[for (elt: NamedElement | getElementsWithStereotype(model,'Actuator'))]
+		[let c : Class = elt.oclAsType(Class)]
+		  <Component InstanceName="[c.name/]_i" Model="[c.name/]" x="500" y="[i * vert_spacing/]" z="0">
+		  </Component>
+		[/let]
+	[/for]
+	[/comment]
+			[for (conn : Connector | getInternalConnectors(main_comp))]
+			[let dst_comp : Property = getDestComponentForConnector(conn)]
+			[let src_comp : Property = getSourceComponentForConnector(conn)]
+			<Connection Input="[dst_comp.name/].[getDestPortName(conn)/]" Output="[src_comp.name/].[getSourcePortName(conn)/]"/>
+		    [comment]<Connection Input="GPS_NMEA0183_3.iStream8" Output="SerialPort_2.streamOutput"/>[/comment]
+			[/let]
+			[/let]
+			[/for]
+	[comment]
+  <Connection Input="ImageViewer_VMR9_5.input" Output="my_macro_component_6.output_1"/>
+  <Connection Input="my_macro_component_6.input_1" Output="Webcam_1.outputIplImage"/>[/comment]
+<RTBoardView ID="JavaStudio1.0">
+    <Description/>
+		[for (prop: Property | getLevel1SubComponentsForComponent(main_comp))]
+	    <ComponentBox InstanceName="[prop.name/]" reversed="false">
+	      <Description/>
+	      [comment]<InputInfos Name="input">
+	        <Description/>
+	      </InputInfos>
+	      <OutputInfos Name="outputIplImage">
+	        <Description/>
+	      </OutputInfos>[/comment]
+	    </ComponentBox>
+	[/for]
+    [comment]<ConnectionShape InstanceName="ImageViewer_VMR9_5.input" color="0"/>
+    <ConnectionShape InstanceName="my_macro_component_6.input_1" color="0"/>[/comment]
+  </RTBoardView>
+</RTMapsDiagram>
+	[/let]
+	[/file]
+[/template]

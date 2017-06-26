@@ -1,0 +1,115 @@
+[comment encoding = UTF-8 /]
+[module javaComparisonOperatorFile('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthorizationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+
+[template public javaComparisonOperatorFile(anAnnotationStack : AnnotationStack)]
+
+[file (anAnnotationStack.hasCorePSM.name  + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/utilities/authorization/operators/ComparisonOperator.java', false, 'UTF-8')]
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.operators;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.Iterator;
+
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.attr.AttributeValue;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.attr.DoubleAttribute;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.attr.IntegerAttribute;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.attr.CollectionOfAttributes;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.OperatorEnum;
+public class ComparisonOperator extends Operator {
+
+	private final OperatorEnum operatorId;
+	
+	protected ComparisonOperator(OperatorEnum operatorId){
+		this.operatorId = operatorId;
+	}
+	
+
+	@Override
+	public Set<String> getSupportedTypes(){
+		Set<String> categories = new HashSet<String>();
+		categories.add("Integer");
+		categories.add("Double");
+		return categories;
+	}
+	
+	@Override
+	public EvaluationResult evaluate(List<AttributeValue> inputs) {
+		if (inputs.size() != 2){
+			return new EvaluationResult("Wrong Number of inputs : " + inputs.size() + " instead of 2");
+		}	
+		return compare(inputs.get(0),inputs.get(1));
+		
+
+	}
+
+	
+	private EvaluationResult compare(AttributeValue arg1, AttributeValue arg2){
+		EvaluationResult result;
+		if (arg1.isCollection()){
+			Iterator<AttributeValue> arg1Iterator = ((CollectionOfAttributes)arg1).getValue().iterator();
+			while(arg1Iterator.hasNext()){
+				AttributeValue arg = arg1Iterator.next();
+				result = compare(arg,arg2);
+				if (!result.equals(EvaluationResult.getTrueInstance())){
+					return result;
+				}
+			}
+		}else if(arg2.isCollection()){
+			Iterator<AttributeValue> arg2Iterator = ((CollectionOfAttributes)arg2).getValue().iterator();
+			while(arg2Iterator.hasNext()){
+				AttributeValue arg = arg2Iterator.next();
+				result = compare(arg1,arg);
+				if (!result.equals(EvaluationResult.getTrueInstance())){
+					return result;
+				}
+			}
+		}else{
+			double arg1Value;
+			double arg2Value;
+
+			if (arg1.getType().equals("Integer")){
+				arg1Value = ((IntegerAttribute) arg1).getValue();
+			} else if (arg1.getType().equals("Double")){
+				arg1Value = ((DoubleAttribute) arg1).getValue();
+			}else{
+				return new EvaluationResult("Argument type not supported");
+			}
+
+			if (arg2.getType().equals("Integer")){
+				arg2Value = ((IntegerAttribute) arg2).getValue();
+			} else if (arg2.getType().equals("Double")){
+				arg2Value = ((DoubleAttribute) arg2).getValue();
+			}else{
+				return new EvaluationResult("Argument type not supported");
+			}
+			return EvaluationResult.getInstance(compare(arg1Value,arg2Value));
+		}
+
+		return EvaluationResult.getTrueInstance();
+	}
+	
+	private boolean compare(double arg1Value, double arg2Value){
+		switch (operatorId){
+		case GREATER_THAN:
+			return arg1Value > arg2Value;
+		case GREATER_THAN_OR_EQUAL:
+			return arg1Value >= arg2Value;
+		case LESS_THAN:
+			return arg1Value < arg2Value;
+		case LESS_THAN_OR_EQUAL:
+			return arg1Value <= arg2Value;
+		default:
+			return false;
+		}
+	}
+	
+	@Override
+	public OperatorEnum getOperatorId() {
+		return operatorId;
+	}
+
+}
+[/file]
+[/template]

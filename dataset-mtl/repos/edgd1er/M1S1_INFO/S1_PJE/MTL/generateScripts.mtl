@@ -1,0 +1,33 @@
+[comment encoding = UTF-8 /]
+[module generateScripts('http:///uiandroid.ecore', 'http:///uiandroid/DataTypes.ecore')]
+
+
+[template public generateGlobalScripts(ui : UIAndroid)]
+[file ('src/'+ui.paquetage.replaceAll('[.]', '/')+'/JScripts.java', false, 'UTF-8')]
+package [ui.paquetage/];
+
+public class JScripts {
+[for (script : Script | ui.scriptsGlobaux) separator('\n')]
+    static public [treatScript(script)/]
+[/for]
+}
+[/file]
+[/template]
+
+[template public treatScript(script : Script) post(replaceAll('!global[.](.*)!','JValues.$1'))]
+[script.type/] [script.id/]([for (par : Paramètre | script.paramètres) separator (', ')][par.type/] [par.id/][/for]) {
+    [script.corps.replaceAll('!global[.](.*[(].*[)])!','JScripts.$1')/]
+}
+[/template]
+
+[template public treatScript(script : Ecouteur) post(replaceAll('!global[.](.*)!','JValues.$1'))]
+[script.type/] [script.id/](View self[for (par : Paramètre | script.paramètres) before(', ') separator (', ')][par.type/] [par.id/][/for]) {
+    [script.corps.replaceAll('!global[.](.*[(].*[)])!','JScripts.$1')/]
+}
+[/template]
+
+[template public generateLocalScripts(affichage : Affichage)]
+[for (script : Script | affichage.scriptsLocaux) separator('\n')]
+    private [treatScript(script)/]
+[/for]
+[/template]

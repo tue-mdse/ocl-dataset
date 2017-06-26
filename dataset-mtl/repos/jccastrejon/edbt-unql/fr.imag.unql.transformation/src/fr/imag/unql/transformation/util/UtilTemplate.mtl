@@ -1,0 +1,63 @@
+[comment encoding = UTF-8 /]
+[** Copyright 2013 jccastrejon */]
+[module UtilTemplate('http://www.imag.fr/Unql')]
+
+[**
+ * Execute the specified query in a Neo4j database.
+ * @param relationName Name of the type of nodes
+ * @param connection Connection paramaters
+ * @param attributes Attributes that will be projected in the query
+ * @param conditions Conditions that will be applied in the query
+*/]
+[query public executeGraphQuery(relationName : String, connection : Connection, attributes : Sequence(String), conditions : Sequence(String)) : String = 
+	invoke('fr.imag.unql.transformation.util.Neo4jUtil', 'executeQuery(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List, java.util.List)', Sequence{relationName, connection.url, connection.name, connection.password, attributes, conditions}) /]
+
+[**
+ * Execute the specified query in a MongoDB database.
+ * @param relationName Name of the database and collection to be queried
+ * @param connection Connection paramaters
+ * @param attributes Attributes that will be projected in the query
+ * @param conditions Conditions that will be applied in the query
+*/]
+[query public executeDocumentQuery(relationName : String, connection : Connection, attributes : Sequence(String), conditions : Sequence(String)) : String = 
+	invoke('fr.imag.unql.transformation.util.MongoDBUtil', 'executeQuery(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.util.List, java.util.List)', Sequence{relationName, connection.url, connection.name, connection.password, attributes, conditions}) /]
+
+[**
+ * Get the databases of the expected type defined in the specified program.
+ * @param aProgram EDBT-unql program
+ * @param expectedType Expected database type
+*/]
+[query public getDatabasesType(aProgram: Program, expectedType: String) : Set(Definition) =  
+aProgram.definitions
+	->select(definition:Definition | definition.type.equalsIgnoreCase(expectedType)) /]
+
+[**
+ * Get the database connections declared in the specified program.
+ * @param aProgram EDBT-unql program
+*/]
+[query public getConnections(aProgram: Program) : Set(Connection) = aProgram.connections /]
+
+[**
+ * Get the connection details associated to the specified databaseName
+ * @param databaseName Database name
+ * @param connections Database connections
+*/]
+[query public getConnection(databaseName : String, connections : Set(Connection)) : Connection = 
+connections->select(connection:Connection | 
+	connection.name.equalsIgnoreCase(databaseName))->asSequence()->first() /]
+
+[**
+ * Determine whether an element exists in the specified definitions or not
+ * @param elementName Name of element to look for
+ * @param Set of definitions
+*/]
+[query public existsInSet(elementName : String, definitions : Set(Definition)) : Boolean = 
+	definitions->exists(definition:Definition | definition.name.equalsIgnoreCase(elementName)) /]
+
+[**
+ * Get the elements associated to the specified relation
+ * @param relationName Relation name
+ * @param attributes Attributes sequence
+*/]
+[query public getAssociatedElements(relationName : String, attributes : Sequence(String)) : Sequence(String) =  
+	attributes->select(attribute : String | attribute.startsWith(relationName + '.'))/]

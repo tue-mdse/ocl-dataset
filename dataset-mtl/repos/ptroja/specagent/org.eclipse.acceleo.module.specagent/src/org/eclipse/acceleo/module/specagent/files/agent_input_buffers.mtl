@@ -1,0 +1,123 @@
+[comment encoding = UTF-8 /]
+[module agent_input_buffers('http://multirobotsystem/1.0')/]
+[import utils/]
+
+[template agent_input_buffers_spec(anAgent : Agent)]
+[if hasInputBuffers(anAgent)]
+-- Buffer identifiers
+type buffer_id is (
+[for (buffer : InputBuffer | allInputBuffers(anAgent)) separator (',\n') after('\n') ]
+   [bufferId(buffer)/][/for]
+);
+
+-- Status of the particular buffers
+type fresh_status_t is array (buffer_id) of Boolean;
+[/if]
+
+-- Shared buffer type for holding data of asynchronous writes to the agent
+protected Input_Buffers is
+   -- Entry for conditional receive of data from a single buffer
+   entry BlockForSingleMessage
+     (state : out Agent_[anAgent.name/]_Data_Types.input.Data_Type;
+      fresh : out fresh_status_t);
+   -- Entry for conditional receive of data from a single buffer
+   procedure PeekForSingleMessage
+     (state   : out Agent_[anAgent.name/]_Data_Types.input.Data_Type;
+      fresh   : out fresh_status_t;
+      arrived : out Boolean);
+   -- Procedures for transmitting data to particulars buffers
+   [for (buffer : InputBuffer | allInputBuffers(anAgent))]
+   procedure Send_[bufferId(buffer)/] (item : in Agent_[anAgent.name/]_Data_Types.[inputBufferDataType(buffer)/]);
+   [/for]
+private
+   -- Internal, protected copy of the data
+   buffer_state : Agent_[anAgent.name/]_Data_Types.input.Data_Type;
+   -- State of the buffers
+   fresh_state : fresh_status_t := (others => False);
+   -- Flag for speedup check of the buffers status
+   -- note: this flag is also required for a Ravenscar profile
+   not_empty : Boolean := False;
+end Input_Buffers;
+[/template]
+
+[template agent_input_buffers_body(anAgent : Agent)]
+protected body Input_Buffers is
+   procedure PeekForSingleMessage
+     (state   : out Agent_[anAgent.name/]_Data_Types.input.Data_Type;
+      fresh   : out fresh_status_t;
+      arrived : out Boolean)
+   is
+   begin
+      if not_empty then
+         -- Pick up data from a single buffer
+         [for (buffer : InputBuffer | allInputBuffers(anAgent))
+            before ('         if')
+            separator ('         elsif')
+            after('         end if;\n')
+            ] fresh_state ([bufferId(buffer)/]) then
+            state.[inputBufferData(buffer)/]  := buffer_state.[inputBufferData(buffer)/];
+            fresh ([bufferId(buffer)/])       := True;
+            fresh_state ([bufferId(buffer)/]) := False;
+         [/for]
+
+         -- Update the 'empty' flag
+         not_empty := False;
+         Update_Empty_Flag : for id in buffer_id'Range loop
+            if fresh_state (id) then
+               not_empty := True;
+               exit Update_Empty_Flag;
+            end if;
+         end loop Update_Empty_Flag;
+
+         arrived := True;
+      else
+         arrived := False;
+      end if;
+   end PeekForSingleMessage;
+
+   entry BlockForSingleMessage
+     (state : out Agent_[anAgent.name/]_Data_Types.input.Data_Type;
+      fresh : out fresh_status_t) when not_empty
+   is
+      arrived : Boolean;
+   begin
+      PeekForSingleMessage (state, fresh, arrived);
+   end BlockForSingleMessage;
+
+   [for (buffer : InputBuffer | allInputBuffers(anAgent))]
+   procedure Send_[bufferId(buffer)/]
+     (item : in Agent_[anAgent.name/]_Data_Types.[inputBufferDataType(buffer)/])
+   is
+   begin
+      buffer_state.[inputBufferData(buffer)/] := item;
+      fresh_state ([bufferId(buffer)/]) := True;
+      not_empty        := True;
+   end Send_[bufferId(buffer)/];
+   [/for]
+
+end Input_Buffers;
+[/template]
+
+[template public agent_input_buffers(anAgent : Agent)]
+	
+[comment @main /]
+[file ('agent_'+anAgent.name+'_input_buffers.ads', false, 'UTF-8')]
+-- with Ada.Text_IO;
+with Agent_[anAgent.name/]_Data_Types; use Agent_[anAgent.name/]_Data_Types;
+
+package Agent_[anAgent.name/]_Input_Buffers is
+   [agent_input_buffers_spec(anAgent)/]
+end Agent_[anAgent.name/]_Input_Buffers;
+[/file]	
+	
+[comment @main /]
+[file ('agent_'+anAgent.name+'_input_buffers.adb', false, 'UTF-8')]
+-- with Ada.Text_IO;
+with Agent_[anAgent.name/]_Data_Types; use Agent_[anAgent.name/]_Data_Types;
+
+package body Agent_[anAgent.name/]_Input_Buffers is
+   [agent_input_buffers_body(anAgent)/]
+end Agent_[anAgent.name/]_Input_Buffers;
+[/file]
+	
+[/template]

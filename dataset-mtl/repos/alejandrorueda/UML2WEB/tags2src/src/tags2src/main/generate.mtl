@@ -1,0 +1,45 @@
+[comment encoding = UTF-8 /]
+[module generate('http://tags/1.0')]
+
+[template public generateDocument(aDocument : Document)]
+[comment @main/]
+[file (aDocument.getPath()+'/'+aDocument.name, false, 'UTF-8')]
+[if (aDocument.name.toString().contains('.html'))]<!DOCTYPE html>[/if]
+[self.root.generateTag()/]
+[/file]
+[/template]
+
+[query public getPath(aDocument : Document) : String = if (self.parent.oclIsUndefined()) then '/'+self.archive.name else self.parent.getPath() endif /]
+
+[query public getPath(aFolder : Folder) : String = if (aFolder.parent.oclIsUndefined()) then '/'+self.archive.name else self.parent.getPath() endif +'/'+self.name  /]
+
+[template public generateTag(aTag : Tag) post (trim())]
+[if (not aTag.name.oclIsUndefined() and aTag.name<>'null' and aTag.name<>'null2')]<[aTag.name/][aTag.generateAttributes()/]>[/if]
+[if (aTag.name<>'null2')]
+[for (tagContent : TagContent | aTag.content)]
+  [tagContent.generateContent()/]
+[/for]
+[/if]
+[if (not aTag.name.oclIsUndefined() and aTag.name<>'null' and aTag.name<>'null2' and aTag.name<>'meta' and aTag.name<>'link' and aTag.name<>'br')]</[aTag.name/]> [/if]
+[/template]
+
+[template public generateText(aText : Text) post (trim())]
+  [self.content/]
+[/template]
+
+[template public generateContent(aTagContent : TagContent) ? (aTagContent.oclIsTypeOf(Tag)) post (trim())]
+[aTagContent.oclAsType(Tag).generateTag()/]
+[/template]
+
+[template public generateContent(aTagContent : TagContent) ? (aTagContent.oclIsTypeOf(Text)) post (trim())]
+[aTagContent.oclAsType(Text).generateText()/]
+[/template]
+
+[template public generateAttributes(aTag : Tag)]
+[for (attr : Attribute | aTag.attribute)][attr.generateAttribute()/][/for]
+[/template]
+
+[template public generateAttribute(attr : Attribute)]
+ [if (not attr.value.oclIsUndefined())][self.name/]='[attr.value/]'[else][self.name/][/if]
+[/template]
+

@@ -1,0 +1,71 @@
+[comment encoding = Cp1252 /]
+[module popupJsFile('http://www.eclipse.org/acceleo/tutorial/webapp')/]
+
+[import org::eclipse::acceleo::tutorial::webapp::common::fileUtils /]
+
+[template private popupJsFile(anApplication : Application)]
+[anApplication.genJsDirectoryPath()/]/popup.js
+[/template]
+
+[template public genPopupJsFile(anApplication : Application)]
+[file (anApplication.popupJsFile(), false, 'UTF-8')]
+[anApplication.genJsCopyrightHeader()/]
+
+$().ready(function() {
+	var openLink = function(e){
+		var internal = $(this).data("internal");
+		var link = this.attributes['['/]"href"[']'/].value;
+		
+		if (internal) {
+			$.get(link, function(page) {
+				var x = chrome.extension.getViews({type:"popup"});
+				if (x.length>0) {
+					[for (aCollection : Collection | anApplication.collections)]
+					[if (i=1)]if[else]else if[/if](link === '[aCollection.genTemplatesDirectoryPath()/]/[aCollection.genVarName()/].html') {
+						chrome.tabs.getSelected(null, function(tab) {
+							chrome.tabs.sendRequest(tab.id, {greeting: "[aCollection.genVarName()/]"}, function(response) {
+								console.log(response);
+								var dialogTemplate = _.template(page, {
+									dialogColumnNames: ['['/][columnNames(aCollection.model.attributes)/][']'/],
+									dialogColumnWidths: ['['/][columnWidths(aCollection.model.attributes)/][']'/],
+									attributesToConsider: ['['/][attributesToConsider(aCollection.model.attributes)/][']'/],
+									dialogObjects: _.toArray(response.[aCollection.genVarName()/])
+								});
+								page = dialogTemplate;
+								$(x['['/]0[']'/].document.body).html(page);
+								$(x['['/]0[']'/].document.body).find("a").bind("click", openLink);
+							});
+						});						
+					}
+					[/for]
+					else {
+						$(x['['/]0[']'/].document.body).html(page);
+						$(x['['/]0[']'/].document.body).find("a").bind("click", openLink);
+					}
+				}
+			});
+		
+		} else {
+			var properties = {};
+			properties['['/]"url"[']'/] = link;
+			chrome.tabs.create(properties, null);
+		}
+		return false;
+	}
+	
+	$("a").bind("click", openLink);
+});
+[/file]
+[/template]
+
+[template private columnWidths (namedElements : OrderedSet(NamedElement)) ]
+[for (aNamedElem : NamedElement | namedElements)][aNamedElem.name.size()/][if (i<namedElements->size())], [/if][/for]
+[/template]
+
+[template private attributesToConsider (namedElements : OrderedSet(NamedElement)) ]
+[for (aNamedElem : NamedElement | namedElements)]'[aNamedElem.genVarName()/]'[if (i<namedElements->size())], [/if][/for]
+[/template]
+
+[template private columnNames (namedElements : OrderedSet(NamedElement)) ]
+[for (aNamedElem : NamedElement | namedElements)]'[aNamedElem.name/]'[if (i<namedElements->size())], [/if][/for]
+[/template]

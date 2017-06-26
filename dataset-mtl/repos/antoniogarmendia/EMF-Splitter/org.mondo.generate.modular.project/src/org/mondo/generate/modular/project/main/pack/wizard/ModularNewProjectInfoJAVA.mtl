@@ -1,0 +1,527 @@
+[comment encoding = UTF-8 /]
+[module ModularNewProjectInfoJAVA('http://www.eclipse.org/emf/2002/Ecore','http://mondo.org/runtimePatterns', 'http://www.eclipse.org/emf/2002/GenModel')]
+[import org::mondo::generate::modular::project::main::requests::global_queriesModularProject /]
+
+[template public ModularNewProjectInfoJAVA(anProjectName : String, anPackageName : String,anPatternInstance : PatternInstance,c : ClassRoleInstance, anEObjectGenModel: GenModel)]
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name') + '.' + anPatternInstance.Get_ProjectClassRoleInstance().element.name).replaceAll('\\.','/').concat('/wizard/').concat(c.element.name.toString()).concat('NewProjectInfo.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/].wizard;
+
+import java.io.IOException;
+import java.util.Iterator;
+
+import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IProjectDescription;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspaceRunnable;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Path;
+import org.osgi.service.prefs.BackingStoreException;
+import org.mondo.generate.modular.project.general.create.project.main.api.PerformantXMIUtils;
+import org.mondo.generate.modular.project.general.create.project.main.api.CopierReverseEngineering;
+import org.eclipse.emf.common.util.EList;
+import org.eclipse.emf.common.util.TreeIterator;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+
+import [generateEClassImport(c.element)/];
+import [generateEClassImportFactoryImpl(c.element)/];
+[for (d : ClassRoleInstance | anPatternInstance.Get_FolderClassRoleInstance()) ]
+import [generateEClassImportImpl(d.element)/];
+[/for]
+[for (d : ClassRoleInstance | anPatternInstance.Get_FileClassRoleInstance()) ]
+import [generateEClassImportImpl(d.element)/];
+[/for]
+
+public class [c.element.name/]NewProjectInfo {
+
+	private [c.element.name/]ProjectFeatures features; 
+	private IProject project;
+	private Resource reverseModel;
+
+	public static final String CONCORDANCE_ID = "org.eclipse.epsilon.concordance.nature.ConcordanceNature";
+	
+	public [c.element.name/]NewProjectInfo([c.element.name/]ProjectFeatures feat){
+		this.features = feat;
+		this.project = null;
+	}
+	
+	public [c.element.name/]NewProjectInfo([c.element.name/]ProjectFeatures feat,Resource reverseModel)
+	{
+		this.features = feat;
+		this.project = null;
+		this.reverseModel = reverseModel;
+	}
+
+	public boolean createProject() throws CoreException, BackingStoreException, IOException
+	{	
+		final IWorkspaceRunnable create = new IWorkspaceRunnable(){
+		
+		@Override
+		public void run(IProgressMonitor monitor) throws CoreException {
+		
+		[if (c.HasTypeFeature_EAttribute('name')=true)]
+		project = ResourcesPlugin.getWorkspace().getRoot().getProject(features.Get_[c.Get_ClassRoleInstance_TypeFeature_EAttribute('name').name/]());
+		[else]
+		project = ResourcesPlugin.getWorkspace().getRoot().getProject(features.get_ProjectName());
+		[/if]
+		if (!project.exists()) {
+		    project.create(null);
+		    project.open(null);
+			try {
+		    	IProjectDescription description = project.getDescription();
+		    	String['[]'/] natures = description.getNatureIds();
+		    	String['[]'/] newNatures = new String['[natures.length + 2]'/];
+				newNatures['[natures.length]'/] = [c.element.name/]NewProjectNature.ID;
+				newNatures['['/]natures.length + 1] = CONCORDANCE_ID;
+		    	System.arraycopy(natures, 0, newNatures, 0, natures.length);		    	
+		    	description.setNatureIds(newNatures);
+		    	project.setDescription(description, null);
+				
+				try {
+					createXMIAssociated(project);
+
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+		
+		    }catch (CoreException e) {
+		        
+					e.printStackTrace();
+		    	}
+			}	
+		  }	
+		};
+		
+		try {
+
+			ResourcesPlugin.getWorkspace().run(create,null);
+		}
+		catch (CoreException e) {
+			
+			e.printStackTrace();
+		}
+
+		return true;				
+	}
+
+
+	public IContainer createFolder(){
+		
+		
+		String folderName = features.Get_Name();
+		
+		IFolder newFolder = project.getFolder(folderName);
+		if(newFolder.exists()==false){
+			try {
+				newFolder.create(IResource.NONE, true, new NullProgressMonitor());
+				createXMIAssociated(newFolder);
+								
+			} catch (CoreException | IOException e) {
+				
+				e.printStackTrace();
+			}
+		}else {
+			
+			// the name of the folder is gonna be different from the name of the EObject
+			System.out.println("Cannot be created: " + newFolder.getName());
+			int version = 0;
+			while(version!=-1) {
+				
+				folderName = newFolder.getName() + version;
+				newFolder = project.getFolder(folderName);
+				if(!newFolder.exists()){
+					try {
+						newFolder.create(IResource.NONE, true, null);
+						
+					} catch (CoreException e) {						
+						e.printStackTrace();
+					}
+					System.out.println("Instead: " + newFolder.getName());
+					return newFolder;
+				}
+				version++;
+			}	
+		}	
+
+		return newFolder;		
+	}
+
+	public void createXMIAssociated(IContainer container) throws IOException, CoreException
+	{
+		// Get the URI of the model file.
+		URI fileURI = URI.createPlatformResourceURI(container.getFullPath().toString().concat("/").concat(container.getName()+".xmi"), true);
+		if(reverseModel == null)
+		{	
+		//Add the root to the object
+		[c.element.name /] root = [c.element.eContainer().oclAsType(EPackage).name.toUpperFirst() /]FactoryImpl.eINSTANCE.create[c.element.name /]();
+		//Set the Attributes
+		[for (attr : EAttribute | c.element.eAllAttributes)]
+		[if (c.HasTypeFeature_EAttribute('name')=true)]
+			[if(c.Get_ClassRoleInstance_TypeFeature_EAttribute('name').name<>attr.name)]
+				[if(attr.eType.name='EString')]
+				root.set[attr.name.toUpperFirst() /](features.Get_[attr.name /]());
+				[else]
+				root.set[attr.name.toUpperFirst() /](['features.Get_'.concat(attr.name).concat('()')/]);						
+			[/if]	
+			[else]
+				root.set[attr.name.toUpperFirst() /](container.getName());
+			[/if]
+		[else]
+			[if(attr.eType.name='EString')]
+				root.set[attr.name.toUpperFirst() /](features.Get_[attr.name /]());
+				[else]
+				root.set[attr.name.toUpperFirst() /](['features.Get_'.concat(attr.name).concat('()')/]);						
+			[/if]	
+		[/if]
+		[/for]
+			Resource resource = PerformantXMIUtils.createResourceRoot(fileURI, root);
+			resource.save(null);
+			resource.unload();		
+		}
+		else
+		{
+			reverseEngineering(project);	
+		}			
+	}
+	
+	//join methods
+	public Resource reverseEngineering(IContainer container, [anPatternInstance.Get_ProjectClass().name/] root, CopierReverseEngineering copier, ResourceSet reset){
+		
+		Resource resource = null;
+		try {
+			
+			resource = reverseEnginneringContainer(container,root,copier,reset);			
+			
+		} catch (IOException e) {
+			
+			e.printStackTrace();
+		}
+		
+		return resource;
+				
+	}
+	
+	public void reverseEngineering(IContainer container){
+		
+		try {
+			
+			Resource resource = reverseEnginneringContainer(container);
+			saveAllResources(resource.getResourceSet());
+			
+		} catch (IOException e) {
+			
+			e.printStackTrace();
+		}
+				
+	}
+	
+	// join the methods
+	public Resource reverseEnginneringContainer(IContainer container, [anPatternInstance.Get_ProjectClass().name/] root, CopierReverseEngineering copierModular, ResourceSet reset) throws IOException{
+		
+		// Get the URI of the model file.
+		URI folderUri = URI.createPlatformResourceURI(container.getFullPath().toString().concat("/").concat(container.getName()+".xmi"), true);
+		
+		//Create folder resource
+		Resource folderResource =  reset.createResource(folderUri);
+		
+		//Iterator
+		TreeIterator<EObject> itContents = root.eAllContents();
+		EObject eObject = root;
+		
+		//Root of the model
+		if(eObject instanceof [anPatternInstance.Get_ProjectClass().name/]){
+			
+			EObject result = copierModular.copyFolder(eObject);
+			folderResource.getContents().add(result);	
+			//folderResource.save(null);
+			
+			while (itContents.hasNext()) {
+				
+				eObject = itContents.next();				
+				String name = getFolder(eObject);
+				String path = GetObjectPath(eObject);
+				
+				if(name != null){
+					
+					createPackage(path,name,eObject,folderResource,copierModular,container);					
+				}
+				else{
+					
+					name = getFile(eObject);					
+					if(name != null){
+						
+						createUnit(path,name,eObject,folderResource,copierModular,container);
+						itContents.prune();
+					}
+					else{
+						/*
+						 * Objects that belonging to a package   
+						 */
+						addToPackage(path,name,eObject,folderResource,copierModular,container);
+						itContents.prune();
+					}
+				}
+				
+			}
+			
+			//copierModular.copyReferences();
+			//copierModular.copyIds();
+			//copierModular.clear();			
+		}
+		
+		return folderResource;
+	}
+
+	public Resource reverseEnginneringContainer(IContainer container) throws IOException{
+			
+		// Get the URI of the model file.
+		URI folderUri = URI.createPlatformResourceURI(container.getFullPath().toString().concat("/").concat(container.getName()+".xmi"), true);
+		
+		//Create folder resource
+		Resource folderResource = PerformantXMIUtils.createPerformantResource(folderUri);
+		
+		//Iterator
+		TreeIterator<EObject> itContents = reverseModel.getAllContents();
+		EObject eObject = itContents.next();
+		
+		//Root of the model
+		if(eObject instanceof [c.element.name/]){
+			
+			CopierReverseEngineering copierModular = new CopierReverseEngineering(true,true);
+			EObject result = copierModular.copyFolder(eObject);
+			folderResource.getContents().add(result);	
+			//folderResource.save(null);
+			
+			while (itContents.hasNext()) {
+				
+				eObject = itContents.next();				
+				String name = getFolder(eObject);
+				String path = GetObjectPath(eObject);
+				
+				if(name != null){
+					
+					createPackage(path,name,eObject,folderResource,copierModular,container);					
+				}
+				else{
+					
+					name = getFile(eObject);					
+					if(name != null){
+						
+						createUnit(path,name,eObject,folderResource,copierModular,container);
+						itContents.prune();
+					}
+					else{
+						/*
+						 * Objects that belonging to a package   
+						 */
+						addToPackage(path,name,eObject,folderResource,copierModular,container);
+						itContents.prune();
+					}
+				}
+				
+			}
+			
+			copierModular.copyReferences();
+			copierModular.copyIds();
+			copierModular.clear();			
+		}
+		
+		return folderResource;
+	}
+
+	public void saveAllResources(ResourceSet resourceSet) {
+		
+		Iterator<Resource> itResources = resourceSet.getResources().iterator();
+		while (itResources.hasNext()) {
+			
+			Resource resource = itResources.next();
+			try {
+				
+				resource.save(null);
+				resource.unload();
+				
+			} catch (IOException e) {
+				
+				e.printStackTrace();
+			}			
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private void addToPackage(String path, String name, EObject eObject, Resource folderResource,
+			CopierReverseEngineering copierModular, IContainer container) {
+		
+		try {
+			IContainer parent = this.createFolder(path,container);
+			EObject result = copierModular.copy(eObject);
+			
+			String filePath = path.concat(parent.getName() + ".xmi");
+			URI fileUri = URI.createPlatformResourceURI(container.getFullPath().toString().concat(filePath),true);
+			
+			Resource parentResource = folderResource.getResourceSet().getResource(fileUri, true);
+			parentResource.load(null);			
+			((EList<EObject>)parentResource.getContents().get(0).eGet(eObject.eContainingFeature())).add(result);			
+				
+		} catch (CoreException | IOException e) {
+				
+				e.printStackTrace();
+		}
+		
+	}
+
+	public void createUnit(String path, String name, EObject eObject, Resource folderResource,
+			CopierReverseEngineering copierModular, IContainer container) {
+		
+		try {
+			// Get Folder
+			IContainer parent = this.createFolder(path, container);
+			
+			//Path to Create XMI File
+			String filePath = path.concat(name);
+			
+			//Obtain File URI
+			URI fileUri = URI.createPlatformResourceURI(container.getFullPath().toString().concat(filePath),true);
+			
+			EObject result = copierModular.copy(eObject);
+			
+			// Create XMI File
+			Resource resource = createFile(fileUri,folderResource.getResourceSet(),result);
+			addProxyToParent(parent, eObject, resource);
+			
+		} catch (CoreException e) {
+			
+			e.printStackTrace();
+		}
+		
+	}
+
+	public void createPackage(String path, String name, EObject eObject, Resource folderResource, 
+			CopierReverseEngineering copierModular, IContainer container) {
+		
+		try {
+			// Create Folder
+			IContainer fol = this.createFolder(path,container);
+						
+			// Path to Create XMI File
+			String filePath = path.concat(name.concat(".xmi"));			
+			
+			// Obtain File URI
+			URI fileUri = URI.createPlatformResourceURI(container.getFullPath().toString().concat(filePath),true);
+			
+			// Copy of the result object
+			EObject result =  copierModular.copyFolder(eObject);	
+			
+			// Create XMI File
+			Resource resource = createFile(fileUri,folderResource.getResourceSet(),result);
+			addProxyToParent(fol.getParent(),eObject,resource);
+			
+		} catch (CoreException e) {
+			
+			e.printStackTrace();
+		}				
+	}
+	
+	public Resource createFile(URI fileUri, ResourceSet resourceSet, EObject result){
+		
+		Resource fileResource = resourceSet.createResource(fileUri);
+		fileResource.getContents().add(result);
+		
+		return fileResource;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void addProxyToParent(IContainer parent,EObject eObject, Resource resource){
+		
+		URI parentURI = URI.createPlatformResourceURI(parent.getFullPath().toString().concat("/"+parent.getName().concat(".xmi")),true);
+		Resource parentResource = resource.getResourceSet().getResource(parentURI, true);		
+		((EList<EObject>)parentResource.getContents().get(0).eGet(eObject.eContainingFeature())).add(resource.getContents().get(0));
+	}
+
+	public IContainer createFolder(String path, IContainer container) throws CoreException
+	{
+		if(path.equals("/") == true)
+			return container;
+		IPath folderPath = new Path(path);
+		IFolder fol = container.getFolder(folderPath);
+		if(!fol.exists()){
+			fol.create(IResource.NONE, true, null);			
+		}/*else {
+			
+			// the name of the folder is gonna be different from the name of the EObject
+			System.out.println("Cannot be created: " + fol.getName());
+			int version = 0;
+			while(version != -1) {
+				
+				String folderName = fol.getName() + version;
+				folderPath = folderPath.removeLastSegments(1).append(folderName);
+				fol = container.getFolder(folderPath);
+				
+				if(!fol.exists()){
+					fol.create(IResource.NONE, true, null);
+					System.out.println("Instead: " + fol.getName());
+					return fol;
+				}
+				version++;
+			}			
+			
+		}
+		*/
+		return fol;
+	}
+
+	public IProject getProject() {
+		return project;
+	}
+
+	public void setProject(IProject project) {
+		this.project = project;
+	}	
+	
+	public String GetObjectPath(EObject obj){
+		
+		String cad = "/"; 
+		EObject parent = obj;
+		String name_folder = null;
+		while(parent!=null){
+			name_folder = getFolder(parent);
+			if(name_folder!=null)
+				cad = "/".concat(name_folder).concat(cad);//Attribute annotated as name
+			parent = parent.eContainer();						
+		}						
+		return cad;
+	}
+	
+	[comment if(anPatternInstance.Get_FolderClassRoleInstance()->asSequence()->asSequence()->size()>0)/]
+	public String getFolder(EObject eObject){
+		
+		[for (c : ClassRoleInstance | anPatternInstance.Get_FolderClassRoleInstance()) ]
+		 if(eObject instanceof [c.element.name.concat('Impl')/])
+				return (([c.element.name.concat('Impl')/])eObject).get[c.Get_ClassRoleInstance_TypeFeature_EAttribute('name').name.toUpperFirst()/]().toString();	
+			 [/for]
+		return null;
+	}
+	[comment /if/]	
+	
+	public static String getFile(EObject eObject){
+		
+		[for(c : ClassRoleInstance | anPatternInstance.Get_FileClassRoleInstance())]
+		if(eObject instanceof [c.element.name.concat('Impl') /])
+			return (([c.element.name.concat('Impl') /])eObject).get[c.Get_ClassRoleInstance_TypeFeature_EAttribute('name').name.toString().toUpperFirst()/]().toString().concat(".[c.Get_ClassRoleInstance_EAttribute('extension')/]");			
+		[/for]		
+		
+		return null;
+	} 
+	
+}
+
+[/file]
+
+[/template]

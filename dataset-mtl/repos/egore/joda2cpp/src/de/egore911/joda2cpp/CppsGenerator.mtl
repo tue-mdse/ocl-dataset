@@ -1,0 +1,158 @@
+[comment encoding = UTF-8 /]
+[module CppsGenerator('http://www.eclipse.org/MoDisco/Java/0.2.incubation/java')/]
+
+[import de::egore911::joda2cpp::CommonGenerator /]
+
+[comment ------------------------------------------------------------------- /]
+[comment Body file generation /]
+[comment ------------------------------------------------------------------- /]
+
+[template public generateCpps (aModel : Model) ]
+	[for (aCompilationUnit : CompilationUnit | aModel.compilationUnits)]
+		[if not isTestFile(aCompilationUnit)]
+			[file (getFileName(aCompilationUnit) + '.cpp', false, 'UTF-8')]
+[generateCppContent(aCompilationUnit) /]
+			[/file]
+		[/if]
+	[/for]
+[/template]
+
+[template private generateCppContent (aCompilationUnit : CompilationUnit) ]
+[generateImports(extractCppImports(aCompilationUnit), aCompilationUnit) /]
+#include "[aCompilationUnit.name.replace('.java', '.hpp')/]"
+
+namespace joda {
+namespace time {
+[if isSubpackage(aCompilationUnit)]namespace [getNamedElementName(aCompilationUnit._package) /] {[/if]
+
+[for (aAbstractTypeDeclaration : AbstractTypeDeclaration | aCompilationUnit.types)]
+[comment Don't generate methods for interfaces, just empty .cpp files /]
+[if not aAbstractTypeDeclaration.oclIsKindOf(InterfaceDeclaration)]
+[generateClassImplementation(aAbstractTypeDeclaration) /]
+[/if]
+[/for]
+
+[if isSubpackage(aCompilationUnit)]} /* namespace [getNamedElementName(aCompilationUnit._package) /] */[/if]
+} /* namespace time */
+} /* namespace joda */
+[/template]
+
+[template private generateClassImplementation (aAbstractTypeDeclaration : AbstractTypeDeclaration) ]
+[for (aBodyDeclaration : BodyDeclaration | aAbstractTypeDeclaration.bodyDeclarations)]
+[if (aBodyDeclaration.oclIsKindOf(FieldDeclaration))]
+[comment Only relevant for the header /]
+[elseif (aBodyDeclaration.oclIsKindOf(InterfaceDeclaration))]
+[comment Only relevant for the header /]
+[elseif (aBodyDeclaration.oclIsKindOf(ClassDeclaration))]
+[generateClassImplementation(aBodyDeclaration.oclAsType(ClassDeclaration)) /]
+[elseif (aBodyDeclaration.oclIsKindOf(MethodDeclaration))]
+[generateClassImplementationMethod(aBodyDeclaration, aAbstractTypeDeclaration) /]
+[elseif (aBodyDeclaration.oclIsKindOf(ConstructorDeclaration))]
+[generateClassImplementationConstructor(aBodyDeclaration, aAbstractTypeDeclaration) /]
+[else]
+/* TODO generateClassImplementation [aBodyDeclaration/] */
+[/if]
+[/for]
+[/template]
+
+[template private generateClassImplementationMethod (aBodyDeclaration : BodyDeclaration, aAbstractTypeDeclaration : AbstractTypeDeclaration) ]
+[if not (aBodyDeclaration.oclAsType(MethodDeclaration).modifier.inheritance = InheritanceKind::abstract)]
+[generateMethodSignature(aBodyDeclaration.oclAsType(MethodDeclaration), aAbstractTypeDeclaration)/] {
+	[generateBlock(aBodyDeclaration.oclAsType(MethodDeclaration)._body) /]
+}
+
+[/if]
+[/template]
+
+[template private generateClassImplementationConstructor (aBodyDeclaration : BodyDeclaration, aAbstractTypeDeclaration : AbstractTypeDeclaration) ]
+[let aSuperConstructorInvocation : SuperConstructorInvocation = getSuperConstructorInvocation(aBodyDeclaration.oclAsType(ConstructorDeclaration)._body)]
+[aAbstractTypeDeclaration.name/]::[generateConstructorSignature(aBodyDeclaration.oclAsType(ConstructorDeclaration))/][if not aSuperConstructorInvocation.oclIsUndefined() and not (getSuperClassName(aSuperConstructorInvocation.method) = 'Object')] : [getSuperClassName(aSuperConstructorInvocation.method)/]([for (aSubExpression : Expression | aSuperConstructorInvocation.arguments) separator (', ')][generateExpression(aSubExpression, aAbstractTypeDeclaration.originalCompilationUnit)/][/for])[/if] {
+	[generateBlock(aBodyDeclaration.oclAsType(ConstructorDeclaration)._body)/]
+}
+
+[/let]
+[/template]
+
+[template public getSuperClassName(aMethod : AbstractMethodDeclaration) post (trim())]
+[if not aMethod.originalCompilationUnit.oclIsUndefined()]
+[aMethod.originalCompilationUnit.name.replace('.java', '')/]
+[elseif not aMethod.originalClassFile.oclIsUndefined()]
+[aMethod.originalClassFile.name.replace('.java', '')/]
+[else]
+[aMethod.name/]
+[/if]
+[/template]
+
+[query private getSuperConstructorInvocation(aBlock : Block) : SuperConstructorInvocation =
+if not (aBlock.statements -> isEmpty()) and not ((aBlock.statements -> select(i | i.oclIsKindOf(SuperConstructorInvocation))) -> isEmpty()) then
+(aBlock.statements -> select(i | i.oclIsKindOf(SuperConstructorInvocation)) -> first()).oclAsType(SuperConstructorInvocation)
+else
+null
+endif
+/]
+
+
+[template private generateBlock (aBlock : Block)]
+[if not aBlock.oclIsUndefined()]
+[for (aStatement : Statement | aBlock.statements)]
+	[generateStatement(aStatement, aBlock.originalCompilationUnit)/]
+[/for]
+[/if]
+[/template]
+
+[template private generateStatement(aStatement : Statement, aOwningCompilationUnit : CompilationUnit) post (trim())]
+[renderCommentIfAvailable(aStatement)/]
+[if aStatement.oclIsKindOf(ReturnStatement)]
+return [generateExpression(aStatement.oclAsType(ReturnStatement).expression, aOwningCompilationUnit)/];
+[elseif aStatement.oclIsKindOf(IfStatement)]
+if ([generateExpression(aStatement.oclAsType(IfStatement).expression, aOwningCompilationUnit) /]) {
+	[generateStatement(aStatement.oclAsType(IfStatement).thenStatement, aOwningCompilationUnit)/]
+[if not aStatement.oclAsType(IfStatement).elseStatement.oclIsUndefined()]
+} else {
+	[generateStatement(aStatement.oclAsType(IfStatement).elseStatement, aOwningCompilationUnit) /]
+[/if]
+}
+[elseif aStatement.oclIsKindOf(Block)]
+[generateBlock(aStatement.oclAsType(Block))/]
+[elseif aStatement.oclIsKindOf(ThrowStatement)]
+throw [generateExpression(aStatement.oclAsType(ThrowStatement).expression, aOwningCompilationUnit) /];
+[elseif aStatement.oclIsKindOf(VariableDeclarationStatement)]
+[convertType(aStatement.oclAsType(VariableDeclarationStatement).type.type, aStatement.originalCompilationUnit, true, false) /] [for (aFragment : VariableDeclarationFragment | aStatement.oclAsType(VariableDeclarationStatement).fragments) separator (', ')][aFragment.name/] = [generateExpression(aFragment.initializer, aOwningCompilationUnit)/][/for];
+[elseif aStatement.oclIsKindOf(ExpressionStatement)]
+[generateExpression(aStatement.oclAsType(ExpressionStatement).expression, aOwningCompilationUnit)/];
+[elseif aStatement.oclIsKindOf(SwitchStatement)]
+switch ([generateExpression(aStatement.oclAsType(SwitchStatement).expression, aOwningCompilationUnit)/]) {
+[for (aSubStatement : Statement | aStatement.oclAsType(SwitchStatement).statements)]
+	[generateStatement(aSubStatement, aOwningCompilationUnit)/]
+[/for]
+}
+[elseif aStatement.oclIsKindOf(SwitchCase)]
+[if aStatement.oclAsType(SwitchCase).default]default:[else]case [generateExpression(aStatement.oclAsType(SwitchCase).expression, aOwningCompilationUnit)/]:[/if]
+[elseif aStatement.oclIsKindOf(WhileStatement)]
+while([generateExpression(aStatement.oclAsType(WhileStatement).expression, aOwningCompilationUnit)/]) {
+	[generateStatement(aStatement.oclAsType(WhileStatement)._body, aOwningCompilationUnit)/]
+}
+[elseif aStatement.oclIsKindOf(ForStatement)]
+for ([for (aExpression : Expression | aStatement.oclAsType(ForStatement).initializers)][generateExpression(aExpression, aOwningCompilationUnit)/][/for]; [generateExpression(aStatement.oclAsType(ForStatement).expression, aOwningCompilationUnit)/]; [for (aExpression : Expression | aStatement.oclAsType(ForStatement).updaters)][generateExpression(aExpression, aOwningCompilationUnit)/][/for]) {
+	[generateStatement(aStatement.oclAsType(ForStatement)._body, aOwningCompilationUnit)/]
+}
+[elseif aStatement.oclIsKindOf(SuperConstructorInvocation)]
+[comment handled by the constructor definition /]
+[elseif aStatement.oclIsKindOf(TryStatement)]
+try {
+	[generateBlock(aStatement.oclAsType(TryStatement)._body)/]
+[aStatement.oclAsType(TryStatement).finally/]
+[for (aCatchClaus : CatchClause | aStatement.oclAsType(TryStatement).catchClauses)]
+} catch ([convertType(aCatchClaus.exception.type.type, aStatement.originalCompilationUnit, true, false)/] [aCatchClaus.exception.name/]) {
+	[generateBlock(aCatchClaus._body)/]
+	[aStatement.oclAsType(TryStatement).finally/]
+[/for]
+}
+[else]
+/* TODO Statement [aStatement /] */
+[/if]
+[/template]
+
+
+
+

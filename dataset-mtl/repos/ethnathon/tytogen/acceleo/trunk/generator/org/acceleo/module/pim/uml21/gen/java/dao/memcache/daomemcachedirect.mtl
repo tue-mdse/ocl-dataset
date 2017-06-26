@@ -1,0 +1,102 @@
+[module daomemcachedirect('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon/]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+
+[comment][template private fullFilePath(class:Class)]
+[if (class.hasStereotype('Entity'))]
+[class.pathToMainJava()/]/[class.memcachePackage().toPath()/]/MemCache[class.name/]Dao.java
+[/if]
+
+[/template][/comment]
+
+
+[template public generateDaoMemCacheDirect(class:Class)? (class.hasStereotype('Entity'))]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(),class.memcachePackage().toPath(),'MemCache'.concat(class.name).concat('Dao.java')), false))]
+package [class.memcachePackage()/];
+
+// [protected ('imports')]
+// for import 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Hashtable;
+import java.util.Map;
+
+[class.importDaoException()/]
+import [class.entityQualifiedName()/];
+import [class.daoInterfaceQualifiedName()/];
+
+// [/protected] for import 
+
+public class MemCache[class.name/]Dao implements [class.daoInterfaceName()/] {
+    
+    protected static Map<String, [class.name/]> class.[name.toLowerFirst()/]sCache = new Hashtable<String, [class.name/]>();
+    
+    public void create[class.name/]([class.name/] entity) throws DaoException {
+        [class.name.toLowerFirst()/]sCache.put(entity.getId(), entity);
+    }
+    
+    public void update[class.name/]([class.name/] entity) throws DaoException {
+        if (![class.name.toLowerFirst()/]sCache.containsKey(entity.getId())) {
+            throw new DaoException("[class.name/] (id : " + entity.getId() + ") to update doesn't exist.");
+        }
+        [class.name.toLowerFirst()/]sCache.put(entity.getId(), entity);
+    }
+    
+    public void delete[class.name/]([class.name/] entity) throws DaoException {
+        [class.name.toLowerFirst()/]sCache.remove(entity.getId());
+    }
+    
+    public Collection<[class.name/]> findAll[class.name/]s() throws DaoException {
+        Collection<[class.name/]> allList = new ArrayList<[class.name/]>();
+        allList.addAll([class.name.toLowerFirst()/]sCache.values());
+        return allList;
+    }
+    
+    public [class.name/] find[class.name/]ById(String id) throws DaoException {
+        [class.name/] result = [class.name.toLowerFirst()/]sCache.get(id);
+        return result;
+    }
+    
+[comment  Generate additional methods d�claration /]
+[for (oper:Operation|class.ownedOperation)]
+[comment  Generate methods with find stereotypes /]
+[if (oper.hasStereotype('find'))]
+    [oper.generateJavadoc()/]
+    public [oper.returnResult().convertToJavaType()/] [oper.name/]([oper.generateParameters()/]) throws DaoException {
+        // [protected ('return')]
+        // of [oper.name/]        
+		return null;
+        // [/protected]
+    }
+[/if]
+[/for]
+}
+[/file]
+[/template]
+
+
+[template public memcachePackage(class:Class)]
+[class.daoPackage()/].memcache
+[/template]
+
+
+[template public getIds(class:Class)]
+[for (prop:Property|class.attribute)]
+	[if (prop.hasStereotype('id'))]
+		[if (prop.type.name = 'String')]
+entity.get[prop.name.toUpperFirst()/]()
+		[else]
+String.valueof(entity.get[prop.name.toUpperFirst()/]())
+		[/if]
+	[/if]
+[/for]
+[/template]
+
+
+

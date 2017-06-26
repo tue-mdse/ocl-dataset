@@ -1,0 +1,50 @@
+[comment encoding = UTF-8 /]
+[module enumeration(
+	'http://cs.manchester.ac.uk/mdsd/ObjectRelationalMapping')]
+[import uk::ac::man::cs::mdsd::orm::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::orm::m2t::doctrine::files/]
+[import uk::ac::man::cs::mdsd::orm::m2t::doctrine::names/]
+
+
+[template public model(type : EnumerationType)]
+[type.model(false)/]
+[/template]
+
+[template public model(type : EnumerationType, supportTranslation : Boolean)]
+[file(type.modelFilename(), false)]
+<?php
+namespace [type.modelsNamespace()/];
+class [type.modelClassName()/]
+{
+[for (literal : EnumerationLiteral | type.enumerations)]
+	const [literal.name/] = [i/];
+[/for]
+
+	public static function values()
+	{
+		$values = array();
+[for (literal : EnumerationLiteral | type.enumerations)]
+	[if (supportTranslation)]
+		$values['['/]'[type.id()/].labels.[literal.id()/]'[']'/] = self::[literal.name/];
+	[else]
+		$values['['/]'[literal.displayLabel/]'[']'/] = self::[literal.name/];
+	[/if]
+[/for]
+
+		return $values;
+	}
+
+	public static function value($value = null, $default = '')
+	{
+		$values = array_flip([type.modelClassName()/]::values());
+
+		if (array_key_exists($value, $values)) {
+			return $values['['/]$value[']'/];
+		}
+
+		return $default;
+	}
+
+}
+[/file]
+[/template]

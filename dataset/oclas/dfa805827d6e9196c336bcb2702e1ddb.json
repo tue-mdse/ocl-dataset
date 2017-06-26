@@ -1,0 +1,302 @@
+[
+  {
+    "name": "State",
+    "expressions": [
+      {
+        "operations": {
+          "<=": 1,
+          "size": 2,
+          "oclIsTypeOf": 1,
+          "and": 1,
+          "implies": 1,
+          "=": 1,
+          ">": 1
+        },
+        "name": "defineMaxOneInitialConnector",
+        "body": "self.subnodes->size() > 0 implies (self.subnodes->select(c | c.oclIsTypeOf(Connector) and c.name='initial')->size() <= 1)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 8,
+          "VariableExpImpl": 4,
+          "IntegerLiteralExpImpl": 2,
+          "TypeExpImpl": 1,
+          "StringLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "rfsm::State::subnodes",
+          "rfsm::Node::name"
+        ]
+      },
+      {
+        "operations": {
+          "not": 1,
+          "oclIsUndefined": 1,
+          "size": 1,
+          "implies": 1,
+          "=": 1
+        },
+        "name": "onlyLeafStatesHaveDoo",
+        "body": "(not self.doo.oclIsUndefined()) implies (self.subnodes->size() = 0)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 5,
+          "VariableExpImpl": 2,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "rfsm::State::subnodes",
+          "rfsm::State::doo"
+        ]
+      },
+      {
+        "operations": {
+          "size": 2,
+          "oclIsTypeOf": 1,
+          "and": 2,
+          "allInstances": 1,
+          "implies": 1,
+          "=": 3,
+          ">": 1
+        },
+        "name": "defineInitialConnectorWhenComposite",
+        "body": "self.subnodes->size() > 0 and Transition.allInstances()->exists(t | t.target=self) implies self.subnodes->select(c | c.oclIsTypeOf(Connector) and c.name='initial')->size() = 1",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "OperationCallExpImpl": 11,
+          "VariableExpImpl": 6,
+          "IntegerLiteralExpImpl": 2,
+          "StringLiteralExpImpl": 1,
+          "TypeExpImpl": 2,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "rfsm::State::subnodes",
+          "rfsm::Node::name",
+          "rfsm::Transition::target"
+        ]
+      }
+    ],
+    "properties": [
+      "subnodes",
+      "exit",
+      "transitions",
+      "entry",
+      "doo"
+    ]
+  },
+  {
+    "name": "Transition",
+    "expressions": [
+      {
+        "operations": {
+          "isAncestor": 1,
+          "or": 1,
+          "LCA": 1,
+          "=": 1
+        },
+        "name": "transitionOwner",
+        "body": "let lca : State = LCA(self.source, self.target) in self.owner = lca or isAncestor(self.owner, lca)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 8,
+          "OperationCallExpImpl": 4,
+          "LetExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "rfsm::Transition::source",
+          "rfsm::Transition::owner",
+          "rfsm::Transition::target"
+        ]
+      },
+      {
+        "operations": {
+          "isAncestor": 1,
+          "<>": 1,
+          "and": 1
+        },
+        "name": "legalBoundaryCrossing",
+        "body": "(self.target.parent <> self.source) and isAncestor(self.target.parent, self.source)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 5,
+          "OperationCallExpImpl": 3,
+          "PropertyCallExpImpl": 6
+        },
+        "properties": [
+          "rfsm::Transition::source",
+          "rfsm::Transition::target",
+          "rfsm::Node::parent"
+        ]
+      },
+      {
+        "operations": {
+          "oclIsUndefined": 1,
+          "oclIsTypeOf": 1,
+          "and": 1,
+          "implies": 1,
+          "=": 1
+        },
+        "name": "noGuardFromInitialConnector",
+        "body": "(self.source.oclIsTypeOf(Connector) and self.source.name='initial') implies guard.oclIsUndefined()",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 5,
+          "VariableExpImpl": 3,
+          "TypeExpImpl": 1,
+          "StringLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "rfsm::Transition::source",
+          "rfsm::Transition::guard",
+          "rfsm::Node::name"
+        ]
+      },
+      {
+        "operations": {
+          "isAncestor": 1,
+          "oclIsUndefined": 1,
+          "=": 2
+        },
+        "name": "isAncestor",
+        "body": "if (one = two) \n\t\t\t\t\tthen true\n\t\t\t\telse\n\t\t\t\t\tif (two.parent.oclIsUndefined ())\n\t\t\t\t\t\tthen false\n\t\t\t\t\telse \n\t\t\t\t\t\tif (two.parent = one)\n\t\t\t\t\t\t\tthen true\n\t\t\t\t\t\telse \n\t\t\t\t\t\t\tisAncestor(one, two.parent)\n\t\t\t\t\t\tendif\n\t\t\t\t\tendif\n\t\t\t\tendif",
+        "type": "OperationImpl",
+        "constructs": {
+          "OperationCallExpImpl": 4,
+          "VariableExpImpl": 8,
+          "IfExpImpl": 3,
+          "BooleanLiteralExpImpl": 3,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": ["rfsm::Node::parent"]
+      },
+      {
+        "operations": {
+          "<=": 1,
+          "size": 1,
+          "oclIsTypeOf": 1,
+          "and": 1,
+          "allInstances": 1,
+          "implies": 1,
+          "=": 2
+        },
+        "name": "maxOneTransitionFromInitialConnector",
+        "body": "(self.source.oclIsTypeOf(Connector) and self.source.name='initial') implies (Transition.allInstances()->select(t | t.source = self.source)->size()) <= 1",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 8,
+          "VariableExpImpl": 4,
+          "IntegerLiteralExpImpl": 1,
+          "TypeExpImpl": 2,
+          "StringLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "rfsm::Transition::source",
+          "rfsm::Node::name"
+        ]
+      },
+      {
+        "operations": {
+          "isAncestor": 2,
+          "oclIsTypeOf": 2,
+          "and": 2,
+          "LCA": 1,
+          "oclAsType": 2
+        },
+        "name": "LCA",
+        "body": "if isAncestor(one, two) and one.oclIsTypeOf(State)\n\t\t\t\t\tthen one.oclAsType(State)\n\t\t\t\telse \n\t\t\t\t\tif isAncestor(two, one) and two.oclIsTypeOf(State)\n\t\t\t\t\t\tthen two.oclAsType(State)\n\t\t\t\t\telse\n\t\t\t\t\t\tLCA(one.parent,two.parent)\n\t\t\t\t\tendif\n\t\t\t\tendif",
+        "type": "OperationImpl",
+        "constructs": {
+          "OperationCallExpImpl": 9,
+          "VariableExpImpl": 13,
+          "TypeExpImpl": 4,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": ["rfsm::Node::parent"]
+      }
+    ],
+    "properties": [
+      "priority_number",
+      "source",
+      "guard",
+      "events",
+      "owner",
+      "effect",
+      "target"
+    ]
+  },
+  {
+    "name": "Node",
+    "expressions": [{
+      "operations": {
+        "oclIsUndefined": 1,
+        "size": 1,
+        "allInstances": 1,
+        "=": 1
+      },
+      "name": "defineOnlyOneRootNode",
+      "body": "(Node.allInstances()->select(n | n.parent.oclIsUndefined ()))->size() = 1",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "IteratorExpImpl": 1,
+        "OperationCallExpImpl": 4,
+        "VariableExpImpl": 1,
+        "IntegerLiteralExpImpl": 1,
+        "TypeExpImpl": 1,
+        "PropertyCallExpImpl": 1
+      },
+      "properties": ["rfsm::Node::parent"]
+    }],
+    "properties": [
+      "name",
+      "Transition",
+      "Transition",
+      "parent"
+    ]
+  },
+  {
+    "name": "Connector",
+    "expressions": [],
+    "properties": [
+      "public",
+      "history"
+    ]
+  },
+  {
+    "name": "Function",
+    "expressions": [],
+    "properties": [
+      "State",
+      "sourcecode",
+      "State",
+      "Transition",
+      "State",
+      "Transition"
+    ]
+  },
+  {
+    "name": "Event",
+    "expressions": [],
+    "properties": [
+      "owner",
+      "eventliteral"
+    ]
+  },
+  {
+    "name": "History",
+    "expressions": [],
+    "properties": [
+      "hot",
+      "depth",
+      "Connector"
+    ]
+  }
+]

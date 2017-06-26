@@ -1,0 +1,71 @@
+[comment encoding = UTF-8 /]
+[module relationships('http://www.intrawarez.de/dbca')]
+
+[import de::intrawarez::dbca::m2t::common::entities/]
+
+[query public isOneToOne (rt : RelationshipType) : Boolean		= rt.toString() = 'OneToOne'/]
+[query public isOneToMany (rt : RelationshipType) : Boolean 	= rt.toString() = 'OneToMany'/]
+[query public isManyToOne (rt : RelationshipType) : Boolean 	= rt.toString() = 'ManyToOne'/]
+[query public isManyToMany (rt : RelationshipType) : Boolean	= rt.toString() = 'ManyToMany'/]
+
+[query public isOneToOne (r : Relationship) : Boolean 	= r.type.isOneToOne() /]
+[query public isOneToMany (r : Relationship) : Boolean 	= r.type.isOneToMany() /]
+[query public isManyToOne (r : Relationship) : Boolean 	= r.type.isManyToOne() /]
+[query public isManyToMany (r : Relationship) : Boolean = r.type.isManyToMany() /]
+
+[query public selectTarget (r : Relationship) : Entity
+	= r.target 
+/]
+
+[query public selectSource (r : Relationship) : Entity 
+	= r.ancestors(Entity)->first()
+/]
+
+[query public selectOwnAttributes (r : Relationship) : Sequence(Attribute) 
+	= r.properties->asSequence()
+/]
+
+[query public selectOwnProperties (r : Relationship) : Sequence(Property) 
+	= r.properties->asSequence()
+/]
+
+[query public selectAttributes (r : Relationship) : Sequence(Attribute) 
+	= r.selectSource().selectPrimaryProperties()
+		->addAll(r.selectTarget().selectPrimaryProperties())
+		->addAll(r.selectOwnProperties()->asSequence())
+/]
+
+[query public selectAttributeNames (r : Relationship) : Sequence(String) 
+	= r.selectSource().selectPrimaryProperties().name.prefix(r.selectSource().name)
+		->addAll(r.selectTarget().selectPrimaryProperties().name.prefix(r.selectTarget().name))
+		->addAll(r.selectOwnAttributes().name)
+/]
+
+[query public selectPrimaryProperties (r : Relationship) : Sequence(PrimaryProperty) 
+	= if r.isOneToMany()
+		then r.selectTarget().selectPrimaryProperties()
+		else 
+			if r.isManyToOne()
+			then r.selectSource().selectPrimaryProperties()
+			else r.selectSource().selectPrimaryProperties()
+					->addAll(r.selectTarget().selectPrimaryProperties())
+		endif
+	endif
+/]
+
+[query public selectPrimaryPropertyNames (r : Relationship) : Sequence(String) 
+	= if r.isOneToMany()
+		then r.selectTarget().selectPrimaryProperties().name.prefix(r.selectTarget().name)
+		else 
+			if r.isManyToOne()
+			then r.selectSource().selectPrimaryProperties().name.prefix(r.selectSource().name)
+			else r.selectSource().selectPrimaryProperties().name.prefix(r.selectSource().name)
+					->addAll(r.selectTarget().selectPrimaryProperties().name.prefix(r.selectTarget().name))
+		endif
+	endif
+/]
+
+
+[query public selectProperties (r : Relationship) : Sequence(Attribute) 
+	= r.selectOwnProperties()
+/]

@@ -1,0 +1,58 @@
+[comment encoding = UTF-8 /]
+[module generateCSV('http://www.polarsys.org/reqcycle/reqexport/1.0')/]
+
+[template public generate(export : Export)]
+	
+	[comment @main /]
+	[file (export.path, false, 'UTF-8')]
+[for (m : Model | export.models)]
+	Path;Metadata;Version
+	"[m.name/]";"[m.version/]";[for (p:Property | m.metadata)]"[p.name/]=[p.value/]";[/for]
+	#[m.name/];[for(a:Attribute | m.attributes)][a.name/];[/for]
+	[for (r : Requirement | m.requirements)]
+		[if (r.downwardTraceability->size() = 0)]
+			[reqDetail(r, m.attributes, r.values,i)/]
+		[else]
+			[for (t : Traceability | r.downwardTraceability)]
+				[reqDetail(r, m.attributes, r.values->addAll(t.traceabilityValues),i)/]
+			[/for]
+		[/if]
+	[/for]
+   
+[/for]
+	[/file]
+	
+[/template]
+
+[template public reqDetail (r : Requirement, allAttributes : Collection(Attribute), values : OrderedSet(AttributeValue), count : Integer)]
+[r.ID/];[for(att: Attribute | allAttributes)]"[getValue(values->asSequence(), att)/]";[/for]
+[/template]
+
+[query public getValue(values : Sequence(AttributeValue), a : Attribute) : String =  	
+	 let value : AttributeValue = values->select(v : AttributeValue | v.attribute = a)->first() in 
+	 if (value.oclIsUndefined()) then 
+	  '' 
+	 else   value.value
+	 endif
+/]
+
+[query public getType(arg : Attribute) : String = 
+if (arg.type.oclIsUndefined()) then
+ 'String'
+else 
+ if arg.type.toLowerCase().contains('string') then 'String'
+ else 
+	if arg.type.toLowerCase().contains('boolean') then 'String'
+	else 
+		if arg.type.toLowerCase().contains('int') then 'Number' 
+		else
+		'String'
+		endif
+	endif
+ endif
+endif
+/]
+
+
+
+

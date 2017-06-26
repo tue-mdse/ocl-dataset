@@ -1,0 +1,123 @@
+[module uiimpl('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ui::web::velocity::ui/]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(class : Class)]
+[if (class.isUi())]
+[class.pathToMainJava()/]/[class.uiImplPackage().toPath()/]/[class.name/]Impl.java
+[/if]
+
+[/template][/comment]
+
+
+[template public generateUiImpl(class : Class)? (class.isUi())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(), class.uiImplPackage().toPath(), class.name.concat('Impl.java')), false))]
+package [class.uiImplPackage()/];
+
+// [protected ('imports')]
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import org.sharengo.exceptions.TechnicalException;
+
+import [class.uiPackage()/].I[class.name/];
+
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().isUi())]
+import [class.superClass.uiImplPackage()/].[class.superClass.name/]Impl;
+[/if]
+
+import java.io.Writer;
+
+[for (classifier:Classifier|class.operationsParametersTypes())]
+[if (classifier.isEntity())]
+import [classifier.entityPackage()/].[classifier.name/];
+[else]
+import [classifier.getCompleteName()/];	
+[/if]
+[/for]
+
+[for (oper:Operation|class.ownedOperation)]
+	[for (type:Type|oper.raisedException)]
+import [type.getCompleteName()/];
+	[/for]
+[/for]
+
+[iocImport('Ui')/]
+[iocImport('Service')/]
+[iocImport('Config')/]
+
+[for (classifier:Classifier|class.viewDependencies())]
+import [classifier.viewImplPackage()/].[classifier.name/];
+[/for]
+
+[if (class.viewDependencies()->notEmpty())]
+import [class.viewFactoryPackage()/].ViewFactory;
+[/if]
+
+import java.util.Collection;
+// [/protected]
+
+public class [class.name/]Impl[class.extensions()/] implements I[class.name/] {
+
+	/**
+	 * class dedicated logger
+ 	 */
+	private static Log log = LogFactory.getLog([class.name/]Impl.class.getName()); 
+
+	[iocAccessors('Ui')/]	
+	[iocAccessors2('Config')/]
+	[iocAccessors('Service')/]
+
+[if (class.viewDependencies()->notEmpty())]
+		private ViewFactory viewFactory = null;
+		public void setViewFactory(ViewFactory viewFactory){
+			this.viewFactory=viewFactory;
+		}
+		public ViewFactory getViewFactory(){
+			return viewFactory;
+		}		
+	[for (classifier:Classifier|class.viewDependencies())]
+		protected [classifier.name/] get[classifier.name/]() {
+			return getViewFactory().create[classifier.name.toUpperFirst()/]();
+		}
+	[/for]
+[/if]
+			
+[for (oper:Operation|class.ownedOperation)]
+	[oper.generateJavadoc()/]	
+	public [oper.generateReturn()/] [oper.name/]([oper.generateUiParameters()/]) throws TechnicalException[oper.genExceptions()/]{
+		// [protected ('operation')]        
+		// TODO implement [oper.name/]
+        throw new UnsupportedOperationException("Method not yet implemented");
+        // [/protected]
+        }
+        
+[/for]
+	
+	// [protected ('private methods')] 
+	// private methods
+	// [/protected] private methods
+	
+}
+[/file]
+[/template]
+
+
+[template public extensions(class : Class)]
+[if (class.superClass->notEmpty() and class.superClass->asSequence()->first().isUi())] extends [class.superClass.name/]Impl[/if]
+[/template]

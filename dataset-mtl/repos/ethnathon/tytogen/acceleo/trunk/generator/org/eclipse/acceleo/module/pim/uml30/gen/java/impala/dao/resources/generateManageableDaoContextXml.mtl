@@ -1,0 +1,46 @@
+[module generateManageableDaoContextXml('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[template public generateManageableDaoContextXml(aModel : Model, path : String)]
+	[file (aModel.generateProjectFolder().concat(path).concat('/').concat(aModel.generateProjectFolder()).concat('-manageable.xml'), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:service="http://www.impalaframework.org/schema/service"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+http://www.impalaframework.org/schema/service http://impala.googlecode.com/svn/schema/service-registry.xsd">
+
+     <service:export-array beanNames="[aModel.eAllContents(Class)->select(aClass:Class|aClass.isManageableEntity()).name.toLower().concat('manageabledao')->sep(',')/]"/>
+[for (aEntityClass : Class | aModel.eAllContents(Class)->select(aClass:Class|aClass.isManageableEntity()))]
+     <!-- [aEntityClass.name.toUpperFirst()/]ManageableDao Entity Proxy -->
+     <bean id="[aEntityClass.name.toLower()/]manageabledao" class="org.springframework.aop.framework.ProxyFactoryBean">
+         <property name="target"><ref local="[if (aEntityClass.generateJavaPackage().size()>0)][aEntityClass.generateJavaPackage()/].[/if]crud.[aEntityClass.name.toUpperFirst()/]ManageableDaoImpl"/></property>
+         <property name="proxyInterfaces">
+             <value>[if (aEntityClass.generateJavaPackage().size()>0)][aEntityClass.generateJavaPackage()/].[/if]crud.[aEntityClass.name.toUpperFirst()/]ManageableDao</value>
+         </property>
+         <property name="interceptorNames">
+             <list>
+                 <value>hibernateInterceptor</value>
+             </list>
+         </property>
+     </bean>
+
+    <!-- [aEntityClass.name.toUpperFirst()/] Implementation  -->
+    <bean id="[if (aEntityClass.generateJavaPackage().size()>0)][aEntityClass.generateJavaPackage()/].[/if]crud.[aEntityClass.name.toUpperFirst()/]ManageableDaoImpl" class="[if (aEntityClass.generateJavaPackage().size()>0)][aEntityClass.generateJavaPackage()/].[/if]crud.[aEntityClass.name.toUpperFirst()/]ManageableDaoImpl">
+        <property name="sessionFactory"><ref bean="sessionFactory"/></property>
+        <property name="[aEntityClass.name.toLowerFirst()/]Dao"><ref bean="[aEntityClass.name.toLower()/]dao"/></property>
+		[for (anEntity : Class | aEntityClass.getOppositeAttributes().type->filter(Class)->select(aClass:Class|aClass.isEntity()))]
+        <property name="[anEntity.name.toLowerFirst()/]Dao"><ref bean="[anEntity.name.toLower()/]dao"/></property>
+		[/for]
+    </bean>
+[/for]
+</beans>
+	[/file]
+[/template]

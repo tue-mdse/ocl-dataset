@@ -1,0 +1,92 @@
+[comment encoding = UTF-8 /]
+[module page('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::windowsphone::common::xisMobileUtils /]
+[import xismobile::pim::uml2::gen::windowsphone::files::action /]
+[import xismobile::pim::uml2::gen::windowsphone::services::services /]
+
+[template public generatePageCs(c : Class)]
+
+[file (c.getModel().name.toUpperFirst() + '/' + c.getModel().name.toUpperFirst() + '/' + c.name.toUpperFirst() + 'Page.xaml.cs', false, 'UTF-8')]
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Shapes;
+using Microsoft.Phone.Controls;
+
+[let widgets : Sequence(Class) = c.getXisInteractionSpaceWidgets()]
+namespace [c.getModel().name.replace('-', '_').replace(' ', '').toUpperFirst()/]
+{
+    public partial class [c.name.toUpperFirst()/]Page : PhoneApplicationPage
+    {
+        // Constructor
+        public [c.name.toUpperFirst()/]Page()
+        {
+            InitializeComponent();
+        }
+	[if (widgets->size() > 0)]
+		[for (w : Class | widgets)]
+		[writeGestureBinding(w)/]
+		[/for]
+	[/if]
+	[let menu : Class = c.getOptionsMenu()]
+		[for (el : Class | menu.getChildren()) separator ('\n')]
+		[if (el.isXisMenuItem())]
+			[let op : Operation = el.getDefaultOnTapGesture(el.getXisMenuItem())]
+			[if (not op.oclIsUndefined())]
+		[el.writeOnTapDefault(op)/]
+			[/if]
+			[/let]
+		[/if]
+		[/for]
+	[/let]
+    }
+}
+[/let]
+[/file]
+[/template]
+
+[template private writeGestureBinding(c : Class) post (trim())]
+[if (c.isXisButton() or c.isXisLink())]
+[let s : Stereotype = 
+	if c.isXisButton()
+	then c.getXisButton()
+	else c.getXisLink()
+	endif
+]
+[let op : Operation = c.getDefaultOnTapGesture(s)]
+	[if (not op.oclIsUndefined())]
+[c.writeOnTapDefault(op)/]
+	[/if]
+[/let]
+[/let]
+[/if]
+[comment][let gestures : OrderedSet(Class) = c.getWidgetGestures()]
+[if (gestures->size() > 0)]
+	[if (gestures->select(g : Class | g.isTapGesture())->size() = 1)]
+[c.writeOnTap(gestures)/]
+	[/if]
+	[if (gestures->select(g : Class | g.isLongTapGesture())->size() = 1)]
+[c.writeOnLongTap(gestures)/]
+	[/if]
+	[if (gestures->select(g : Class |
+		not g.isTapGesture() and not g.isLongTapGesture())->size() > 0)]
+[c.writeXisGestureManager(gestures)/]
+	[/if]
+[/if]
+[/let][/comment]
+[/template]
+
+[template private writeOnTapDefault(c : Class, op : Operation) post (trim())]
+private void [op.name/](object sender, EventArgs e)
+{
+	[op.writeXisAction()/]
+}
+[/template]

@@ -1,0 +1,60 @@
+[comment encoding = UTF-8 /]
+[module generateVisibilityEClassConfiguration('http://www.eclipse.org/emf/2002/Ecore','http://mondo.org/runtimePatterns')]
+[import org::mondo::generate::visibility::project::main::requests::global_queriesVisibilityProject /]
+
+[template public generateVisibilityEClassConfiguration(anProjectName : String,anPatternInstances : PatternInstances)]
+
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name')).replaceAll('\\.','/').concat('/definition/').concat('VisibilityEClassConfiguration.java'),false, 'UTF-8')]
+
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].definition;
+
+import org.eclipse.emf.ecore.EClass;
+import org.mondo.generate.visibility.project.ext.IVisibilityClass;
+
+import ScopeDefinition.ScopeDefinitionEnum;
+[for(currentPackage : String | getAllPackages(anPatternInstances.PatternInstanceScope().classInstances->asSequence())->asSet())]
+import [currentPackage.toUpperFirst()/].impl.[currentPackage/]FactoryImpl;
+[/for]
+
+public class VisibilityEClassConfiguration implements IVisibilityClass {
+
+	public VisibilityEClassConfiguration() {
+		// TODO Auto-generated constructor stub
+	}
+
+	@Override
+	public ScopeDefinitionEnum getVisibilitybyEClass(EClass eClass) {
+		// TODO Auto-generated method stub
+[for(currentInstance : ClassRoleInstance | anPatternInstances.PatternInstanceScope().classInstances)]
+	[for (currentFeatureRoleInstance : InstanceFeatureRoleInstance | currentInstance.featureInstances->selectByKind(InstanceFeatureRoleInstance))]
+	//[currentInstance.element.name.toUpperFirst()/]	
+	if([currentInstance.element.ePackage.name.toUpperFirst()/]FactoryImpl.init().get[currentInstance.element.ePackage.name.toUpperFirst()/]Package().
+		get[currentInstance.element.name.toUpperFirst()/]().equals(eClass))
+		return ScopeDefinitionEnum.[getEnumScopeDefinition(currentFeatureRoleInstance.role.ref->asSequence()->first().name.toString())/];	
+			
+[/for]
+[/for]		
+		
+		return ScopeDefinitionEnum.RSAME_WORK_SPACE;
+	}
+
+	@Override
+	public String getEOLexpressionByEClass(EClass eClass) {
+		// TODO Auto-generated method stub
+[for(currentInstance : ClassRoleInstance | anPatternInstances.PatternInstanceScope().classInstances)]
+	[for (currentFeatureRoleInstance : InstanceFeatureRoleInstance | currentInstance.featureInstances->selectByKind(InstanceFeatureRoleInstance))]
+	//[currentInstance.element.name.toUpperFirst()/]	
+	if([currentInstance.element.ePackage.name.toUpperFirst()/]FactoryImpl.init().get[currentInstance.element.ePackage.name.toUpperFirst()/]Package().
+		get[currentInstance.element.name.toUpperFirst()/]().equals(eClass))
+		return "[currentFeatureRoleInstance.value/]";	
+			
+[/for]
+[/for]	
+		
+		return null;
+	}
+	
+}
+
+[/file]
+[/template]

@@ -1,0 +1,99 @@
+[module servicehessiantestimpl('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(class : Class)]
+[if (not (class.hasStereotype(getProperty('Extern'))) and hasStereotype(getProperty('Service')))]
+	[if (class.hasRemoteOperations())]
+[class.pathToTestJava()/]/[class.serviceImplPackage().toPath()/]/[class.name/]WebServiceTest.java
+	[/if]
+[/if]
+
+[/template][/comment]
+
+
+[template public generateSeviceHessianTestImpl(class : Class) ? ((not (class.hasStereotype(getProperty('Extern'))) and hasStereotype(getProperty('Service'))) and class.hasRemoteOperations())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToTestJava(), class.serviceImplPackage().toPath(), class.name.concat('WebServiceTest.java')), false))]
+package [class.serviceImplPackage()/];
+
+// [protected ('imports')] 
+// for import 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.junit.Test;
+import [class.servicePackage()/].I[class.name/];
+import [class.servicePackage()/].I[class.name/]WebService;
+
+// [/protected] for import
+
+public class [class.name/]WebServiceTest extends [class.name/]Test{
+	
+[comment Server server;/]	
+	@Override
+	protected void onSetUp() throws Exception {
+		super.onSetUp();
+        // [protected ('onSetUp')]
+		// [/protected]      
+	}
+
+	@Override
+	protected void onTearDown() throws Exception {
+		super.onTearDown();
+[comment 		
+		if(server.isStarted()){
+			server.stop();
+		}
+		/]		
+		// [protected ('onTearDown')] 
+		// onTearDown         
+        // [/protected] onTearDown   
+	}
+
+	@Override
+	protected I[class.name/] get[class.name/]() throws Exception {
+	    I[class.name/]WebService [class.name.toLowerFirst()/]WebService = get[class.name/]WebService();
+		assertNotNull([class.name.toLowerFirst()/]WebService);
+		Mock[class.name/]WebService mock[class.name/] = new Mock[class.name/]WebService([class.name.toLowerFirst()/]WebService);		
+		assertTrue(mock[class.name/] instanceof I[class.name/]);
+		I[class.name/] [class.name.toLowerFirst()/] = (I[class.name/])mock[class.name/];
+		assertNotNull([class.name.toLowerFirst()/]);		
+		return [class.name.toLowerFirst()/];
+	}
+	
+[for (oper:Operation|class.ownedOperation->select(isRemote()))]
+	@Test public void test[oper.name.toUpperFirst()/]() throws Exception{
+	    // [protected ('test')]		
+		super.test[oper.name.toUpperFirst()/]();
+		// [/protected] of test[oper.name.toUpperFirst()/]			
+	}
+
+[/for]
+[for (oper:Operation|class.ownedOperation->select(not (isRemote())))]
+	//no test for non <<Remote>> operation
+	@Test public void test[oper.name.toUpperFirst()/]() throws Exception{	   
+		assertTrue(true);
+	}
+
+[/for]
+	 
+ 	// [protected ('specific tests')] 
+	// of specific tests	
+	// [/protected]
+
+}
+[/file]
+[/template]

@@ -1,0 +1,140 @@
+[comment encoding = UTF-8 /]
+[**
+ * 負責產生pom檔案的template。
+ */]
+[module templatePomXml('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import idv::hsiehpinghan::acceleo::utility::propertyUtility /]
+
+[comment]---------------------------public---------------------------[/comment]
+[**
+ * 產生pom檔案的template。
+ * @param anOclAny
+ */]
+[template public templatePomXml(anOclAny : OclAny)]
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>idv.hsiehpinghan</groupId>
+	<artifactId>[queryProperty('pomXml', 'artifactId') /]</artifactId>
+	<packaging>[queryProperty('main', 'applicationType') /]</packaging>
+	<version>[queryProperty('pomXml', 'version') /]</version>
+	<name>[queryProperty('pomXml', 'artifactId') /]</name>
+	<url>http://maven.apache.org</url>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.source>[queryProperty('java', 'version') /]</maven.compiler.source>
+		<maven.compiler.target>[queryProperty('java', 'version') /]</maven.compiler.target>
+		<testng.version>6.8.7</testng.version>
+		<spring.version>[queryProperty('spring', 'version') /].RELEASE</spring.version>
+		<commons-io.version>2.4</commons-io.version>
+[if (queryProperty('database', 'isDatabaseActive') = 'Y')]
+		<c3p0.version>[queryProperty('database', 'dataSourceType.version') /]</c3p0.version>
+		[templateDatabaseDriverClassVersion() /]
+		<hibernate-entitymanager.version>4.2.7.Final</hibernate-entitymanager.version>
+		<spring-data-jpa.version>1.4.2.RELEASE</spring-data-jpa.version>
+		<commons-dbutils.version>1.5</commons-dbutils.version>
+[/if]
+	</properties>
+	<dependencies>
+		<!-- testng -->
+		<dependency>
+			<groupId>org.testng</groupId>
+			<artifactId>testng</artifactId>
+			<version>${testng.version}</version>
+		</dependency>
+
+		<!-- spring -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>${spring.version}</version>
+		</dependency>
+
+		<!-- commons-io -->
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>${commons-io.version}</version>
+		</dependency>
+
+[if (queryProperty('database', 'isDatabaseActive') = 'Y')]
+[templateDatabaseDriverClassDependency() /]
+[templateDataSourceDependency() /]
+		<!-- hibernate-entitymanager -->
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-entitymanager</artifactId>
+			<version>${hibernate-entitymanager.version}</version>
+		</dependency>
+
+		<!-- spring-data-jpa -->
+		<dependency>
+			<groupId>org.springframework.data</groupId>
+			<artifactId>spring-data-jpa</artifactId>
+			<version>${spring-data-jpa.version}</version>
+		</dependency>
+
+		<!-- commons-dbutils -->
+		<dependency>
+			<groupId>commons-dbutils</groupId>
+			<artifactId>commons-dbutils</artifactId>
+			<version>${commons-dbutils.version}</version>
+		</dependency>
+
+[/if]
+	</dependencies>
+	<build>
+		<finalName>[queryProperty('pomXml', 'artifactId') /]</finalName>
+	</build>
+</project>
+[/template]
+[comment]--------------------------protected-------------------------[/comment]
+
+
+[comment]---------------------------private--------------------------[/comment]
+[**
+ * 產生資料庫driverClass的版本。
+ * @param anOclAny
+ */]
+[template private templateDatabaseDriverClassVersion(anOclAny : OclAny) post(self.trim())]
+	[if (queryProperty('database', 'databaseType') = 'MSSQL')]
+		<jtds.version>[queryProperty('database', 'jtdsVersion') /]</jtds.version>
+	[else]
+		ERROR
+	[/if]
+[/template]
+
+[**
+ * 產生資料庫driverClass的dependency。
+ * @param anOclAny
+ */]
+[template private templateDatabaseDriverClassDependency(anOclAny : OclAny)]
+	[if (queryProperty('database', 'databaseType') = 'MSSQL')]
+		<!-- jtds -->
+		<dependency>
+			<groupId>net.sourceforge.jtds</groupId>
+			<artifactId>jtds</artifactId>
+			<version>${jtds.version}</version>
+		</dependency>
+	[else]
+		ERROR
+	[/if]
+[/template]
+
+[**
+ * 產生連結資料庫的dataSource的dependency。
+ * @param anOclAny
+ */]
+[template private templateDataSourceDependency(anOclAny : OclAny)]
+	[if (queryProperty('database', 'dataSourceType') = 'c3p0')]
+		<!-- c3p0 -->
+		<dependency>
+			<groupId>c3p0</groupId>
+			<artifactId>c3p0</artifactId>
+			<version>${c3p0.version}</version>
+		</dependency>
+	[else]
+		ERROR
+	[/if]
+[/template]

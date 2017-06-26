@@ -1,0 +1,155 @@
+[comment encoding = UTF-8 /]
+[module interfaceFile('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import fr::bermosa::acceleo::exemple::common::common /]
+[import fr::bermosa::acceleo::exemple::common::declaration /]
+[import fr::bermosa::acceleo::exemple::common::imports /]
+[import fr::bermosa::acceleo::exemple::files::commonFile /]
+[import fr::bermosa::acceleo::exemple::common::operations /]
+[import fr::bermosa::acceleo::exemple::services::rooServices /]
+
+
+[template public genFileBody(anInterface : Interface)]
+[anInterface.genPackageDeclaration()/]
+[anInterface.genServiceImports()/]
+[anInterface.genImport()/]
+[anInterface.genBody()/]
+[/template]
+
+[template public genServiceImports(anInterface : Interface)]
+
+import javax.jws.WebParam;
+
+[/template]
+
+[template public genBody(anInterface : Interface)]
+[anInterface.genVisibility()/]interface [anInterface.genName()/] [anInterface.genInheritance()/]{
+	[anInterface.genServiceOperations()/]
+}
+[/template]
+
+[template public genServiceImplName(anInterface : Interface)]
+[anInterface.name.concat('Impl')/]
+[/template]
+
+[template public genFullPathServiceImplFile(anInterface : Interface)  post (trim())]
+[if (not anInterface.getNearestPackage().oclIsUndefined())]
+	[anInterface.genPackagePath().substituteAll('.', '/').concat('/').concat(anInterface.genServiceImplName()).concat('.java')/]
+[else]
+	[anInterface.genServiceImplName().concat('.java')/]
+[/if]
+[/template]
+
+[template public genServiceImplFileBody(anInterface : Interface)]
+[anInterface.genPackageDeclaration()/]
+[anInterface.genServiceImplImports()/]
+[anInterface.genImport()/]
+// [protected ('(imports)')]
+
+// [/protected]
+
+[anInterface.genServiceImplBody()/]
+[/template]
+
+[template protected genServiceImplImports(anInterface : Interface)]
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.dozer.Mapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+[/template]
+
+[template protected genServiceImplBody(anInterface : Interface)]
+@Service("[anInterface.name.toLowerFirst()/]")
+public class [anInterface.genServiceImplName()/] implements [anInterface.name/] {
+
+	/** A commons logger for diagnostic messages. */
+	private static Log log = LogFactory.getLog([anInterface.genServiceImplName()/].class);
+
+	@Autowired
+	private Mapper mapper;
+
+	// [protected ('(attributes)')]
+
+	// [/protected]
+	[anInterface.genServiceImplOperations()/]
+	// [protected ('(private methods)')]
+
+	// [/protected]
+}
+[/template]
+
+[template public genServiceEndpointName(anInterface : Interface)]
+[anInterface.name.concat('Endpoint')/]
+[/template]
+
+[template public genFullPathServiceEndpointFile(anInterface : Interface) post (trim())]
+[if (not anInterface.getNearestPackage().oclIsUndefined())]
+	[anInterface.genPackagePath().substituteAll('.', '/').concat('/').concat(anInterface.genServiceEndpointName()).concat('.java')/]
+[else]
+	[anInterface.genServiceEndpointName().concat('.java')/]
+[/if]
+[/template]
+
+[template public genServiceEndpointFileBody(anInterface : Interface)]
+[anInterface.genPackageDeclaration()/]
+[anInterface.genServiceEndpointImports()/]
+[anInterface.genImport()/]
+[anInterface.genServiceEndpointBody()/]
+[/template]
+
+[template protected genServiceEndpointImports(anInterface : Interface)]
+
+import javax.jws.WebMethod;
+import javax.jws.WebService;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+[/template]
+
+[template protected genServiceEndpointBody(anInterface : Interface)]
+@WebService(serviceName="[anInterface.name/]", targetNamespace="[getTargetNamespace(genPackagePath())/]")
+public class [anInterface.genServiceEndpointName()/] implements [anInterface.name/] {
+
+	@Autowired
+	private [anInterface.name/] service;
+	[anInterface.genServiceEndpointOperations()/]
+}
+[/template]
+
+[template public genServiceWSAspectName(anInterface : Interface)]
+[anInterface.name.concat('_Roo_WS')/]
+[/template]
+
+[template public genFullPathServiceWSAspectFile(anInterface : Interface) post (trim())]
+[if (not anInterface.getNearestPackage().oclIsUndefined())]
+	[anInterface.genPackagePath().substituteAll('.', '/').concat('/').concat(anInterface.genServiceWSAspectName()).concat('.aj')/]
+[else]
+	[anInterface.genServiceWSAspectName().concat('.aj')/]
+[/if]
+[/template]
+
+[template public genServiceWSAspectFileBody(anInterface : Interface)]
+[anInterface.genPackageDeclaration()/]
+[anInterface.genServiceWSAspectImports()/]
+[anInterface.genImport()/]
+[anInterface.genServiceWSAspectBody()/]
+[/template]
+
+[template protected genServiceWSAspectImports(anInterface : Interface)]
+
+import javax.jws.WebMethod;
+import javax.jws.WebResult;
+import javax.jws.WebService;
+
+[/template]
+
+[template protected genServiceWSAspectBody(anInterface : Interface)]
+privileged aspect [anInterface.genServiceWSAspectName()/] {
+
+	declare @type: [anInterface.genName()/]: @WebService(targetNamespace="[getTargetNamespace(genPackagePath())/]");
+	[anInterface.genServiceWSAspectOperations()/]
+}
+[/template]

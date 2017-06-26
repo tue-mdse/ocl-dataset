@@ -1,0 +1,90 @@
+[module jsp('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::struts::common::widgets_mappings/]
+[import org::acceleo::module::pim::uml21::gen::java::struts::xml::validation_mapping/]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[comment][template public fullFilePath(class:Class)]
+[if (class.hasStereotype(getProperty('Screen')))]
+[class.pathToMainWebapp()/]/generated/jsp/[class._package.name/]/[class.name/].jsp
+[/if]
+
+[/template][/comment]
+
+
+[template public generateJsp(class:Class)? (class.hasStereotype(getProperty('Screen')))]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainWebapp(), 'generated/jsp/'.concat('class._package.name'), class.name.concat('.jsp')), false))]
+<%@ taglib
+        uri="http://struts.apache.org/tags-html"
+        prefix="html" %>
+<%@ taglib
+        uri="http://struts.apache.org/tags-bean"
+        prefix="bean" %>
+<%@ taglib
+        uri="http://struts.apache.org/tags-logic"
+        prefix="logic" %>
+
+<logic:messagesPresent>
+   <bean:message key="errors.header"/>
+   <ul>
+   <html:messages id="error">
+      <li><bean:write name="error"/></li>
+   </html:messages>
+   </ul>
+   <bean:message key="errors.footer"/>
+   <hr />
+</logic:messagesPresent>
+
+[comment  We generate javascript validation only if there is a need /][comment  else Struts crashes at runtime... /]
+[if (class.generateValidator().trim() <> '')]
+<html:javascript formName="/[class._package.name.toLower()/]/[name.toLower()/]" staticJavascript="false" />
+<html:form action="/[class._package.name.toLower()/]/[class.name.toLower()/]" method="POST" onsubmit="return validate[class.name/]Form(this)">
+[else]
+<html:form action="/[class._package.name.toLower()/]/[class.name.toLower()/]" method="POST">
+[/if]
+
+<html:hidden property="event" value=""/>
+
+<table>
+[for (prop:Property|class.ownedAttribute)]
+	[if (not (prop.hasStereotype(getProperty('Title'))) and not (prop.hasStereotype(getProperty('List'))) and not (prop.hasStereotype(getProperty('Table'))) and not (prop.hasStereotype(getProperty('Combobox'))))]
+	<tr>
+		<td><bean:message key="[class.name/].[name.toLower()/]"/> :</td>
+		<td><html:[prop.convertToHTMLStrutsTypeFromStereotype()/] property="[prop.name.toLowerFirst()/]" [if (prop.hasStereotype(getProperty('Radio')))]value="[prop.name.toLowerFirst()/]"[/if]/></td>
+	</tr>
+	[elseif (prop.hasStereotype(getProperty('Combobox')))]
+	<tr>
+		<td><bean:message key="[class.name/].[name.toLower()/]"/> :</td>
+		<td>
+			<html:[prop.convertToHTMLStrutsTypeFromStereotype()/] property="[name.toLowerFirst()/]">
+				<html:options property="[name.toLowerFirst()/]Values"/>
+			</html:[prop.convertToHTMLStrutsTypeFromStereotype()/]>
+		</td>
+	</tr>
+	[else]
+		[if (not (prop.hasStereotype(getProperty('Title'))))]
+[comment  Tables or List /]	<tr>
+		<td>[prop.name/] :</td>
+		<td><logic:iterate name="[class.name/]Form" id="[name.toLowerFirst()/]_id" property="[name.toLowerFirst()/]" /></td>
+	</tr>
+		[/if]
+	[/if]
+[/for]
+[for (oper:Operation|class.ownedOperation)]
+	<tr>
+		<td>
+			<html:submit property="[oper.name.toLowerFirst()/]" value="[oper.name.toLowerFirst()/]" onclick="bCancel=false;[class.name/]Form.event.value = '[oper.name.toLowerFirst()/]';"/>
+		</td>
+	</tr>
+[/for]
+</table>
+
+</html:form>
+[/file]
+[/template]
+
+
+

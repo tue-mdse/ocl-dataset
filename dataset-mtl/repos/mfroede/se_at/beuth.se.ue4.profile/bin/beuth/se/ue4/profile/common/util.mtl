@@ -1,0 +1,64 @@
+[comment encoding = UTF-8 /]
+[module util('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[query public getTaggedValue(element:Element, stereotypeName:String ,property:String, isClass:Boolean ) : Sequence(OclAny) = 
+	invoke('beuth.se.ue4.profile.common.PropertyHelper', 
+	'getTaggedValue(org.eclipse.uml2.uml.Element, java.lang.String, java.lang.String, java.lang.Boolean)',
+	Sequence{ element, stereotypeName, property, isClass }) /]
+
+[comment][query public getTaggedValueClass(element:Class, stereotypeName:String ,property:String, isClass:Boolean ) : Sequence(Class) = 
+	invoke('beuth.se.ue4.profile.common.ClassHelper', 
+	'getTaggedValue(org.eclipse.uml2.uml.Element, java.lang.String, java.lang.String, java.lang.Boolean)',
+	Sequence{ element, stereotypeName, property, isClass }) /][/comment]
+
+[query public setIsExisting( isExisting:Boolean ) : Boolean=
+	invoke('beuth.se.ue4.profile.common.SingletonHelper', 
+	'setIsExisting(java.lang.Boolean)',
+	Sequence{ isExisting }) /]
+
+[query public setter( isExisting:Boolean ) : Boolean=
+	invoke('beuth.se.ue4.profile.common.SingletonHelper', 
+	'setter( isExisting:Boolean )',
+	Sequence{ isExisting }) /]
+
+[query public quallyName(modelName : String) : String = 
+   modelName.replaceAll('[.]', '/')/]
+[query public packageName(modelName : String) : String = 
+   modelName.substring( 1, modelName.lastIndexOf('.') )/]
+
+[query public isNotViewExisting(class : Class) : Boolean = 
+   if(class.interfaceRealization->notEmpty())then if(class.interfaceRealization.target.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('View')) then false else true endif else true endif/]
+
+[query public getStereotypeValueProperty(property:Property, propName:String) : Stereotype =
+     getValue(property.getAppliedStereotypes()->asOrderedSet()->first(),propName)
+/]
+[query public isValueExists(property:Property, propName:String, name:String) : Boolean =
+     getValue(property.getAppliedStereotypes()->asOrderedSet()->first(), propName).oclAsType(uml::EnumerationLiteral).name.endsWith(name)
+/]
+
+
+[template public operationIA(o : Operation)]
+
+[o.visibility/][if(o.isAbstract)] abstract [/if][for (pa:Parameter | o.ownedParameter)][if (pa.direction = (ParameterDirectionKind::return))][if( not pa.type.oclIsUndefined())] [if (pa.upperBound() = -1)] java.util.List<[pa.type.name/]>[else][pa.type.name/][/if][else] void[/if][/if][/for] [o.name/]([for (pa:Parameter | (o.ownedParameter->select(not (direction = ParameterDirectionKind::return))))separator (',')] [if (pa.upperBound() = -1)] java.util.List<[pa.type.name/]>[else][pa.type.name/][/if] [pa.name /][/for]); 
+
+[/template]
+
+[template public operation(o : Operation)]
+[o.visibility/][for (pa:Parameter | o.ownedParameter)][if (pa.direction = (ParameterDirectionKind::return))][if( not pa.type.oclIsUndefined())] [if (pa.upperBound() = -1)] java.util.List<[pa.type.name/]>[else][pa.type.name/][/if][else] void[/if][/if][/for] [o.name/]([for (pa:Parameter | (o.ownedParameter->select(not (direction = ParameterDirectionKind::return))))separator (',')] [if (pa.upperBound() = -1)] java.util.List<[pa.type.name/]>[else][pa.type.name/][/if] [pa.name /][/for]){ 
+[generateProtectetRegion(o.name)/]
+}
+[/template]
+
+[template public generateProtectetRegion (name:String) ]
+	//[protected (name)]
+	// TODO Auto generated Method
+	//[/protected]
+[/template]
+[template public generateProtectetRegionXML (name:String) ]
+	<!-- [protected (name)] 
+	     Start protectetRegion -->
+	<!-- [/protected] -->
+[/template]
+[template public getClassName(class : Class)]
+[if (isNotViewExisting(class))][class.name/][else][class.clientDependency.target.oclAsType(Interface).name/][/if]
+[/template]

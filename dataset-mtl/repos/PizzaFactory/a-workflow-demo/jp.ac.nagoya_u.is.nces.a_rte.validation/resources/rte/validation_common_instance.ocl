@@ -1,0 +1,420 @@
+/*
+ *  TOPPERS/A-RTEGEN
+ *      Automotive Runtime Environment Generator
+ *
+ *  Copyright (C) 2013-2016 by Eiwa System Management, Inc., JAPAN
+ *
+ *  上記著作権者は，以下の(1)〜(4)の条件を満たす場合に限り，本ソフトウェ
+ *  ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
+ *  変・再配布（以下，利用と呼ぶ）することを無償で許諾する．
+ *  (1) 本ソフトウェアをソースコードの形で利用する場合には，上記の著作
+ *      権表示，この利用条件および下記の無保証規定が，そのままの形でソー
+ *      スコード中に含まれていること．
+ *  (2) 本ソフトウェアを，ライブラリ形式など，他のソフトウェア開発に使
+ *      用できる形で再配布する場合には，再配布に伴うドキュメント（利用
+ *      者マニュアルなど）に，上記の著作権表示，この利用条件および下記
+ *      の無保証規定を掲載すること．
+ *  (3) 本ソフトウェアを，機器に組み込むなど，他のソフトウェア開発に使
+ *      用できない形で再配布する場合には，次のいずれかの条件を満たすこ
+ *      と．
+ *    (a) 再配布に伴うドキュメント（利用者マニュアルなど）に，上記の著
+ *        作権表示，この利用条件および下記の無保証規定を掲載すること．
+ *    (b) 再配布の形態を，別に定める方法によって，TOPPERSプロジェクトに
+ *        報告すること．
+ *  (4) 本ソフトウェアの利用により直接的または間接的に生じるいかなる損
+ *      害からも，上記著作権者およびTOPPERSプロジェクトを免責すること．
+ *      また，本ソフトウェアのユーザまたはエンドユーザからのいかなる理
+ *      由に基づく請求からも，上記著作権者およびTOPPERSプロジェクトを
+ *      免責すること．
+ *
+ *  本ソフトウェアは，AUTOSAR（AUTomotive Open System ARchitecture）仕
+ *  様に基づいている．上記の許諾は，AUTOSARの知的財産権を許諾するもので
+ *  はない．AUTOSARは，AUTOSAR仕様に基づいたソフトウェアを商用目的で利
+ *  用する者に対して，AUTOSARパートナーになることを求めている．
+ *
+ *  本ソフトウェアは，無保証で提供されているものである．上記著作権者お
+ *  よびTOPPERSプロジェクトは，本ソフトウェアに関して，特定の使用目的
+ *  に対する適合性も含めて，いかなる保証も行わない．また，本ソフトウェ
+ *  アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
+ *  の責任を負わない．
+ * 
+ *  $Id: header.ocl 6220 2013-11-28 07:33:32Z t-inoue $
+ */
+import '../../../jp.ac.nagoya_u.is.nces.a_rte.model/model/ar4x.ecore#/'
+import '../../../jp.ac.nagoya_u.is.nces.a_rte.model/model/rte.ecore#/'
+
+package ar4x::m2
+	/*
+	 * M2Object
+	 */
+	context M2Object
+
+	def:
+	valueSpecificationEx : rte::ex::ValueSpecificationEx = rte::ex::ValueSpecificationEx.allInstances()
+	->any(true)
+	
+	/*
+	 * SwDataDefProps
+	 */
+	context SwDataDefProps
+	
+	def:
+	endInvalidValue : ValueSpecification = if self.invalidValue.oclIsUndefined() then null else valueSpecificationEx.getEndValueSpec(self.invalidValue) endif
+
+	inv nrte_sws_0153:
+	self.invalidValue.oclIsUndefined() or endInvalidValue.oclIsKindOf(NumericalValueSpecification) or endInvalidValue.oclIsKindOf(TextValueSpecification)
+
+	/*
+	 * VariableDataPrototype
+	 */
+
+	context VariableDataPrototype
+
+	inv nrte_sws_0132:
+	InvalidationPolicy.allInstances()
+	->select(dataElement = self)
+	->size() <= 1
+
+	/*
+	 * AtomicSwComponentType
+	 */
+
+	context AtomicSwComponentType
+	
+	def: usingAppErrs : Set(ApplicationError) = getUsingClientServerInterfaces().possibleError->asOrderedSet()
+
+	inv nrte_sws_0138:
+	not self.internalBehavior.oclIsUndefined()
+
+	inv nrte_sws_0114:
+	getUsingApplicationDataTypes()->forAll(t | getImplementationDataTypes(t)->size() = 1)
+
+	inv nrte_sws_0157:
+	usingAppErrs->forAll(ae |
+		let otherAppErrsWithSameName : Set(ApplicationError) = usingAppErrs->select(shortName = ae.shortName and parent.shortName = ae.parent.shortName)->excluding(ae)
+		in otherAppErrsWithSameName->forAll(errorCode = ae.errorCode))
+
+	/*
+	 * PortPrototype
+	 */
+
+	context PortPrototype
+
+	inv nrte_sws_0139:
+	self.portApiOption
+	->size() <= 1
+
+	/*
+	 * RPortPrototype
+	 */
+
+	context RPortPrototype
+
+	inv nrte_sws_0119:
+	self.requiredComSpec
+	->selectByKind(ReceiverComSpec)
+	->isUnique(dataElement)
+
+	inv nrte_sws_0289:
+	self.requiredInterface.oclIsUndefined()
+	or
+	not self.parent.oclIsTypeOf(ApplicationSwComponentType)
+	or
+	if self.requiredInterface.oclIsTypeOf(ClientServerInterface) then
+		let i_f : ClientServerInterface = self.requiredInterface.oclAsType(ClientServerInterface)
+		in
+		i_f.operation.argument->select(type.oclIsTypeOf(ImplementationDataType) and type.category = 'DATA_REFERENCE')->isEmpty()
+	else if self.requiredInterface.oclIsTypeOf(SenderReceiverInterface) then
+		let i_f : SenderReceiverInterface = self.requiredInterface.oclAsType(SenderReceiverInterface)
+		in
+		i_f.dataElement->select(type.oclIsTypeOf(ImplementationDataType) and type.category = 'DATA_REFERENCE')->isEmpty()
+	else
+		true
+	endif endif
+	
+	/*
+	 * PPortPrototype
+	 */
+
+	context PPortPrototype
+
+	inv nrte_sws_0120:
+	self.providedComSpec
+	->selectByKind(SenderComSpec)
+	->isUnique(dataElement)
+
+	inv nrte_sws_0289:
+	self.providedInterface.oclIsUndefined()
+	or
+	not self.parent.oclIsTypeOf(ApplicationSwComponentType)
+	or
+	if self.providedInterface.oclIsTypeOf(ClientServerInterface) then
+		let i_f : ClientServerInterface = self.providedInterface.oclAsType(ClientServerInterface)
+		in
+		i_f.operation.argument->select(type.oclIsTypeOf(ImplementationDataType) and type.category = 'DATA_REFERENCE')->isEmpty()
+	else if self.providedInterface.oclIsTypeOf(SenderReceiverInterface) then
+		let i_f : SenderReceiverInterface = self.providedInterface.oclAsType(SenderReceiverInterface)
+		in
+		i_f.dataElement->select(type.oclIsTypeOf(ImplementationDataType) and type.category = 'DATA_REFERENCE')->isEmpty()
+	else
+		true
+	endif endif
+
+	/*
+	 * ClientServerInterface
+	 */
+	context ClientServerInterface
+	
+	inv nrte_sws_0288:
+	self.operation.argument->select(direction = ArgumentDirectionEnum::out or direction = ArgumentDirectionEnum::inout)
+		->select(type.oclIsTypeOf(ImplementationDataType) and type.category = 'DATA_REFERENCE')->isEmpty()
+
+	/*
+	 * NonqueuedReceiverComSpec
+	 */
+	context NonqueuedReceiverComSpec
+
+	def:
+	endInitValue : ValueSpecification = valueSpecificationEx.getEndValueSpec(self.initValue)
+
+	inv nrte_sws_0128:
+	if self.dataElement.type.oclIsKindOf(ar4x::m2::ApplicationDataType) then
+		endInitValue.oclIsKindOf(NumericalValueSpecification) or endInitValue.oclIsKindOf(TextValueSpecification)
+	else if self.dataElement.type.oclIsTypeOf(ar4x::m2::ImplementationDataType) then
+		let type : ImplementationDataType = self.dataElement.type.oclAsType(ImplementationDataType)
+		in
+		valueSpecificationEx.isValidValue(self.initValue, type.getLeafImplementationDataType())
+	else
+		false
+	endif endif
+
+	inv nrte_sws_0290:
+	if self.dataElement.type.oclIsTypeOf(m2::ImplementationDataType) then
+		let type : m2::ImplementationDataType = self.dataElement.type.oclAsType(m2::ImplementationDataType)
+		in
+		if type.getLeafImplementationDataType().category = 'VALUE' then
+			true
+		else
+			self.filter.oclIsUndefined() or not self.filter.isFilterEnabled()
+		endif
+	else
+		true
+	endif
+
+	/*
+	 * NonqueuedSenderComSpec
+	 */
+
+	context NonqueuedSenderComSpec
+
+	def:
+	endInitValue : ValueSpecification = valueSpecificationEx.getEndValueSpec(self.initValue)
+
+	inv nrte_sws_0128:
+	if self.dataElement.type.oclIsKindOf(ar4x::m2::ApplicationDataType) then
+		endInitValue.oclIsKindOf(NumericalValueSpecification) or endInitValue.oclIsKindOf(TextValueSpecification)
+	else if self.dataElement.type.oclIsTypeOf(ar4x::m2::ImplementationDataType) then
+		let type : ImplementationDataType = self.dataElement.type.oclAsType(ImplementationDataType)
+		in
+		valueSpecificationEx.isValidValue(self.initValue, type.getLeafImplementationDataType())
+	else
+		false
+	endif endif
+
+	/*
+	 * RunnableEntity
+	 */
+	context SwcInternalBehavior
+
+	def: isValidInterRunnableVariable(localVariable : ar4x::m2::VariableDataPrototype) : Boolean =
+		if localVariable.initValue.oclIsUndefined() then
+			false
+		else if localVariable.type.oclIsTypeOf(ImplementationDataType) then
+			let type : ImplementationDataType = localVariable.type.oclAsType(ImplementationDataType)
+			in
+			valueSpecificationEx.isValidValue(localVariable.initValue, type.getLeafImplementationDataType())
+		else
+			false
+		endif endif
+
+	inv nrte_sws_0292:
+	if self.explicitInterRunnableVariable->isEmpty() then
+		true
+	else
+		self.explicitInterRunnableVariable->forAll(localVariable | isValidInterRunnableVariable(localVariable))
+	endif
+
+	inv nrte_sws_0294:
+	if self.explicitInterRunnableVariable->isEmpty() then
+		true
+	else
+		self.explicitInterRunnableVariable->forAll(v | 
+			self.runnable.writtenLocalVariable.accessedVariable.localVariable->select(lv | lv = v)->size() > 0
+			or
+			self.runnable.readLocalVariable.accessedVariable.localVariable->select(lv | lv = v)->size() > 0
+		)
+	endif
+
+	inv nrte_sws_0300:
+	self.runnable.writtenLocalVariable->isEmpty()
+	or
+	self.runnable.writtenLocalVariable.accessedVariable.localVariable->forAll(t | self.explicitInterRunnableVariable->select(e | e = t)->size() > 0)
+
+	inv nrte_sws_0301:
+	self.runnable.readLocalVariable->isEmpty()
+	or
+	self.runnable.readLocalVariable.accessedVariable.localVariable->forAll(t | self.explicitInterRunnableVariable->select(e | e = t)->size() > 0)
+
+	/*
+	 * PortDefinedArgumentValue
+	 */
+	context PortDefinedArgumentValue
+	
+	inv nrte_sws_0293:
+	valueSpecificationEx.isValidValue(self.value, self.valueType.getLeafImplementationDataType())
+	
+	/*
+	 * DataFilter
+	 */
+
+	context DataFilter
+
+	inv nrte_sws_0122:
+	self.dataFilterType <> DataFilterTypeEnum::maskedNewEqualsX
+	or not self.mask.oclIsUndefined() and not self.x.oclIsUndefined()
+
+	inv nrte_sws_0123:
+	self.dataFilterType <> DataFilterTypeEnum::maskedNewDiffersMaskedOld or not self.mask.oclIsUndefined()
+
+	inv nrte_sws_0124:
+	self.dataFilterType <> DataFilterTypeEnum::maskedNewDiffersX
+	or not self.mask.oclIsUndefined() and not self.x.oclIsUndefined()
+
+	inv nrte_sws_0125:
+	self.dataFilterType <> DataFilterTypeEnum::newIsWithin
+	or not self.max.oclIsUndefined() and not self.min.oclIsUndefined()
+
+	inv nrte_sws_0126:
+	self.dataFilterType <> DataFilterTypeEnum::newIsOutside
+	or not self.max.oclIsUndefined() and not self.min.oclIsUndefined()
+
+	inv nrte_sws_0127:
+	self.dataFilterType <> DataFilterTypeEnum::oneEveryN
+	or not self.period.oclIsUndefined() and not self.offset.oclIsUndefined()
+
+	/*
+	 * RteEvent
+	 */
+
+	context RteEvent
+
+	inv nrte_sws_0113:
+	not self.startOnEvent.oclIsUndefined()
+	
+endpackage
+
+package ar4x::instance
+
+	context VariableDataInstanceInSwc
+
+	def: valueSpecificationEx : rte::ex::ValueSpecificationEx = rte::ex::ValueSpecificationEx.allInstances()->any(true)
+
+	/*
+	 * PVariableDataInstanceInSwc
+	 */
+	context PVariableDataInstanceInSwc
+
+	def: comSignalEx : rte::ex::ComSignalEx = rte::ex::ComSignalEx.allInstances()->any(true)
+	def: comSignalGroupEx : rte::ex::ComSignalGroupEx = rte::ex::ComSignalGroupEx.allInstances()->any(true)
+
+	inv nrte_sws_0117:
+	not self.isInvalidationEnabled() or not self.getInvalidValue().oclIsUndefined()
+
+	inv nrte_sws_0144:
+	self.getComSpec().oclIsUndefined() or not self.getComSpec().oclIsKindOf(m2::NonqueuedSenderComSpec)
+	or not self.isEventSemantics()
+
+	inv nrte_sws_0145:
+	self.getInvalidationPolicy().oclIsUndefined() or not self.isEventSemantics()
+
+	inv nrte_sws_0291:
+	if self.prototype.type.oclIsTypeOf(m2::ImplementationDataType) then
+		let type : m2::ImplementationDataType = self.prototype.type.oclAsType(m2::ImplementationDataType)
+		in
+		if type.getLeafImplementationDataType().category = 'VALUE' then
+			true
+		else
+			not self.isInvalidationEnabled()
+		endif
+	else
+		true
+	endif
+
+	inv nrte_sws_0350:
+	not self.isInvalidationEnabled()
+	or
+	self.isEventSemantics()
+	or
+	self.getInvalidationPolicy().handleInvalid <> m2::HandleInvalidEnum::replace
+	or
+	valueSpecificationEx.getValueSpecAsText(self.getInvalidValue()) <> valueSpecificationEx.getValueSpecAsText(self.getInitValue())
+
+	inv rte_sws_5506:
+	self.getComSpec().transmissionAcknowledge.oclIsUndefined()
+	or
+	Set{
+		AssemblyDataInstanceConnector.allInstances()->select(provider.prototype = self),
+		ar4x::ecuc::ComSignal.allInstances()->select(cs | comSignalEx.getVariableDataInstanceInCompositions(cs)->exists(prototype = self)),
+		ar4x::ecuc::ComSignalGroup.allInstances()->select(cs | comSignalGroupEx.getVariableDataInstanceInCompositions(cs)->exists(prototype = self))
+	}->flatten()->size() < 2
+	
+	/*
+	 * RVariableDataInstanceInSwc
+	 */
+	context RVariableDataInstanceInSwc
+
+	inv nrte_sws_0117:
+	not self.isInvalidationEnabled() or not self.getInvalidValue().oclIsUndefined()
+	
+	inv nrte_sws_0142:
+	self.getComSpec().oclIsUndefined() or not self.getComSpec().oclIsKindOf(m2::NonqueuedReceiverComSpec)
+	or not self.isEventSemantics()
+
+	inv nrte_sws_0143:
+	self.getComSpec().oclIsUndefined() or not self.getComSpec().oclIsKindOf(m2::QueuedReceiverComSpec)
+	or self.isEventSemantics()
+
+	inv nrte_sws_0145:
+	self.getInvalidationPolicy().oclIsUndefined() or not self.isEventSemantics()
+
+	inv nrte_sws_0349:
+	not self.isEventSemantics()
+	or
+	(not self.getQueueLength().oclIsUndefined() and self.getQueueLength() > 0)
+
+	inv nrte_sws_0350:
+	not self.isInvalidationEnabled()
+	or
+	self.isEventSemantics()
+	or
+	self.getInvalidationPolicy().handleInvalid <> m2::HandleInvalidEnum::replace
+	or
+	valueSpecificationEx.getValueSpecAsText(self.getInvalidValue()) <> valueSpecificationEx.getValueSpecAsText(self.getInitValue())
+
+	inv rte_sws_7403:
+	not self.isEventSemantics()
+	or
+	self.getRelatedDataReceivedEvent()->size() < 2
+	or
+	not self.getRelatedDataReceivedEvent()->exists(e1, e2 | e1.startOnEvent <> e2.startOnEvent and e1.config->any(true).rteMappedToTask <> e2.config->any(true).rteMappedToTask)
+
+	/*
+	 * POperationInstanceInSwc
+	 */
+	context POperationInstanceInSwc
+
+	inv nrte_sws_0130:
+	self.operationInvokedEvent
+	->size() = 1
+
+endpackage

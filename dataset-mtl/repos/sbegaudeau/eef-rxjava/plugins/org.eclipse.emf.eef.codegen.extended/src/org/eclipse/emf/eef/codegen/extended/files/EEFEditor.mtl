@@ -1,0 +1,136 @@
+[comment encoding = UTF-8 /]
+[module EEFEditor('http://www.eclipse.org/emf/eef/components/1.0.0', 'http://www.eclipse.org/emf/eef/extended/editor/1.0.0', 'http://www.eclipse.org/emf/eef/extended/query/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel','http://www.eclipse.org/emf/eef/mapping/filters/1.0.0')/]
+
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::extended::query::oclquery /]
+[import org::eclipse::emf::eef::codegen::extended::services::editor-common /]
+[import org::eclipse::emf::eef::codegen::extended::editor::api::EditorContribution /]
+[import org::eclipse::emf::eef::codegen::services::imports /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenModel /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenPackage /]
+[import org::eclipse::emf::eef::codegen::ecore::editor::Editor /]
+
+[template public generateEditor(peContext : PropertiesEditionContext)]
+[peContext.initializeImportManager(peContext.model.presentationPackage(), model.editorClassName())/]
+
+[for (pageType : EClass | peContext.categories.bindings.views.eClass()->asOrderedSet())]
+[peContext.pageImports(pageType)/]
+[/for]
+
+[for (filterType : EClass | peContext.categories.bindings.bindingFilters.eClass()->asOrderedSet())]
+[peContext.filterImports(filterType)/]
+[/for]
+
+[for (queryType : EClass | peContext.eAllContents(EEFUnderstandableQuery).eClass()->asOrderedSet())]
+[peContext.queryImports(queryType)/]
+[/for]
+
+	[file (peContext.fullFilePath(), false, 'UTF-8')]
+/**
+ * <copyright>
+ * </copyright>
+ *
+ */
+package [peContext.model.presentationPackage()/];[addImports(Sequence{
+	'org.eclipse.emf.eef.runtime.ui.EEFExtendedRuntime',
+	'org.eclipse.emf.eef.runtime.ui.editor.InteractiveEEFEditor',
+	'org.eclipse.ui.PartInitException',
+	'org.eclipse.emf.ecore.EObject',
+	'org.eclipse.emf.ecore.resource.Resource'
+	})/]
+
+[let content : String = peContext.fileContent()]
+[peContext.genSortedImports()/]
+[content/]
+[/let]
+[/file]
+[/template]
+
+[template public fileContent(peContext : PropertiesEditionContext) { genModel : GenModel = peContext.model.genModel ; genPackage : GenPackage = peContext.model ;} ]
+/**
+ * This is an example of a [model.ecorePackage.name/] model editor.
+ * 
+ */
+public class [model.editorClassName()/] extends InteractiveEEFEditor {
+
+[if (genModel.richClientPlatform)][addImports(Sequence{'java.util.List', 'java.util.ArrayList',	'java.util.Collections'})/]
+	/**
+	 * The filters for file extensions supported by the editor.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */[if (genPackage.generateModelWizard)]
+	public static final [genModel._ListOfString()/] FILE_EXTENSION_FILTERS = prefixExtensions([genPackage.getImportedModelWizardClassName()/].FILE_EXTENSIONS, "*.");[genModel.getNonNLS()/]
+	[else]
+	public static final [genModel._ListOfString()/] FILE_EXTENSION_FILTERS = prefixExtensions([genModel.getImportedName('java.util.Arrays')/].asList([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_[genPackage.getEditorClassName()/]FilenameExtensions").split("\\s*,\\s*")), "*.");[genModel.getNonNLS()/][genModel.getNonNLS(2)/][genModel.getNonNLS(3)/]
+	[/if]
+	/**
+	 * Returns a new unmodifiable list containing prefixed versions of the extensions in the given list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private static [genModel._ListOfString()/] prefixExtensions([genModel._ListOfString()/] extensions, String prefix)
+	{
+		[genModel._ListOfString()/] result = new [genModel._ArrayListOfString()/]();
+  [if (genModel.useGenerics())]
+		for (String extension : extensions)
+		{
+			result.add(prefix + extension);
+  [ else ]
+		for (Iterator iterator = extensions.iterator() ; iterator.hasNext(); )
+		{
+			result.add(prefix + (String)iterator.next());
+  [/if]
+		}
+		return Collections.unmodifiableList(result);
+	}
+
+[/if]
+
+	/**
+	 * {@inheritDoc}
+	 * @see org.eclipse.emf.eef.runtime.ui.editor.InteractiveEEFEditor#contributePages()
+	 */
+	protected void contributePages() {
+		try {
+	[for (contribution : StaticEEFEditorContribution | peContext.categories.bindings->filter(StaticEEFEditorContribution))]
+			{
+				[contribution.input.editorInput()/]
+					[if (contribution.bindingFilters->size() > 0)]
+				[include('java.util.List')/]<[include('org.eclipse.jface.viewers.ViewerFilter')/]> filters = new [include('java.util.ArrayList')/]<ViewerFilter>([contribution.bindingFilters->size()/]);
+				[for (contribution.bindingFilters)]
+				[filterDeclaration()/]
+				[/for]
+					[/if]
+			[for (page : EEFPage | contribution.views->filter(EEFPage))]
+				{
+					[page.editorPage(peContext.model.editorClassName())/]
+					[if (contribution.bindingFilters->size() > 0)]
+					for (ViewerFilter viewerFilter : filters) {
+						page.addFilter(viewerFilter);
+					}
+					[/if]
+					page.setInput(input);
+					addPage(page);
+				}
+			[/for]
+			}
+	[/for]
+		} catch (PartInitException e) {
+			EEFExtendedRuntime.getPlugin().log(e);
+		}
+	}
+	
+	[additionalMethods()/]
+
+}
+	
+[/template]
+
+[template public additionalMethods (peContext : PropertiesEditionContext) /]
+
+[template public fullFilePath(peContext : PropertiesEditionContext)]
+[peContext.model.qualifiedEditorClassName().toPath()/].java
+[/template]

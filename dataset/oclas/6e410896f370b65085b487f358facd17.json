@@ -1,0 +1,302 @@
+[
+  {
+    "name": "adminActions",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Revision",
+    "expressions": [],
+    "properties": [
+      "author",
+      "User",
+      "Content",
+      "Content",
+      "content"
+    ]
+  },
+  {
+    "name": "UnregisteredUser",
+    "expressions": [],
+    "properties": ["IPAddress"]
+  },
+  {
+    "name": "Article",
+    "expressions": [],
+    "properties": ["Media"]
+  },
+  {
+    "name": "WikiProject",
+    "expressions": [],
+    "properties": ["member"]
+  },
+  {
+    "name": "Media",
+    "expressions": [],
+    "properties": [
+      "meta",
+      "usage"
+    ]
+  },
+  {
+    "name": "VersionHistory",
+    "expressions": [],
+    "properties": ["Content"]
+  },
+  {
+    "name": "Discussion",
+    "expressions": [],
+    "properties": ["Content"]
+  },
+  {
+    "name": "userType",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "User",
+    "expressions": [
+      {
+        "operations": {"size": 1},
+        "name": "countRevisions",
+        "body": "self.authoredRevisions->size()",
+        "type": "PropertyImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["Wikipedia::User::authoredRevisions"]
+      },
+      {
+        "operations": {
+          "allInstances": 1,
+          "=": 1
+        },
+        "name": "authoredRevisions",
+        "body": "Revision.allInstances()->select(author = self)",
+        "type": "PropertyImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 2,
+          "TypeExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["Wikipedia::Revision::author"]
+      },
+      {
+        "operations": {},
+        "name": "wikiTime",
+        "body": "self.Wikipedia.currentDateJD",
+        "type": "PropertyImpl",
+        "constructs": {
+          "VariableExpImpl": 1,
+          "OppositePropertyCallExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["Wikipedia::Wikipedia::currentDateJD"]
+      }
+    ],
+    "properties": [
+      "wikiTime",
+      "countRevisions",
+      "Revision",
+      "isReader",
+      "isEditor",
+      "authoredRevisions",
+      "WikiProject",
+      "isBlocked",
+      "Wikipedia"
+    ]
+  },
+  {
+    "name": "RegisteredUser",
+    "expressions": [
+      {
+        "operations": {">=": 1},
+        "name": "timeIsCorrect",
+        "body": "wikiTime >= registrationDateJD",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "Wikipedia::User::wikiTime",
+          "Wikipedia::RegisteredUser::registrationDateJD"
+        ]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "<": 2
+        },
+        "name": "userType",
+        "body": "if (self.countRevisions < 20 or registeredSinceDays < 7) then userType::RegisteredUser\n\t\t\t\t\t\t\t\telse userType::AutoConfirmedUser\n\t\t\t\t\t\t\t\tendif",
+        "type": "PropertyImpl",
+        "constructs": {
+          "OperationCallExpImpl": 3,
+          "VariableExpImpl": 2,
+          "IntegerLiteralExpImpl": 2,
+          "EnumLiteralExpImpl": 2,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "Wikipedia::RegisteredUser::registeredSinceDays",
+          "Wikipedia::User::countRevisions"
+        ]
+      },
+      {
+        "operations": {"-": 1},
+        "name": "registeredSinceDays",
+        "body": "wikiTime - registrationDateJD",
+        "type": "PropertyImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "Wikipedia::User::wikiTime",
+          "Wikipedia::RegisteredUser::registrationDateJD"
+        ]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "oclIsKindOf": 2,
+          "=": 1
+        },
+        "name": "adminAction",
+        "body": "if (self.oclIsKindOf(Administrator) or self.oclIsKindOf(SysOp)) then adminActions::CreateDeleteContent\n\t\t\t\t\t\t\t\t\telse (if self.userType = userType::AutoConfirmedUser then adminActions::CreateContent\n\t\t\t\t\t\t\t\t\t\telse (null)\n\t\t\t\t\t\t\t\t\t\tendif) endif",
+        "type": "PropertyImpl",
+        "constructs": {
+          "OperationCallExpImpl": 4,
+          "VariableExpImpl": 3,
+          "NullLiteralExpImpl": 1,
+          "EnumLiteralExpImpl": 3,
+          "TypeExpImpl": 2,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["Wikipedia::RegisteredUser::userType"]
+      }
+    ],
+    "properties": [
+      "registeredSinceDays",
+      "adminAction",
+      "registrationDateJD",
+      "userType",
+      "userName"
+    ]
+  },
+  {
+    "name": "SysOp",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Object",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Content",
+    "expressions": [],
+    "properties": [
+      "discussion",
+      "currentRevision",
+      "revision",
+      "versionhistory",
+      "title",
+      "Wikipedia"
+    ]
+  },
+  {
+    "name": "InternalContent",
+    "expressions": [],
+    "properties": ["content"]
+  },
+  {
+    "name": "Administrator",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Wikipedia",
+    "expressions": [
+      {
+        "operations": {
+          "size": 3,
+          "oclIsKindOf": 3,
+          "and": 1,
+          "implies": 1,
+          ">": 3
+        },
+        "name": "atLeastOneSysOpOrAdminAvailable",
+        "body": "user->select(obj |\n\t\t\t\tobj.oclIsKindOf(RegisteredUser))->size() > 0 implies (user->select(obj |\n\t\t\t\tobj.oclIsKindOf(SysOp))->size() > 0 and user->select(obj | obj.oclIsKindOf(Administrator))->size() > 0)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 3,
+          "OperationCallExpImpl": 11,
+          "VariableExpImpl": 6,
+          "IntegerLiteralExpImpl": 3,
+          "TypeExpImpl": 3,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": ["Wikipedia::Wikipedia::user"]
+      },
+      {
+        "operations": {
+          "size": 1,
+          "sum": 1,
+          "/": 1
+        },
+        "name": "averageEditedPagesPerUser",
+        "body": "user.countRevisions->sum() / user->size()",
+        "type": "PropertyImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 3,
+          "VariableExpImpl": 3,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "Wikipedia::User::countRevisions",
+          "Wikipedia::Wikipedia::user"
+        ]
+      },
+      {
+        "operations": {">=": 1},
+        "name": "qualityOfWikipedia",
+        "body": "averageEditedPagesPerUser >= 1",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 1,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["Wikipedia::Wikipedia::averageEditedPagesPerUser"]
+      }
+    ],
+    "properties": [
+      "currentDateJD",
+      "content",
+      "user",
+      "averageEditedPagesPerUser"
+    ]
+  },
+  {
+    "name": "MetaData",
+    "expressions": [],
+    "properties": [
+      "Media",
+      "key",
+      "value"
+    ]
+  }
+]

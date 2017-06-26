@@ -1,0 +1,181 @@
+[comment encoding = UTF-8 /]
+[module generate(http://www.eclipse.org/uml2/3.0.0/UML)]
+
+[template public getFacetClassName(stereotype : Stereotype) post(trim())]
+Has[getQualifiedName().replaceAll(':', '')/]Query
+[/template]
+
+[template public getGetterClassName(property : Property) post(trim())]
+Get[owner.oclAsType(Stereotype).name /][property.name.toUpperFirst() /]
+[/template]
+
+[template public getSetterClassName(property : Property) post(trim())]
+Set[owner.oclAsType(NamedElement).name /][property.name.toUpperFirst() /]
+[/template]
+
+[template public getGetterFileName(property : Property) post(trim())]
+[if (owner.oclIsKindOf(Stereotype))]
+	[getProperty('packageName').replaceAll('.','/')/]/queries/getters/[getGetterClassName()/].java
+[/if]
+[/template]
+
+[template public getSetterFileName(property : Property) post(trim())]
+[if (owner.oclIsKindOf(Stereotype) and not type.oclIsKindOf(DataType))]
+	[getProperty('packageName').replaceAll('.','/')/]/queries/setters/[getSetterClassName()/].java
+[/if]
+[/template]
+
+[template public generateQuery(stereotype : Stereotype)]
+[comment @main/]
+[file (getProperty('packageName').replaceAll('.','/')+'/queries/facets/'+getFacetClassName()+'.java', false, 'UTF-8')]
+[getProperty('copyright')/]
+package [getProperty('packageName')/].queries.facets;
+
+import org.eclipse.emf.facet.infra.query.core.java.IJavaModelQuery; 
+import org.eclipse.uml2.uml.Element;
+import org.eclipse.papyrus.profile.facets.generation.acceleo.HasStereotypeQuery;
+
+/** Condition Query */
+public class [getFacetClassName()/] extends HasStereotypeQuery implements IJavaModelQuery<Element, Boolean> {
+
+	public [getFacetClassName()/]() {
+		super("[getQualifiedName()/]"); //$NON-NLS-1$
+	}
+
+}
+
+[/file]
+[/template]
+
+[template public generateGetter(property : Property)]
+[comment @main/]
+[file (getGetterFileName(), false, 'UTF-8')]
+[getProperty('copyright')/]
+package [getProperty('packageName')/].queries.getters;
+
+import java.util.Collection;
+
+import org.eclipse.emf.facet.infra.query.core.exception.ModelQueryExecutionException;
+import org.eclipse.emf.facet.infra.query.core.java.IJavaModelQuery;
+import org.eclipse.emf.facet.infra.query.core.java.ParameterValueList;
+import org.eclipse.uml2.uml.Class;
+import org.eclipse.uml2.uml.Stereotype;
+
+/** Query to get the text of the requirement */
+public class [getGetterClassName()/] implements IJavaModelQuery<[findScope()/], [findReturnType()/]> {
+
+	public [findReturnType()/] evaluate(final [findScope()/] context, final ParameterValueList parameterValues) throws ModelQueryExecutionException {
+		[if type.oclIsKindOf(DataType)]
+		//TODO : The generator cannot handle DataTypes correctly. You should probably edit this query
+		[/if]
+		Stereotype ste = context.getAppliedStereotype("[owner.oclAsType(Stereotype).getQualifiedName() /]"); //$NON-NLS-1$
+		if(ste != null) {
+			Object value = context.getValue(ste, "[name /]"); //$NON-NLS-1$
+			return ([findReturnType()/])value;
+		}
+		return null;
+	}
+}
+
+
+[/file]
+[/template]
+
+[template public generateSetter(property : Property)]
+[comment @main/]
+[file (getSetterFileName(), false, 'UTF-8')]
+[getProperty('copyright')/]
+package [getProperty('packageName')/].queries.setters;
+
+import org.eclipse.emf.common.command.Command;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.edit.domain.EditingDomain;
+import org.eclipse.emf.facet.infra.query.core.exception.ModelQueryExecutionException;
+import org.eclipse.emf.facet.infra.query.core.java.IJavaModelQueryWithEditingDomain;
+import org.eclipse.emf.facet.infra.query.core.java.ParameterValueList;
+import org.eclipse.emf.facet.infra.query.runtime.ModelQueryParameterValue;
+import org.eclipse.emf.transaction.RecordingCommand;
+import org.eclipse.emf.transaction.TransactionalEditingDomain;
+import org.eclipse.emf.transaction.util.TransactionUtil;
+import org.eclipse.uml2.uml.Class;
+import org.eclipse.uml2.uml.Stereotype;
+
+/** Query to set the attribute "attrName" of a stereotypeName */
+public class [getSetterClassName() /] implements IJavaModelQueryWithEditingDomain<Class, EObject> {
+
+	/**
+	 * 
+	 * @see org.eclipse.emf.facet.infra.query.core.java.IJavaModelQuery#evaluate(org.eclipse.emf.ecore.EObject,
+	 *      org.eclipse.emf.facet.infra.query.core.java.ParameterValueList)
+	 * 
+	 * @param context
+	 * @param parameterValues
+	 * @return
+	 * @throws ModelQueryExecutionException
+	 */
+	public EObject evaluate(final Class context, final ParameterValueList parameterValues) throws ModelQueryExecutionException {
+		//Unused
+		return null;
+	}
+
+	/**
+	 * 
+	 * @see org.eclipse.emf.facet.infra.query.core.java.IJavaModelQueryWithEditingDomain#evaluate(org.eclipse.emf.ecore.EObject,
+	 *      org.eclipse.emf.facet.infra.query.core.java.ParameterValueList, org.eclipse.emf.edit.domain.EditingDomain)
+	 * 
+	 * @param arg0
+	 * @param parameter
+	 * @param arg2
+	 * @return
+	 * @throws ModelQueryExecutionException
+	 */
+	public EObject evaluate(final Class context, final ParameterValueList parameter, final EditingDomain editingDomain) throws ModelQueryExecutionException {
+		final Stereotype ste = context.getAppliedStereotype("[owner.oclAsType(Stereotype).getQualifiedName() /]"); //$NON-NLS-1$
+		if(ste != null) {
+			if(parameter.size() != 0) {
+				final ModelQueryParameterValue newValue = parameter.get(0);
+				if(newValue != null && newValue.getValue() instanceof String) {
+					Command command = null;
+					TransactionalEditingDomain domain = null;
+					if(!(editingDomain instanceof TransactionalEditingDomain)) {
+						//if we work with a uml file, it is possible to get a UML2AdapterFactoryEditingDomain instead of TransactionEditingDomain
+						domain = TransactionUtil.getEditingDomain(context);
+					} else {
+						domain = (TransactionalEditingDomain)editingDomain;
+					}
+					if(domain != null) {
+						command = new RecordingCommand(domain) {
+
+							@Override
+							protected void doExecute() {
+								context.setValue(ste, "[name /]", newValue.getValue());
+							}
+						};
+					}
+					if(command != null && command.canExecute()) {
+						domain.getCommandStack().execute(command);
+					}
+				}
+			}
+		}
+		return context;
+	}
+}
+[/file]
+[/template]
+
+[template public findScope(property : Property) post(trim())]
+
+[/template]
+
+[template public findReturnType(property : Property) post(trim())]
+[if type.oclIsKindOf(Stereotype)]
+	Unknown return type (Stereotype/Facet)
+[elseif type.oclIsKindOf(Enumeration)]
+	org.eclipse.uml2.uml.EnumerationLiteral
+[elseif type.oclIsKindOf(DataType)]
+	org.eclipse.emf.ecore.EObject
+[else]
+	org.eclipse.uml2.uml.[type.name /]
+[/if]
+[/template]

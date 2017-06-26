@@ -1,0 +1,33 @@
+[comment encoding = UTF-8 /]
+[module HelperTool('http://www.eyal.fr/android/datalib')]
+
+[template public declareUrlAndParameters (webService : WebService, aProject : DataLibProject) ]
+//we prepare the parameters
+final ParameterMap params = new ParameterMap();
+[for (parameter : Parameter | webService.parameters)]
+[if (parameter.urlParameter < 0)]
+[if (parameter.type = ParameterType::String)]
+params.put("[parameter.name/]", [parameter.name.toLowerFirst()/]);
+[else]
+params.put("[parameter.name/]", String.valueOf([parameter.name.toLowerFirst()/]));
+[/if]
+[/if]
+[/for]
+
+//we prepare the request's url
+[if (webService.urlParameters->size() > 0)]
+final String __url = MessageFormat.format([aProject.name.toUpperFirst()/]ServiceHelper.URL_[webService.name.toUpper()/], [listUrlParameters(webService)/]);
+[else]
+final String __url =  [aProject.name.toUpperFirst()/]ServiceHelper.URL_[webService.name.toUpper()/];
+[/if]
+[/template]
+
+
+[template public listUrlParameters (webService: WebService) post (trim()) ]
+[for (param : Parameter | webService.urlParameters)][param.name.toLowerFirst()/][if (param.type <> ParameterType::String)]+""[/if][if(i < webService.urlParameters->size())], [/if][/for]
+[/template]
+
+[template public listParameters (webService: WebService) post (trim()) ]
+[for (param : Parameter | webService.parameters)]final [if (param.type = ParameterType::String)]String[elseif (param.type = ParameterType::int)]int[elseif (param.type = ParameterType::boolean)]boolean[else]float[/if] [param.name.toLowerFirst()/], [/for]
+[/template]
+

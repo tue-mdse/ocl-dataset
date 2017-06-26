@@ -1,0 +1,47 @@
+[comment encoding = UTF-8 /]
+[module propertyEditor('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import at::fhv::itm14::timetracking::service::uml2service/]
+[import at::fhv::itm14::timetracking::generate::modules /]
+[import at::fhv::itm14::timetracking::generate::datatype /]
+
+[template public generatePropertyEditor(aClass : Class)]
+[file (aClass.namespace.toPath().concat(aClass.name.toUpperFirst()).concat('.java'), false, 'UTF-8')]
+
+package [aClass.namespace.name/];
+
+import java.beans.PropertyEditorSupport;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+
+
+public class [aClass.name.toUpperFirst()/] extends PropertyEditorSupport{
+
+	[aClass.generateProperties()/]
+	private final SimpleDateFormat sdf;
+
+	public SqlTimestampPropertyEditor() {
+		this.sdf = new SimpleDateFormat(SqlTimestampPropertyEditor.DEFAULT_BATCH_PATTERN);
+	}
+
+	public SqlTimestampPropertyEditor(String pattern) {
+	    this.sdf = new SimpleDateFormat(pattern);
+	}
+
+	@Override
+	public void setAsText(String text) throws IllegalArgumentException {
+	   try {
+		   setValue(new Timestamp(this.sdf.parse(text).getTime()));
+	   } catch (ParseException ex) {
+	       throw new IllegalArgumentException("Could not parse date: " + ex.getMessage(), ex);
+	   }
+	}
+	 
+	@Override
+	public String getAsText() {
+		Timestamp value = (Timestamp) getValue();
+	    return (value != null ? this.sdf.format(value) : "");
+	}
+}
+[/file]
+[/template]

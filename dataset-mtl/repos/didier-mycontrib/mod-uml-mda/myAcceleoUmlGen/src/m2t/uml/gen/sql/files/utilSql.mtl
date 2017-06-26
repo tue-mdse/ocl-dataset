@@ -1,0 +1,189 @@
+[comment encoding = UTF-8 /]
+[module utilSql('http://www.eclipse.org/uml2/5.0.0/UML')/]
+[import m2t::uml::gen::common::files::utilCommon/]
+
+[query public queryIsData(c : Classifier) : Boolean = 
+   (c.queryAsStereotype('n-tiers::entity') or  c.queryAsStereotype('n-tiers::embeddable') 
+   or c.queryAsStereotype('n-tiers::data') or c.queryAsStereotype('n-tiers::value')
+   or ( c.queryAsAtLeastOneProperty() and c.queryAsAtLeastOneOperation()._not() and c.queryAsNoStereotype() ))
+   and c.isNotInPrivatePackage() /]
+
+[query public queryIsForEntity(c : Classifier) : Boolean = 
+   c.queryIsData() and  c.queryAsStereotype('n-tiers::value')._not() /]
+
+[template public genSqlDropTable(m: Model)]
+[for (c : Class | m.eAllContents(Class))]
+    [if (c.queryIsForEntity())]
+DROP TABLE IF EXISTS [c.name/];
+	[/if]
+[/for]
+[/template]
+
+
+[template public sqlColumnAttrFromUmlProperty(p:Property) 
+{ umlType : String = p.type.name;} ]
+[if (umlType = 'int' or umlType = 'short' or umlType = 'long' or umlType='Integer')
+        and p.queryAsStereotype('n-tiers::id')] auto_increment[/if]
+[/template]
+
+[template public sqlStringTypeFromUmlProperty(p:Property) post(trim())
+{ umlType : String = p.type.name;} ]
+    [if (umlType = 'int' or umlType = 'short' or umlType='Integer')]
+			integer
+		[elseif (umlType = 'long')]
+			integer
+		[elseif (umlType = 'double')]
+			double
+		[elseif (umlType = 'float')]
+			float
+		[elseif (umlType = 'java.util.Date' or umlType='Date')]
+			DATE
+		[elseif (umlType = 'String')]
+			VARCHAR(64)
+        [else] [comment par defaut --> integer comme type de fk /]
+           [if (p.type.oclIsTypeOf(Enumeration)) ]
+            VARCHAR(24)
+           [else]
+			integer	
+	       [/if]				
+		[/if]
+[/template]
+
+[template public sqlExempleValueStringFromUmlProperty(p:Property) post(trim())
+{ umlType : String = p.type.name;} ]
+    [if (umlType = 'int' or umlType = 'short' or umlType = 'long')]
+			0
+		[elseif (umlType = 'double' or umlType = 'float')]
+			0.0
+		[elseif (umlType = 'java.util.Date')]
+			'2010-12-31'
+		[elseif (umlType = 'String')]
+			'abc'		
+		[else][comment  null or 0 or ... ?/]
+			null
+		[/if]
+[/template]
+
+[template public getStringOfFieldExempleValueList(c:Class) post(trim())]
+    [for (p: Property | c.attribute->asSequence()->sortedBy(name))separator(',')][p.sqlExempleValueStringFromUmlProperty()/][/for]
+[/template]
+
+[template public foreignKeyStringWithTypeFromAssociationsOfUmlClass(c:Class) post(trim())]
+   [for (a : Association | c.getAssociations())]
+   	  [let p : Property = a.queryGetOppositeAssociationEnd(c)]
+  [comment les associations composite ont elles deja une extemite en tant qu'attribut ?/]       
+       [if ((p.upper=1) and p.isNavigable())] 
+          ref_[p.name/] [(p.type.oclAsType(Class)).getStringTypeOfFirstPk()/],
+       [/if] 
+  [/let] 
+   [/for]
+[/template]
+
+
+
+[template public foreignKeyDeclarationsFromAssociationsOfUmlClass(c:Class)]
+[for (a : Association | c.getAssociations() )]
+  [let p : Property = a.queryGetOppositeAssociationEnd(c)]
+  [comment les associations composite ont elles deja une extremite en tant qu'attribut 
+    si oui -> if(p.aggregation <> AggregationKind::composite and ..) /]       
+       [if ( (p.upper=1) and p.isNavigable())] 
+        [let target_pk : String = (p.type).oclAsType(Class).getStringOfPkFieldList()] 
+ALTER TABLE [c.name/] ADD CONSTRAINT [c.name/]_avec_[p.name/]_valide 
+FOREIGN KEY (ref_[p.name/]) REFERENCES [p.type.name/]([target_pk/]);
+         [/let]
+       [/if]
+  [/let] 
+ [/for]
+
+[/template]
+
+[template public foreignKeyStringWithoutTypeFromAssociationsOfUmlClass(c:Class)  post(trim())]
+[for (a : Association | c.getAssociations())]
+   	  [let p : Property = a.queryGetOppositeAssociationEnd(c)]
+ [comment les associations composite ont elles deja une extremite en tant qu'attribut 
+    si oui -> if(p.aggregation <> AggregationKind::composite and ..) /]        
+       [if ( (p.upper=1) and p.isNavigable())]
+,ref_[p.name/]
+       [/if] 
+  [/let] 
+   [/for]
+[/template]
+
+[template public foreignKeyExValueStringFromAssociationsOfUmlClass(c:Class)  post(trim())]
+[for (a : Association | c.getAssociations())]
+   	  [let p : Property = a.queryGetOppositeAssociationEnd(c)]
+ [comment les associations composite ont elles deja une extremite en tant qu'attribut 
+    si oui -> if(p.aggregation <> AggregationKind::composite and ..) /]       
+       [if ((p.upper=1)  and p.isNavigable())] 
+,[p.sqlExempleValueStringFromUmlProperty()/]
+       [/if] 
+  [/let] 
+   [/for]
+[/template]
+
+
+
+
+	
+
+[template public getStringOfPkFieldList(c: Class) post(trim())]
+[for (p : Property | c.attribute->asSequence()->sortedBy(name)) separator(',') ?(p.queryAsStereotype('n-tiers::id'))][p.name/][/for]
+[/template]
+
+
+
+
+[template public getStringTypeOfFirstPk(refc: Class) post(trim()) { 
+  pkProperty: Property = refc.queryGetFirstPkProperty(); 
+  }]
+[pkProperty.sqlStringTypeFromUmlProperty()/]
+[/template]
+
+
+[template public sqlCreateTable(c: Class)]
+CREATE TABLE [c.name/](
+     [for (p: Property | c.attribute)]
+	[p.name/] [p.sqlStringTypeFromUmlProperty()/][p.sqlColumnAttrFromUmlProperty()/],
+    [/for]
+	[c.foreignKeyStringWithTypeFromAssociationsOfUmlClass()/]
+	PRIMARY KEY([c.getStringOfPkFieldList()/]));	 
+[/template]
+
+[template public genSqlCreateTable(m: Model)]
+[for (c : Class | m.eAllContents(Class))]
+    [if (c.queryIsForEntity())]
+[c.sqlCreateTable()/]
+
+	[/if]
+[/for]
+[/template]
+
+[template public genSqlForeignKey(m: Model)]
+[for (c : Class | m.eAllContents(Class))]
+    [if (c.queryIsForEntity())]
+[c.foreignKeyDeclarationsFromAssociationsOfUmlClass()/]
+	[/if]
+[/for]
+[/template]
+
+[template public genSqlInsertInto(m: Model)]
+[for (c : Class | m.eAllContents(Class))]
+    [if (c.queryIsForEntity())]
+INSERT INTO [c.name/] ([for(c.attribute->asSequence()->sortedBy(name))separator(',')][name/][/for][c.foreignKeyStringWithoutTypeFromAssociationsOfUmlClass()/])
+               VALUES ([c.getStringOfFieldExempleValueList()/][c.foreignKeyExValueStringFromAssociationsOfUmlClass()/]);
+	[/if]
+[/for]
+[/template]
+
+[template public genSelectInSql(m: Model)]
+[for (c : Class | m.eAllContents(Class))]
+    [if (c.queryIsForEntity())]
+SELECT * FROM [c.name/];
+	[/if]
+[/for]
+[/template]
+
+
+
+
+

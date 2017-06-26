@@ -1,0 +1,61 @@
+[comment encoding = UTF-8 /]
+[module toDot('http://simplepdl')]
+
+[comment Generation de la syntaxe PDL1 à partir d'un modèle de processus /]
+
+[template public toDot(aProcess : Process)]
+[comment @main/]
+[file (aProcess.name.concat('.dot'), false, 'UTF-8')]
+digraph [aProcess.name/] {
+	{
+		node ['['/]shape=circle[']'/]
+		[for (wd : WorkDefinition | getWDs(aProcess.processElements))]
+		[wd.name/]
+		[/for]
+	}
+	{
+		node ['['/]shape=box[']'/]
+		[for (re : Ressource | getREs(aProcess.processElements))]
+		[re.name/] ['['/]label=[re.quantity/]['['/]
+		[/for]
+	}
+	[for (ws : WorkSequence | aProcess.processElements->getWSs())]
+	[ws.predecessor.name/] -> [ws.successor.name/] ['['/] arrowhead=vee label=[ws.getWSType()/] [']'/]
+	[/for][for (rs : RessourceSequence | aProcess.processElements->getRSs())]
+	[rs.workdefinition.name/] -> [rs.ressource.name/] ['['/] arrowhead=vee label=[rs.quantity/] [']'/]
+	[/for]
+}
+[/file]
+[/template]
+
+[query public getWDs(elements : OrderedSet(ProcessElement)) : OrderedSet(WorkDefinition) = 
+	elements->select( e | e.oclIsTypeOf(WorkDefinition) )
+		->collect( e | e.oclAsType(WorkDefinition) )
+		->asOrderedSet()
+/]
+
+[query public getREs(elements : OrderedSet(ProcessElement)) : OrderedSet(Ressource) = 
+	elements->select( e | e.oclIsTypeOf(Ressource) )
+		->collect( e | e.oclAsType(Ressource) )
+		->asOrderedSet()
+/]
+
+[query public getWSs(elements : OrderedSet(ProcessElement)) : OrderedSet(WorkSequence) = 
+	elements->select( e | e.oclIsTypeOf(WorkSequence) )
+		->collect( e | e.oclAsType(WorkSequence) )
+		->asOrderedSet()
+/]
+
+[query public getRSs(elements : OrderedSet(ProcessElement)) : OrderedSet(RessourceSequence) = 
+	elements->select( e | e.oclIsTypeOf(RessourceSequence) )
+		->collect( e | e.oclAsType(RessourceSequence) )
+		->asOrderedSet()
+/]
+
+[template public getWSType(ws : WorkSequence)]
+[if (ws.linkType = WorkSequenceType::startToStart)]
+s2s[elseif (ws.linkType = WorkSequenceType::startToFinish)]
+s2f[elseif (ws.linkType = WorkSequenceType::finishToStart)]
+f2s[elseif (ws.linkType = WorkSequenceType::finishToFinish)]
+f2f[/if]
+[/template]

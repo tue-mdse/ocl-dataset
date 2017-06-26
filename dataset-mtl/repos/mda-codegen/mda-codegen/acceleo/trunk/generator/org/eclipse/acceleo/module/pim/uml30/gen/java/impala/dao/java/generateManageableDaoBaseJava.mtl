@@ -1,0 +1,274 @@
+[comment encoding = UTF-8 /]
+[module generateManageableDaoBaseJava('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::compositeUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoCommon /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainCommon /]
+[template public generateManageableDaoBaseJava(anEntity : Class) ? (anEntity.isManageableEntity())]
+	[file (anEntity.getModel().generateProjectFolder().concat(anEntity.getModel().pathToGeneratedMainJava()).concat('/').concat(anEntity.generateJavaPackagePath()).concat('/crud/').concat(anEntity.name.toUpperFirst()).concat('ManageableDaoBase.java'), false, 'UTF-8')]
+package [anEntity.generateJavaPackage()/].crud;
+
+[anEntity.generateImports()/]
+	[for (aDao : Class | anEntity.classAttributes().type->filter(Class)->select(aClass:Class|aClass.isEntity())->including(anEntity))]
+		[if (aDao.generateJavaPackage()<>anEntity.generateJavaPackage().concat('.crud'))]
+			[if (not aDao.hasEntityParent())]
+import [if (aDao.generateJavaPackage().size()>0)][aDao.generateJavaPackage()/].[/if][aDao.name.toUpperFirst()/];
+			[/if]
+		[/if]
+import [if (aDao.generateJavaPackage().size()>0)][aDao.generateJavaPackage()/].[/if][aDao.name.toUpperFirst()/]Impl;
+import [if (aDao.generateJavaPackage().size()>0)][aDao.generateJavaPackage()/].[/if][aDao.name.toUpperFirst()/]Dao;
+	[/for]
+
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.List;
+import java.util.Collections;
+import org.hibernate.Criteria;
+import org.hibernate.HibernateException;
+import org.hibernate.Query;
+import org.hibernate.Session;
+import org.hibernate.criterion.MatchMode;
+import org.hibernate.criterion.Restrictions;
+import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
+
+/**
+ * 
+ */
+public abstract class [anEntity.name.toUpperFirst()/]ManageableDaoBase
+    extends HibernateDaoSupport
+    implements [anEntity.name.toUpperFirst()/]ManageableDao {
+	
+	[for (aDao : Class | anEntity.classAttributes().type->filter(Class)->select(aClass:Class|aClass.isEntity())->including(anEntity))]
+    private [aDao.name.toUpperFirst()/]Dao [aDao.name.toLowerFirst()/]Dao = null;
+    /**
+     * @param daoIn
+     */
+    public void set[aDao.name.toUpperFirst()/]Dao([aDao.name.toUpperFirst()/]Dao daoIn) {
+        this.[aDao.name.toLowerFirst()/]Dao = daoIn;
+    }
+
+    /**
+     * @return dao
+     */
+    protected [aDao.name.toUpperFirst()/]Dao get[aDao.name.toUpperFirst()/]Dao() {
+        return this.[aDao.name.toLowerFirst()/]Dao;
+    }
+	[/for]
+
+	[for (aDao : Class | anEntity.classAttributes().type->filter(Class)->select(aClass:Class|aClass.isEntity()))]
+    @SuppressWarnings({"unchecked"})
+    private Set<[aDao.genEntityClassName()/]> find[aDao.name.toUpperFirst()/]ByIds([aDao.getPrimaryTypeName(true).toUpperFirst()/]['['/][']'/] ids) {
+        final Session session = this.getSession(false);
+        try {
+            final Criteria criteria = session.createCriteria([aDao.name.toUpperFirst()/]Impl.class);
+            criteria.add(Restrictions.in("id", ids));
+            return new HashSet<[aDao.genEntityClassName()/]>(criteria.list());
+        }
+        catch (HibernateException ex) {
+            throw super.convertHibernateAccessException(ex);
+        }
+    }
+	[/for]
+
+    /**
+	[for (aProp : Property | anEntity.classAttributes())]
+     * @param [aProp.name/] 
+	[/for]
+     * @return entity
+     * @see [anEntity.name.toUpperFirst()/]Dao#create([anEntity.name.toUpperFirst()/])
+     */
+    public [anEntity.genEntityClassName()/] create([anEntity.generateDaoManagerFunctionParam()/]) {
+        final [anEntity.genEntityClassName()/] entity = new [anEntity.name.toUpperFirst()/]Impl();
+		[for (aProp : Property | anEntity.classAttributes()->select(aProp: Property|not aProp.isPK()))]
+			[if (aProp.type.oclIsTypeOf(Class) and aProp.type.oclAsType(Class).isEntity())]
+				[if (aProp.upper=1)]
+        @SuppressWarnings("unchecked")
+        final Set<[aProp.type.oclAsType(Class).genEntityClassName()/]> [aProp.name.toLowerFirst()/]Entities = ([aProp.paramName()/] != null && [aProp.paramName()/].length > 0)
+            ? this.find[anEntity.name.toUpperFirst()/]ByIds(new [type.oclAsType(Class).getPrimaryTypeName()/]['['/][']'/]{[aProp.paramName()/]})
+            : Collections.EMPTY_SET;
+		if (![aProp.name.toLowerFirst()/]Entities.isEmpty()) {
+	        entity.set[aProp.name.toUpperFirst()/]([aProp.name.toLowerFirst()/]Entities.get(0));
+		}
+				[elseif ((aProp.upper>1 or aProp.upper<1))]
+        @SuppressWarnings("unchecked")
+        final Set<[aProp.type.oclAsType(Class).genEntityClassName()/]> [aProp.name.toLowerFirst()/]Entities = ([aProp.paramName()/] != null && [aProp.paramName()/].length > 0)
+            ? this.find[aProp.type.name.toUpperFirst()/]ByIds([aProp.paramName()/])
+            : Collections.EMPTY_SET;
+        entity.set[aProp.name.toUpperFirst()/]([aProp.name.toLowerFirst()/]Entities);
+				[/if]
+			[else]
+        entity.set[aProp.name.toUpperFirst()/]([aProp.paramName()/]);
+			[/if]
+		[/for]
+        return ([anEntity.genEntityClassName()/])this.get[anEntity.name.toUpperFirst()/]Dao().create(entity);
+    }
+
+    /**
+     * @param id
+     * @return entity
+     * @see [anEntity.name.toUpperFirst()/]Dao#load([anEntity.getPrimaryTypeName(true).toUpperFirst()/])
+     */
+    public [anEntity.genEntityClassName()/] readById([anEntity.getPrimaryTypeName(true).toUpperFirst()/] id) {
+        return get[anEntity.name.toUpperFirst()/]Dao().load(id);
+    }
+
+    /**
+	[for (aProp : Property | anEntity.classAttributes())]
+     * @param [aProp.name/] 
+	[/for]
+     * @return List<[anEntity.name.toUpperFirst()/]>
+     */
+    @SuppressWarnings("unchecked")
+    public List<[anEntity.genEntityClassName()/]> read([anEntity.generateDaoManagerFunctionParam()/]) {
+        final Session session = getSession(false);
+
+        try {
+            final Criteria criteria = session.createCriteria([anEntity.name.toUpperFirst()/]Impl.class);
+			[for (aProp : Property | anEntity.classAttributes()->select(aProp: Property|not aProp.isPK()))]
+            if ([aProp.paramName()/] != null) {
+				[if (aProp.type.oclIsTypeOf(Class) and aProp.type.oclAsType(Class).isEntity())]
+					[if (aProp.upper=1)]
+                criteria.createCriteria("[aProp.name.toLowerFirst()/]").add(Restrictions.eq("id", [aProp.paramName()/]));
+					[elseif (aProp.upper<0 or aProp.upper>1)]
+                criteria.createCriteria("[aProp.name.toLowerFirst()/]").add(Restrictions.in("id", [aProp.paramName()/]));
+					[/if]
+				[else]
+					[if (getProperty('java.typeconversion.' + aProp.type.name) = 'String')]
+                criteria.add(Restrictions.ilike("[aProp.name.toLowerFirst()/]", [aProp.paramName()/], MatchMode.START));
+					[elseif (getProperty('java.typeconversion.' + aProp.type.name) = 'Date')]
+                // we check whether or not the [anEntity.name/] supplied time information within this particular date argument
+                // if he/she didn't we assume he/she wishes to search in the scope of the entire day
+                final Calendar calendar = new GregorianCalendar();
+                calendar.setTime([aProp.paramName()/]);
+                if ( calendar.get(Calendar.HOUR) != 0
+                     || calendar.get(Calendar.MINUTE) != 0
+                     || calendar.get(Calendar.SECOND) != 0
+                     || calendar.get(Calendar.MILLISECOND) != 0 ) {
+                    criteria.add(Restrictions.eq("[aProp.name.toLowerFirst()/]", [aProp.paramName()/]));
+                }
+                else {
+                    calendar.add(Calendar.DATE, 1);
+                    calendar.add(Calendar.MILLISECOND, -1);
+                    criteria.add(Restrictions.between("[aProp.name.toLowerFirst()/]", [aProp.paramName()/], calendar.getTime()));
+                }
+					[else]
+                criteria.add(Restrictions.eq("[aProp.name.toLowerFirst()/]", [aProp.paramName()/]));
+					[/if]
+				[/if]
+            }
+            [/for]
+			if (id != null) {
+                criteria.add(Restrictions.eq("id", id));
+            }
+			
+            criteria.setMaxResults(250);
+
+            return criteria.list();
+        }
+        catch (HibernateException ex) {
+            throw super.convertHibernateAccessException(ex);
+        }
+    }
+
+    /**
+     * @return criteria.list()
+     */
+    @SuppressWarnings("unchecked")
+    public List<[anEntity.genEntityClassName()/]> readAll() {
+        final Session session = getSession(false);
+
+        try {
+            final Criteria criteria = session.createCriteria([anEntity.name.toUpperFirst()/]Impl.class);
+            criteria.setMaxResults(250);
+            return criteria.list();
+        }
+        catch (HibernateException ex) {
+            throw super.convertHibernateAccessException(ex);
+        }
+    }
+
+    [comment]/**
+     * @return backingLists Map<String,Object>
+     */
+    public Map<String,Object> readBackingLists()
+    {
+        final Map<String,Object> lists = new HashMap<String,Object>();
+        final Session session = this.getSession();
+
+        try
+        {
+            // Put the manageableAssociationEnds in the session query
+        }
+        catch (HibernateException ex)
+        {
+            throw super.convertHibernateAccessException(ex);
+        }
+        return lists;
+    }[/comment]
+
+    /**
+	[for (aProp : Property | anEntity.classAttributes())]
+     * @param [aProp.name/] 
+	[/for]
+     * @return getDao().update(entity)
+     * @see [anEntity.name.toUpperFirst()/]Dao#update([anEntity.name.toUpperFirst()/])
+     */
+    public [anEntity.genEntityClassName()/] update([anEntity.generateDaoManagerFunctionParam()/]) {
+        final [anEntity.name.toUpperFirst()/] entity = this.get[anEntity.name.toUpperFirst()/]Dao().load(id);
+		[for (aProp : Property | anEntity.classAttributes()->select(aProp: Property|not aProp.isPK()))]
+        if ([aProp.paramName()/] != null) {
+			[if (aProp.type.oclIsTypeOf(Class) and aProp.type.oclAsType(Class).isEntity())]
+				[if (aProp.upper=1)]
+            criteria.createCriteria("[aProp.name.toLowerFirst()/]").add(Restrictions.eq("id", [aProp.paramName()/]));
+				[elseif (aProp.upper<0 or aProp.upper>1)]
+	        final Set<[aProp.type.oclAsType(Class).genEntityClassName()/]> [aProp.name.toLowerFirst()/]Entities = ([aProp.paramName()/].length > 0)
+	            ? this.find[aProp.type.name.toUpperFirst()/]ByIds([aProp.paramName()/])
+	            : Collections.EMPTY_SET;
+	        entity.set[aProp.name.toUpperFirst()/]([aProp.name.toLowerFirst()/]Entities);
+				[/if]
+			[else]
+        	entity.set[aProp.name.toUpperFirst()/]([aProp.paramName()/]);
+			[/if]
+        }
+        [/for]
+        this.get[anEntity.name.toUpperFirst()/]Dao().update(entity);
+        return entity;
+    }
+
+
+    /**
+     * @param ids
+     */
+    public void delete([anEntity.getPrimaryTypeName(true).toUpperFirst()/]['['/][']'/] ids) {
+        final Session session = getSession(false);
+        try {
+            final Query queryObject =
+                session.createQuery("delete [anEntity.name.toUpperFirst()/]Impl where id in (:ids)");
+            queryObject.setParameterList("ids", ids);
+            queryObject.executeUpdate();
+        }
+        catch (HibernateException ex) {
+            throw super.convertHibernateAccessException(ex);
+        }
+    }
+
+}	
+	[/file]
+[/template]
+
+[template public asParameter(property:Property) ]
+[if (property.type.oclIsTypeOf(Class) and property.type.oclAsType(Class).isEntity() )]
+	[if (property.upper=0 or property.upper=1)]
+[property.type.oclAsType(Class).getPrimaryTypeName(true).toUpperFirst()/] [property.paramName()/]
+	[else]
+[property.type.oclAsType(Class).getPrimaryTypeName(true).toUpperFirst()/]['[]'/] [property.paramName()/]
+	[/if]
+[else]
+[property.convertToJavaType().convertToJavaWrapperType()/] [property.paramName()/]
+[/if]
+[/template]

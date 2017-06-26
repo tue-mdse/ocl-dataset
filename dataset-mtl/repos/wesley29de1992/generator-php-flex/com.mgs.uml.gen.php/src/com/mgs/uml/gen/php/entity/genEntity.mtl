@@ -1,0 +1,94 @@
+[comment encoding = UTF-8 /]
+[module genEntity('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::common::gen::common::files::commonUtils /]
+[import com::mgs::uml::gen::php::entity::entityCommon /]
+[import com::mgs::uml::gen::php::common::phpUtils /]
+[import com::mgs::uml::common::umlUtils /]
+[import com::mgs::uml::common::profileUtils /]
+
+[template public genImports(c : Class)]
+[if (c.hasBaseClass())]
+require_once('[c.baseClass().entityFilePath()/]');
+[/if]
+[/template]
+
+[template public genEntity(m : Model)]
+	
+[comment @main /]
+
+[for (c : Class | m.profile_getAllEntities())]
+[file (c.entityFilePath(), false, 'UTF-8')]
+<?php
+[fileHeader('com.mgs.uml.gen.php.entity.genEntity')/]
+
+[c.genImports()/]
+
+class [c.entityName()/] [c.genExtends()/] implements [c.entityInterfaceName()/]{
+
+	[c.genAttributes()/]
+	
+	[genConstructor()/]
+	
+	[genAccessors()/]
+
+}
+
+?>
+[/file]
+[/for]
+[/template]
+
+[template public genExtends(c : Class) post (trim())]
+[if (c.hasBaseClass())] 
+extends [c.baseClass().entityName()/]
+[else]
+extends Entity
+[/if]
+[/template]
+
+[template public genAttributes(c : Class) post (trim())]
+[for (p : Property | c.profile_propertiesEntity())]
+protected [p.varName()/];
+[/for]
+[/template]
+
+[template public genAccessors(c : Class) post (trim())]
+[for (p : Property | c.profile_propertiesEntity())]
+
+/**
+ * Return the [p.name/] value.
+ * @param $lazyLoading boolean retrieve by loading (true) or in cache (false), default is true.
+ * @return [p.genTypeForComment()/]
+ */
+public function [p.getterName()/]($lazyLoading = false, Connection $connection = null){
+	return [p.thisVarName()/];
+}
+
+/**
+ * Set the [p.name/] value.
+ * @param [p.genTypeForComment()/] [p.varName()/] the value to set.
+ */
+public function [p.setterName()/]([p.genArgument()/] = null){
+	[p.thisVarName()/] = [p.varName()/];
+}
+[if (p.upper <> 1)]
+
+public function [p.adderName()/]([p.genArgumentSimple()/]){
+	if(![p.thisVarName()/]){
+		[p.thisVarName()/] = array();
+	}
+	array_push([p.thisVarName()/], [p.varName()/]);
+}
+[/if]
+[/for]
+[/template]
+
+[template public genConstructor(c : Class)]
+/**
+ * Constructeur.
+ * @param $id l'id de l'objet (sans id par défaut).
+ */
+public function __construct($id = -1){
+	$this->id = $id;
+}
+[/template]

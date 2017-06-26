@@ -1,0 +1,158 @@
+[comment encoding = UTF-8 /]
+[module BaseUtils('http:///org/gnstudio/apdt/model.ecore')/]
+[template public genBase(aName : String)]
+[file (aName.concat('.js'), false)]
+// Global configuration object
+var CONFIG = {};
+
+
+var [aName/] = (function(config){
+    
+    // Parse here your configuration object
+    
+    return {
+        
+        namespace: function(name, separator, container){
+          var ns = name.split(separator || '.'),
+            o = container || window,
+            i,
+            len;
+          for(i = 0, len = ns.length; i < len; i++){
+            o = o['['/]ns['['/]i[']'/][']'/] = o['['/]ns['['/]i[']'/][']'/] || {};
+          }
+          return o;
+        },
+        
+        addJavascript: function (js, tag, result) {
+            
+            var th = document.getElementsByTagName(tag)['['/]0[']'/];
+            var s = document.createElement('script');
+            s.setAttribute('type', 'text/javascript');
+            s.setAttribute('src', js);
+            th.appendChild(s);
+            
+            if (result) return s
+            
+        },
+        
+        executeCallback: function (script, callback){
+            
+            script.onreadystatechange = function () {
+                
+                if (this.readyState === 'complete' || this.readyState === 'loaded') callback();
+            
+            }
+            
+            script.onload = callback;
+        },
+        
+        loadScripts: function(data, callback){
+            
+            if(typeof arguments['['/]0[']'/] === 'function'){
+                arguments['['/]0[']'/].call();
+            }else{
+                if(typeof data !== "string"){
+                    for(var i=0,len=data.length; i < len; i++){
+                        var js = String(data.pop()),
+                            headID = "head",
+                            script = this.addJavascript(js,headID,true);
+                        if (callback) this.executeCallback(script, callback)
+                    }
+                }else{
+                    var js = data,
+                        headID = "head",
+                        script = this.addJavascript(js,headID,true);
+                    if (callback) this.executeCallback(script, callback)
+                }
+            }
+            
+        },
+        
+        isArray: function(obj) {
+            return obj.constructor === Array;
+        },
+        
+        cloneObject: function(obj) {
+            var tempO = {};
+            
+            if (typeof(obj) == "object")
+                for (prop in obj)
+                    if ((typeof(obj['['/]prop[']'/]) === "object") && (this.isArray(obj['['/]prop[']'/])))
+                        tempO['['/]prop[']'/] = this.cloneArray(obj['['/]prop[']'/]);
+                    else if (typeof(obj['['/]prop[']'/]) === "object")
+                        tempO['['/]prop[']'/] = this.cloneObject(obj['['/]prop[']'/]);
+                    else
+                        tempO['['/]prop[']'/] = obj['['/]prop[']'/];
+            
+            return tempO;
+        },
+        
+        cloneArray: function(arr) {
+            var tempA = ['[]'/];
+
+            for (var i = 0,len = arr.length; i<= len; i++)
+                if (typeof(arr['['/]i[']'/]) === "object")
+                    tempA.push(this.cloneObject(arr['['/]i[']'/]));
+                else
+                    tempA.push(arr['['/]i[']'/]);
+
+            return tempA;
+        },
+        
+        deepCopy: function (el) {
+            var temp;
+            if(this.isArray(el)){
+                temp = this.cloneArray(el);
+            }else{
+                temp = this.cloneObject(el);
+            }
+            
+            return temp;
+        
+        },
+        
+        //make B inherit from A just for "class" from Douglas Crockford
+        clsInherits: function (A, B) {
+            var d = {}, p = (B.prototype = new A());
+            B.prototype['['/]'uber'[']'/] = function uber(name) {
+                if (!(name in d)) {
+                    d['['/]name[']'/] = 0;
+                }        
+                var f, r, t = d['['/]name[']'/], v = A.prototype;
+                if (t) {
+                    while (t) {
+                        v = v.constructor.prototype;
+                        t -= 1;
+                    }
+                    f = v['['/]name[']'/];
+                } else {
+                    f = p['['/]name[']'/];
+                    if (f == this['['/]name[']'/]) {
+                        f = v['['/]name[']'/];
+                    }
+                }
+                d['['/]name[']'/] += 1;
+                r = f.apply(B, Array.prototype.slice.apply(arguments, ['['/]1[']'/]));
+                d['['/]name[']'/] -= 1;
+                return r;
+            };
+            return B;
+        },
+        
+        // return an ol that inherit from A just for "ol"
+        olInherits: function (A) {
+            if (!Object.create) {  
+                Object.create = function (o) {  
+                    function MyObject() {}  
+                    MyObject.prototype = o;  
+                    return new MyObject();  
+                };  
+            }
+            return Object.create(A);
+        }
+
+    }
+    
+}(CONFIG || {}));   
+[/file] 
+[/template]

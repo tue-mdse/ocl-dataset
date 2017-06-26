@@ -1,0 +1,74 @@
+[comment encoding = UTF-8 /]
+[module generateEntityImplJava('http://www.eclipse.org/uml2/3.0.0/UML') extends org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::generateJavaClass]
+[import org::acceleo::module::pim::uml21::gen::java::common::common/]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests/]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics/]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes/]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure/]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::services::stringservice /] 
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainPathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::entityUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::compositeUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainCommon /]
+[template public generateEntityImplJava(aClass : Class)]
+[aClass.generateJavaClass()/]
+[/template]
+
+[template public generateJavaClass(aClass : Class) overrides generateJavaClass ]
+[comment This template is called by the main module file /]
+	[file (aClass.getModel().generateProjectFolder().concat(aClass.getModel().pathToMainJava()).concat('/').concat(aClass.generateJavaPackagePath()).concat('/').concat(aClass.name).concat('Impl.java'), false, 'ISO-8859-1')]
+package [aClass.generateJavaPackage()/];
+// [protected ('imports')] 
+
+import java.io.Serializable;
+[aClass.generateImports()/]
+
+[comment][if (aClass.getMultiplicity()->notEmpty())]
+	[for (aMultiplicityElement:MultiplicityElement | aClass.getMultiplicity())]
+		[if (aMultiplicityElement.oclIsTypeOf(Type))]
+			[if (aClass.generateJavaPackage() <> aMultiplicityElement.oclAsType(Type).generateJavaPackage())]
+import [aMultiplicityElement.oclAsType(Type).generateJavaPackage()/].[aMultiplicityElement.oclAsType(Type).name/];
+			[/if]
+		[/if]		
+	[/for]
+[/if][/comment]
+[if (not (aClass.superClass->isEmpty()))]
+	[if (aClass.generateJavaPackage() <> aClass.superClass->asSequence()->first().generateJavaPackage())]
+import [aClass.superClass.generateJavaPackage()/].[aClass.superClass.name/];
+	[/if]
+[/if]
+
+// [/protected]
+
+/**
+[if (aClass.ownedComment._body->size() > 0)]
+ * [aClass.ownedComment._body.replaceAll('\n', '\n * ')/]
+[else]
+ * Warning: no comment in the model for interface [name/].
+[/if]
+ */
+public class [aClass.name/]Impl extends [if (aClass.hasEntityParent())][aClass.superClass.name.toUpperFirst()/]Impl[else][aClass.name.toUpperFirst()/][/if] {
+
+    /**
+     * serialVersionUID is used for serialization.
+     */
+    private static final long serialVersionUID = 1L;
+	
+	[for (anSimpleOperation : Operation | aClass.ownedOperation->select(oper:Operation|not oper.isFinder()))]
+	[anSimpleOperation.generateJavadoc()/]
+	[anSimpleOperation.genModifiers()/] [anSimpleOperation.generateReturn()/] [anSimpleOperation.name/]([anSimpleOperation.generateParameters()/])
+    {
+        // TODO implement public void addTimeAllocation(TimeAllocation timeAllocation)
+        throw new UnsupportedOperationException("[if (aClass.generateJavaPackage().trim().size()>0)][aClass.generateJavaPackage()/].[/if][aClass.name/].[anSimpleOperation.name/]([anSimpleOperation.generateParameters()/]) Not implemented!");
+    }
+	[/for]
+}
+
+[/file]
+[aClass.getAssociations()/]
+[/template]
+

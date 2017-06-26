@@ -1,0 +1,157 @@
+	[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generate.
+ */]
+[module UID('http://uid/1.0')]
+
+[**
+ * The documentation of the template generateElement.
+ * @param anApp
+ */]
+[template public generateElement(anApp : Application)]
+[comment @main/]
+
+[generateButton()/]
+[generateSwitch()/]
+[generateMatrix()/]
+[generateRegulator()/]
+[generateDisplay()/]
+
+[comment Stages/]
+[for (stage : Stage| anApp.hasViews.hasStage->select(oclIsTypeOf(Stage)))]
+	[generateStage(stage)/]
+[/for] 
+
+[comment Mediators/]
+[for (mediator : Mediator| anApp.hasViews.hasMediator->select(oclIsTypeOf(Mediator)))]
+[/for] 
+
+[comment Controllers/]
+[for (command : Command| anApp.hasControllers.hasCommand->select(oclIsTypeOf(Command)))]
+[/for] 
+
+[comment Notifications/]
+[for (notification : Notification| anApp.hasNotifications.hasNotification->select(oclIsTypeOf(Notification)))]
+[/for] 
+
+
+[file ('main.lua', false, 'UTF-8')]
+	[for (state : State| anApp.hasEntities->select(oclIsTypeOf(State)))]
+	
+	    [state.name/] [state.name.toString().toLowerFirst()/] = new [state.name/]();
+		[state.name.toString().toLowerFirst()/].setVisible(true);
+	[/for] 
+[/file]
+
+[for (state : State| anApp.hasEntities->select(oclIsTypeOf(State)))]
+   [generateState(state)/]
+[/for] 
+[/template]
+
+
+[template public generateStage(stage : Stage)]
+[file ('/view/stage_'+stage.name+'.lua', false, 'UTF-8')]
+stage.name = {}
+
+function [stage.name/]:new (parentGroup)
+	local view = RNGroup:new()
+  	view.classType = "[stage.name/]"
+	
+	[if (state.image_background > '')]
+	state.backgroundImage = [state.image_background/]
+	[else]
+	state.backgroundImage = stateBackground.png
+	[/if]
+	return setmetatable( state, state_mt )
+end
+[/file]
+[/template]
+
+
+
+
+
+
+
+
+
+
+[template public generateButton()]
+[file ('/view/view_button.lua', false, 'UTF-8')]
+local button = {}
+local button_mt = { __index = button }
+
+function button:new ()
+	button.image_on = "buttonOn.png"
+	button.image_off = "buttonOff.png"
+	button.image_disabled = "buttonDisabled.png"
+    button.notification_pressed = "notify_buttonPressed"
+    button.notification_released = "notify_buttonReleased"
+    return setmetatable( button, button_mt )
+end
+[/file]
+[/template]
+
+[template public generateSwitch()]
+[file ('/view/view_switch.lua', false, 'UTF-8')]
+
+function switch:new ()
+	thisButton = button:new()
+    thisButton.value = false
+    return thisButton
+end
+[/file]
+[/template]
+
+[template public generateMatrix()]
+[file ('/view/view_matrix.lua', false, 'UTF-8')]
+local matrix = {}
+local matrix_mt = { __index = matrix }
+
+function matrix:new ()
+	matrix.image_background = "backgroundImage.png"
+	matrix.image_tap = "tapImage.png"
+	matrix.image_doubleTap = "doubleTapImage.png"
+
+    matrix.notification_tap = "notify_tap"
+	matrix.notification_doubleTap = "notify_doubleTap"
+    matrix.notification_moveSingleTouch = "notify_moveSingleTouch"
+	matrix.notification_moveMultiTouch = "notify_moveMultiTouch"
+    return setmetatable( matrix, matrix_mt )
+end
+[/file]
+[/template]
+
+[template public generateRegulator()]
+[file ('/view/view_regulator.lua', false, 'UTF-8')]
+local regulator = {}
+local regulator_mt = { __index = regulator }
+
+function regulator:new ()
+	regulator.minValue = 0.0
+	regulator.maxValue = 1.0
+	regulator.value = 0.0
+    regulator.defaultValue = 0.0
+
+    regulator.notification_changed = "notify_changed"
+	regulator.notification_doubleTap = "notify_doubleTap"
+    return setmetatable( regulator, regulator_mt )
+end
+[/file]
+[/template]
+
+[template public generateDisplay()]
+[file ('/view/view_display.lua', false, 'UTF-8')]
+local display = {}
+local display_mt = { __index = display }
+
+function display:new ()
+	display.image_background = "backgroundImage.png"
+	display.value = 0.0
+
+    return setmetatable( display, display_mt )
+end
+[/file]
+[/template]
+
+[query public getBrackets() : String = '[]'/]

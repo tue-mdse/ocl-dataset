@@ -1,0 +1,2434 @@
+[comment encoding = UTF-8 
+/**
+ * <copyright>
+ *
+ * Copyright (c) 2002-2011 IBM Corporation and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *   IBM - Initial API and implementation
+ *   Obeo - Migrate to Acceleo
+ *
+ * </copyright>
+ */
+/]
+[module Editor('http://www.eclipse.org/emf/2002/GenModel')/]
+
+[import org::eclipse::emf::eef::codegen::ecore::services::common /]
+[import org::eclipse::emf::eef::codegen::ecore::services::header /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenPackage /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenModel /]
+[import org::eclipse::emf::eef::codegen::ecore::services::StringUtil /]
+
+[template public Editor(genPackage : GenPackage) {genModel : GenModel = genPackage.genModel ; packageName : String = genPackage.getPresentationPackageName() ; className : String = genPackage.getEditorClassName()}]
+[genModel.initializeImportManager(packageName, className)/]
+
+[file (genModel.editorPath(packageName, className), false, 'UTF-8')]
+[includeHeader()/]
+package [packageName/];
+
+[genModel.addImportHere('java.io.IOException')/]
+[genModel.addImportHere('java.io.InputStream')/]
+
+[genModel.addImportHere('java.util.ArrayList')/]
+[genModel.addImportHere('java.util.Collection')/]
+[genModel.addImportHere('java.util.Collections')/]
+[genModel.addImportHere('java.util.EventObject')/]
+[genModel.addImportHere('java.util.HashMap')/]
+[genModel.addImportHere('java.util.Iterator')/]
+[genModel.addImportHere('java.util.LinkedHashMap')/]
+[genModel.addImportHere('java.util.List')/]
+[genModel.addImportHere('java.util.Map')/]
+[if (not genModel.richClientPlatform)]
+
+[genModel.addImportHere('org.eclipse.core.resources.IFile')/]
+[genModel.addImportHere('org.eclipse.core.resources.IMarker')/]
+[genModel.addImportHere('org.eclipse.core.resources.IResource')/]
+[genModel.addImportHere('org.eclipse.core.resources.IResourceChangeEvent')/]
+[genModel.addImportHere('org.eclipse.core.resources.IResourceChangeListener')/]
+[genModel.addImportHere('org.eclipse.core.resources.IResourceDelta')/]
+[genModel.addImportHere('org.eclipse.core.resources.IResourceDeltaVisitor')/]
+[genModel.addImportHere('org.eclipse.core.resources.ResourcesPlugin')/]
+[/if]
+
+[if (not genModel.richClientPlatform)]
+[genModel.addImportHere('org.eclipse.core.runtime.CoreException')/]
+[genModel.addImportHere('org.eclipse.core.runtime.IPath')/]
+[/if]
+[genModel.addImportHere('org.eclipse.core.runtime.IProgressMonitor')/]
+[genModel.addImportHere('org.eclipse.core.runtime.NullProgressMonitor')/]
+
+[genModel.addImportHere('org.eclipse.jface.action.IMenuListener')/]
+[genModel.addImportHere('org.eclipse.jface.action.IMenuManager')/]
+[genModel.addImportHere('org.eclipse.jface.action.IStatusLineManager')/]
+[genModel.addImportHere('org.eclipse.jface.action.IToolBarManager')/]
+[genModel.addImportHere('org.eclipse.jface.action.MenuManager')/]
+[genModel.addImportHere('org.eclipse.jface.action.Separator')/]
+
+[genModel.addImportHere('org.eclipse.jface.dialogs.MessageDialog')/]
+[genModel.addImportHere('org.eclipse.jface.dialogs.ProgressMonitorDialog')/]
+
+[if (genPackage.multipleEditorPages)]
+[genModel.addImportHere('org.eclipse.jface.viewers.ColumnWeightData')/]
+[/if]
+[genModel.addImportHere('org.eclipse.jface.viewers.ISelection')/]
+[genModel.addImportHere('org.eclipse.jface.viewers.ISelectionChangedListener')/]
+[genModel.addImportHere('org.eclipse.jface.viewers.ISelectionProvider')/]
+[genModel.addImportHere('org.eclipse.jface.viewers.IStructuredSelection')/]
+[if (genPackage.multipleEditorPages)]
+[genModel.addImportHere('org.eclipse.jface.viewers.ListViewer')/]
+[/if]
+[genModel.addImportHere('org.eclipse.jface.viewers.SelectionChangedEvent')/]
+[genModel.addImportHere('org.eclipse.jface.viewers.StructuredSelection')/]
+[genModel.addImportHere('org.eclipse.jface.viewers.StructuredViewer')/]
+[if (genPackage.multipleEditorPages)]
+[genModel.addImportHere('org.eclipse.jface.viewers.TableLayout')/]
+[genModel.addImportHere('org.eclipse.jface.viewers.TableViewer')/]
+[/if]
+[genModel.addImportHere('org.eclipse.jface.viewers.TreeViewer')/]
+[genModel.addImportHere('org.eclipse.jface.viewers.Viewer')/]
+
+[genModel.addImportHere('org.eclipse.swt.SWT')/]
+
+[genModel.addImportHere('org.eclipse.swt.custom.CTabFolder')/]
+
+[genModel.addImportHere('org.eclipse.swt.dnd.DND')/]
+[genModel.addImportHere('org.eclipse.swt.dnd.Transfer')/]
+
+[genModel.addImportHere('org.eclipse.swt.events.ControlAdapter')/]
+[genModel.addImportHere('org.eclipse.swt.events.ControlEvent')/]
+
+[genModel.addImportHere('org.eclipse.swt.graphics.Point')/]
+[if (genPackage.multipleEditorPages)]
+
+[genModel.addImportHere('org.eclipse.swt.layout.FillLayout')/]
+[/if]
+
+[genModel.addImportHere('org.eclipse.swt.widgets.Composite')/]
+[genModel.addImportHere('org.eclipse.swt.widgets.Menu')/]
+[if (genPackage.multipleEditorPages)]
+[genModel.addImportHere('org.eclipse.swt.widgets.Table')/]
+[genModel.addImportHere('org.eclipse.swt.widgets.TableColumn')/]
+[/if]
+[genModel.addImportHere('org.eclipse.swt.widgets.Tree')/]
+[if (genPackage.multipleEditorPages)]
+[genModel.addImportHere('org.eclipse.swt.widgets.TreeColumn')/]
+[/if]
+
+[genModel.addImportHere('org.eclipse.ui.IActionBars')/]
+[genModel.addImportHere('org.eclipse.ui.IEditorInput')/]
+[genModel.addImportHere('org.eclipse.ui.IEditorPart')/]
+[genModel.addImportHere('org.eclipse.ui.IEditorSite')/]
+[if (not genModel.richClientPlatform and genModel.complianceLevel = GenJDKLevel::JDK14)]
+[genModel.addImportHere('org.eclipse.ui.IFileEditorInput')/]
+[/if]
+[genModel.addImportHere('org.eclipse.ui.IPartListener')/]
+[genModel.addImportHere('org.eclipse.ui.IWorkbenchPart')/]
+[genModel.addImportHere('org.eclipse.ui.PartInitException')/]
+[if (not genModel.richClientPlatform)]
+
+[genModel.addImportHere('org.eclipse.ui.dialogs.SaveAsDialog')/]
+
+[genModel.addImportHere('org.eclipse.ui.ide.IGotoMarker')/]
+[/if]
+
+[if (not genModel.richClientPlatform)]
+[genModel.addImportHere('org.eclipse.ui.part.FileEditorInput')/]
+[/if]
+[genModel.addImportHere('org.eclipse.ui.part.MultiPageEditorPart')/]
+
+[genModel.addImportHere('org.eclipse.ui.views.contentoutline.ContentOutline')/]
+[genModel.addImportHere('org.eclipse.ui.views.contentoutline.ContentOutlinePage')/]
+[genModel.addImportHere('org.eclipse.ui.views.contentoutline.IContentOutlinePage')/]
+
+[genModel.addImportHere('org.eclipse.ui.views.properties.IPropertySheetPage')/]
+[genModel.addImportHere('org.eclipse.ui.views.properties.PropertySheet')/]
+[genModel.addImportHere('org.eclipse.ui.views.properties.PropertySheetPage')/]
+
+[genModel.addImportHere('org.eclipse.emf.common.command.BasicCommandStack')/]
+[genModel.addImportHere('org.eclipse.emf.common.command.Command')/]
+[genModel.addImportHere('org.eclipse.emf.common.command.CommandStack')/]
+[genModel.addImportHere('org.eclipse.emf.common.command.CommandStackListener')/]
+
+[genModel.addImportHere('org.eclipse.emf.common.notify.AdapterFactory')/]
+[genModel.addImportHere('org.eclipse.emf.common.notify.Notification')/]
+
+[if (not genModel.richClientPlatform)]
+[genModel.addImportHere('org.eclipse.emf.common.ui.MarkerHelper')/]
+[/if]
+[if (genPackage.multipleEditorPages)]
+[genModel.addImportHere('org.eclipse.emf.common.ui.ViewerPane')/]
+[/if]
+
+[genModel.addImportHere('org.eclipse.emf.common.ui.editor.ProblemEditorPart')/]
+
+[genModel.addImportHere('org.eclipse.emf.common.ui.viewer.IViewerProvider')/]
+
+[genModel.addImportHere('org.eclipse.emf.common.util.BasicDiagnostic')/]
+[genModel.addImportHere('org.eclipse.emf.common.util.Diagnostic')/]
+[genModel.addImportHere('org.eclipse.emf.common.util.URI')/]
+
+[if (not genModel.richClientPlatform)]
+[genModel.addImportHere('org.eclipse.emf.ecore.EObject')/]
+[genModel.addImportHere('org.eclipse.emf.ecore.EValidator')/]
+[/if]
+
+[genModel.addImportHere('org.eclipse.emf.ecore.resource.Resource')/]
+[if (not genModel.richClientPlatform)]
+[genModel.addImportHere('org.eclipse.emf.ecore.resource.ResourceSet')/]
+[/if]
+
+[genModel.addImportHere('org.eclipse.emf.ecore.util.EContentAdapter')/]
+[genModel.addImportHere('org.eclipse.emf.ecore.util.EcoreUtil')/]
+
+[genModel.addImportHere('org.eclipse.emf.edit.domain.AdapterFactoryEditingDomain')/]
+[genModel.addImportHere('org.eclipse.emf.edit.domain.EditingDomain')/]
+[genModel.addImportHere('org.eclipse.emf.edit.domain.IEditingDomainProvider')/]
+
+[genModel.addImportHere('org.eclipse.emf.edit.provider.AdapterFactoryItemDelegator')/]
+[genModel.addImportHere('org.eclipse.emf.edit.provider.ComposedAdapterFactory')/]
+[genModel.addImportHere('org.eclipse.emf.edit.provider.ReflectiveItemProviderAdapterFactory')/]
+
+[genModel.addImportHere('org.eclipse.emf.edit.provider.resource.ResourceItemProviderAdapterFactory')/]
+
+[genModel.addImportHere('org.eclipse.emf.edit.ui.action.EditingDomainActionBarContributor')/]
+
+[genModel.addImportHere('org.eclipse.emf.edit.ui.celleditor.AdapterFactoryTreeEditor')/]
+
+[genModel.addImportHere('org.eclipse.emf.edit.ui.dnd.EditingDomainViewerDropAdapter')/]
+[genModel.addImportHere('org.eclipse.emf.edit.ui.dnd.LocalTransfer')/]
+[genModel.addImportHere('org.eclipse.emf.edit.ui.dnd.ViewerDragAdapter')/]
+
+[genModel.addImportHere('org.eclipse.emf.edit.ui.provider.AdapterFactoryContentProvider')/]
+[genModel.addImportHere('org.eclipse.emf.edit.ui.provider.AdapterFactoryLabelProvider')/]
+[if (genModel.runtimeVersion <> GenRuntimeVersion::EMF22)]
+[genModel.addImportHere('org.eclipse.emf.edit.ui.provider.UnwrappingSelectionProvider')/]
+[/if]
+[if (not genModel.richClientPlatform)]
+
+[genModel.addImportHere('org.eclipse.emf.edit.ui.util.EditUIMarkerHelper')/]
+[/if]
+[if (genModel.complianceLevel <> GenJDKLevel::JDK14)]
+[genModel.addImportHere('org.eclipse.emf.edit.ui.util.EditUIUtil')/]
+[/if]
+
+[genModel.addImportHere('org.eclipse.emf.edit.ui.view.ExtendedPropertySheetPage')/]
+
+[genModel.addImportHere(genPackage.getQualifiedItemProviderAdapterFactoryClassName())/]
+
+[let content : String = genModel.fileContent(genPackage, genModel, packageName, className)]
+[genModel.genSortedImports()/]
+
+[content/]
+[/let]
+[/file]
+[/template]
+
+[template public fileContent(genPackage : GenPackage, genModel : GenModel, packageName : String, className : String)]
+/**
+ * This is an example of a [genPackage.prefix/] model editor.
+ * <!-- begin-user-doc -->
+ * <!-- end-user-doc -->
+ * @generated
+ */
+public class [className/]
+	extends MultiPageEditorPart
+	implements IEditingDomainProvider, ISelectionProvider, IMenuListener, IViewerProvider[if (not genModel.richClientPlatform)], IGotoMarker[/if]
+{
+[if (genModel.hasCopyrightField())]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public static final [genModel.getImportedName('java.lang.String')/] copyright = [genModel.getCopyrightFieldLiteral()/];[genModel.getNonNLS()/]
+
+[/if]
+[if (genModel.richClientPlatform)]
+	/**
+	 * The filters for file extensions supported by the editor.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */[if (genPackage.generateModelWizard)]
+	public static final [genModel._ListOfString()/] FILE_EXTENSION_FILTERS = prefixExtensions([genPackage.getImportedModelWizardClassName()/].FILE_EXTENSIONS, "*.");[genModel.getNonNLS()/]
+	[else]
+	public static final [genModel._ListOfString()/] FILE_EXTENSION_FILTERS = prefixExtensions([genModel.getImportedName('java.util.Arrays')/].asList([genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString("_UI_[genPackage.getEditorClassName()/]FilenameExtensions").split("\\s*,\\s*")), "*.");[genModel.getNonNLS()/][genModel.getNonNLS(2)/][genModel.getNonNLS(3)/]
+	[/if]
+	/**
+	 * Returns a new unmodifiable list containing prefixed versions of the extensions in the given list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private static [genModel._ListOfString()/] prefixExtensions([genModel._ListOfString()/] extensions, String prefix)
+	{
+		[genModel._ListOfString()/] result = new [genModel._ArrayListOfString()/]();
+  [if (genModel.useGenerics())]
+		for (String extension : extensions)
+		{
+			result.add(prefix + extension);
+  [ else ]
+		for (Iterator iterator = extensions.iterator() ; iterator.hasNext(); )
+		{
+			result.add(prefix + (String)iterator.next());
+  [/if]
+		}
+		return Collections.unmodifiableList(result);
+	}
+
+[/if]
+	/**
+	 * This keeps track of the editing domain that is used to track all changes to the model.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected AdapterFactoryEditingDomain editingDomain;
+
+	/**
+	 * This is the one adapter factory used for providing views of the model.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected ComposedAdapterFactory adapterFactory;
+
+	/**
+	 * This is the content outline page.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected IContentOutlinePage contentOutlinePage;
+
+	/**
+	 * This is a kludge...
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected IStatusLineManager contentOutlineStatusLineManager;
+
+	/**
+	 * This is the content outline page's viewer.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected TreeViewer contentOutlineViewer;
+
+	/**
+	 * This is the property sheet page.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected PropertySheetPage propertySheetPage;
+
+	/**
+	 * This is the viewer that shadows the selection in the content outline.
+	 * The parent relation must be correctly defined for this to work.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected TreeViewer selectionViewer;
+[if (genPackage.multipleEditorPages)]
+
+	/**
+	 * This inverts the roll of parent and child in the content provider and show parents as a tree.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected TreeViewer parentViewer;
+
+	/**
+	 * This shows how a tree view works.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected TreeViewer treeViewer;
+
+	/**
+	 * This shows how a list view works.
+	 * A list viewer doesn't support icons.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected ListViewer listViewer;
+
+	/**
+	 * This shows how a table view works.
+	 * A table can be used as a list with icons.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected TableViewer tableViewer;
+
+	/**
+	 * This shows how a tree view with columns works.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected TreeViewer treeViewerWithColumns;
+
+	/**
+	 * This keeps track of the active viewer pane, in the book.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected ViewerPane currentViewerPane;
+[/if]
+
+	/**
+	 * This keeps track of the active content viewer, which may be either one of the viewers in the pages or the content outline viewer.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected Viewer currentViewer;
+
+	/**
+	 * This listens to which ever viewer is active.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected ISelectionChangedListener selectionChangedListener;
+
+	/**
+	 * This keeps track of all the {@link org.eclipse.jface.viewers.ISelectionChangedListener}s that are listening to this editor.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected [genModel._CollectionOfSelectionChangedListener()/] selectionChangedListeners = new [genModel._ArrayListOfSelectionChangedListener()/]();
+
+	/**
+	 * This keeps track of the selection of the editor as a whole.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected ISelection editorSelection = StructuredSelection.EMPTY;
+
+[if (not genModel.richClientPlatform)]
+	/**
+	 * The MarkerHelper is responsible for creating workspace resource markers presented
+	 * in Eclipse's Problems View.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected MarkerHelper markerHelper = new EditUIMarkerHelper();
+
+[/if]
+	/**
+	 * This listens for when the outline becomes active
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected IPartListener partListener =
+		new IPartListener()
+		{
+			public void partActivated(IWorkbenchPart p)
+			{
+				if (p instanceof ContentOutline)
+				{
+					if (((ContentOutline)p).getCurrentPage() == contentOutlinePage)
+					{
+						getActionBarContributor().setActiveEditor([genPackage.getEditorClassName()/].this);
+
+						setCurrentViewer(contentOutlineViewer);
+					}
+				}
+				else if (p instanceof PropertySheet)
+				{
+					if (((PropertySheet)p).getCurrentPage() == propertySheetPage)
+					{
+						getActionBarContributor().setActiveEditor([genPackage.getEditorClassName()/].this);
+						handleActivate();
+					}
+				}
+				else if (p == [genPackage.getEditorClassName()/].this)
+				{
+					handleActivate();
+				}
+			}
+			public void partBroughtToTop(IWorkbenchPart p)
+			{
+				// Ignore.
+			}
+			public void partClosed(IWorkbenchPart p)
+			{
+				// Ignore.
+			}
+			public void partDeactivated(IWorkbenchPart p)
+			{
+				// Ignore.
+			}
+			public void partOpened(IWorkbenchPart p)
+			{
+				// Ignore.
+			}
+		};
+
+	/**
+	 * Resources that have been removed since last activation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected [genModel._CollectionOfResource()/] removedResources = new [genModel._ArrayListOfResource()/]();
+
+	/**
+	 * Resources that have been changed since last activation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected [genModel._CollectionOfResource()/] changedResources = new [genModel._ArrayListOfResource()/]();
+
+	/**
+	 * Resources that have been saved.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected [genModel._CollectionOfResource()/] savedResources = new [genModel._ArrayListOfResource()/]();
+
+	/**
+	 * Map to store the diagnostic associated with a resource.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected [genModel._MapOfResourceToDiagnostic()/] resourceToDiagnosticMap = new [genModel._LinkedHashMapOfResourceToDiagnostic()/]();
+
+	/**
+	 * Controls whether the problem indication should be updated.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected boolean updateProblemIndication = true;
+
+	/**
+	 * Adapter used to update the problem indication when resources are demanded loaded.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected EContentAdapter problemIndicationAdapter = 
+		new EContentAdapter()
+		{
+[if (genModel.useClassOverrideAnnotation())]
+			@Override
+[/if]
+			public void notifyChanged(Notification notification)
+			{
+				if (notification.getNotifier() instanceof Resource)
+				{
+					switch (notification.getFeatureID(Resource.class))
+					{
+						case Resource.RESOURCE__IS_LOADED:
+						case Resource.RESOURCE__ERRORS:
+						case Resource.RESOURCE__WARNINGS:
+						{
+							Resource resource = (Resource)notification.getNotifier();
+							Diagnostic diagnostic = analyzeResourceProblems(resource, null);
+							if (diagnostic.getSeverity() != Diagnostic.OK)
+							{
+								resourceToDiagnosticMap.put(resource, diagnostic);
+							}
+							else
+							{
+								resourceToDiagnosticMap.remove(resource);
+							}
+
+							if (updateProblemIndication)
+							{
+								getSite().getShell().getDisplay().asyncExec
+									(new Runnable()
+									 {
+										 public void run()
+										 {
+											 updateProblemIndication();
+										 }
+									 });
+							}
+							break;
+						}
+					}
+				}
+				else
+				{
+					super.notifyChanged(notification);
+				}
+			}
+
+[if (genModel.useClassOverrideAnnotation())]
+			@Override
+[/if]
+			protected void setTarget(Resource target)
+			{
+				basicSetTarget(target);
+			}
+
+[if (genModel.useClassOverrideAnnotation())]
+			@Override
+[/if]
+			protected void unsetTarget(Resource target)
+			{
+				basicUnsetTarget(target);
+			}
+		};
+[if (not genModel.richClientPlatform)]
+
+	/**
+	 * This listens for workspace changes.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected IResourceChangeListener resourceChangeListener =
+		new IResourceChangeListener()
+		{
+			public void resourceChanged(IResourceChangeEvent event)
+			{
+				IResourceDelta delta = event.getDelta();
+				try
+				{
+					class ResourceDeltaVisitor implements IResourceDeltaVisitor
+					{
+						protected ResourceSet resourceSet = editingDomain.getResourceSet();
+						protected [genModel._CollectionOfResource()/] changedResources = new [genModel._ArrayListOfResource()/]();
+						protected [genModel._CollectionOfResource()/] removedResources = new [genModel._ArrayListOfResource()/]();
+
+						public boolean visit(IResourceDelta delta)
+						{
+							if (delta.getResource().getType() == IResource.FILE)
+							{
+								if (delta.getKind() == IResourceDelta.REMOVED ||
+								    delta.getKind() == IResourceDelta.CHANGED && delta.getFlags() != IResourceDelta.MARKERS)
+								{
+									Resource resource = resourceSet.getResource(URI.createPlatformResourceURI(delta.getFullPath().toString(), true), false);
+									if (resource != null)
+									{
+										if (delta.getKind() == IResourceDelta.REMOVED)
+										{
+											removedResources.add(resource);
+										}
+										else if (!savedResources.remove(resource))
+										{
+											changedResources.add(resource);
+										}
+									}
+								}
+							}
+
+							return true;
+						}
+
+						public [genModel._CollectionOfResource()/] getChangedResources()
+						{
+							return changedResources;
+						}
+
+						public [genModel._CollectionOfResource()/] getRemovedResources()
+						{
+							return removedResources;
+						}
+					}
+
+					final ResourceDeltaVisitor visitor = new ResourceDeltaVisitor();
+					delta.accept(visitor);
+
+					if (!visitor.getRemovedResources().isEmpty())
+					{
+						getSite().getShell().getDisplay().asyncExec
+							(new Runnable()
+							 {
+								 public void run()
+								 {
+									 removedResources.addAll(visitor.getRemovedResources());
+									 if (!isDirty())
+									 {
+										 getSite().getPage().closeEditor([genPackage.getEditorClassName()/].this, false);
+									 }
+								 }
+							 });
+					}
+
+					if (!visitor.getChangedResources().isEmpty())
+					{
+						getSite().getShell().getDisplay().asyncExec
+							(new Runnable()
+							 {
+								 public void run()
+								 {
+									 changedResources.addAll(visitor.getChangedResources());
+									 if (getSite().getPage().getActiveEditor() == [genPackage.getEditorClassName()/].this)
+									 {
+										 handleActivate();
+									 }
+								 }
+							 });
+					}
+				}
+				catch (CoreException exception)
+				{
+					[genPackage.getImportedEditorPluginClassName()/].INSTANCE.log(exception);
+				}
+			}
+		};
+[/if]
+
+	/**
+	 * Handles activation of the editor or it's associated views.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected void handleActivate()
+	{
+		// Recompute the read only state.
+		//
+		if (editingDomain.getResourceToReadOnlyMap() != null)
+		{
+		  editingDomain.getResourceToReadOnlyMap().clear();
+
+		  // Refresh any actions that may become enabled or disabled.
+		  //
+		  setSelection(getSelection());
+		}
+
+		if (!removedResources.isEmpty())
+		{
+			if (handleDirtyConflict())
+			{
+				getSite().getPage().closeEditor([genPackage.getEditorClassName()/].this, false);
+			}
+			else
+			{
+				removedResources.clear();
+				changedResources.clear();
+				savedResources.clear();
+			}
+		}
+		else if (!changedResources.isEmpty())
+		{
+			changedResources.removeAll(savedResources);
+			handleChangedResources();
+			changedResources.clear();
+			savedResources.clear();
+		}
+	}
+
+	/**
+	 * Handles what to do with changed resources on activation.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected void handleChangedResources()
+	{
+		if (!changedResources.isEmpty() && (!isDirty() || handleDirtyConflict()))
+		{
+			if (isDirty())
+			{
+				changedResources.addAll(editingDomain.getResourceSet().getResources());
+			}
+			editingDomain.getCommandStack().flush();
+
+			updateProblemIndication = false;
+[if (genModel.useGenerics())]
+			for (Resource resource : changedResources)
+[else]
+			for (Iterator i = changedResources.iterator(); i.hasNext(); )
+[/if]
+			{
+[if ( not genModel.useGenerics())]
+				Resource resource = (Resource)i.next();
+[/if]
+				if (resource.isLoaded())
+				{
+					resource.unload();
+					try
+					{
+						resource.load(Collections.EMPTY_MAP);
+					}
+					catch (IOException exception)
+					{
+						if (!resourceToDiagnosticMap.containsKey(resource))
+						{
+							resourceToDiagnosticMap.put(resource, analyzeResourceProblems(resource, exception));
+						}
+					}
+				}
+			}
+
+[if (not (genModel.runtimeVersion = GenRuntimeVersion::EMF22 or genModel.runtimeVersion = GenRuntimeVersion::EMF23))]
+			if (AdapterFactoryEditingDomain.isStale(editorSelection))
+			{
+				setSelection(StructuredSelection.EMPTY);
+			}
+[/if]
+
+			updateProblemIndication = true;
+			updateProblemIndication();
+		}
+	}
+  
+	/**
+	 * Updates the problems indication with the information described in the specified diagnostic.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected void updateProblemIndication()
+	{
+		if (updateProblemIndication)
+		{
+			BasicDiagnostic diagnostic =
+				new BasicDiagnostic
+					(Diagnostic.OK,
+					 "[genPackage.genModel.editorPluginID/]",[genModel.getNonNLS()/]
+					 0,
+					 null,
+					 new Object [genModel.genSquareBrackets('')/] { editingDomain.getResourceSet() });
+[if (genModel.useGenerics())]
+			for (Diagnostic childDiagnostic : resourceToDiagnosticMap.values())
+[else]
+			for (Iterator i = resourceToDiagnosticMap.values().iterator(); i.hasNext(); )
+[/if]
+			{
+[if (not genModel.useGenerics())]
+				Diagnostic childDiagnostic = (Diagnostic)i.next();
+[/if]
+				if (childDiagnostic.getSeverity() != Diagnostic.OK)
+				{
+					diagnostic.add(childDiagnostic);
+				}
+			}
+
+			int lastEditorPage = getPageCount() - 1;
+			if (lastEditorPage >= 0 && getEditor(lastEditorPage) instanceof ProblemEditorPart)
+			{
+				((ProblemEditorPart)getEditor(lastEditorPage)).setDiagnostic(diagnostic);
+				if (diagnostic.getSeverity() != Diagnostic.OK)
+				{
+					setActivePage(lastEditorPage);
+				}
+			}
+			else if (diagnostic.getSeverity() != Diagnostic.OK)
+			{
+				ProblemEditorPart problemEditorPart = new ProblemEditorPart();
+				problemEditorPart.setDiagnostic(diagnostic);
+[if ( not genModel.richClientPlatform)]
+				problemEditorPart.setMarkerHelper(markerHelper);
+[/if]
+				try
+				{
+					addPage(++lastEditorPage, problemEditorPart, getEditorInput());
+					setPageText(lastEditorPage, problemEditorPart.getPartName());
+					setActivePage(lastEditorPage);
+					showTabs();
+				}
+				catch (PartInitException exception)
+				{
+					[genPackage.getImportedEditorPluginClassName()/].INSTANCE.log(exception);
+				}
+			}
+[if (not genModel.richClientPlatform)]
+
+			if (markerHelper.hasMarkers(editingDomain.getResourceSet()))
+			{
+				markerHelper.deleteMarkers(editingDomain.getResourceSet());
+				if (diagnostic.getSeverity() != Diagnostic.OK)
+				{
+					try
+					{
+						markerHelper.createMarkers(diagnostic);
+					}
+					catch (CoreException exception)
+					{
+						[genPackage.getImportedEditorPluginClassName()/].INSTANCE.log(exception);
+					}
+				}
+			}
+[/if]
+		}
+	}
+
+	/**
+	 * Shows a dialog that asks if conflicting changes should be discarded.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected boolean handleDirtyConflict()
+	{
+		return
+			MessageDialog.openQuestion
+				(getSite().getShell(),
+				 getString("_UI_FileConflict_label"),[genModel.getNonNLS()/]
+				 getString("_WARN_FileConflict"));[genModel.getNonNLS()/]
+	}
+
+	/**
+	 * This creates a model editor.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public [genPackage.getEditorClassName()/]()
+	{
+		super();
+		initializeEditingDomain();
+	}
+
+	/**
+	 * This sets up the editing domain for the model editor.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected void initializeEditingDomain()
+	{
+		// Create an adapter factory that yields item providers.
+		//
+		adapterFactory = new ComposedAdapterFactory(ComposedAdapterFactory.Descriptor.Registry.INSTANCE);
+
+		adapterFactory.addAdapterFactory(new ResourceItemProviderAdapterFactory());
+[comment]<%@ include file="Editor/addItemProviderFactories.override.javajetinc" fail="alternative"%>
+<%@ start%>[/comment]
+[for (aGenPackage : GenPackage | genModel.getAllGenPackagesWithClassifiers())]
+  [if (not aGenPackage.genClasses->isEmpty() and aGenPackage.genModel.hasEditSupport())]
+		adapterFactory.addAdapterFactory(new [aGenPackage.getImportedItemProviderAdapterFactoryClassName()/]());
+  [/if]
+[/for]
+[for (aGenPackage : GenPackage | genModel.getAllUsedGenPackagesWithClassifiers())]
+  [if (not aGenPackage.genClasses->isEmpty() and aGenPackage.genModel.hasEditSupport())]
+		adapterFactory.addAdapterFactory(new [aGenPackage.getImportedItemProviderAdapterFactoryClassName()/]());
+  [/if]
+[/for]
+[comment]<%@ include file="Editor/addItemProviderFactories.insert.javajetinc" fail="silent"%>
+<%@end%><%//Editor/addItemproviderFactories.override.javajetinc"%>[/comment]
+		adapterFactory.addAdapterFactory(new ReflectiveItemProviderAdapterFactory());
+
+		// Create the command stack that will notify this editor as commands are executed.
+		//
+		BasicCommandStack commandStack = new BasicCommandStack();
+
+		// Add a listener to set the most recent command's affected objects to be the selection of the viewer with focus.
+		//
+		commandStack.addCommandStackListener
+			(new CommandStackListener()
+			 {
+				 public void commandStackChanged(final EventObject event)
+				 {
+					 getContainer().getDisplay().asyncExec
+						 (new Runnable()
+						  {
+							  public void run()
+							  {
+								  firePropertyChange(IEditorPart.PROP_DIRTY);
+
+								  // Try to select the affected objects.
+								  //
+								  Command mostRecentCommand = ((CommandStack)event.getSource()).getMostRecentCommand();
+								  if (mostRecentCommand != null)
+								  {
+									  setSelectionToViewer(mostRecentCommand.getAffectedObjects());
+								  }
+								  if (propertySheetPage != null && !propertySheetPage.getControl().isDisposed())
+								  {
+									  propertySheetPage.refresh();
+								  }
+							  }
+						  });
+				 }
+			 });
+
+		// Create the editing domain with a special command stack.
+		//
+		editingDomain = new AdapterFactoryEditingDomain(adapterFactory, commandStack, new [genModel._HashMapOfResourceToBoolean()/]());
+	}
+
+	/**
+	 * This is here for the listener to be able to call it.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useClassOverrideAnnotation())]
+			@Override
+[/if]
+	protected void firePropertyChange(int action)
+	{
+		super.firePropertyChange(action);
+	}
+
+	/**
+	 * This sets the selection into whichever viewer is active.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void setSelectionToViewer([genModel._CollectionOfAnything()/] collection)
+	{
+		final [genModel._CollectionOfAnything()/] theSelection = collection;
+		// Make sure it's okay.
+		//
+		if (theSelection != null && !theSelection.isEmpty())
+		{
+			Runnable runnable =
+				new Runnable()
+				{
+					public void run()
+					{
+						// Try to select the items in the current content viewer of the editor.
+						//
+						if (currentViewer != null)
+						{
+							currentViewer.setSelection(new StructuredSelection(theSelection.toArray()), true);
+						}
+					}
+				};
+			getSite().getShell().getDisplay().asyncExec(runnable);
+		}
+	}
+
+	/**
+	 * This returns the editing domain as required by the {@link IEditingDomainProvider} interface.
+	 * This is important for implementing the static methods of {@link AdapterFactoryEditingDomain}
+	 * and for supporting {@link org.eclipse.emf.edit.ui.action.CommandAction}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public EditingDomain getEditingDomain()
+	{
+		return editingDomain;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public class ReverseAdapterFactoryContentProvider extends AdapterFactoryContentProvider
+	{
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		public ReverseAdapterFactoryContentProvider(AdapterFactory adapterFactory)
+		{
+			super(adapterFactory);
+		}
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+[if (genModel.useClassOverrideAnnotation())]
+		@Override
+[/if]
+		public Object [genModel.genSquareBrackets('')/] getElements(Object object)
+		{
+			Object parent = super.getParent(object);
+			return (parent == null ? Collections.EMPTY_SET : Collections.singleton(parent)).toArray();
+		}
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+[if (genModel.useClassOverrideAnnotation())]
+		@Override
+[/if]
+		public Object [genModel.genSquareBrackets('')/] getChildren(Object object)
+		{
+			Object parent = super.getParent(object);
+			return (parent == null ? Collections.EMPTY_SET : Collections.singleton(parent)).toArray();
+		}
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+[if (genModel.useClassOverrideAnnotation())]
+		@Override
+[/if]
+		public boolean hasChildren(Object object)
+		{
+			Object parent = super.getParent(object);
+			return parent != null;
+		}
+
+		/**
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+[if (genModel.useClassOverrideAnnotation())]
+		@Override
+[/if]
+		public Object getParent(Object object)
+		{
+			return null;
+		}
+	}
+[if (genPackage.multipleEditorPages)]
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void setCurrentViewerPane(ViewerPane viewerPane)
+	{
+		if (currentViewerPane != viewerPane)
+		{
+			if (currentViewerPane != null)
+			{
+				currentViewerPane.showFocus(false);
+			}
+			currentViewerPane = viewerPane;
+		}
+		setCurrentViewer(currentViewerPane.getViewer());
+	}
+[/if]
+
+	/**
+	 * This makes sure that one content viewer, either for the current page or the outline view, if it has focus,
+	 * is the current one.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void setCurrentViewer(Viewer viewer)
+	{
+		// If it is changing...
+		//
+		if (currentViewer != viewer)
+		{
+			if (selectionChangedListener == null)
+			{
+				// Create the listener on demand.
+				//
+				selectionChangedListener =
+					new ISelectionChangedListener()
+					{
+						// This just notifies those things that are affected by the section.
+						//
+						public void selectionChanged(SelectionChangedEvent selectionChangedEvent)
+						{
+							setSelection(selectionChangedEvent.getSelection());
+						}
+					};
+			}
+
+			// Stop listening to the old one.
+			//
+			if (currentViewer != null)
+			{
+				currentViewer.removeSelectionChangedListener(selectionChangedListener);
+			}
+
+			// Start listening to the new one.
+			//
+			if (viewer != null)
+			{
+				viewer.addSelectionChangedListener(selectionChangedListener);
+			}
+
+			// Remember it.
+			//
+			currentViewer = viewer;
+
+			// Set the editors selection based on the current viewer's selection.
+			//
+			setSelection(currentViewer == null ? StructuredSelection.EMPTY : currentViewer.getSelection());
+		}
+	}
+
+	/**
+	 * This returns the viewer as required by the {@link IViewerProvider} interface.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public Viewer getViewer()
+	{
+		return currentViewer;
+	}
+
+	/**
+	 * This creates a context menu for the viewer and adds a listener as well registering the menu for extension.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected void createContextMenuFor(StructuredViewer viewer)
+	{
+		MenuManager contextMenu = new MenuManager("#PopUp");[genModel.getNonNLS()/]
+		contextMenu.add(new Separator("additions"));[genModel.getNonNLS()/]
+		contextMenu.setRemoveAllWhenShown(true);
+		contextMenu.addMenuListener(this);
+		Menu menu= contextMenu.createContextMenu(viewer.getControl());
+		viewer.getControl().setMenu(menu);
+[if (genModel.runtimeVersion <> GenRuntimeVersion::EMF22)]
+		getSite().registerContextMenu(contextMenu, new UnwrappingSelectionProvider(viewer));
+[else]
+		getSite().registerContextMenu(contextMenu, viewer);
+[/if]
+
+		int dndOperations = DND.DROP_COPY | DND.DROP_MOVE | DND.DROP_LINK;
+		Transfer[genModel.genSquareBrackets('')/] transfers = new Transfer[genModel.genSquareBrackets('')/] { LocalTransfer.getInstance() };
+		viewer.addDragSupport(dndOperations, transfers, new ViewerDragAdapter(viewer));
+		viewer.addDropSupport(dndOperations, transfers, new EditingDomainViewerDropAdapter(editingDomain, viewer));
+	}
+
+	/**
+	 * This is the method called to load a resource into the editing domain's resource set based on the editor's input.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void createModel()
+	{
+[if (genModel.runtimeVersion <> GenRuntimeVersion::EMF22)]
+		URI resourceURI = EditUIUtil.getURI(getEditorInput());
+[elseif (genModel.richClientPlatform)]
+		URI resourceURI = URI.createURI(getEditorInput().getName());
+[else]
+		// Assumes that the input is a file object.
+		//
+		IFileEditorInput modelFile = (IFileEditorInput)getEditorInput();
+		URI resourceURI = URI.createPlatformResourceURI(modelFile.getFile().getFullPath().toString(), true);
+[/if]
+		Exception exception = null;
+		Resource resource = null;
+		try
+		{
+			// Load the resource through the editing domain.
+			//
+			resource = editingDomain.getResourceSet().getResource(resourceURI, true);
+		}
+		catch (Exception e)
+		{
+			exception = e;
+			resource = editingDomain.getResourceSet().getResource(resourceURI, false);
+		}
+
+		Diagnostic diagnostic = analyzeResourceProblems(resource, exception);
+		if (diagnostic.getSeverity() != Diagnostic.OK)
+		{
+			resourceToDiagnosticMap.put(resource,  analyzeResourceProblems(resource, exception));
+		}
+		editingDomain.getResourceSet().eAdapters().add(problemIndicationAdapter);
+	}
+
+	/**
+	 * Returns a diagnostic describing the errors and warnings listed in the resource
+	 * and the specified exception (if any).
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public Diagnostic analyzeResourceProblems(Resource resource, Exception exception) 
+	{
+		if (!resource.getErrors().isEmpty() || !resource.getWarnings().isEmpty())
+		{
+			BasicDiagnostic basicDiagnostic =
+				new BasicDiagnostic
+					(Diagnostic.ERROR,
+					 "[genPackage.genModel.editorPluginID/]",[genModel.getNonNLS()/]
+					 0,
+					 getString("_UI_CreateModelError_message", resource.getURI()),[genModel.getNonNLS()/]
+					 new Object [genModel.genSquareBrackets('')/] { exception == null ? (Object)resource : exception });
+			basicDiagnostic.merge(EcoreUtil.computeDiagnostic(resource, true));
+			return basicDiagnostic;
+		}
+		else if (exception != null)
+		{
+			return
+				new BasicDiagnostic
+					(Diagnostic.ERROR,
+					 "[genPackage.genModel.editorPluginID/]",[genModel.getNonNLS()/]
+					 0,
+					 getString("_UI_CreateModelError_message", resource.getURI()),[genModel.getNonNLS()/]
+					 new Object[genModel.genSquareBrackets('')/] { exception });
+		}
+		else
+		{
+			return Diagnostic.OK_INSTANCE;
+		}
+	}
+
+	/**
+	 * This is the method used by the framework to install your own controls.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useClassOverrideAnnotation())]
+	@Override
+[/if]
+	public void createPages()
+	{
+		// Creates the model from the editor input
+		//
+		createModel();
+
+		// Only creates the other pages if there is something that can be edited
+		//
+		if (!getEditingDomain().getResourceSet().getResources().isEmpty())
+		{
+			// Create a page for the selection tree view.
+			//
+[if (genPackage.multipleEditorPages)]
+			{
+				ViewerPane viewerPane =
+					new ViewerPane(getSite().getPage(), [genPackage.getEditorClassName()/].this)
+					{
+[if (genModel.useClassOverrideAnnotation())]
+						@Override
+[/if]
+						public Viewer createViewer(Composite composite)
+						{
+							Tree tree = new Tree(composite, SWT.MULTI);
+							TreeViewer newTreeViewer = new TreeViewer(tree);
+							return newTreeViewer;
+						}
+[if (genModel.useClassOverrideAnnotation())]
+						@Override
+[/if]
+						public void requestActivation()
+						{
+							super.requestActivation();
+							setCurrentViewerPane(this);
+						}
+					};
+				viewerPane.createControl(getContainer());
+
+				selectionViewer = (TreeViewer)viewerPane.getViewer();
+				selectionViewer.setContentProvider(new AdapterFactoryContentProvider(adapterFactory));
+
+				selectionViewer.setLabelProvider(new [genModel._AdapterFactoryLabelProvider()/](adapterFactory[if (genModel.useExtendedLabelProvider())], selectionViewer[/if]));
+				selectionViewer.setInput(editingDomain.getResourceSet());
+				selectionViewer.setSelection(new StructuredSelection(editingDomain.getResourceSet().getResources().get(0)), true);
+				viewerPane.setTitle(editingDomain.getResourceSet());
+
+				new AdapterFactoryTreeEditor(selectionViewer.getTree(), adapterFactory);
+
+				createContextMenuFor(selectionViewer);
+				int pageIndex = addPage(viewerPane.getControl());
+				setPageText(pageIndex, getString("_UI_SelectionPage_label"));[genModel.getNonNLS()/]
+			}
+
+			// Create a page for the parent tree view.
+			//
+			{
+				ViewerPane viewerPane =
+					new ViewerPane(getSite().getPage(), [genPackage.getEditorClassName()/].this)
+					{
+[if (genModel.useClassOverrideAnnotation())]
+						@Override
+[/if]
+						public Viewer createViewer(Composite composite)
+						{
+							Tree tree = new Tree(composite, SWT.MULTI);
+							TreeViewer newTreeViewer = new TreeViewer(tree);
+							return newTreeViewer;
+						}
+[if (genModel.useClassOverrideAnnotation())]
+						@Override
+[/if]
+						public void requestActivation()
+						{
+							super.requestActivation();
+							setCurrentViewerPane(this);
+						}
+					};
+				viewerPane.createControl(getContainer());
+
+				parentViewer = (TreeViewer)viewerPane.getViewer();
+				parentViewer.setAutoExpandLevel(30);
+				parentViewer.setContentProvider(new ReverseAdapterFactoryContentProvider(adapterFactory));
+				parentViewer.setLabelProvider(new [genModel._AdapterFactoryLabelProvider()/](adapterFactory[if (genModel.useExtendedLabelProvider())], parentViewer[/if]));
+
+				createContextMenuFor(parentViewer);
+				int pageIndex = addPage(viewerPane.getControl());
+				setPageText(pageIndex, getString("_UI_ParentPage_label"));[genModel.getNonNLS()/]
+			}
+
+			// This is the page for the list viewer
+			//
+			{
+				ViewerPane viewerPane =
+					new ViewerPane(getSite().getPage(), [genPackage.getEditorClassName()/].this)
+					{
+[if (genModel.useClassOverrideAnnotation())]
+						@Override
+[/if]
+						public Viewer createViewer(Composite composite)
+						{
+							return new ListViewer(composite);
+						}
+[if (genModel.useClassOverrideAnnotation())]
+						@Override
+[/if]
+						public void requestActivation()
+						{
+							super.requestActivation();
+							setCurrentViewerPane(this);
+						}
+					};
+				viewerPane.createControl(getContainer());
+				listViewer = (ListViewer)viewerPane.getViewer();
+				listViewer.setContentProvider(new AdapterFactoryContentProvider(adapterFactory));
+				listViewer.setLabelProvider(new [genModel._AdapterFactoryLabelProvider()/](adapterFactory[if (genModel.useExtendedLabelProvider())], listViewer[/if]));
+
+				createContextMenuFor(listViewer);
+				int pageIndex = addPage(viewerPane.getControl());
+				setPageText(pageIndex, getString("_UI_ListPage_label"));[genModel.getNonNLS()/]
+			}
+
+			// This is the page for the tree viewer
+			//
+			{
+				ViewerPane viewerPane =
+					new ViewerPane(getSite().getPage(), [genPackage.getEditorClassName()/].this)
+					{
+[if (genModel.useClassOverrideAnnotation())]
+						@Override
+[/if]
+						public Viewer createViewer(Composite composite)
+						{
+							return new TreeViewer(composite);
+						}
+[if (genModel.useClassOverrideAnnotation())]
+						@Override
+[/if]
+						public void requestActivation()
+						{
+							super.requestActivation();
+							setCurrentViewerPane(this);
+						}
+					};
+				viewerPane.createControl(getContainer());
+				treeViewer = (TreeViewer)viewerPane.getViewer();
+				treeViewer.setContentProvider(new AdapterFactoryContentProvider(adapterFactory));
+				treeViewer.setLabelProvider(new [genModel._AdapterFactoryLabelProvider()/](adapterFactory[if (genModel.useExtendedLabelProvider())], treeViewer[/if]));
+
+				new AdapterFactoryTreeEditor(treeViewer.getTree(), adapterFactory);
+
+				createContextMenuFor(treeViewer);
+				int pageIndex = addPage(viewerPane.getControl());
+				setPageText(pageIndex, getString("_UI_TreePage_label"));[genModel.getNonNLS()/]
+			}
+
+			// This is the page for the table viewer.
+			//
+			{
+				ViewerPane viewerPane =
+					new ViewerPane(getSite().getPage(), [genPackage.getEditorClassName()/].this)
+					{
+[if (genModel.useClassOverrideAnnotation())]
+						@Override
+[/if]
+						public Viewer createViewer(Composite composite)
+						{
+							return new TableViewer(composite);
+						}
+[if (genModel.useClassOverrideAnnotation())]
+						@Override
+[/if]
+						public void requestActivation()
+						{
+							super.requestActivation();
+							setCurrentViewerPane(this);
+						}
+					};
+				viewerPane.createControl(getContainer());
+				tableViewer = (TableViewer)viewerPane.getViewer();
+
+				Table table = tableViewer.getTable();
+				TableLayout layout = new TableLayout();
+				table.setLayout(layout);
+				table.setHeaderVisible(true);
+				table.setLinesVisible(true);
+
+				TableColumn objectColumn = new TableColumn(table, SWT.NONE);
+				layout.addColumnData(new ColumnWeightData(3, 100, true));
+				objectColumn.setText(getString("_UI_ObjectColumn_label"));[genModel.getNonNLS()/]
+				objectColumn.setResizable(true);
+
+				TableColumn selfColumn = new TableColumn(table, SWT.NONE);
+				layout.addColumnData(new ColumnWeightData(2, 100, true));
+				selfColumn.setText(getString("_UI_SelfColumn_label"));[genModel.getNonNLS()/]
+				selfColumn.setResizable(true);
+
+				tableViewer.setColumnProperties(new String [genModel.genSquareBrackets('')/] {"a", "b"});[genModel.getNonNLS()/][genModel.getNonNLS(2)/]
+				tableViewer.setContentProvider(new AdapterFactoryContentProvider(adapterFactory));
+				tableViewer.setLabelProvider(new [genModel._AdapterFactoryLabelProvider()/](adapterFactory[if (genModel.useExtendedLabelProvider())], tableViewer[/if]));
+
+				createContextMenuFor(tableViewer);
+				int pageIndex = addPage(viewerPane.getControl());
+				setPageText(pageIndex, getString("_UI_TablePage_label"));[genModel.getNonNLS()/]
+			}
+
+			// This is the page for the table tree viewer.
+			//
+			{
+				ViewerPane viewerPane =
+					new ViewerPane(getSite().getPage(), [genPackage.getEditorClassName()/].this)
+					{
+[if (genModel.useClassOverrideAnnotation())]
+						@Override
+[/if]
+						public Viewer createViewer(Composite composite)
+						{
+							return new TreeViewer(composite);
+						}
+[if (genModel.useClassOverrideAnnotation())]
+						@Override
+[/if]
+						public void requestActivation()
+						{
+							super.requestActivation();
+							setCurrentViewerPane(this);
+						}
+					};
+				viewerPane.createControl(getContainer());
+
+				treeViewerWithColumns = (TreeViewer)viewerPane.getViewer();
+
+				Tree tree = treeViewerWithColumns.getTree();
+				tree.setLayoutData(new FillLayout());
+				tree.setHeaderVisible(true);
+				tree.setLinesVisible(true);
+
+				TreeColumn objectColumn = new TreeColumn(tree, SWT.NONE);
+				objectColumn.setText(getString("_UI_ObjectColumn_label"));[genModel.getNonNLS()/]
+				objectColumn.setResizable(true);
+				objectColumn.setWidth(250);
+
+				TreeColumn selfColumn = new TreeColumn(tree, SWT.NONE);
+				selfColumn.setText(getString("_UI_SelfColumn_label"));[genModel.getNonNLS()/]
+				selfColumn.setResizable(true);
+				selfColumn.setWidth(200);
+
+				treeViewerWithColumns.setColumnProperties(new String [genModel.genSquareBrackets('')/] {"a", "b"});[genModel.getNonNLS()/][genModel.getNonNLS(2)/]
+				treeViewerWithColumns.setContentProvider(new AdapterFactoryContentProvider(adapterFactory));
+				treeViewerWithColumns.setLabelProvider(new [genModel._AdapterFactoryLabelProvider()/](adapterFactory[if (genModel.useExtendedLabelProvider())], treeViewerWithColumns[/if]));
+
+				createContextMenuFor(treeViewerWithColumns);
+				int pageIndex = addPage(viewerPane.getControl());
+				setPageText(pageIndex, getString("_UI_TreeWithColumnsPage_label"));[genModel.getNonNLS()/]
+			}
+[else]
+			Tree tree = new Tree(getContainer(), SWT.MULTI);
+			selectionViewer = new TreeViewer(tree);
+			setCurrentViewer(selectionViewer);
+
+			selectionViewer.setContentProvider(new AdapterFactoryContentProvider(adapterFactory));
+			selectionViewer.setLabelProvider(new [genModel._AdapterFactoryLabelProvider()/](adapterFactory[if (genModel.useExtendedLabelProvider())], selectionViewer[/if]));
+			selectionViewer.setInput(editingDomain.getResourceSet());
+			selectionViewer.setSelection(new StructuredSelection(editingDomain.getResourceSet().getResources().get(0)), true);
+
+			new AdapterFactoryTreeEditor(selectionViewer.getTree(), adapterFactory);
+
+			createContextMenuFor(selectionViewer);
+			int pageIndex = addPage(tree);
+			setPageText(pageIndex, getString("_UI_SelectionPage_label"));[genModel.getNonNLS()/]
+[/if]
+
+			getSite().getShell().getDisplay().asyncExec
+				(new Runnable()
+				 {
+					 public void run()
+					 {
+						 setActivePage(0);
+					 }
+				 });
+		}
+
+		// Ensures that this editor will only display the page's tab
+		// area if there are more than one page
+		//
+		getContainer().addControlListener
+			(new ControlAdapter()
+			 {
+				boolean guard = false;
+[if (genModel.useClassOverrideAnnotation())]
+				@Override
+[/if]
+				public void controlResized(ControlEvent event)
+				{
+					if (!guard)
+					{
+						guard = true;
+						hideTabs();
+						guard = false;
+					}
+				}
+			 });
+
+		getSite().getShell().getDisplay().asyncExec
+			(new Runnable()
+			 {
+				 public void run()
+				 {
+					 updateProblemIndication();
+				 }
+			 });
+	}
+
+	/**
+	 * If there is just one page in the multi-page editor part,
+	 * this hides the single tab at the bottom.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected void hideTabs()
+	{
+		if (getPageCount() <= 1)
+		{
+			setPageText(0, "");[genModel.getNonNLS()/]
+			if (getContainer() instanceof CTabFolder)
+			{
+				((CTabFolder)getContainer()).setTabHeight(1);
+				Point point = getContainer().getSize();
+				getContainer().setSize(point.x, point.y + 6);
+			}
+		}
+	}
+
+	/**
+	 * If there is more than one page in the multi-page editor part,
+	 * this shows the tabs at the bottom.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected void showTabs()
+	{
+		if (getPageCount() > 1)
+		{
+			setPageText(0, getString("_UI_SelectionPage_label"));[genModel.getNonNLS()/]
+			if (getContainer() instanceof CTabFolder)
+			{
+				((CTabFolder)getContainer()).setTabHeight(SWT.DEFAULT);
+				Point point = getContainer().getSize();
+				getContainer().setSize(point.x, point.y - 6);
+			}
+		}
+	}
+
+	/**
+	 * This is used to track the active viewer.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useClassOverrideAnnotation())]
+	@Override
+[/if]
+	protected void pageChange(int pageIndex)
+	{
+		super.pageChange(pageIndex);
+
+		if (contentOutlinePage != null)
+		{
+			handleContentOutlineSelection(contentOutlinePage.getSelection());
+		}
+	}
+
+	/**
+	 * This is how the framework determines which interfaces we implement.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useGenerics())]
+	@SuppressWarnings("[if (genModel.runtimeVersion <> GenRuntimeVersion::EMF27)]unchecked[else]rawtypes[/if]")
+[/if]
+[if (genModel.useClassOverrideAnnotation())]
+	@Override
+[/if]
+	public Object getAdapter(Class key)
+	{
+		if (key.equals(IContentOutlinePage.class))
+		{
+			return showOutlineView() ? getContentOutlinePage() : null;
+		}
+		else if (key.equals(IPropertySheetPage.class))
+		{
+			return getPropertySheetPage();
+		}
+[if ( not genModel.richClientPlatform)]
+		else if (key.equals(IGotoMarker.class))
+		{
+			return this;
+		}
+[/if]
+		else
+		{
+			return super.getAdapter(key);
+		}
+	}
+
+	/**
+	 * This accesses a cached version of the content outliner.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public IContentOutlinePage getContentOutlinePage()
+	{
+		if (contentOutlinePage == null)
+		{
+			// The content outline is just a tree.
+			//
+			class MyContentOutlinePage extends ContentOutlinePage
+			{
+[if (genModel.useClassOverrideAnnotation())]
+				@Override
+[/if]
+				public void createControl(Composite parent)
+				{
+					super.createControl(parent);
+					contentOutlineViewer = getTreeViewer();
+					contentOutlineViewer.addSelectionChangedListener(this);
+
+					// Set up the tree viewer.
+					//
+					contentOutlineViewer.setContentProvider(new AdapterFactoryContentProvider(adapterFactory));
+					contentOutlineViewer.setLabelProvider(new [genModel._AdapterFactoryLabelProvider()/](adapterFactory[if (genModel.useExtendedLabelProvider())], contentOutlineViewer[/if]));
+					contentOutlineViewer.setInput(editingDomain.getResourceSet());
+
+					// Make sure our popups work.
+					//
+					createContextMenuFor(contentOutlineViewer);
+
+					if (!editingDomain.getResourceSet().getResources().isEmpty())
+					{
+					  // Select the root object in the view.
+					  //
+					  contentOutlineViewer.setSelection(new StructuredSelection(editingDomain.getResourceSet().getResources().get(0)), true);
+					}
+				}
+
+[if (genModel.useClassOverrideAnnotation())]
+				@Override
+[/if]
+				public void makeContributions(IMenuManager menuManager, IToolBarManager toolBarManager, IStatusLineManager statusLineManager)
+				{
+					super.makeContributions(menuManager, toolBarManager, statusLineManager);
+					contentOutlineStatusLineManager = statusLineManager;
+				}
+
+[if (genModel.useClassOverrideAnnotation())]
+				@Override
+[/if]
+				public void setActionBars(IActionBars actionBars)
+				{
+					super.setActionBars(actionBars);
+					getActionBarContributor().shareGlobalActions(this, actionBars);
+				}
+			}
+
+			contentOutlinePage = new MyContentOutlinePage();
+
+			// Listen to selection so that we can handle it is a special way.
+			//
+			contentOutlinePage.addSelectionChangedListener
+				(new ISelectionChangedListener()
+				 {
+					 // This ensures that we handle selections correctly.
+					 //
+					 public void selectionChanged(SelectionChangedEvent event)
+					 {
+						 handleContentOutlineSelection(event.getSelection());
+					 }
+				 });
+		}
+
+		return contentOutlinePage;
+	}
+
+	/**
+	 * This accesses a cached version of the property sheet.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public IPropertySheetPage getPropertySheetPage()
+	{
+		if (propertySheetPage == null)
+		{
+			propertySheetPage =
+				new ExtendedPropertySheetPage(editingDomain)
+				{
+[if (genModel.useClassOverrideAnnotation())]
+					@Override
+[/if]
+					public void setSelectionToViewer([genModel._ListOfAnything()/] selection)
+					{
+						[genPackage.getEditorClassName()/].this.setSelectionToViewer(selection);
+						[genPackage.getEditorClassName()/].this.setFocus();
+					}
+
+[if (genModel.useClassOverrideAnnotation())]
+					@Override
+[/if]
+					public void setActionBars(IActionBars actionBars)
+					{
+						super.setActionBars(actionBars);
+						getActionBarContributor().shareGlobalActions(this, actionBars);
+					}
+				};
+			propertySheetPage.setPropertySourceProvider(new AdapterFactoryContentProvider(adapterFactory));
+		}
+
+		return propertySheetPage;
+	}
+
+	/**
+	 * This deals with how we want selection in the outliner to affect the other views.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void handleContentOutlineSelection(ISelection selection)
+	{
+[if (genPackage.multipleEditorPages)]
+		if (currentViewerPane != null && !selection.isEmpty() && selection instanceof IStructuredSelection)
+[else]
+		if (selectionViewer != null && !selection.isEmpty() && selection instanceof IStructuredSelection)
+[/if]
+		{
+			Iterator[if (genModel.useGenerics())]<?>[/if] selectedElements = ((IStructuredSelection)selection).iterator();
+			if (selectedElements.hasNext())
+			{
+				// Get the first selected element.
+				//
+				Object selectedElement = selectedElements.next();
+
+[if (genPackage.multipleEditorPages)]
+				// If it's the selection viewer, then we want it to select the same selection as this selection.
+				//
+				if (currentViewerPane.getViewer() == selectionViewer)
+				{
+					[genModel._ArrayListOfObject()/] selectionList = new [genModel._ArrayListOfObject()/]();
+					selectionList.add(selectedElement);
+					while (selectedElements.hasNext())
+					{
+						selectionList.add(selectedElements.next());
+					}
+
+					// Set the selection to the widget.
+					//
+					selectionViewer.setSelection(new StructuredSelection(selectionList));
+				}
+				else
+				{
+					// Set the input to the widget.
+					//
+					if (currentViewerPane.getViewer().getInput() != selectedElement)
+					{
+						currentViewerPane.getViewer().setInput(selectedElement);
+						currentViewerPane.setTitle(selectedElement);
+					}
+				}
+[else]
+				[genModel._ArrayListOfObject()/] selectionList = new [genModel._ArrayListOfObject()/]();
+				selectionList.add(selectedElement);
+				while (selectedElements.hasNext())
+				{
+					selectionList.add(selectedElements.next());
+				}
+
+				// Set the selection to the widget.
+				//
+				selectionViewer.setSelection(new StructuredSelection(selectionList));
+[/if]
+			}
+		}
+	}
+
+	/**
+	 * This is for implementing {@link IEditorPart} and simply tests the command stack.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useClassOverrideAnnotation())]
+	@Override
+[/if]
+	public boolean isDirty()
+	{
+		return ((BasicCommandStack)editingDomain.getCommandStack()).isSaveNeeded();
+	}
+
+	/**
+	 * This is for implementing {@link IEditorPart} and simply saves the model file.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useClassOverrideAnnotation())]
+	@Override
+[/if]
+	public void doSave(IProgressMonitor progressMonitor)
+	{
+		// Save only resources that have actually changed.
+		//
+		final [genModel._MapOfObjectToObject()/] saveOptions = new [genModel._HashMapOfObjectToObject()/]();
+[if (genModel.runtimeVersion <> GenRuntimeVersion::EMF22)]
+		saveOptions.put(Resource.OPTION_SAVE_ONLY_IF_CHANGED, Resource.OPTION_SAVE_ONLY_IF_CHANGED_MEMORY_BUFFER);
+[/if]
+
+		// Do the work within an operation because this is a long running activity that modifies the workbench.
+		//
+		[genModel.importedOperationClassName()/] operation =
+			new [genModel.importedOperationClassName()/]()
+			{
+				// This is the method that gets invoked when the operation runs.
+				//
+[if (not genModel.richClientPlatform and genModel.useClassOverrideAnnotation())]
+				@Override
+[/if]
+				public void [genModel.operationMethodName()/](IProgressMonitor monitor)
+				{
+					// Save the resources to the file system.
+					//
+					boolean first = true;
+[if (genModel.useGenerics())]
+					for (Resource resource : editingDomain.getResourceSet().getResources())
+[else]
+					for (Iterator i = editingDomain.getResourceSet().getResources().iterator(); i.hasNext(); )
+[/if]
+					{
+[if (not genModel.useGenerics())]
+						Resource resource = (Resource)i.next();
+[/if]
+						if ((first || !resource.getContents().isEmpty() || isPersisted(resource)) && !editingDomain.isReadOnly(resource))
+						{
+							try
+							{
+[if (genModel.runtimeVersion = GenRuntimeVersion::EMF22 or genModel.runtimeVersion = GenRuntimeVersion::EMF23)]
+								resource.save(saveOptions);
+								savedResources.add(resource);
+[else]
+								long timeStamp = resource.getTimeStamp();
+								resource.save(saveOptions);
+								if (resource.getTimeStamp() != timeStamp)
+								{
+									savedResources.add(resource);
+								}
+[/if]
+							}
+							catch (Exception exception)
+							{
+								resourceToDiagnosticMap.put(resource, analyzeResourceProblems(resource, exception));
+							}
+							first = false;
+						}
+					}
+				}
+			};
+
+		updateProblemIndication = false;
+		try
+		{
+			// This runs the options, and shows progress.
+			//
+			new ProgressMonitorDialog(getSite().getShell()).run(true, false, operation);
+
+			// Refresh the necessary state.
+			//
+			((BasicCommandStack)editingDomain.getCommandStack()).saveIsDone();
+			firePropertyChange(IEditorPart.PROP_DIRTY);
+		}
+		catch (Exception exception)
+		{
+			// Something went wrong that shouldn't.
+			//
+			[genPackage.getImportedEditorPluginClassName()/].INSTANCE.log(exception);
+		}
+		updateProblemIndication = true;
+		updateProblemIndication();
+	}
+
+	/**
+	 * This returns whether something has been persisted to the URI of the specified resource.
+	 * The implementation uses the URI converter from the editor's resource set to try to open an input stream. 
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected boolean isPersisted(Resource resource)
+	{
+		boolean result = false;
+		try
+		{
+			InputStream stream = editingDomain.getResourceSet().getURIConverter().createInputStream(resource.getURI());
+			if (stream != null)
+			{
+				result = true;
+				stream.close();
+			}
+		}
+		catch (IOException e)
+		{
+			// Ignore
+		}
+		return result;
+	}
+
+	/**
+	 * This always returns true because it is not currently supported.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useClassOverrideAnnotation())]
+	@Override
+[/if]
+	public boolean isSaveAsAllowed()
+	{
+		return true;
+	}
+
+	/**
+	 * This also changes the editor's input.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useClassOverrideAnnotation())]
+	@Override
+[/if]
+	public void doSaveAs()
+	{
+[if (genModel.richClientPlatform)]
+  [if (genModel.richAjaxPlatform)]
+		new [genModel.getImportedName('org.eclipse.emf.common.ui.dialogs.ResourceDialog')/](getSite().getShell(), null, SWT.NONE)
+			{
+[if (genModel.useClassOverrideAnnotation())]
+				@Override
+[/if]
+				protected boolean isSave()
+				{
+					return true;
+				}
+
+[if (genModel.useClassOverrideAnnotation())]
+				@Override
+[/if]
+				protected boolean processResources()
+				{
+					List[if (genModel.useGenerics())]<URI>[/if] uris = getURIs();
+					if (uris.size() > 0)
+					{
+						URI uri = [if (not genModel.useGenerics())](URI)[/if]uris.get(0);
+						doSaveAs(uri, new [genModel.getImportedName('org.eclipse.emf.common.ui.URIEditorInput')/](uri));
+						return true;
+					}
+					else
+					{
+						return false;
+					}
+				}
+			}.open();
+  [else]
+		String[genModel.genSquareBrackets('')/] filters = [if (not genModel.useGenerics())](String[genModel.genSquareBrackets('')/])[/if]FILE_EXTENSION_FILTERS.toArray(new String[genModel.genSquareBrackets('FILE_EXTENSION_FILTERS.size()')/]);
+		String[genModel.genSquareBrackets('')/] files = [genModel.getQualifiedEditorAdvisorClassName()/].openFilePathDialog(getSite().getShell(), [genModel.getImportedName('org.eclipse.swt.SWT')/].SAVE, filters);
+		if (files.length > 0)
+		{
+			URI uri = URI.createFileURI(files[genModel.genSquareBrackets('0')/]);
+			doSaveAs(uri, new [genModel.getImportedName('org.eclipse.emf.common.ui.URIEditorInput')/](uri));
+		}
+  [/if]
+[else]
+		SaveAsDialog saveAsDialog = new SaveAsDialog(getSite().getShell());
+		saveAsDialog.open();
+		IPath path = saveAsDialog.getResult();
+		if (path != null)
+		{
+			IFile file = ResourcesPlugin.getWorkspace().getRoot().getFile(path);
+			if (file != null)
+			{
+				doSaveAs(URI.createPlatformResourceURI(file.getFullPath().toString(), true), new FileEditorInput(file));
+			}
+		}
+[/if]
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected void doSaveAs(URI uri, IEditorInput editorInput)
+	{
+		([if (not genModel.useGenerics())](Resource)[/if]editingDomain.getResourceSet().getResources().get(0)).setURI(uri);
+		setInputWithNotify(editorInput);
+		setPartName(editorInput.getName());
+		IProgressMonitor progressMonitor =
+			getActionBars().getStatusLineManager() != null ?
+				getActionBars().getStatusLineManager().getProgressMonitor() :
+				new NullProgressMonitor();
+		doSave(progressMonitor);
+	}
+[if (not genModel.richClientPlatform)]
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void gotoMarker(IMarker marker)
+	{
+		try
+		{
+			if (marker.getType().equals(EValidator.MARKER))
+			{
+				String uriAttribute = marker.getAttribute(EValidator.URI_ATTRIBUTE, null);
+				if (uriAttribute != null)
+				{
+					URI uri = URI.createURI(uriAttribute);
+					EObject eObject = editingDomain.getResourceSet().getEObject(uri, true);
+					if (eObject != null)
+					{
+					  setSelectionToViewer(Collections.singleton(editingDomain.getWrapper(eObject)));
+					}
+				}
+			}
+		}
+		catch (CoreException exception)
+		{
+			[genPackage.getImportedEditorPluginClassName()/].INSTANCE.log(exception);
+		}
+	}
+[/if]
+
+	/**
+	 * This is called during startup.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useClassOverrideAnnotation())]
+	@Override
+[/if]
+	public void init(IEditorSite site, IEditorInput editorInput)
+	{
+		setSite(site);
+		setInputWithNotify(editorInput);
+		setPartName(editorInput.getName());
+		site.setSelectionProvider(this);
+		site.getPage().addPartListener(partListener);
+[if (not genModel.richClientPlatform)]
+		ResourcesPlugin.getWorkspace().addResourceChangeListener(resourceChangeListener, IResourceChangeEvent.POST_CHANGE);
+[/if]
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useClassOverrideAnnotation())]
+	@Override
+[/if]
+	public void setFocus()
+	{
+[if (genPackage.multipleEditorPages)]
+		if (currentViewerPane != null)
+		{
+			currentViewerPane.setFocus();
+		}
+		else
+		{
+			getControl(getActivePage()).setFocus();
+		}
+[else]
+		getControl(getActivePage()).setFocus();
+[/if]
+	}
+
+	/**
+	 * This implements {@link org.eclipse.jface.viewers.ISelectionProvider}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void addSelectionChangedListener(ISelectionChangedListener listener)
+	{
+		selectionChangedListeners.add(listener);
+	}
+
+	/**
+	 * This implements {@link org.eclipse.jface.viewers.ISelectionProvider}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void removeSelectionChangedListener(ISelectionChangedListener listener)
+	{
+		selectionChangedListeners.remove(listener);
+	}
+
+	/**
+	 * This implements {@link org.eclipse.jface.viewers.ISelectionProvider} to return this editor's overall selection.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public ISelection getSelection()
+	{
+		return editorSelection;
+	}
+
+	/**
+	 * This implements {@link org.eclipse.jface.viewers.ISelectionProvider} to set this editor's overall selection.
+	 * Calling this result will notify the listeners.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void setSelection(ISelection selection)
+	{
+		editorSelection = selection;
+
+[if (genModel.useGenerics())]
+		for (ISelectionChangedListener listener : selectionChangedListeners)
+[else]
+		for (Iterator listeners = selectionChangedListeners.iterator(); listeners.hasNext(); )
+[/if]
+		{
+[if (not genModel.useGenerics())]
+			ISelectionChangedListener listener = (ISelectionChangedListener)listeners.next();
+[/if]
+			listener.selectionChanged(new SelectionChangedEvent(this, selection));
+		}
+		setStatusLineManager(selection);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void setStatusLineManager(ISelection selection)
+	{
+		IStatusLineManager statusLineManager = currentViewer != null && currentViewer == contentOutlineViewer ?
+			contentOutlineStatusLineManager : getActionBars().getStatusLineManager();
+
+		if (statusLineManager != null)
+		{
+			if (selection instanceof IStructuredSelection)
+			{
+				[genModel._CollectionOfAnything()/] collection = ((IStructuredSelection)selection).toList();
+				switch (collection.size())
+				{
+					case 0:
+					{
+						statusLineManager.setMessage(getString("_UI_NoObjectSelected"));[genModel.getNonNLS()/]
+						break;
+					}
+					case 1:
+					{
+						String text = new AdapterFactoryItemDelegator(adapterFactory).getText(collection.iterator().next());
+						statusLineManager.setMessage(getString("_UI_SingleObjectSelected", text));[genModel.getNonNLS()/]
+						break;
+					}
+					default:
+					{
+						statusLineManager.setMessage(getString("_UI_MultiObjectSelected", Integer.toString(collection.size())));[genModel.getNonNLS()/]
+						break;
+					}
+				}
+			}
+			else
+			{
+				statusLineManager.setMessage("");[genModel.getNonNLS()/]
+			}
+		}
+	}
+
+	/**
+	 * This looks up a string in the plugin's plugin.properties file.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private static String getString(String key)
+	{
+		return [genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString(key);
+	}
+
+	/**
+	 * This looks up a string in plugin.properties, making a substitution.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private static String getString(String key, Object s1)
+	{
+		return [genPackage.getImportedEditorPluginClassName()/].INSTANCE.getString(key, new Object [genModel.genSquareBrackets('')/] { s1 });
+	}
+
+	/**
+	 * This implements {@link org.eclipse.jface.action.IMenuListener} to help fill the context menus with contributions from the Edit menu.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void menuAboutToShow(IMenuManager menuManager)
+	{
+		((IMenuListener)getEditorSite().getActionBarContributor()).menuAboutToShow(menuManager);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public EditingDomainActionBarContributor getActionBarContributor()
+	{
+		return (EditingDomainActionBarContributor)getEditorSite().getActionBarContributor();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public IActionBars getActionBars()
+	{
+		return getActionBarContributor().getActionBars();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public AdapterFactory getAdapterFactory()
+	{
+		return adapterFactory;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+[if (genModel.useClassOverrideAnnotation())]
+	@Override
+[/if]
+	public void dispose()
+	{
+		updateProblemIndication = false;
+
+[if (not genModel.richClientPlatform)]
+		ResourcesPlugin.getWorkspace().removeResourceChangeListener(resourceChangeListener);
+
+[/if]
+		getSite().getPage().removePartListener(partListener);
+
+		adapterFactory.dispose();
+
+		if (getActionBarContributor().getActiveEditor() == this)
+		{
+			getActionBarContributor().setActiveEditor(null);
+		}
+
+		if (propertySheetPage != null)
+		{
+			propertySheetPage.dispose();
+		}
+
+		if (contentOutlinePage != null)
+		{
+			contentOutlinePage.dispose();
+		}
+
+		super.dispose();
+	}
+
+	/**
+	 * Returns whether the outline view should be presented to the user.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected boolean showOutlineView()
+	{
+		return [genPackage.multipleEditorPages/];
+	}
+}
+[/template]
+
+[query public operationMethodName(genModel : GenModel) : String = if genModel.richClientPlatform then'run' else 'execute' endif/]
+
+[template public importedOperationClassName (genModel : GenModel)]
+[if genModel.richClientPlatform][genModel.getImportedName('org.eclipse.jface.operation.IRunnableWithProgress')/][else][genModel.getImportedName('org.eclipse.ui.actions.WorkspaceModifyOperation')/][/if]
+[/template]
+
+[query public _ArrayListOfObject(genModel : GenModel) : String = if genModel.useGenerics() then 'ArrayList<Object>' else 'ArrayList' endif/]
+
+[query public _ArrayListOfSelectionChangedListener(genModel : GenModel) : String = if genModel.useGenerics() then 'ArrayList<ISelectionChangedListener>' else 'ArrayList' endif/]
+
+[query public _CollectionOfSelectionChangedListener(genModel : GenModel) : String = if genModel.useGenerics() then 'Collection<ISelectionChangedListener>' else 'Collection' endif/]
+
+[query public _ArrayListOfResource(genModel : GenModel) : String = if genModel.useGenerics() then 'ArrayList<Resource>' else 'ArrayList' endif/]
+
+[query public _CollectionOfResource(genModel : GenModel) : String = if genModel.useGenerics() then 'Collection<Resource>' else 'Collection' endif/]
+
+[query public _MapOfResourceToDiagnostic(genModel : GenModel) : String = if genModel.useGenerics() then 'Map<Resource, Diagnostic>' else 'Map' endif/]
+
+[query public _HashMapOfResourceToBoolean(genModel : GenModel) : String = if genModel.useGenerics() then 'HashMap<Resource, Boolean>' else 'HashMap' endif/]
+
+[query public _MapOfObjectToObject(genModel : GenModel) : String = if genModel.useGenerics() then 'Map<Object, Object>' else 'Map' endif/]
+
+[query public _HashMapOfObjectToObject(genModel : GenModel) : String = if genModel.useGenerics() then 'HashMap<Object, Object>' else 'HashMap' endif/]
+
+[query public _LinkedHashMapOfResourceToDiagnostic(genModel : GenModel) : String = if genModel.useGenerics() then 'LinkedHashMap<Resource, Diagnostic>' else 'LinkedHashMap' endif/]
+
+[query public _CollectionOfAnything(genModel : GenModel) : String = if genModel.useGenerics() then 'Collection<?>' else 'Collection' endif/]
+
+[query public _ListOfAnything(genModel : GenModel) : String = if genModel.useGenerics() then 'List<?>' else 'List' endif/]
+
+[query public useExtendedLabelProvider(genModel : GenModel) : Boolean = genModel.fontProviders or genModel.colorProviders/]
+
+[query public _AdapterFactoryLabelProvider(genModel : GenModel) : String = if genModel.fontProviders and genModel.colorProviders then 'AdapterFactoryLabelProvider.FontAndColorProvider' else if genModel.fontProviders then 'AdapterFactoryLabelProvider.FontProvider' else if genModel.colorProviders then 'AdapterFactoryLabelProvider.ColorProvider' else 'AdapterFactoryLabelProvider' endif endif endif/]
+
+[query public _ArrayListOfString(genModel : GenModel) : String = if genModel.useGenerics() then 'ArrayList<String>' else 'ArrayList' endif/]
+
+[query public _ListOfString(genModel : GenModel) : String = if genModel.useGenerics() then 'List<String>' else 'List' endif/]
+

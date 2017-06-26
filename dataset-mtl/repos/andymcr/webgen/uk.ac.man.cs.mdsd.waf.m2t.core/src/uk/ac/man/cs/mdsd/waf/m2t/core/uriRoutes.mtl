@@ -1,0 +1,117 @@
+[comment encoding = UTF-8 /]
+[module uriRoutes(
+	'http://cs.manchester.ac.uk/mdsd/API',
+	'http://cs.manchester.ac.uk/mdsd/ObjectRelationalMapping',
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::orm::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::featureProperties/]
+
+
+[query public keyEntity(entity : EntityOrView) : EntityOrView
+	= if entity.attributeKeys()->notEmpty() then
+			entity
+		else if entity.isContained() then
+			entity.container().keyEntity()
+		else
+			null
+		endif endif
+/]
+
+[query public parentEntity(entity : EntityOrView) : EntityOrView
+	= let keyEntity : EntityOrView = entity.keyEntity()
+		in if keyEntity.oclIsUndefined() then
+				null
+			else if not keyEntity.isContained() then
+				null
+			else
+				keyEntity.container().keyEntity()
+			endif endif
+/]
+
+[query private parentUriPathKeys(entity : EntityOrView) : Sequence(Attribute)
+	= let parentEntity : EntityOrView = entity.parentEntity()
+		in if not parentEntity.oclIsUndefined() then
+				parentEntity.uriPathKeys()
+			else
+				Sequence{}
+			endif
+/]
+
+
+[query public uriPathKeys(entity : EntityOrView) : Sequence(Attribute)
+	= let keyEntity : EntityOrView = entity.keyEntity()
+		in let localKeys : Sequence(Attribute) = keyEntity.attributeKeys()
+			in let parentKeys : Sequence(Attribute) = entity.parentUriPathKeys()
+				in if localKeys->isEmpty() then
+						parentKeys
+					else
+						localKeys->iterate(k; j : Sequence(Attribute) = parentKeys | j->append(k))
+					endif
+/]
+
+[query public hasRouteParameters(entity : EntityOrView) : Boolean
+	= entity.uriPathKeys()->notEmpty()
+/]
+
+
+[query public selectType(unit : ContentUnit) : EntityOrView
+	= if unit.oclIsKindOf(SelectableUnit) then
+			let selectableUnit : SelectableUnit = unit.oclAsType(SelectableUnit)
+			in if selectableUnit.oclIsKindOf(IndexUnit) or selectableUnit.oclIsKindOf(ImageUnit) then
+					if not selectableUnit.selectionType.oclIsUndefined() then
+						selectableUnit.selectionType.keyEntity()
+					else
+						selectableUnit.oclAsType(DynamicUnit).contentType().parentEntity()
+					endif
+				else if not selectableUnit.selectionType.oclIsUndefined() then
+						selectableUnit.selectionType.keyEntity()
+				else
+					null
+				endif endif
+		else if unit.oclIsKindOf(DynamicUnit) then
+			unit.oclAsType(DynamicUnit).contentType()
+		else
+			null
+		endif endif
+/]
+
+[query private uriPathKeys(unit : ContentUnit) : Sequence(Attribute)
+	= if not unit.selectType().oclIsUndefined() then
+				unit.selectType().uriPathKeys()
+			else
+				Sequence{}
+			endif
+/]
+
+
+[query public uriCommonPathKeys(page : Page) : Sequence(Attribute)
+	= if page.units->isEmpty() then
+			Sequence{}
+		else if page.units->size() = 1 then
+			page.units->first().uriPathKeys()
+		else
+			page.units->subOrderedSet(2, page.units->size())->iterate(u;
+				common : Sequence(Attribute) = page.units->first().uriPathKeys()
+				| common->select(k | u.uriPathKeys()->includes(k)))
+		endif endif
+/]
+
+
+[query private parentUriPathKeys(resource : Resource) : Sequence(Attribute)
+	= if not resource.parentResource.oclIsUndefined() then
+				resource.parentResource.uriPathKeys()
+			else
+				Sequence{}
+			endif
+/]
+
+[query public uriPathKeys(resource : Resource) : Sequence(Attribute)
+	= let keyEntity : EntityOrView = resource.service.serves.keyEntity()
+		in let localKeys : Sequence(Attribute) = keyEntity.attributeKeys()
+			in let parentKeys : Sequence(Attribute) = resource.parentUriPathKeys()
+				in if localKeys->isEmpty() then
+						parentKeys
+					else
+						localKeys->iterate(k; j : Sequence(Attribute) = parentKeys | j->append(k))
+					endif
+/]

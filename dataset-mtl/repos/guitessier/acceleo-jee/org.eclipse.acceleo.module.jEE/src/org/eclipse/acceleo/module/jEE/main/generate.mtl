@@ -1,0 +1,133 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generate.
+ */]
+[module generate('http://www.eclipse.org/uml2/3.0.0/UML')/]
+
+[import beanServices /]
+[**
+ * The documentation of the template generateElement.
+ * @param aClass
+ */]
+
+[template public generateElement(aClass : Class)]
+
+[comment @main/]
+[if (aClass.hasStereotypeTest('Entity'))]
+[file (aClass.classFileName(), false, 'UTF-8')]
+/**
+ * @author TimGroup
+ * Ne pas modifier ce module est généré et supporté par le MDA.
+ */
+package [aClass.concatainingPackages().name->sep('.')/]
+
+import javax.persistence.Entity;
+import javax.persistence.Table;
+/* import des attributs **/
+[for (a : Property | aClass.attribute)]
+import [a.class.concatainingPackages().name->sep('.')/].[a.type.name/];
+[/for]
+
+@javax.persistence.Entity
+@javax.persistence.Table(
+	name="[aClass.getValue(aClass.getAppliedStereotype('RootElement::Entity'),'tableName')/]"
+)
+@javax.persistence.NamedQuery(
+    name = "[aClass.name.toUpperFirst()/].findAll",
+    query = "SELECT [aClass.name.first(1).toLower()/] FROM [aClass.name.toUpperFirst()/] AS [aClass.name.first(1).toLower()/]"
+)
+public class [aClass.name.toUpperFirst()/] implements Serializable{
+	/** Attributs **/
+	[for (a : Property | aClass.attribute)]
+	private [a.type.name/] [a.name/];
+	[/for]
+	[comment]Association end bidirectionelle[/comment]
+	[for (p : Property | aClass.getAssociations()->select(navigableOwnedEnd->select(type <> aClass)->size() = 1).navigableOwnedEnd->select(type <> aClass)->asOrderedSet())]
+	private [p.type.name/] [p.name/];
+	[/for]
+	/** Accesseurs relajtions**/
+	[for (p : Property | aClass.getAssociations()->select(navigableOwnedEnd->select(type <> aClass)->size() = 1).navigableOwnedEnd->select(type <> aClass)->asOrderedSet())]
+	
+		[if (not p.hasStereotypeTest('JoinColumn'))]
+			[if (p.association.memberEnd->at(1).upper=-1 and p.association.memberEnd->at(2).upper=1) ]
+	@javax.persistence.OneToMany(mappedBy="[p.association.memberEnd->at(1).name/]")
+			[/if]
+			[if (p.association.memberEnd->at(1).upper=-1 and p.association.memberEnd->at(2).upper=-1) ]
+	@javax.persistence.ManyToMany()
+			[/if]
+			[if (p.association.memberEnd->at(1).upper=1 and p.association.memberEnd->at(2).upper=-1) ]
+	@javax.persistence.ManyToOne(mappedBy="[p.association.memberEnd->at(1).name/])
+			[/if]
+			[if (p.association.memberEnd->at(1).upper=1 and p.association.memberEnd->at(2).upper=1) ]
+	@javax.persistence.OneToOne(mappedBy="[p.association.memberEnd->at(1).name/])
+			[/if]
+		[/if]
+	public [p.type.name/] get[p.name.toUpperFirst()/](){
+		return this.[p.name/];
+	}
+
+	public void set[p.name.toUpperFirst()/]([p.type.name/] _[p.name/]){
+		return this.[p.name/]=_[p.name/];
+	}
+
+	[/for]
+	
+	/** Accesseurs **/
+	[for (a : Property | aClass.attribute)]
+		[comment]Gestion des associations[/comment]
+		[if( not a.association->isEmpty())]
+			[if (a.hasStereotypeTest('JoinColumn'))]
+				[if (a.association.memberEnd->at(1).upper=-1 and a.association.memberEnd->at(2).upper=1) ]
+	@javax.persistence.OneToMany(fetch = FetchType.[a.getValue(a.getAppliedStereotype('RootElement::JoinColumn'),'fetchType').oclAsType(uml::EnumerationLiteral).name/])
+				[/if]
+				[if (a.association.memberEnd->at(1).upper=-1 and a.association.memberEnd->at(2).upper=-1) ]
+	@javax.persistence.ManyToMany(fetch = FetchType.[a.getValue(a.getAppliedStereotype('RootElement::JoinColumn'),'fetchType').oclAsType(uml::EnumerationLiteral).name/])
+				[/if]
+				[if (a.association.memberEnd->at(1).upper=1 and a.association.memberEnd->at(2).upper=-1) ]
+	@javax.persistence.ManyToOne(fetch = FetchType.[a.getValue(a.getAppliedStereotype('RootElement::JoinColumn'),'fetchType').oclAsType(uml::EnumerationLiteral).name/])
+				[/if]
+				[if (a.association.memberEnd->at(1).upper=1 and a.association.memberEnd->at(2).upper=1) ]
+	@javax.persistence.OneToOne(optional="[(a.lower=0)/]")
+				[/if]
+	@javax.persistence.JoinColumn(name = "[a.getValue(a.getAppliedStereotype('RootElement::JoinColumn'),'name')/]", foreignKey = @javax.persistence.ForeignKey(name = "[a.getValue(a.getAppliedStereotype('RootElement::JoinColumn'),'foreignKeyName')/]"),unique=[a.isUnique/],nullable=[(a.lower=0)/])
+				[/if]
+		[else]
+			[if (a.hasStereotypeTest('Column'))]
+	@javax.persistence.Column(name = "[a.getValue(a.getAppliedStereotype('RootElement::Column'),'name')/]",insertable = true,updatable = true,length = [a.getValue(a.getAppliedStereotype('RootElement::Column'),'length')/],unique=[a.isUnique/],nullable=[(a.lower=0)/])
+    @org.hibernate.validator.Size(max = [a.getValue(a.getAppliedStereotype('RootElement::Column'),'length')/])
+			[/if]
+		[/if]
+		[if (a.hasStereotypeTest('Id'))]
+	@javax.persistence.Id
+	@javax.persistence.GeneratedValue(
+        strategy = GenerationType.[a.getValue(a.getAppliedStereotype('RootElement::Id'),'generatorType').oclAsType(uml::EnumerationLiteral).name/][if (not a.getValue(a.getAppliedStereotype('RootElement::Id'),'generatorName')->isEmpty())], generator = "[a.getValue(a.getAppliedStereotype('RootElement::Id'),'generatorName')/]" [/if]
+    )
+			[if (a.getValue(a.getAppliedStereotype('RootElement::Id'),'generatorSource')->notEmpty() ) ]
+	@javax.persistence.SequenceGenerator(
+		[if (not a.getValue(a.getAppliedStereotype('RootElement::Id'),'generatorName')->isEmpty())]name = "[a.getValue(a.getAppliedStereotype('RootElement::Id'),'generatorName')/]"[/if]
+        sequenceName = "[a.getValue(a.getAppliedStereotype('RootElement::Id'),'generatorSource')/]",
+        initialValue = [a.getValue(a.getAppliedStereotype('RootElement::Id'),'generatorInitialValue')/]",
+        allocationSize = [a.getValue(a.getAppliedStereotype('RootElement::Id'),'generatorAllocationSize')/]"
+    )
+			[/if]
+		[else]
+		[/if]
+	public [a.type.name/] get[a.name.toUpperFirst()/](){
+		return this.[a.name/];
+	}
+
+	public void set[a.name.toUpperFirst()/]([a.type.name/] _[a.name/]){
+		return this.[a.name/]=_[a.name/];
+	}
+
+	[/for]
+}
+[/file]
+[/if]
+[/template]
+
+[query public classFileName(aClass:Class) : String = aClass.qualifiedName().replaceAll('\\.','/').concat('.java')/]
+
+[query public qualifiedName(aClass:Class) : String = aClass.concatainingPackages().name->sep('.')->including('.')->including(aClass.name)->toString()/]
+
+[query public concatainingPackages(aClass:Class) : Sequence (Package) = aClass.ancestors(Package)->reject(oclIsKindOf(Model))->reverse()/]

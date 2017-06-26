@@ -1,0 +1,160 @@
+[comment encoding = UTF-8 /]
+[module baselineTemplateMainModule('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import commonQuery/]
+[import org::ijis::gra::uml::m2t::baselinetemplate::schemas::SIP_RSWS_1.2::_arg_wsdlName_wsdl/]
+[import org::ijis::gra::uml::m2t::baselinetemplate::schemas::SIP_RSWS_1.2::wsdlpolicy_wsdl/]
+[import org::ijis::gra::uml::m2t::baselinetemplate::schemas::SIP_RSWS_1.2::Policy_wsdl/]
+[import org::ijis::gra::uml::m2t::baselinetemplate::catalog_html/]
+[import org::ijis::gra::uml::m2t::baselinetemplate::catalog_xml/]
+[import org::ijis::gra::uml::m2t::baselinetemplate::metadata_xlsx/]
+[import org::ijis::gra::uml::m2t::baselinetemplate::metadata_xml/]
+[import org::ijis::gra::uml::m2t::baselinetemplate::metadata_xsd/]
+[import org::ijis::gra::uml::m2t::baselinetemplate::readme_mht/]
+
+
+[template public baselineTemplateMainModule(root : Model)]
+	[comment @main /]
+[if(root.nestingPackage.oclIsUndefined())]
+[runSSP(root)/]
+[/if]
+[/template]
+
+[template public runSSP(mpd : Model){
+	reportedModel:Model=mpd.nestedPackage->select(p|p.oclIsKindOf(Model) and p.isEditable() and p.packagedElement->select(e|e.oclIsKindOf(Collaboration))->notEmpty()).oclAsType(Model)->asSequence()->first();
+	wordFolder:String='../temp~/SDD/word/';
+	headerFile:String=wordFolder+'header2.xml';
+	relationshipsFile:String=wordFolder+'_rels/document.xml.rels';
+	documentFile:String=wordFolder+'document.xml';
+	catalogHtmlFile:String='catalog.html';
+	appliedProfiles:Sequence(Profile)=reportedModel.getAllAppliedProfiles()->asSequence();
+	graProfile:Profile=getGraProfile(appliedProfiles);
+	mpdProfile:Profile=getMpdProfile(appliedProfiles);
+	pimProfile:Profile=getPimProfile(appliedProfiles);
+	wsdlProfile:Profile=getWsdlProfile(appliedProfiles);
+	mpdStereotype:Stereotype=mpdProfile.mpdStereotype();
+	sspStereotype:Stereotype=graProfile.sspStereotype();
+	businessContextStereotype:Stereotype=graProfile.businessContextStereotype();
+	serviceIdentificationStereotype:Stereotype=graProfile.serviceIdentificationStereotype();
+	organizationStereotype:Stereotype=graProfile.organizationStereotype();
+	serviceCapabilityStereotype:Stereotype=graProfile.serviceCapabilityStereotype();
+	ServiceInterfaceSpecificationStereotype:Stereotype=graProfile.ServiceInterfaceSpecificationStereotype();
+	ServiceLevelAgreementsStereotype:Stereotype=graProfile.ServiceLevelAgreementsStereotype();
+	WsdlDefinitionsStereotype:Stereotype=wsdlProfile.WsdlDefinitionsStereotype();
+	InformationModelStereotype:Stereotype=pimProfile.InformationModelStereotype();
+
+	ssp:Collaboration=reportedModel.getSsp(sspStereotype);
+	serviceLevelAgreements:Collaboration=ssp.serviceLevelAgreements(ServiceLevelAgreementsStereotype);
+	serviceIdentification:Component=ssp.serviceIdentification(serviceIdentificationStereotype);
+	dependentServiceIdentifications:Sequence(Component)=ssp.dependentServiceIdentifications(serviceIdentificationStereotype);
+	businessContext:Component=ssp.businessContext(businessContextStereotype);
+	businessScenarioUseCase:Sequence(UseCase)=ssp.businessScenarioUseCase();
+	mpdComponents:Sequence(Component)=ssp.mpdComponents(mpdStereotype);
+	serviceInterfaceSpecifications:Sequence(Interface)=serviceIdentification.serviceInterfaceSpecifications(ServiceInterfaceSpecificationStereotype);
+	wsdlDefinitions:Sequence(Artifact)=ssp.wsdlDefinitions(WsdlDefinitionsStereotype);
+
+	sspPackage:Package=ssp.getNearestPackage();
+
+	Service_Name:String=serviceIdentification.getServiceName(serviceIdentificationStereotype);
+	Service_Abbreviation:String=serviceIdentification.getServiceAbbreviation(serviceIdentificationStereotype);
+	Service_URI:String=serviceIdentification.getServiceURI(serviceIdentificationStereotype);
+	Service_Version:String=ssp.getServiceVersion(sspStereotype);
+
+	organizations:Sequence(Actor)=ssp.getOrganizations(organizationStereotype);
+	Name_of_Organization:String=organizations.getNameOfOrganization()->asSequence()->first();
+	Month_Year:String=ssp.getMonthYear(sspStereotype);
+
+	Purpose:String=ssp.getPurpose(sspStereotype);
+	Scope:String=ssp.getScope(sspStereotype);
+	primaryServiceParticipant:Component=ssp.primaryServiceParticipant();
+	lifecycleStatus:String=ssp.getLifecycleStatus(sspStereotype);
+	creationDate:String=ssp.getCreationDate(sspStereotype);
+
+	Capabilities:Sequence(String)=primaryServiceParticipant.getServiceCapability(serviceCapabilityStereotype).getCapabilityDescriptionText(serviceCapabilityStereotype);
+	PoliciesAndContracts:String=serviceLevelAgreements.getPoliciesAndContracts(ServiceLevelAgreementsStereotype);
+
+	Real_World_Effects:Sequence(String)=ssp.getRealWorldEffects(sspStereotype);
+	Summary:String=ssp.getSummary(sspStereotype);
+	Description:String=ssp.getDescription(sspStereotype);
+	SecurityClassification:String=ssp.getSecurityClassification(sspStereotype);
+	ServiceSpecificationPackageVersion:String=Service_Version;
+	ServiceAssumptions:String=mpd.getServiceAssumptions();
+	wsdlServices:Sequence(Component)=wsdlDefinitions.manifestation.utilizedElement
+		->select(c|c.oclIsKindOf(Component)).oclAsType(Component);
+	wsdlPolicies:Sequence(Expression)=wsdlDefinitions.ownedRule.policyClauses();
+	providedWsdlPortTypes:Sequence(Interface)=wsdlServices.provided;
+	requiredWsdlPortTypes:Sequence(Interface)=wsdlServices.required;
+	providedWsdlOperations:Sequence(Operation)=providedWsdlPortTypes.ownedOperation;
+	requiredWsdlOperations:Sequence(Operation)=requiredWsdlPortTypes.ownedOperation;
+	wsdlInputMessages:Sequence(Class)=providedWsdlOperations.incomingParameter()
+		->union(requiredWsdlOperations.outgoingParameter()).getAction_Message();
+	wsdlOutputMessages:Sequence(Class)=providedWsdlOperations.outgoingParameter()
+		->union(requiredWsdlOperations.incomingParameter()).getAction_Message();
+	wsdlDataInputs:Sequence(Property)=wsdlInputMessages.ownedAttribute.getMessagePartUsedElement();
+	wsdlDataOutputs:Sequence(Property)=wsdlOutputMessages.ownedAttribute.getMessagePartUsedElement();
+	actions:Sequence(Operation)=providedWsdlOperations->union(requiredWsdlOperations);
+	schemas:Sequence(Package)=wsdlDataInputs->union(wsdlDataOutputs).getNearestPackage()->asSet()->asSequence();
+
+	DataProvenance:String=mpd.getDataProvenance();
+
+	ServiceInteroperabilityRequirements:String=mpd.getServiceInteroperabilityRequirements();
+	ServiceInteractionRequirements:String=mpd.getServiceInteractionRequirements();
+
+	ServiceConsumerAuthenticationMandatory:String=getServiceConsumerAuthenticationMandatory(wsdlPolicies);
+	ServiceConsumerAuthenticationNotes:String=mpd.getServiceConsumerAuthenticationNotes(wsdlPolicies);
+	ServiceConsumerAuthorizationMandatory:String=getServiceConsumerAuthorizationMandatory(wsdlPolicies);
+	ServiceConsumerAuthorizationNotes:String=getServiceConsumerAuthorizationNotes(wsdlPolicies);
+	IdentityAndAttributeAssertionTransmissionMandatory:String=getIdentityAndAttributeAssertionTransmissionMandatory(wsdlPolicies);
+	IdentityAndAttributeAssertionTransmissionNotes:String=getIdentityAndAttributeAssertionTransmissionNotes(wsdlPolicies);
+	ServiceAuthenticationMandatory:String=getServiceAuthenticationMandatory(wsdlPolicies);
+	ServiceAuthenticationNotes:String=getServiceAuthenticationNotes(wsdlPolicies);
+	MessageNonrepudiationMandatory:String=getMessageNonrepudiationMandatory(wsdlPolicies);
+	MessageNonrepudiationNotes:String=getMessageNonrepudiationNotes(wsdlPolicies);
+	MessageIntegrityMandatory:String=getMessageIntegrityMandatory(wsdlPolicies);
+	MessageIntegrityNotes:String=getMessageIntegrityNotes(wsdlPolicies);
+	MessageConfidentialityMandatory:String=getMessageConfidentialityMandatory(wsdlPolicies);
+	MessageConfidentialityNotes:String=getMessageConfidentialityNotes(wsdlPolicies);
+	MessageAddressingMandatory:String=getMessageAddressingMandatory(wsdlPolicies);
+	MessageAddressingNotes:String=getMessageAddressingNotes(wsdlPolicies);
+	ReliabilityMandatory:String=getReliabilityMandatorywsdlPolicies();
+	ReliabilityNotes:String=getReliabilityNotes(wsdlPolicies);
+	TransactionSupportMandatory:String=getTransactionSupportMandatory(wsdlPolicies);
+	TransactionSupportNotes:String=getTransactionSupportNotes(wsdlPolicies);
+	ServiceMetadataAvailabilityMandatory:String=getServiceMetadataAvailabilityMandatory(wsdlPolicies);
+	ServiceMetadataAvailabilityNotes:String=getServiceMetadataAvailabilityNotes(wsdlPolicies);
+	InterfaceDescriptionRequirementsMandatory:String=getInterfaceDescriptionRequirementsMandatory(wsdlPolicies);
+	InterfaceDescriptionRequirementsNotes:String=getInterfaceDescriptionRequirementsNotes(wsdlPolicies);
+	ServiceResponsivenessMandatory:String=getServiceResponsivenessMandatory(wsdlPolicies);
+	ServiceResponsivenessNotes:String=getServiceResponsivenessNotes(wsdlPolicies);
+	ExecutionContext:String=mpd.getExecutionContext();
+	Privacy:String=mpd.getPrivacy();
+	OtherRequirements:String=mpd.getOtherRequirements();
+	AdditionalInformation:String=mpd.getAdditionalInformation();
+	ServiceModel:String=mpd.getServiceModel();
+	BehaviorModel:String=mpd.getBehaviorModel();
+	ProcessModel:String=mpd.getProcessModel();
+	References:Sequence(Dependency)=mpd.getReferences();
+	glossaryTerms:Sequence(Comment)=mpd.getGlossaryTerms();
+	documentHistories:Sequence(Comment)=mpd.getDocumentHistories();
+
+	Service_Overview:String=ssp.getServiceOverview();
+	Business_Scenarios:String=businessContext.exchangePartnerTypeDescriptionText(businessContextStereotype);
+	Business_Scenario:String=businessScenarioUseCase->first().commentBody();
+	PrimaryFlows:Sequence(Interaction)=businessScenarioUseCase.ownedBehavior->select(b|b.oclIsKindOf(Interaction)).oclAsType(Interaction);
+	AlternativeFlows:String=mpd.getAlternativeFlows();
+	SDDDocumentLocation:String='artifacts/'+Service_Abbreviation+'_SDD_v_'+Service_Version+'.docx';
+
+	wsdlDefinitionInstances:Sequence(InstanceSpecification)=wsdlDefinitions.wsdlDefinitionInstances();
+
+}]
+[wsdlDefinitionInstances._arg_wsdlName_wsdl()/]
+[wsdlDefinitionInstances.wsdlpolicy_wsdl()/]
+[wsdlDefinitionInstances.Policy_wsdl()/]
+
+[wsdlDefinitions.catalog_html()/]
+[wsdlDefinitions.catalog_xml()/]
+[wsdlDefinitions.metadata_xlsx()/]
+[wsdlDefinitions.metadata_xml()/]
+[wsdlDefinitions.metadata_xsd()/]
+[wsdlDefinitions.readme_mht()/]
+
+[/template]

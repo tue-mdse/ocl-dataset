@@ -1,0 +1,61 @@
+[comment encoding = UTF-8 /]
+[module ClassUtils('http:///org/gnstudio/apdt/model.ecore')/]
+[import CommentUtils /]
+[import AccessUtils /]
+[import ImportUtils /]
+[import SequenceUtils /]
+
+[template public getClassBody(aClass : ClassElement)]
+[if(aClass.members->notEmpty())][for (aMember : ClassMember | aClass.members)]
+[getComment(aMember.description,aMember.note)/]
+[getAnnotation(aMember.annotation)/][getAccess(aMember.access)/] [getMemberDeclaration(aMember.declaration)/][getMemberName(aMember)/]:[getBaseType(aMember.type)/];
+[/for]
+[/if]
+[for (aMethod : Method | aClass.methods)]
+[getComment(aMethod.description,aMethod.note)/]
+[getAnnotation(aMethod.annotation)/][getDeclaration(aMethod.signature.declaration)/][getAccess(aMethod.signature.access)/] function [getMethodType(aMethod)/][getMethodName(aMethod)/]([getArgsElement(aMethod)/])[getReturnType(aMethod.signature)/] {
+
+    [for (s : Sequence | aMethod.sequences)]
+    [getSequence(s)/]
+    [/for]
+ 
+}
+[/for]
+[/template]
+
+[template public getAnnotation(aAnnotation : String)]
+[if ((not aAnnotation.oclIsUndefined()) and aAnnotation.trim().size()>0)][aAnnotation/]
+[/if]
+[/template]
+
+[template private getMethodName(aMethod : Method)]
+[if ((not aMethod.signature.oclIsUndefined()) and (not aMethod.signature.name.oclIsUndefined()) and aMethod.signature.name.trim().size()>0)][aMethod.signature.name/][else]RENAME_ME[/if]
+[/template]
+
+[template private getMemberName(aMember : ClassMember)]
+[if ((not aMember.name.oclIsUndefined()) and aMember.name.trim().size()>0)][aMember.name/][else]RENAME_ME[/if]
+[/template]
+
+[template private  getReturnType(aSignature : MethodSignature)]
+[if ((not aSignature.returnType.oclIsUndefined()) and (not aSignature.returnType.oclIsUndefined()) and aSignature.returnType.name.trim().size()>0)]:[getBaseType(aSignature.returnType)/][else]:void[/if]
+[/template]
+
+
+
+[template private  getArgsElement(aMethod : Method)]
+[for (aArg : MethodArgument | aMethod.arguments) separator (', ')][if(aMethod.signature.varargs and aArg.followingSiblings()->size()=0)]...[aArg.name/][else][aArg.name/]:[ getBaseType(aArg.type)/][/if][/for]
+[/template]
+
+[template private  getMethodType(aMethod : Method)]
+[if (aMethod.signature.type = MethodType::GETTER)]get [elseif(aMethod.signature.type = MethodType::SETTER)]set [/if]
+[/template]
+
+[template private  getDeclaration(aDeclaration : DeclarationType)]
+[if (aDeclaration = DeclarationType::FINAL)]final [elseif(aDeclaration = DeclarationType::STATIC)]static [elseif(aDeclaration = DeclarationType::OVERRIDDEN)]override [/if]
+[/template]
+
+
+
+[template private  getMemberDeclaration(aDeclaration : DeclarationType)]
+[if (aDeclaration = DeclarationType::FINAL)]const [elseif(aDeclaration = DeclarationType::STATIC)]static var [elseif(aDeclaration = DeclarationType::CONSTANT)]static const [else]var [/if]
+[/template]

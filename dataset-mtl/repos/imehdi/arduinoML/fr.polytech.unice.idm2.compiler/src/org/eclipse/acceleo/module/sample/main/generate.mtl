@@ -1,0 +1,57 @@
+[comment encoding = UTF-8 /]
+[module generate('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+
+[template public generateElement(m : Model)]
+[comment @main/]
+[file (m.name.concat('.txt'), false, 'UTF-8')]
+
+[let sms : Sequence(StateMachine) = m.eAllContents(StateMachine)->select(eo | eo.oclIsKindOf(StateMachine) )]
+
+void setup() {
+[for (sm : StateMachine | sms)]
+[if (sm.name.equalsIgnoreCase('StateMachine_Sensor'))]
+	[for (s : Vertex | sm.region.subvertex)]
+		[if  not (s.oclIsKindOf(FinalNode) ) and not (s.oclAsType(Pseudostate).oclIsKindOf(InitialNode)) and not (s.oclIsKindOf(PseudostateKind))]
+			pinMode([s.outgoing.guard.constrainedElement.oclAsType(LiteralInteger).value/],INPUT);
+				
+			
+		[/if]
+[/for]
+[/if]
+[if (sm.name.equalsIgnoreCase('ActuatorStateMachine'))]
+	[for (s : Vertex | sm.region.subvertex)]
+		[if  not (s.oclIsKindOf(FinalNode) ) and not (s.oclAsType(Pseudostate).oclIsKindOf(InitialNode)) and not (s.oclIsKindOf(PseudostateKind))]
+			pinMode([s.outgoing.guard.constrainedElement.oclAsType(LiteralInteger).value/],OUTPUT);
+				
+			
+		[/if]
+[/for]
+[/if]
+[/for]
+}
+
+[for (sm : StateMachine | sms)]
+	[for (s : Vertex | sm.region.subvertex)]
+		[if (sm.name.equalsIgnoreCase('CarteStateMachine'))]
+[if  not (s.oclIsKindOf(FinalNode) ) and not (s.oclIsKindOf(InitialNode)) and not (s.oclIsKindOf(Transition)) ]
+			void [s.name/](){
+			if([s.outgoing.guard.specification.oclAsType(OpaqueExpression)._body/])
+               	return [s.outgoing.target.name/]();
+				
+				else{
+					return [s.name/]();
+				}
+}
+[/if]
+[/if]
+			
+	[/for]
+[/for]
+
+
+
+[/let]
+
+[/file]
+[/template]

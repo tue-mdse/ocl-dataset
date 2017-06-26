@@ -1,0 +1,283 @@
+[comment 
+ *******************************************************************************
+ * Copyright (c) 2008-2010 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module ComponentCommonTests('http://www.eclipse.org/emf/eef/components/1.0.0','http://www.eclipse.org/emf/eef/mapping/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/eef/views/1.0.0', 'http://www.eclipse.org/emf/eef/generation/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore')/]
+
+[import common /]
+[import naming /]
+[import testsNaming /]
+[import typeUtils /]
+[import widgetTest /]
+
+[template public headPropertySection(peContext : PropertiesEditionContext, pec : PropertiesEditionComponent)]
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.emf.common.command.BasicCommandStack;
+import org.eclipse.emf.common.command.CompoundCommand;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.emf.edit.command.AddCommand;
+import org.eclipse.emf.edit.command.SetCommand;
+import org.eclipse.emf.edit.domain.AdapterFactoryEditingDomain;
+import [pec.model.qualifiedName()/];
+import [pec.model.qualifiedMetamodelPackage()/];
+[for (viewRepository : ViewsRepository | pec.views.owningViewsRepository()->asSet())]
+import [viewRepository.qualifiedMessagesProvider()/];
+[/for]
+[for (peElement : components::PropertiesEditionElement | pec.properties->select(oclIsTypeOf(components::PropertiesEditionElement)).oclAsType(components::PropertiesEditionElement))]
+[if (peElement.model.eType.oclIsKindOf(ecore::EClass))]import [peElement.model.eType.qualifiedName()/];
+[/if]
+[/for]
+import org.eclipse.emf.eef.runtime.EEFRuntimePlugin;
+import org.eclipse.emf.eef.runtime.tests.SWTBotEEFTestCase;
+import org.eclipse.emf.eef.runtime.tests.exceptions.InputModelInvalidException;
+import org.eclipse.emf.eef.runtime.tests.exceptions.WidgetInvalidException;
+import org.eclipse.emf.eef.runtime.tests.utils.EEFTestsModelsUtils;
+import org.eclipse.emf.eef.runtime.tests.utils.EEFTestsResourceUtils;
+import org.eclipse.emf.eef.runtime.tests.utils.UIConstants;
+import org.eclipse.swtbot.eclipse.finder.widgets.SWTBotEditor;
+[additionalImports()/]
+[/template]
+
+[template public additionalImports (peContext : PropertiesEditionContext) /]
+
+
+[template public testCasePropertySection(peContext : PropertiesEditionContext, pec : PropertiesEditionComponent)]
+	/**
+	 * The EClass of the type to edit
+	 */
+	private EClass [pec.model.name.toLowerFirst()/]MetaClass = [pec.model.ePackage.metamodelPackage()/].eINSTANCE.get[pec.model.name/]();
+
+	/**
+	 * The type to edit
+	 */
+	private EObject [pec.model.name.toLowerFirst()/];
+
+	[for (peElement : PropertiesEditionElement | pec.properties->select(oclIsTypeOf(components::PropertiesEditionElement)).oclAsType(components::PropertiesEditionElement)->select(model.oclIsTypeOf(ecore::EAttribute) and model.oclAsType(ecore::EAttribute).isEnum())) separator ('\n')]
+	/**
+	 * The enum value for the enum class [peElement.model.name.toLowerFirst()/]
+	 */
+	private Object enumValueFor[peElement.model.name.toUpperFirst()/];
+	[/for]
+	[for (peElement : PropertiesEditionElement | pec.properties->select(oclIsTypeOf(components::PropertiesEditionElement)).oclAsType(components::PropertiesEditionElement)->select(pee : PropertiesEditionElement | pee.model.oclIsTypeOf(ecore::EReference) and pee.isEOFCVorReferencesTable())->asSet()) separator ('\n')]
+	/**
+	 * The reference value for the reference class [peElement.model.name.toLowerFirst()/]
+	 */
+	private Object referenceValueFor[peElement.model.name.toUpperFirst()/];
+	[/for]
+	[for (name : String | pec.properties->select(oclIsTypeOf(components::PropertiesEditionElement)).oclAsType(components::PropertiesEditionElement)->select(model.oclIsTypeOf(ecore::EReference)).model.eType->select(name<>pec.model.name).name->asSet()) separator ('\n')]
+	/**
+	 * The EClass of the reference to edit
+	 */
+	private EClass [name.toLowerFirst()/]MetaClass = [pec.model.ePackage.metamodelPackage()/].eINSTANCE.get[name/]();
+	[/for]
+[if (pec.properties->select(oclIsTypeOf(components::PropertiesEditionElement)).oclAsType(components::PropertiesEditionElement)->select(model.oclIsTypeOf(ecore::EReference) and canRemove())->asSet()->notEmpty())]
+	/**
+	 * The eObjects list contained in widgets
+	 */
+	private List allInstancesOf;
+[/if]
+	/**
+	 * Updated value of the feature
+	 */
+	private static final String UPDATED_VALUE = "value2";
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.tests.SWTBotEEFTestCase#getExpectedModelName()
+	 */
+	protected String getExpectedModelName() {
+		return "expected.[pec.model.ePackage.metamodelPrefix().toLowerFirst()/]";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.tests.SWTBotEEFTestCase#getInputModelFolder()
+	 */
+	protected String getInputModelFolder() {
+		return "input";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.tests.SWTBotEEFTestCase#getInputModelName()
+	 */
+	protected String getInputModelName() {
+		return "input.[pec.model.ePackage.metamodelPrefix().toLowerFirst()/]";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.tests.SWTBotEEFTestCase#getTestsProjectName()
+	 */
+	protected String getTestsProjectName() {
+		return "[peContext.associatedGenModel().testsGenDirectory.tokenize('/')->at(1)/]";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.tests.SWTBotEEFTestCase#getExpectedModelFolder()
+	 */
+	protected String getExpectedModelFolder() {
+		// The project that contains models for tests
+		return "expected";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.tests.SWTBotEEFTestCase#getImportModelsFolder()
+	 */
+	protected String getImportModelsFolder() {
+		return  "models";
+	}
+	[/template]
+
+[template public initializeExpectedModelPropertySection(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement)]
+	/**
+	 * Create the expected model from the input model
+	 * @throws InputModelInvalidException error during expected model initialization
+	 * @throws IOException error during expected model serialization
+	 */
+	protected void initializeExpectedModelFor[pec.model.name.toUpperFirst()/][peElement.name.toUpperFirst()/]() throws InputModelInvalidException, IOException {
+		// Create the expected model content by applying the attempted command on a copy of the input model content
+		createExpectedModel();
+		EObject [pec.model.name.toLowerFirst()/] = EEFTestsModelsUtils.getFirstInstanceOf(expectedModel, [pec.model.name.toLowerFirst()/]MetaClass);
+		if ([pec.model.name.toLowerFirst()/] == null)
+			throw new InputModelInvalidException([pec.model.name.toLowerFirst()/]MetaClass.getName());
+		[pec.updateExpectedModel(peElement)/]
+		editingDomain.getCommandStack().execute(cc);
+		expectedModel.save(Collections.EMPTY_MAP);
+	}
+[/template]
+
+[template public initializeRemoveExpectedModelPropertySection(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement) ? (peElement.canRemove())]
+	/**
+	 * Create the expected model from the input model
+	 * @throws InputModelInvalidException error during expected model initialization
+	 * @throws IOException error during expected model serialization
+	 */
+	protected void initializeRemoveExpectedModelFor[pec.model.name.toUpperFirst()/][peElement.name.toUpperFirst()/]() throws InputModelInvalidException, IOException {
+		// Create the expected model content by applying the attempted command on a copy of the input model content
+		createExpectedModel();
+		EObject [pec.model.name.toLowerFirst()/] = EEFTestsModelsUtils.getFirstInstanceOf(expectedModel, [pec.model.name.toLowerFirst()/]MetaClass);
+		if ([pec.model.name.toLowerFirst()/] == null)
+			throw new InputModelInvalidException([pec.model.name.toLowerFirst()/]MetaClass.getName());
+		[pec.removeExpectedModel(peElement)/]
+		editingDomain.getCommandStack().execute(cc);
+		expectedModel.save(Collections.EMPTY_MAP);
+	}
+[/template]
+
+[template public testEditPropertySection(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement)]
+	public void testEdit[pec.name.toUpperFirst()/][peElement.name.toUpperFirst()/]() throws Exception {
+
+		// Import the input model
+		initializeInputModel();
+
+		[pec.model.name.toLowerFirst()/] = EEFTestsModelsUtils.getFirstInstanceOf(bot.getActiveResource(), [pec.model.name.toLowerFirst()/]MetaClass);
+		if ([pec.model.name.toLowerFirst()/] == null)
+			throw new InputModelInvalidException([pec.model.name.toLowerFirst()/]MetaClass.getName());
+
+		[if (peElement.model.oclIsTypeOf(ecore::EAttribute) and peElement.model.oclAsType(ecore::EAttribute).isEnum())]
+		enumValueFor[peElement.model.name.toUpperFirst()/] = bot.changeEnumLiteralValue([peElement.model.eContainingClass.metamodelPackage()/].eINSTANCE.get[peElement.model.eType.name/](), (([pec.model.name/])[pec.model.name.toLowerFirst()/]).get[peElement.model.name.toUpperFirst()/]().getLiteral());
+		[/if]
+		// Create the expected model
+		initializeExpectedModelFor[pec.model.name.toUpperFirst()/][peElement.name.toUpperFirst()/]();
+
+		// Open the input model with the treeview editor
+		SWTBotEditor modelEditor = bot.openActiveModel();
+
+[/template]
+
+[template public testRemoveEditPropertySection(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement) ? (peElement.canRemove())]
+	public void testRemove[pec.name.toUpperFirst()/][peElement.name.toUpperFirst()/]() throws Exception {
+
+		// Import the input model
+		initializeInputModel();
+
+		[pec.model.name.toLowerFirst()/] = EEFTestsModelsUtils.getFirstInstanceOf(bot.getActiveResource(), [pec.model.name.toLowerFirst()/]MetaClass);
+		if ([pec.model.name.toLowerFirst()/] == null)
+			throw new InputModelInvalidException([pec.model.name.toLowerFirst()/]MetaClass.getName());
+
+		[if (peElement.model.oclIsTypeOf(ecore::EAttribute) and peElement.model.oclAsType(ecore::EAttribute).isEnum())]
+		enumValueFor[peElement.model.name.toUpperFirst()/] = bot.changeEnumLiteralValue([peElement.model.eContainingClass.metamodelPackage()/].eINSTANCE.get[peElement.model.eType.name/](), (([pec.model.name/])[pec.model.name.toLowerFirst()/]).get[peElement.model.name.toUpperFirst()/]().getLiteral());
+		[/if]
+		// Create the expected model
+		initializeRemoveExpectedModelFor[pec.model.name.toUpperFirst()/][peElement.name.toUpperFirst()/]();
+
+		// Open the input model with the treeview editor
+		SWTBotEditor modelEditor = bot.openActiveModel();
+
+[/template]
+
+[template public comparePropertySection(pec : PropertiesEditionComponent, peElement : PropertiesEditionElement)]
+
+		// Save the modification
+		bot.finalizeEdition(modelEditor);
+
+		// Compare real model with expected model
+		assertExpectedModelReached(expectedModel);
+
+		// Delete the input model
+		deleteModels();
+
+	}
+[/template]
+
+[query public testMustBeGenerated(pec : PropertiesEditionComponent) : Boolean = 
+	not pec.model.oclAsType(EClass).abstract 
+		and pec.properties->select(pee : mapping::AbstractPropertyBinding | 
+											pee.oclIsKindOf(components::PropertiesEditionElement) 
+											and pec.canGenerateTest(pee.oclAsType(components::PropertiesEditionElement)) <> 'false')->notEmpty()/]
+
+[template public commentTestPropertySection()]
+	/**
+	 * Test the editor properties :
+	 * - init the input model
+	 * - calculate the expected model
+	 * - initialize the model editor
+	 * - change the properties in the editor properties
+	 * - compare the expected and the real model : if they are equals the test pass
+	 * - delete the models
+	 */
+[/template]
+
+[query public isAbstractType(peElement : PropertiesEditionElement) : Boolean = 
+	if (peElement.model.eType->select(oclIsKindOf(ecore::EClass))->notEmpty()) then
+		peElement.model.eType.oclAsType(ecore::EClass).abstract
+	else
+		false
+	endif/]
+
+[query public isCompositionType(peElement : PropertiesEditionElement) : Boolean = 
+	peElement.representationName('AdvancedTableComposition') or peElement.representationName('TableComposition')/]
+
+[comment][query public isCompositionType(peElement : PropertiesEditionElement) : Boolean = 
+	peElement.model->select(oclIsTypeOf(ecore::EReference)).oclAsType(ecore::EReference).isContainment()/][/comment]

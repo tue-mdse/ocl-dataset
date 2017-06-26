@@ -1,0 +1,49 @@
+[comment encoding = UTF-8 /]
+[module ClassUtils('http:///org/gnstudio/apdt/model.ecore')/]
+[import CommentUtils /]
+[import SequenceUtils /]
+
+[template public getClassBody(aClass : ClassElement,methodContext : String)]
+[if(aClass.members->notEmpty())][for (aMember : ClassMember | aClass.members)]
+[getComment(aMember.description,aMember.note)/]
+[methodContext/].[getMemberName(aMember)/] = null;
+[/for]
+[/if]
+[for (aMethod : Method | aClass.methods)]
+[getComment(aMethod.description,aMethod.note)/]
+[methodContext/].[getMethodName(aMethod)/] = function([getArgsElement(aMethod)/]) {
+
+    [for (s : Sequence | aMethod.sequences)]
+    [getSequence(s)/]
+    [/for]
+ 
+}
+
+[/for]
+
+[if (methodContext='this')]
+return {
+    [for (aMethod : Method | aClass.methods)separator (',\n    ')][let mname : String = getMethodName(aMethod)][mname/]:[mname/][/let][/for]
+};
+[else]
+return [methodContext/];
+[/if]
+[/template]
+
+
+[template private getMethodName(aMethod : Method)]
+[if ((not aMethod.signature.oclIsUndefined()) and (not aMethod.signature.name.oclIsUndefined()) and aMethod.signature.name.trim().size()>0)][aMethod.signature.name/][else]RENAME_ME[/if]
+[/template]
+
+[template private getMemberName(aMember : ClassMember)]
+[if ((not aMember.name.oclIsUndefined()) and aMember.name.trim().size()>0)][aMember.name/][else]RENAME_ME[/if]
+[/template]
+
+
+[template private  getArgsElement(aMethod : Method)]
+[for (aArg : MethodArgument | aMethod.arguments) separator (', ')][aArg.name/][/for]
+[/template]
+
+
+
+

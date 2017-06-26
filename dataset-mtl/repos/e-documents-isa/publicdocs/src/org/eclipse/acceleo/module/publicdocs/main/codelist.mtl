@@ -1,0 +1,71 @@
+[comment encoding = UTF-8 /]
+[module codelist('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::acceleo::module::publicdocs::common::util/]
+[import org::eclipse::acceleo::module::publicdocs::common::schema/]
+[import org::eclipse::acceleo::module::publicdocs::common::annotation/]
+
+[template public generateCodeList( model : Model) {
+pack:Package = getPackageWithName(model, 'pdc');
+version: String = getVersion('xsd');
+}]
+[generateContentCodeList(pack, version)/]
+[/template]
+
+[template public generateContentCodeList(pack : Package, version: String)]
+[for (packageableElement: PackageableElement | pack.packagedElement)]
+[let dependencies: Set(Dependency) 		 = pack.getDirectDependencies(packageableElement)]
+
+[if packageableElement.oclIsTypeOf(Enumeration)]
+[file (getFilenameXSD('path_codelist', pack.name, '-codelist-'.concat(packageableElement.name).concat('-'), version), false, 'UTF-8')]
+[if dependencies->isEmpty()]
+[beginSchema('udt', pack, version)/]
+[importXSD('udt')/]
+[else]
+[let suppliernamespace             : String      = dependencies->any(true).supplier->any(true).oclAsType(Class).namespace.name]
+[beginSchema(''.concat(suppliernamespace), pack, version)/]
+[importXSD(suppliernamespace)/]
+[/let]
+[/if]
+[generateCodelist(packageableElement.name, 'udt:CodeType', packageableElement.oclAsType(Enumeration))/]
+[endSchema(pack, version)/]
+[/file]
+[/if]
+[/let]
+[/for]
+[/template]
+
+[template public generateCodelist(name: String, base: String, source : Enumeration){
+pack                 : Package       = source.owner.oclAsType(Package);
+dependencies: Set(Dependency) 		 = pack.getDirectDependencies(source);
+supplier             : Class      = dependencies->any(true).supplier->any(true).oclAsType(Class);
+}]
+
+<[getNS('xs')/]:complexType name="[name/]CodeListType">
+  <[getNS('xs')/]:simpleContent>
+	<[getNS('xs')/]:restriction base="[if dependencies->isEmpty()][base/][else][getFQDN(supplier)/][/if]">
+	[for (enumerationLiteral: EnumerationLiteral | source.ownedLiteral)]
+	 	<[getNS('xs')/]:enumeration value="[enumerationLiteral.name/]">
+			[generateAnnotation(enumerationLiteral)/]
+		</[getNS('xs')/]:enumeration>
+	[/for]
+    </[getNS('xs')/]:restriction>
+  </[getNS('xs')/]:simpleContent>
+</[getNS('xs')/]:complexType>
+
+<[getNS('xs')/]:complexType name="[name/][getSuffix('complexType')/]">
+  <[getNS('xs')/]:complexContent>
+    <[getNS('xs')/]:restriction base="[name/]CodeListType">
+      <[getNS('xs')/]:attribute name="listVersionID" type="[getNS('xs')/]:normalizedString" use="required" fixed="[getVersion(name)/]" />
+    </[getNS('xs')/]:restriction>
+  </[getNS('xs')/]:complexContent>
+</[getNS('xs')/]:complexType>
+[/template]
+
+[template public generateCodelistForType(class: Class, prop: Property) { 
+pack                 : Package       = class.owner.oclAsType(Package);
+supplier             : Property      = pack.getDependencies(prop)->any(true).supplier->any(true).oclAsType(Property);
+supplierQualifiedName: String        = supplier.namespace.name.concat(supplier.name);
+}]
+[generateCodelist(class.name.concat(prop.name), 'cvb:'.concat(supplierQualifiedName).concat('Type'), prop.type.oclAsType(Enumeration))/]
+[/template]

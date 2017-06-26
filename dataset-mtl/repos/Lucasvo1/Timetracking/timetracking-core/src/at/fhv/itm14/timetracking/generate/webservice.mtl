@@ -1,0 +1,252 @@
+[comment encoding = UTF-8 /]
+[module webservice('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import at::fhv::itm14::timetracking::generate::modules /]
+[import at::fhv::itm14::timetracking::generate::datatype /]
+
+[template public generateWebservice(o : Operation)]
+@RequestMapping(value = [generateRequestMapping(o)/], method = RequestMethod.[o.generateRequestMethod()/])
+[o.visibility/] [if o.isStatic]static[/if] [if (o.name='welcomePage' or o.name='adminPage')]ModelAndView[else][o.generateReturn()/][/if] [o.name/][o.generateParameters()/]{
+[if(o.name='welcomePage')]
+	ModelAndView model = new ModelAndView();
+	model.addObject("title", "Please Login");
+	model.addObject("message", "Welcome to the timetracking App");
+	model.setViewName("hello");
+	try{
+		DatabaseController.getDatabaseControllerInstance().createDatabase();
+		DatabaseController.getDatabaseControllerInstance().insertTestUsers();
+	} catch (Exception e) {
+		e.printStackTrace();
+	}
+	return model;
+[elseif(o.name='adminPage')]
+	ModelAndView model = new ModelAndView();
+	model.addObject("title", "Timetracking Admin Page");
+	model.addObject("message", "Welcome admin!");
+	List<User> users = new ArrayList<User>();
+	try {
+		users.addAll(DatabaseController.getDatabaseControllerInstance().findAllUsers());
+	} catch (Exception e1) {
+		e1.printStackTrace();
+	}
+	try {
+		model.addObject("users", users);
+	} catch (Exception e) {
+		e.printStackTrace();
+	}
+	model.setViewName("admin");
+	return model;
+[elseif(o.name='showAllUsers')]
+	try {
+		model.addAttribute("users", DatabaseController.getDatabaseControllerInstance().findAllUsers());
+	} catch (Exception e) {
+		e.printStackTrace();
+	}
+	 return "redirect:/admin";
+[elseif(o.name='saveOrUpdateUser')]
+	if (result.hasErrors()) {
+		return "admin/users/userform";
+	} else {
+		redirectAttributes.addFlashAttribute("css", "success");
+		if (user.isNew()) {
+			try {
+				DatabaseController.getDatabaseControllerInstance().insertUser(user);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			redirectAttributes.addFlashAttribute("msg", "User added successfully!");
+		} else {
+			redirectAttributes.addFlashAttribute("msg", "User updated successfully!");
+			try {
+				DatabaseController.getDatabaseControllerInstance().updateUser(user);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		try {
+			model.addAttribute("users", DatabaseController.getDatabaseControllerInstance().findAllUsers());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "/admin";
+	}
+[elseif(o.name='saveOrUpdateActivity')]
+	activityValidator.validate(activity, result);
+		if (result.hasErrors()) {
+			User user = null;
+			try {
+				user = DatabaseController.getDatabaseControllerInstance().findUserByUsername(username);
+				model.addAttribute("user", user);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+			return "admin/users/activityform";
+		} else {
+			redirectAttributes.addFlashAttribute("css", "success");
+			if (activity.isNew()) {
+				try {
+					activity.setUser(DatabaseController.getDatabaseControllerInstance().findUserByUsername(username));
+					DatabaseController.getDatabaseControllerInstance().insertActivity(activity);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				redirectAttributes.addFlashAttribute("msg", "Activity added successfully!");
+			} else {
+				redirectAttributes.addFlashAttribute("msg", "Activity updated successfully!");
+				try {
+					activity.setUser(DatabaseController.getDatabaseControllerInstance().findUserByUsername(username));
+					DatabaseController.getDatabaseControllerInstance().updateActivity(activity);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+			try {
+				User user = DatabaseController.getDatabaseControllerInstance().findUserByUsername(username);
+				model.addAttribute("userForm", user);
+				model.addAttribute("activities", DatabaseController.getDatabaseControllerInstance().findActivitiesOfUser(user));
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			return "/admin/users/userform";
+		}
+[elseif(o.name='showAddUserForm' or o.name='showAddActivityForm')]
+	[if(o.name='showAddUserForm')]User user[else]Activity activity[/if] = null;
+	[if(o.name='showAddActivityForm')]
+	User user = null;
+	try
+	{
+		user = DatabaseController.getDatabaseControllerInstance().findUserByUsername(username);
+	} catch (Exception e) {
+		e.printStackTrace();
+	}
+	[/if]
+	try {
+		[if(o.name='showAddUserForm')]
+		user = new User("username", "firstname", "lastname", "password");
+		[else]
+		activity = new Activity("description", getCurrenttimestamp(), getCurrenttimestamp(), user);
+		[/if]
+	} catch (Exception e) {
+		e.printStackTrace();
+	}
+	[if(o.name='showAddUserForm')]		
+	model.addAttribute("userForm", user);
+	return "admin/users/userform";
+	[elseif(o.name='showAddActivityForm')]
+	model.addAttribute("activityform", activity);
+	model.addAttribute("user", user);
+	return "admin/users/activityform";
+	[/if]
+[elseif(o.name='showUpdateActivityForm')]
+	try
+	{
+		Activity activity = DatabaseController.getDatabaseControllerInstance().findActivityById(Long.parseLong(id));
+		model.addAttribute("activityform", activity);
+		User user = DatabaseController.getDatabaseControllerInstance().findUserByUsername(username);
+		model.addAttribute("user", user);
+	}catch (Exception e){
+		e.printStackTrace();
+	}
+	return "admin/users/activityform";
+[elseif(o.name='showUpdateUserForm')]
+	try
+	{
+		User user = DatabaseController.getDatabaseControllerInstance().findUserByUsername(username);
+		ArrayList<Activity> actlist = new ArrayList<Activity>();
+		Set<Activity> timecards = DatabaseController.getDatabaseControllerInstance().findActivitiesOfUser(user);
+		actlist.addAll(timecards);
+		user.setActivities(actlist);
+		model.addAttribute("activities", actlist);
+		model.addAttribute("userForm", user);
+	}catch (Exception e){
+		e.printStackTrace();
+	}
+	return "admin/users/userform";
+[elseif(o.name='deleteUser')]
+	User u = null;
+	try {
+		u = DatabaseController.getDatabaseControllerInstance().findUserById(id);
+		Set<Activity> timecards = DatabaseController.getDatabaseControllerInstance().findActivitiesOfUser(u);
+		for(Activity t : timecards){
+			DatabaseController.getDatabaseControllerInstance().deleteActivity(t);
+		}
+		DatabaseController.getDatabaseControllerInstance().deleteUser(u);
+	} catch (Exception e) {
+		e.printStackTrace();
+	}
+	redirectAttributes.addFlashAttribute("css", "success");
+	redirectAttributes.addFlashAttribute("msg", "User is deleted!");
+	
+	return "redirect:/admin";
+[elseif(o.name='deleteActivity')]
+	try {
+		Activity activity = DatabaseController.getDatabaseControllerInstance().findActivityById(Long.parseLong(id));
+		DatabaseController.getDatabaseControllerInstance().deleteActivity(activity);
+	} catch (Exception e) {
+		e.printStackTrace();
+	}
+	redirectAttributes.addFlashAttribute("css", "success");
+	redirectAttributes.addFlashAttribute("msg", "Activity is deleted!");
+	try {
+		User user = DatabaseController.getDatabaseControllerInstance().findUserByUsername(username);
+		model.addAttribute("userForm",user);
+	} catch (Exception e) {
+		e.printStackTrace();
+	}
+	return "/admin/users/userform";
+[/if]
+
+}
+[/template]
+
+[template public generateRequestMapping(o : Operation)]
+[if (o.name='welcomePage')]
+{ "/", "/welcome**" }
+[elseif (o.name='adminPage')]
+"/admin**"
+[elseif (o.name='showAllUsers' or o.name='saveOrUpdateUser')]
+"/admin/users"
+[elseif (o.name='saveOrUpdateActivity')]
+"/admin/users/{username}"
+[elseif (o.name='showAddUserForm')]
+"/admin/users/add"
+[elseif (o.name='showAddActivityForm')]
+"/admin/users/{username}/add"
+[elseif (o.name='showUpdateActivityForm')]
+"/admin/users/{username}/{id}/update"
+[elseif (o.name='showUpdateUserForm')]
+"/admin/users/{username}/update"
+[elseif (o.name='deleteUser')]
+"/admin/users/{id}/delete"
+[elseif (o.name='deleteActivity')]
+"/admin/users/{username}/{id}/delete"
+[/if]
+[/template]
+
+[template public generateRequestMethod(o : Operation)]
+[if (o.name='welcomePage' or o.name='adminPage' or o.name='showAllUsers' or o.name='showAddUserForm' or o.name='showAddActivityForm' or o.name='showUpdateActivityForm' or o.name='showUpdateUserForm')]
+GET
+[else]
+POST
+[/if]
+[/template]
+
+[template public generateParameters(o : Operation)]
+[if (o.name='showAllUsers' or o.name='showAddUserForm' )]
+(Model model)
+[elseif(o.name='saveOrUpdateUser')]
+(@ModelAttribute("userForm") @Validated User user, BindingResult result, Model model, final RedirectAttributes redirectAttributes)
+[elseif(o.name='saveOrUpdateActivity')]
+(@ModelAttribute("activityform") @Validated Activity activity, BindingResult result, Model model,final RedirectAttributes redirectAttributes, @PathVariable("username") String username)
+[elseif(o.name='showAddActivityForm' or o.name='showUpdateUserForm')]
+(@PathVariable("username") String username,Model model)
+[elseif(o.name='showUpdateActivityForm')]
+(@PathVariable("username") String username,@PathVariable("id") String id, Model model)
+[elseif(o.name='deleteUser')]
+(@PathVariable("id") String id, final RedirectAttributes redirectAttributes)
+[elseif(o.name='deleteActivity')]
+(@PathVariable("username") String username, @PathVariable("id") String id, final RedirectAttributes redirectAttributes, Model model)
+[else]
+()
+[/if]
+[/template]

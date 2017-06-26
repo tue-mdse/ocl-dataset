@@ -1,0 +1,129 @@
+[comment encoding = UTF-8 /]
+[**
+ * Documentation of the module declarationContraintesTournee
+ * Le module qui contient la partie declarative du fichier minizinc
+ * Il depend d'un fichier uml -cette dependance est exprimee en parametre du module- comme tous 
+ * les autres modules du projet.
+ * Il est compose d'un seul template qui porte le meme nom que lui
+*/]
+[module declarationContraintesTournee('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[**
+ * Documentation of the template declarationContraintesTournee
+ * @param aPackage correspond au package qui contient les classes.
+ * Nous commeneons par faire les importations (include sous minizinc). Ensuite nous recuperons les
+ * classes une a une et leurs proprietes et nous les stoquons dans des variables.
+*/]
+[template public declarationContraintesTournee(aPackage : Package) post (trim())]
+include "alldifferent.mzn";
+[let classVE : Class =
+	aPackage.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.attribute->exists(
+			p : Property | 
+			p.name.toLower().contains('niveaubatterie') or
+			p.name.toLower().contains('identifiantve') or
+			p.name.toLower().contains('identifiantve') 
+		)
+	)->asOrderedSet()->at(1)
+]
+[let classTournee : Class =
+	aPackage.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.attribute->exists(
+			p : Property | 
+			p.name.toLower().contains('distancetournee') 
+		)
+	)->asOrderedSet()->at(1)
+]
+[let classVT : Class =
+	aPackage.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.attribute->exists(
+			p : Property | 
+			p.name.toLower().contains('identifiantvt') 
+		)
+	)->asOrderedSet()->at(1)
+]
+[let proprieteIdentifiantVE : Property = 
+	classVE.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('identifiantve'))->at(1)
+]
+[let proprieteAutonomie : Property =
+	classVE.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('autonomie'))->at(1) 
+]
+[let proprieteNiveauBatterie : Property = 
+	classVE.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('niveaubatterie')
+	)->at(1) 
+]
+[let proprieteDistanceTournee : Property = 
+	classTournee.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('distancetournee')
+	)->at(1) 
+]
+[let proprieteIdentifiantVT : Property = 
+	classVT.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('identifiantvt')
+	)->at(1)
+]
+[comment]On se positionne sur les classes une a une[/comment]
+[comment]
+Pour chaque classe nous declarons les variables minizinc necessaires avec les noms appropries
+[/comment]
+
+[for (aClass : Class | 
+	aPackage.packagedElement->filter(Class)
+	)
+	separator ('\n') 
+]
+[if (aClass.name.toLower().contains('tournee'))]
+%nbre de tournees
+int : nbre[classTournee.name /];
+set of int : [classTournee.name /]s = 1..nbre[classTournee.name /];
+%distance de chaque tournee
+array['['/][classTournee.name /]s[']'/] of int : [proprieteDistanceTournee.name /];
+[elseif (aClass.name.toLower().contains('vehicule'))]
+[if (aClass.name.toLower().contains('electrique'))]
+%ensemble des vehicules electriques
+int : nbre[classVE.name /];
+set of int : [classVE.name /]s = 1..nbre[classVE.name /];
+array['['/][classVE.name /]s[']'/] of int : [proprieteIdentifiantVE.name /];
+%autonomie de chaque VE
+array['['/][classVE.name /]s[']'/] of int : [proprieteAutonomie.name /];
+%niveau de batterie de chaque VE
+array['['/][classVE.name /]s[']'/] of int : [proprieteNiveauBatterie.name /];
+[elseif (aClass.name.toLower().contains('thermique'))]
+%ensemble des vehicules therminques
+int : nbre[classVT.name /];
+set of int: [classVT.name /]s = 1..nbre[classVT.name /];
+array['['/][classVT.name /]s[']'/] of int : [proprieteIdentifiantVT.name/];
+
+%L'ensemble de tous les vehicules
+set of int : lesVehicules;
+
+% variables : quel vehicule affecter a quelle tournee
+array['['/][classTournee.name /]s[']'/] of var lesVehicules : tourneeVehicule;
+array['['/][classTournee.name /]s[']'/] of var 0..max([proprieteDistanceTournee.name /]) : kmElec;
+
+%Les contraintes minizinc sur les variables
+[/if]
+[/if]
+[/for]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+
+[/let]
+[/let]
+[/let]
+
+[/template]

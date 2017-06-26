@@ -1,0 +1,597 @@
+[comment encoding = UTF-8 /]
+[module generateStructure('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import beuth::se::ue4::profile::common::util /]
+[import beuth::se::ue4::profile::common::packageDeclaration /]
+
+
+[template public generateStructure(model : Model)]
+[EntryPoint(model)/]
+[appPlaceHistoryMapper(model)/]
+[activityMapper(model)/]
+[gin(model)/]
+[/template]
+
+[template public EntryPoint(model : Model) ]
+[file (quallyName(packageName(model.name)) + 'client/AppEntryPoint.java', false, 'UTF-8')]
+package [packageName(model.name)/]client;
+
+import [packageName(model.name)/]client.common.AppPlaceHistoryMapper;
+import [packageName(model.name)/]client.common.gin.AppGinjector;
+
+import com.google.gwt.activity.shared.ActivityManager;
+import com.google.gwt.activity.shared.ActivityMapper;
+import com.google.gwt.core.client.EntryPoint;
+import com.google.gwt.core.client.GWT;
+import com.google.gwt.place.shared.PlaceHistoryHandler;
+import com.google.gwt.user.client.ui.Label;
+import com.google.gwt.user.client.ui.RootPanel;
+import com.google.gwt.user.client.ui.SimplePanel;
+import com.google.web.bindery.event.shared.EventBus;
+
+public class AppEntryPoint implements EntryPoint {
+
+	@Override
+	public void onModuleLoad() {
+
+		AppGinjector injector = GWT.create(AppGinjector.class);
+		EventBus eventBus = injector.getEventBus();
+
+		ActivityMapper activityMapper = injector.getActivityMapper();
+
+		SimplePanel content = new SimplePanel();
+		ActivityManager contentActivityManager = new ActivityManager(
+				activityMapper, eventBus);
+		contentActivityManager.setDisplay(content);
+
+//--------------------------------------------------
+[comment][for (interface : Interface | model.ownedElement)]
+
+[/for][/comment]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+[for (class : Class | pack.ownedElement)]
+	[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+		ActivityMapper activityMapper[getClassName(class)/] = injector
+				.get[getClassName(class)/]ViewActivityMapper();
+		SimplePanel [getClassName(class).toLowerFirst()/] = new SimplePanel();
+
+		ActivityManager contentActivityManager[class.name/] = new ActivityManager(
+				activityMapper[getClassName(class)/], eventBus);
+		contentActivityManager[getClassName(class)/].setDisplay([class.name.toLowerFirst()/]);
+
+	[/if]
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+	[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+		ActivityMapper activityMapper[getClassName(class)/] = injector
+				.get[getClassName(class)/]ViewActivityMapper();
+		SimplePanel [getClassName(class).toLowerFirst()/] = new SimplePanel();
+
+		ActivityManager contentActivityManager[class.name/] = new ActivityManager(
+				activityMapper[getClassName(class)/], eventBus);
+		contentActivityManager[getClassName(class)/].setDisplay([class.name.toLowerFirst()/]);
+
+	[/if]
+[/for]
+//--------------------------------------------------
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+[for (class : Class | pack.ownedElement)]
+	[if ( class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') )]
+		RootPanel.get().add( [getClassName(class).toLowerFirst()/] );
+	[/if]
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+	[if ( class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') )]
+		RootPanel.get().add( [getClassName(class).toLowerFirst()/] );
+	[/if]
+[/for]
+		RootPanel.get().add( content );
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+[for (class : Class | pack.ownedElement)]
+	[if ( class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl') )]
+		RootPanel.get().add( [getClassName(class).toLowerFirst()/] );
+	[/if]
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+	[if ( class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl') )]
+		RootPanel.get().add( [getClassName(class).toLowerFirst()/] );
+	[/if]
+[/for]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+[for (class : Class | pack.ownedElement)]
+	[if ( class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer') )]
+		RootPanel.get().add( [getClassName(class).toLowerFirst()/] );
+	[/if]
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+	[if ( class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer') )]
+		RootPanel.get().add( [getClassName(class).toLowerFirst()/] );
+	[/if]
+[/for]
+		//[protected (model.name)]
+		// TODO Auto generated Method
+	
+		AppPlaceHistoryMapper historyMapper = GWT
+				.create(AppPlaceHistoryMapper.class);
+		PlaceHistoryHandler historyHandler = new PlaceHistoryHandler(
+				historyMapper);
+		historyHandler.register(injector.getPlaceController(), eventBus,
+				new YourStartHerePlace());
+		//[/protected]
+		historyHandler.handleCurrentHistory();
+	}
+}
+
+[/file]
+[/template]
+
+[template public appPlaceHistoryMapper(model : Model) ]
+[file (packageName(model.name).replaceAll('[.]', '/') + 'client/common/AppPlaceHistoryMapper.java', false, 'UTF-8')]
+package [packageName(model.name)/]client.common;
+
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+[for (class : Class | pack.ownedElement)]
+[if (isNotViewExisting(class))]
+import [generateImportPackageDeclaration(class, model.name, 'client.view.')/][getClassName(class)/]Place;
+[/if]
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+[if (isNotViewExisting(class))]
+import [generateImportPackageDeclaration(class, model.name, 'client.view.')/][getClassName(class)/]Place;
+[/if]
+[/for]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+[for (interface : Interface | pack.ownedElement->select(oclIsTypeOf(Interface)))]
+import [generateImportPackageDeclarationI(interface, model.name, 'client.view.')/][interface.name/]Place;
+[/for]
+[/for]
+[for (interface : Interface | model.ownedElement)]
+import [generateImportPackageDeclarationI(interface, model.name, 'client.view.')/][interface.name/]Place;
+[/for]
+
+import com.google.gwt.place.shared.PlaceHistoryMapper;
+import com.google.gwt.place.shared.WithTokenizers;
+
+@WithTokenizers({ 
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+	[for (class : Class | pack.ownedElement)]
+[if (isNotViewExisting(class))]
+		[getClassName(class)/]Place.Tokenizer.class,
+[/if]
+	[/for]
+	[/for]
+	[for (class : Class | model.ownedElement)]
+[if (isNotViewExisting(class))]
+		[getClassName(class)/]Place.Tokenizer.class,
+[/if]
+	[/for]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+	[for (interface : Interface | pack.ownedElement->select(oclIsTypeOf(Interface)))]
+		[interface.name/]Place.Tokenizer.class,
+	[/for]
+	[/for]
+	[for (interface : Interface | model.ownedElement)]
+		[interface.name/]Place.Tokenizer.class,
+	[/for]
+	[generateProtectetRegion(model.name)/] 
+	})
+public interface AppPlaceHistoryMapper extends PlaceHistoryMapper {
+
+}
+[/file]
+[/template]
+
+[template public activityMapper(model : Model) ]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+[for (class : Class | pack.ownedElement)]
+[if (isNotViewExisting(class))]
+	[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+[file (packageName(model.name).replaceAll('[.]', '/') + 'client/common/'+getClassName(class)+'ViewActivityMapper.java', false, 'UTF-8')]
+package [packageName(model.name)/]client.common;
+
+import [generateImportPackageDeclaration(class, model.name, 'client.view.')/][getClassName(class)/]Activity;
+
+import com.google.gwt.activity.shared.Activity;
+import com.google.gwt.activity.shared.ActivityMapper;
+import com.google.gwt.place.shared.Place;
+import com.google.inject.Inject;
+import com.google.inject.Provider;
+
+public class [getClassName(class)/]ViewActivityMapper implements ActivityMapper {
+
+	
+	@Inject
+	Provider<[getClassName(class)/]Activity> [getClassName(class).toLowerFirst()/]ActivityProvider;
+	[generateProtectetRegion(model.name)/]
+	@Override
+	public Activity getActivity(Place place) {
+		[generateProtectetRegion('getActivity')/]
+		return [getClassName(class).toLowerFirst()/]ActivityProvider.get();
+		
+	}
+
+}
+[/file]
+	[/if]
+[/if]
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+[if (isNotViewExisting(class))]
+	[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+[file (packageName(model.name).replaceAll('[.]', '/') + 'client/common/'+getClassName(class)+'ViewActivityMapper.java', false, 'UTF-8')]
+package [packageName(model.name)/]client.common;
+
+import [generateImportPackageDeclaration(class, model.name, 'client.view.')/][getClassName(class)/]Activity;
+
+import com.google.gwt.activity.shared.Activity;
+import com.google.gwt.activity.shared.ActivityMapper;
+import com.google.gwt.place.shared.Place;
+import com.google.inject.Inject;
+import com.google.inject.Provider;
+
+public class [getClassName(class)/]ViewActivityMapper implements ActivityMapper {
+
+	
+	@Inject
+	Provider<[getClassName(class)/]Activity> [getClassName(class).toLowerFirst()/]ActivityProvider;
+	[generateProtectetRegion(model.name)/]
+
+	@Override
+	public Activity getActivity(Place place) {
+		[generateProtectetRegion('getActivity')/]
+		return [getClassName(class).toLowerFirst()/]ActivityProvider.get();
+
+	}
+
+}
+[/file]
+	[/if]
+[/if]
+[/for]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+[for (interface : Interface | pack.ownedElement->select(oclIsTypeOf(Interface)))]
+	[if (interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentView') or interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+[file (packageName(model.name).replaceAll('[.]', '/') + 'client/common/'+interface.name+'ViewActivityMapper.java', false, 'UTF-8')]
+package [packageName(model.name)/]client.common;
+
+import [generateImportPackageDeclarationI(interface, model.name, 'client.view.')/][interface.name/]Activity;
+
+import com.google.gwt.activity.shared.Activity;
+import com.google.gwt.activity.shared.ActivityMapper;
+import com.google.gwt.place.shared.Place;
+import com.google.inject.Inject;
+import com.google.inject.Provider;
+
+public class [interface.name/]ViewActivityMapper implements ActivityMapper {
+
+	
+	@Inject
+	Provider<[interface.name/]Activity> [interface.name.toLowerFirst()/]ActivityProvider;
+	[generateProtectetRegion(model.name)/]	
+
+	@Override
+	public Activity getActivity(Place place) {
+		[generateProtectetRegion('getActivity')/]
+		return [interface.name.toLowerFirst()/]ActivityProvider.get();
+
+	}
+
+}
+[/file]
+	[/if]
+[/for]
+[/for]
+[for (interface : Interface | model.ownedElement)]
+	[if (interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentView') or interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+[file (packageName(model.name).replaceAll('[.]', '/') + 'client/common/'+interface.name+'ViewActivityMapper.java', false, 'UTF-8')]
+package [packageName(model.name)/]client.common;
+
+import [generateImportPackageDeclarationI(interface, model.name, 'client.view.')/][interface.name/]Activity;
+
+import com.google.gwt.activity.shared.Activity;
+import com.google.gwt.activity.shared.ActivityMapper;
+import com.google.gwt.place.shared.Place;
+import com.google.inject.Inject;
+import com.google.inject.Provider;
+
+public class [interface.name/]ViewActivityMapper implements ActivityMapper {
+
+	
+	@Inject
+	Provider<[interface.name/]Activity> [interface.name.toLowerFirst()/]ActivityProvider;
+	[generateProtectetRegion(model.name)/]	
+
+	@Override
+	public Activity getActivity(Place place) {
+		[generateProtectetRegion('getActivity')/]
+		return [interface.name.toLowerFirst()/]ActivityProvider.get();
+
+	}
+
+}
+[/file]
+	[/if]
+[/for]
+[file (packageName(model.name).replaceAll('[.]', '/') + 'client/common/ActivityMapperImpl.java', false, 'UTF-8')]
+package [packageName(model.name)/]client.common;
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+[for (class : Class | pack.ownedElement)]
+[if (isNotViewExisting(class))]
+import [generateImportPackageDeclaration(class, model.name, 'client.view.')/][getClassName(class)/]Activity;
+import [generateImportPackageDeclaration(class, model.name, 'client.view.')/][getClassName(class)/]Place;
+	[/if]
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+[if (isNotViewExisting(class))]
+import [generateImportPackageDeclaration(class, model.name, 'client.view.')/][getClassName(class)/]Activity;
+import [generateImportPackageDeclaration(class, model.name, 'client.view.')/][getClassName(class)/]Place;
+	[/if]
+[/for]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+[for (interface : Interface | pack.ownedElement->select(oclIsTypeOf(Interface)))]
+import [generateImportPackageDeclarationI(interface, model.name, 'client.view.')/][interface.name/]Activity;
+import [generateImportPackageDeclarationI(interface, model.name, 'client.view.')/][interface.name/]Place;
+[/for]
+[/for]
+[for (interface : Interface | model.ownedElement)]
+import [generateImportPackageDeclarationI(interface, model.name, 'client.view.')/][interface.name/]Activity;
+import [generateImportPackageDeclarationI(interface, model.name, 'client.view.')/][interface.name/]Place;
+[/for]
+import com.google.gwt.activity.shared.Activity;
+import com.google.gwt.activity.shared.ActivityMapper;
+import com.google.gwt.place.shared.Place;
+import com.google.inject.Inject;
+import com.google.inject.Provider;
+
+public class ActivityMapperImpl implements ActivityMapper {
+	
+	[generateProtectetRegion(model.name)/]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+[for (class : Class | pack.ownedElement)]
+	[if (isNotViewExisting(class))]
+	[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl')._not() and class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header')._not() and class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer')._not())]
+	@Inject
+	Provider<[getClassName(class)/]Activity> [getClassName(class).toLowerFirst()/]ActivityProvider;	
+[/if]
+[/if]
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+	[if (isNotViewExisting(class))]
+	[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl')._not() and class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header')._not() and class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer')._not())]
+	@Inject
+	Provider<[getClassName(class)/]Activity> [getClassName(class).toLowerFirst()/]ActivityProvider;	
+[/if]
+[/if]
+[/for]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]	
+[for (interface : Interface | pack.ownedElement->select(oclIsTypeOf(Interface)))]
+	[if (interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentView')._not() and interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header')._not() and interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer')._not())]
+	@Inject
+	Provider<[interface.name/]Activity> [interface.name.toLowerFirst()/]ActivityProvider;	
+[/if]
+[/for]
+[/for]
+[for (interface : Interface | model.ownedElement)]
+	[if (interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentView')._not() and interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header')._not() and interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer')._not())]
+	@Inject
+	Provider<[interface.name/]Activity> [interface.name.toLowerFirst()/]ActivityProvider;	
+[/if]
+[/for]
+	
+	@Override
+	public Activity getActivity(Place place) {
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]
+[for (class : Class | pack.ownedElement)]
+	[if (isNotViewExisting(class))]
+	[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl')._not() and class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header')._not() and class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer')._not())]
+	if (place instanceof [getClassName(class)/]Place) {
+			return [getClassName(class).toLowerFirst()/]ActivityProvider.get();
+		}
+	[/if]
+[/if]
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+	[if (isNotViewExisting(class))]
+	[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl')._not() and class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header')._not() and class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer')._not())]
+	if (place instanceof [getClassName(class)/]Place) {
+			return [getClassName(class).toLowerFirst()/]ActivityProvider.get();
+		}
+	[/if]
+[/if]
+[/for]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]
+[for (interface : Interface | pack.ownedElement->select(oclIsTypeOf(Interface)))]
+	[if (interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentView')._not() and interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header')._not() and interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer')._not())]
+	if (place instanceof [interface.name/]Place) {
+			return [interface.name.toLowerFirst()/]ActivityProvider.get();
+		}
+	[/if]
+[/for]
+[/for]
+[for (interface : Interface | model.ownedElement)]
+	[if (interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentView')._not() and interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header')._not() and interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer')._not())]
+	if (place instanceof [interface.name/]Place) {
+			return [interface.name.toLowerFirst()/]ActivityProvider.get();
+		}
+	[/if]
+[/for]
+		[generateProtectetRegion('getActivity')/]
+		return null;
+	}
+
+}
+[/file]
+[/template]
+
+[template public gin(model : Model) ]
+
+[file (packageName(model.name).replaceAll('[.]', '/') + 'client/common/gin/AppGinjector.java', false, 'UTF-8')]
+package [packageName(model.name)/]client.common.gin;
+
+import [packageName(model.name)/]client.common.ActivityMapperImpl;
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]
+[for (class : Class | pack.ownedElement)]
+[if (isNotViewExisting(class))]
+	[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+import [packageName(model.name)/]client.common.[getClassName(class)/]ViewActivityMapper;
+	[/if]
+[/if]
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+[if (isNotViewExisting(class))]
+	[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+import [packageName(model.name)/]client.common.[getClassName(class)/]ViewActivityMapper;
+	[/if]
+[/if]
+[/for]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]
+[for (interface : Interface | pack.ownedElement->select(oclIsTypeOf(Interface)))]
+	[if (interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentView') or interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+import [packageName(model.name)/]client.common.[interface.name/]ViewActivityMapper;
+	[/if]
+[/for]
+[/for]
+[for (interface : Interface | model.ownedElement)]
+	[if (interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentView') or interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+import [packageName(model.name)/]client.common.[interface.name/]ViewActivityMapper;
+	[/if]
+[/for]
+
+
+import com.google.gwt.inject.client.GinModules;
+import com.google.gwt.inject.client.Ginjector;
+import com.google.gwt.place.shared.PlaceController;
+import com.google.web.bindery.event.shared.EventBus;
+
+@GinModules(ProductionGinModule.class)
+public interface AppGinjector extends Ginjector {
+
+	public EventBus getEventBus();
+
+	public PlaceController getPlaceController();
+
+	public ActivityMapperImpl getActivityMapper();
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]
+[for (class : Class | pack.ownedElement)]
+[if (isNotViewExisting(class))]
+	[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+	public [getClassName(class)/]ViewActivityMapper get[getClassName(class)/]ViewActivityMapper();
+[/if]
+[/if]
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+[if (isNotViewExisting(class))]
+	[if (class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentViewImpl') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or class.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+	public [getClassName(class)/]ViewActivityMapper get[getClassName(class)/]ViewActivityMapper();
+[/if]
+[/if]
+[/for]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]
+[for (interface : Interface | pack.ownedElement->select(oclIsTypeOf(Interface)))]
+	[if (interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentView') or interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+	public [interface.name/]ViewActivityMapper get[interface.name/]ViewActivityMapper();
+[/if]
+[/for]
+[/for]
+[for (interface : Interface | model.ownedElement)]
+	[if (interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('PermanentView') or interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Header') or interface.getAppliedStereotypes()->asOrderedSet()->first().name.endsWith('Footer'))]
+	public [interface.name/]ViewActivityMapper get[interface.name/]ViewActivityMapper();
+[/if]
+[/for]
+	[generateProtectetRegion(model.name)/]
+}
+[/file]
+
+[file (packageName(model.name).replaceAll('[.]', '/') + 'client/common/gin/ProductionGinModule.java', false, 'UTF-8')]
+package [packageName(model.name)/]client.common.gin;
+
+import javax.inject.Singleton;
+
+import [packageName(model.name)/]client.common.ActivityMapperImpl;
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]
+[for (class : Class | pack.ownedElement)]
+[if (isNotViewExisting(class))]
+import [generateImportPackageDeclaration(class, model.name, 'client.view.')/][getClassName(class)/]View;
+[/if]
+import [generateImportPackageDeclaration(class, model.name, 'client.view.')/][class.name/]ViewImpl;
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+[if (isNotViewExisting(class))]
+import [generateImportPackageDeclaration(class, model.name, 'client.view.')/][getClassName(class)/]View;
+[/if]
+import [generateImportPackageDeclaration(class, model.name, 'client.view.')/][class.name/]ViewImpl;
+[/for]
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]
+[for (interface : Interface | pack.ownedElement->select(oclIsTypeOf(Interface)))]
+import [generateImportPackageDeclarationI(interface, model.name, 'client.view.')/][interface.name/]View;
+[/for]
+[/for]
+[for (interface : Interface | model.ownedElement)]
+import [generateImportPackageDeclarationI(interface, model.name, 'client.view.')/][interface.name/]View;
+[/for]
+
+import com.google.gwt.inject.client.AbstractGinModule;
+import com.google.gwt.place.shared.PlaceController;
+import com.google.web.bindery.event.shared.EventBus;
+import com.google.web.bindery.event.shared.SimpleEventBus;
+
+public class ProductionGinModule extends AbstractGinModule {
+
+	@Override
+	protected void configure() {
+		bind(EventBus.class).to(SimpleEventBus.class).in(Singleton.class);
+		bind(PlaceController.class).toProvider(PlaceControllerProvider.class)
+				.in(Singleton.class);
+		bind(ActivityMapperImpl.class).in(Singleton.class);
+		//[protected (model.name)]
+		// TODO Auto generated Method
+		bind(YourStartHereActivity.class);
+[for (pack : Package | model.allOwnedElements()->select(oclIsTypeOf(Package)))]
+[for (class : Class | pack.ownedElement)]
+	[if (not isNotViewExisting(class))]
+		[for (p : Property | class.getAppliedStereotypes()->asOrderedSet()->first().attribute)]
+		[if (p.name.endsWith('concreteBinding'))]
+			[if(not class.getValue(class.getAppliedStereotypes()->asOrderedSet()->first(),p.name).oclAsType(Boolean))]
+		// bind([getClassName(class)/]View.class).to([class.name/]ViewImpl.class).in(Singleton.class);
+			[else]
+		bind([getClassName(class)/]View.class).to([class.name/]ViewImpl.class).in(Singleton.class);
+			[/if]
+		[/if]
+		[/for]
+	[else]
+		bind([getClassName(class)/]View.class).to([class.name/]ViewImpl.class).in(Singleton.class);
+	[/if]	
+[/for]
+[/for]
+[for (class : Class | model.ownedElement)]
+	[if (not isNotViewExisting(class))]
+		[for (p : Property | class.getAppliedStereotypes()->asOrderedSet()->first().attribute)]
+		[if (p.name.endsWith('concreteBinding'))]
+			[if(not class.getValue(class.getAppliedStereotypes()->asOrderedSet()->first(),p.name).oclAsType(Boolean))]
+		// bind([getClassName(class)/]View.class).to([class.name/]ViewImpl.class).in(Singleton.class);
+			[else]
+		bind([getClassName(class)/]View.class).to([class.name/]ViewImpl.class).in(Singleton.class);
+			[/if]
+		[/if]
+		[/for]
+	[else]
+		bind([getClassName(class)/]View.class).to([class.name/]ViewImpl.class).in(Singleton.class);
+	[/if]	
+[/for]
+		//[/protected]
+	}
+}
+[/file]
+
+[/template]

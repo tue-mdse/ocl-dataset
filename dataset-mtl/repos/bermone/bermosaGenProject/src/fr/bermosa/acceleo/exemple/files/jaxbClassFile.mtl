@@ -1,0 +1,96 @@
+[comment encoding = UTF-8 /]
+[module jaxbClassFile('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import fr::bermosa::acceleo::exemple::common::common /]
+[import fr::bermosa::acceleo::exemple::common::declaration /]
+[import fr::bermosa::acceleo::exemple::common::imports /]
+[import fr::bermosa::acceleo::exemple::common::type /]
+[import fr::bermosa::acceleo::exemple::request::request /]
+[import fr::bermosa::acceleo::exemple::files::commonFile /]
+[import fr::bermosa::acceleo::exemple::files::classFile /]
+
+[template public genJAXBFileBody(aClass : Class)]
+[aClass.genPackageDeclaration()/]
+[aClass.genJAXBImport()/]
+[aClass.genImport()/]
+[aClass.genBody()/]
+[/template]
+
+[template protected genJAXBImport(aClass : Class)]
+
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlType;
+
+[/template]
+
+[template public genBody(aClass : Class)]
+[aClass.genJAXBClassAnnotations()/]
+[aClass.genVisibility()/][aClass.genAbstract()/][aClass.genFinal()/]class [aClass.genName()/][aClass.genInheritance()/][aClass.genInterfaceRealization()/] {
+	[aClass.genJAXBAttributes()/]
+	[aClass.genJAXBAccessors()/]
+}
+[/template]
+
+[template protected genJAXBClassAnnotations(aClass : Class)]
+@XmlRootElement
+@XmlAccessorType(XmlAccessType.NONE)
+@XmlType(name = "[aClass.name/]")
+[/template]
+
+[template public genJAXBAttributes(aClass : Class)]
+[for (aProperty : Property | aClass.ownedAttribute->asSequence()->union(aClass.getOutgoingNavigableOwnedEnd()->asSequence()->sortedBy(name)))]
+
+@XmlElement(name = "[aProperty.genName()/]", required = [if (aProperty.lower = 1 and aProperty.upper = 1)]true[else]false[/if])
+[aProperty.genVisibility()/][aProperty.genFinal()/][aProperty.genStatic()/][aProperty.genType()/] [aProperty.genName()/][aProperty.genDefaultValue()/];
+[/for]
+[/template]
+
+[template public genJAXBAccessors(aClass : Class) post (trim())]
+[for (aProperty : Property | aClass.ownedAttribute->asSequence()->union(aClass.getOutgoingNavigableOwnedEnd()->asSequence()->sortedBy(name)))]
+[aProperty.genAccessors()/]
+[/for]
+[/template]
+
+[template public genFullJAXBListPathFile(aClass : Class) post (trim())]
+[if (not aClass.getNearestPackage().oclIsUndefined())]
+	[aClass.genPackagePath().substituteAll('.', '/').concat('/').concat(aClass.genName()).concat('List.java')/]
+[else]
+	[aClass.genName().concat('List.java')/]
+[/if]
+[/template]
+
+[template public genJAXBListFileBody(aClass : Class)]
+[aClass.genPackageDeclaration()/]
+
+import java.util.ArrayList;
+import java.util.List;
+[aClass.genJAXBImport()/]
+[aClass.genListBody()/]
+[/template]
+
+[template protected genListBody(aClass : Class)]
+@XmlRootElement
+@XmlAccessorType(XmlAccessType.NONE)
+@XmlType(name = "[aClass.name/]List")
+[aClass.genVisibility()/][aClass.genFinal()/]class [aClass.genName()/]List {
+
+	@XmlElement(name = "[aClass.genName().toLowerFirst()/]", required = false)
+	public List<[aClass.genName()/]> [aClass.name.toLowerFirst()/]s = new ArrayList<[aClass.genName()/]>();
+
+	public void add[aClass.genName()/]([aClass.genName()/] [aClass.name.toLowerFirst()/]) {
+		[aClass.name.toLowerFirst()/]s.add([aClass.name.toLowerFirst()/]);
+	}
+
+	public List<[aClass.genName()/]> get[aClass.genName()/]s() {
+		return this.[aClass.name.toLowerFirst()/]s;
+	}
+
+	public void set[aClass.genName()/]s(List<[aClass.genName()/]> [aClass.name.toLowerFirst()/]s) {
+		this.[aClass.name.toLowerFirst()/]s = [aClass.name.toLowerFirst()/]s;
+	}
+
+}
+[/template]

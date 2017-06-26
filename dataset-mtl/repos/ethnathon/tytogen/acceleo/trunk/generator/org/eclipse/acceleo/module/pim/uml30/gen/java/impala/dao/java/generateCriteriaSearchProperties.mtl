@@ -1,0 +1,177 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module.
+ */]
+[module generateCriteriaSearchProperties('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[**
+ * The documentation of the template.
+ * @param aModel
+ */]
+[template public generateCriteriaSearchProperties(aModel : Model)]
+	[file (aModel.generateProjectFolder().concat(aModel.pathToGeneratedMainJava()).concat('/dao/common/CriteriaSearchProperties.java'), false, 'UTF-8')]
+package dao.common;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+[for (anEntity : Class | aModel.eAllContents(Class)->select(aClass:Class|aClass.isEntity()))]
+import [if (anEntity.generateJavaPackage().trim().size()>0)][anEntity.generateJavaPackage()/].[/if][anEntity.name/]Impl;
+[/for]
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.Predicate;
+
+/**
+ * Stores the embedded values and associations of all entities in the system by type.
+ * Is used to determine the appropriate parameter name when an embedded value's property
+ * is referenced as the attribute to search by (as opposed to an association).
+ *
+ * @author Chad Brandon
+ */
+@SuppressWarnings({"unchecked"})
+public class CriteriaSearchProperties
+{
+    private static Map embeddedValuesByType = new HashMap();
+    private static Map embeddedValueNamesByType = new HashMap();
+    private static Map navigableAssociationEndsByType = new HashMap();
+	[let entities : Set(Class) = aModel.eAllContents(Class)->select(aClass:Class|aClass.isEntity())->asSet()]
+    static
+    {
+		[for (entities)]
+			[let anEntity : Class = self]
+        initialize[anEntity.name.toUpperFirst()/][i/]();
+			[/let]			
+		[/for]
+    }
+		[for (entities)]
+			[let anEntity : Class = self]
+    private static void initialize[anEntity.name.toUpperFirst()/][i/]()
+    {
+        embeddedValueNamesByType.put(
+            [anEntity.name.toUpperFirst()/]Impl.class,
+            null);
+        embeddedValuesByType.put(
+            [anEntity.name.toUpperFirst()/]Impl.class,
+            null);
+        navigableAssociationEndsByType.put(
+            [anEntity.name.toUpperFirst()/]Impl.class,
+            Arrays.asList(
+                new PropertyType['['/][']'/]
+                {
+					[for (aProperty : Property | anEntity.getOppositeAttributes()->select(aProp:Property|aProp.class<>null and aProp.class.isEntity())) separator (', ')]
+                    new PropertyType("[aProperty.name.toLowerFirst()/]", [aProperty.class.name.toUpperFirst()/]Impl.class)
+					[/for]
+                }
+            )
+        );
+    }
+			[/let]			
+		[/for]
+	[/let]	
+    /**
+     * Attempts to get the embedded value list for the given type (or returns null
+     * if one doesn't exist).
+     *
+     * @param type the type of which to retrieve the value.
+     * @return the collection of embedded value names.
+     */
+    public static Collection getEmbeddedValues(final Class type)
+    {
+        return (Collection)embeddedValueNamesByType.get(type);
+    }
+
+    /**
+     * Gets the type of the navigable association end given the <code>ownerType</code>
+     * and <code>name</code>
+     *
+     * @param ownerType the owner of the association.
+     * @param name the name of the association end to find.
+     * @return the type of the association end.
+     */
+    public static Class getNavigableAssociationEndType(final Class ownerType, final String name)
+    {
+        return getPropertyType(navigableAssociationEndsByType, ownerType, name);
+    }
+
+    /**
+     * Gets the type of the embedded value given the <code>ownerType</code>
+     * and <code>name</code>
+     *
+     * @param ownerType the owner of the association.
+     * @param name the name of the association end to find.
+     * @return the type of the association end.
+     */
+    public static Class getEmbeddedValueType(final Class ownerType, final String name)
+    {
+        return getPropertyType(embeddedValuesByType, ownerType, name);
+    }
+
+    /**
+     * Gets the type of the embedded value given the <code>ownerType</code>
+     * and <code>name</code>
+     *
+     * @param properties Map contains the Collection of properties given the ownerType Class
+     * @param ownerType the owner of the association.
+     * @param name the name of the association end to find.
+     * @return the type of the association end.
+     */
+    public static Class getPropertyType(final Map properties, final Class ownerType, final String name)
+    {
+        final Collection ends = (Collection)properties.get(ownerType);
+        final PropertyType type = (PropertyType)CollectionUtils.find(
+            ends,
+            new Predicate()
+            {
+                public boolean evaluate(final Object object)
+                {
+                    return ((PropertyType)object).name.equals(name);
+                }
+            });
+        return type != null ? type.type : null;
+    }
+
+    /**
+     * Gets the type of the property given the <code>ownerType</code>
+     * and <code>name</code>
+     *
+     * @param ownerType the owner of the association.
+     * @param name the name of the association end to find.
+     * @return the type of the association end.
+     */
+    public static Class getPropertyType(final Class ownerType, final String name)
+    {
+        Class type = getNavigableAssociationEndType(ownerType, name);
+        if (type == null)
+        {
+            type = getEmbeddedValueType(ownerType, name);
+        }
+        return type;
+    }
+
+    /**
+     * A private class storing the name and type.
+     */
+    protected static class PropertyType
+    {
+        /**
+         * @param nameIn
+         * @param typeIn
+         */
+        protected PropertyType(final String nameIn, final Class typeIn)
+        {
+            this.name = nameIn;
+            this.type = typeIn;
+        }
+
+        /** PropertyType name */
+        protected String name;
+        /** PropertyType type Class */
+        protected Class type;
+    }
+}	[/file]
+[/template]

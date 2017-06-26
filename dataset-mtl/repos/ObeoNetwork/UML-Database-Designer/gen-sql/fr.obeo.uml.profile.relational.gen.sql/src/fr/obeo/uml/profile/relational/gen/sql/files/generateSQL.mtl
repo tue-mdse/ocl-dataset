@@ -1,0 +1,101 @@
+[comment encoding = UTF-8 /]
+[module generateSQL('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import fr::obeo::uml::profile::relational::gen::sql::services::relationalServices /]
+
+
+[template public generateSQL(schema : Package) ? (schema.isSchema())]
+[file ('sql/' + schema.name + '.sql', false, 'UTF-8')]
+[schema.generateTables()/]
+[schema.generateViews()/]
+[/file]
+[/template]
+
+[template private generateTables(schema : Package) ? (schema.isSchema())]
+[schema.getTables().generateTable()/]
+[/template]
+
+[template private generateViews(schema : Package) ? (schema.isSchema())]
+[schema.getViews().generateView()/]
+[/template]
+
+[template private generateView(view : Class) ? (view.isView())]
+-- ==============================================================
+--  View : [view.tableName()/]                                    
+-- ==============================================================
+
+CREATE VIEW [view.tableName()/] AS [view.viewQuery()/]
+
+[/template]
+
+[query private viewQuery(view : Class) : String =
+let qry : String = view.getViewQuery() in
+if (qry.endsWith(';')) then
+qry
+else
+qry + ';'
+endif
+/]
+
+
+[template private generateTable(table : Class) ? (table.isTable())]
+-- ==============================================================
+--  Table : [table.tableName()/]                                    
+-- ==============================================================
+
+CREATE TABLE [table.tableName()/](
+[table.getColumns().genColumn()->sep('\t', ',\n\t', '')/]
+)
+;
+[table.genPK()/]
+[table.genIndices()/]
+
+[/template]
+
+[template private genIndices(table : Class)]
+[for (index : Class | table.getIndices())]
+[index.genIndex()/]
+[/for]
+[/template]
+
+[template private genIndex(index : Class)]
+[index.genIndex(index.isUnique(), index.isIndexForPK(), index.owner.oclAsType(Class))/]
+[/template]
+
+[template private genIndex(index : Class, unique : Boolean, primary : Boolean, table : Class)]
+CREATE[if (unique)] UNIQUE[/if] INDEX[if (primary)] PRIMARY[/if] [index.name/] ON [table.name/]([index.getIndexColumnsLabel()/]);
+[/template]
+
+[template private genPK(table : Class)]
+[let pk : Constraint = table.getPrimaryKey()]
+-- ==============================================================
+--  Primary Key : [pk.name/]
+-- ==============================================================
+ALTER TABLE [table.tableName()/] ADD (CONSTRAINT [pk.name/] PRIMARY KEY([table.pkColumns().name->sep(', ')/]));
+[/let]
+[/template]
+
+[template private genColumn(column : Property)]
+[column.name/] [column.genColumnType()/][if (column.isNullable())] NOT NULL[/if]
+[/template]
+
+[template private genColumnType(column : Property) post (trim())]
+[if (column.type.oclIsUndefined())]
+<Undefined type>
+[else]
+[column.getColumnTypeLabel()/]
+[/if]
+[/template]
+
+[query private pkColumns(table : Class) : Sequence(Property) =
+table.getColumns()->select(column : Property | column.isInPK())
+/]
+
+[query private tableName(table : Class) : String = table.name.toUpperCase() /]
+
+[query private viewName(view : Class) : String = view.name.toUpperCase() /]
+
+[query public name(arg : Property) : String = 
+if (self.oclIsKindOf(Property) and self.oclAsType(Property).isInPK()) then 'X' else '' endif
+ /]
+

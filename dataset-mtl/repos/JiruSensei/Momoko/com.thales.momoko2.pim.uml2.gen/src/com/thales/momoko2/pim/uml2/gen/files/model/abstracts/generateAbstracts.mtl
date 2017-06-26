@@ -1,0 +1,176 @@
+[comment encoding = UTF-8 /]
+[module generateAbstracts('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::common::attributes::datatypeAttributes/]
+[import com::thales::momoko2::pim::uml2::gen::common::comments::operationComments/]
+[import com::thales::momoko2::pim::uml2::gen::services::uml2Queries/]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+
+[**
+ * This template generates the abstract classes.
+ * @param aModel
+ */]
+[template public generateAbstracts(aModel : Model)]
+[generateAbstractFeature()/]
+[generateAbstractObject()/]
+[/template]
+
+[**
+ * features
+ */]
+[template public generateAbstractFeature(aModel : Model)]
+[file ('src/'.concat(aModel.name.toLowerFirst()).concat('/model/abstracts/AbstractFeature.java'), false, 'UTF-8')]
+package [aModel.name.toLowerFirst()/].model.abstracts;
+
+
+/*
+Name : 			AbstractFeature.java
+Stereotype : 	feature
+*/
+
+import javax.persistence.*;
+import java.util.Date;
+
+@MappedSuperclass
+public abstract class AbstractFeature {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "ABSTRACT_FEATURE_GEN")
+	protected Long id;
+
+[for (aPackage:Package | aModel.eAllContents(Package)->asSequence()->sortedBy(name))?(isSchemaPackage(aPackage))]
+    [if generateSchemaAutitable(aPackage).toString().equalsIgnoreCase('true')]
+    [generateAuditableComment(aModel)/]
+    @Column (name="WHENCHANGED") 
+    @Basic(fetch=FetchType.LAZY, optional = false) 
+    @Temporal(TemporalType.DATE)
+    private Date whenchanged;
+
+    @Column (name="WHOCHANGED") 
+    @Basic(fetch=FetchType.LAZY, optional = false) 
+    private String whochanged;
+
+    @Column (name="WHATCHANGED") 
+    @Basic(fetch=FetchType.LAZY, optional = false) 
+    private String whatchanged;[/if]
+[/for]
+
+[for (aPackage:Package | aModel.eAllContents(Package)->asSequence()->sortedBy(name))?(isSchemaPackage(aPackage))]
+    [if generateSchemaHistory(aPackage).toString().equalsIgnoreCase('true')]
+    [generateHistoryComment(aModel)/]
+    @Column (name="VERSION") 
+    @Basic(fetch=FetchType.LAZY, optional = false)  
+    private int version;
+
+    @Column (name="LASTCHANGE") 
+    @Basic(fetch=FetchType.LAZY, optional = false) 
+    private boolean lastChange;[/if]
+[/for]
+
+
+	/**
+	 * Default constructor
+	 */
+	protected AbstractFeature() {
+	}
+
+	/**
+	 * Copy Constructor
+	 * 
+	 * @param abstractFeature
+	 */
+	protected AbstractFeature(AbstractFeature abstractFeature) {
+	}
+
+	/**
+	 * This method compare this Feature with another AbstractFeature passing in
+	 * parameter
+	 * 
+	 * @param timeSlice
+	 * @return timeSlice that contains only the differences
+	 */
+	//public abstract AbstractFeature diffWith(AbstractFeature abstractFeature);
+
+	@Override
+	public boolean equals(Object o) {
+		if (id == null || !(o instanceof AbstractFeature))
+			return false;
+		return id.equals(((AbstractFeature) o).getId());
+	}
+
+	/**
+	 * @return the id
+	 */
+	public Long getId() {
+		return id;
+	}
+
+	/**
+	 * @param id
+	 *            the id to set
+	 */
+	public void setId(Long id) {
+		this.id = id;
+	}
+}
+[/file]
+[/template]
+
+[**
+ * objects
+ */]
+[template public generateAbstractObject(aModel : Model)]
+[file ('src/'.concat(aModel.name.toLowerFirst()).concat('/model/abstracts/AbstractObject.java'), false, 'UTF-8')]
+package [aModel.name.toLowerFirst()/].model.abstracts;
+
+/*
+Name : 			AbstractObject.java
+Stereotype : 	object
+*/
+
+import javax.persistence.*;
+
+@MappedSuperclass
+public abstract class AbstractObject {
+
+	@Id
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "ABSTRACT_OBJECT_GEN")
+	protected Long id;
+
+	/**
+	 * Default Contructor
+	 */
+	public AbstractObject() {
+	}
+
+	/**
+	 * Copy Constructor
+	 * @param abstractObject
+	 */
+	public AbstractObject(AbstractObject abstractObject) {
+	}
+
+	/**
+	 * Check if this object is different from an object passing in parameter
+	 * 
+	 * @param abstractObject
+	 * @return
+	 */
+	//public abstract Boolean isDiffWith(AbstractObject abstractObject);
+
+	/**
+	 * @return the id
+	 */
+	public Long getId() {
+		return id;
+	}
+
+	/**
+	 * @param id
+	 *            the id to set
+	 */
+	public void setId(Long id) {
+		this.id = id;
+	}
+}
+[/file]
+[/template]

@@ -1,0 +1,103 @@
+[comment encoding = UTF-8 /]
+[module pluginFile('http://www.eclipse.org/emf/2002/Ecore', 'http://mondo.org/runtimePatterns')]
+[import org::mondo::generate::modular::project::general::create::project::request::generalQueries /]
+
+[template public generatePluginFile(anProjectName : String, anPatternInstances : PatternInstances)]
+
+[file ('plugin.xml',false, 'UTF-8')]
+<plugin>
+	<!--PROJECT MODULAR NATURE-->
+	   <extension
+         id="[getProperty('generalNature')/]"
+         point="org.eclipse.core.resources.natures">
+      <runtime>
+         <run
+               class="[anProjectName/].[getProperty('prefix_name')/].nature.GeneralProjectNature">
+         </run>
+      </runtime>
+   </extension>
+   <!--PROJECT WIZARDS-->
+	<extension
+         point="org.eclipse.ui.newWizards">
+	 <!-- PROJECT CATEGORY -->
+	 <category
+            id="[anProjectName/].[getProperty('prefix_name')/].category.[getProperty('prefixGeneral')/]"
+            name="[getProperty('prefixGeneral').toUpperFirst().concat(getProperty('prefix_name').toUpperFirst() +' Project')/]">
+      </category>
+	<!--WIZARD PROJECT WIZARD -->
+	<wizard
+			category="[anProjectName/].[getProperty('prefix_name')/].category.[getProperty('prefixGeneral')/]"
+			class="[anProjectName.toLower()/].[getProperty('prefix_name')/].wizard.GeneralModularProjectWizard"
+			name="General Modular Project"
+			id="[anProjectName/].[getProperty('prefix_name')/].[getProperty('prefixGeneral')/].preoject.wizard"
+			icon="icons/Pro.png"
+			project="true"
+	>
+	</wizard>	
+    <!--WIZARD PACKAGE WIZARD -->
+	 [for (c :  ClassRoleInstance | anPatternInstances.getClassesRoleProject())]
+		<wizard
+			category="[anProjectName/].[getProperty('prefix_name')/].category.[getProperty('prefixGeneral')/]"
+			class="[anProjectName.toLower()/].[getProperty('prefix_name')/].wizard.folder.[c.element.name/]CreateFolderWizard"
+			name="[c.element.name/] Folder"
+			id="[anProjectName/].[c.element.name.toLower()/].[getProperty('prefixGeneral')/].[c.element.name.toLower()/]NewPackage"
+			icon="[getProjectIconByClassRoleInstance(c)/]"
+			project="false"
+		>
+		</wizard>	
+	 [/for]	
+	 </extension>
+	 <!--PROJECT NATURE ICON -->
+	<extension
+         point="org.eclipse.ui.ide.projectNatureImages">
+      <image
+            icon="icons/Pro.png"
+            id="[anProjectName.toLower()/].[getProperty('prefix_name')/].generalProject"
+            natureId="[anProjectName.toLower()/].[getProperty('prefix_name')/].[getProperty('generalNature')/]">
+      </image>   
+	</extension>
+	<!--PROJECT NEW MENU -->
+	<extension
+         point="org.eclipse.ui.menus">
+	<menuContribution
+            allPopups="true"
+            class="[anProjectName.toLower()/].[getProperty('prefix_name')/].nature.CreateMenu"
+            locationURI="popup:org.eclipse.jdt.ui.PackageExplorer?after=group.new">
+         <menu
+               id="GeneralModularProjectNewMenu"
+               label="New General Modular Project"
+               mnemonic="L">
+            <visibleWhen
+                  checkEnabled="true">
+            </visibleWhen>
+         </menu>
+      </menuContribution>
+	<!-- GENERATE GENERAL MODULAR MODEL MENU-->
+    <menuContribution
+            allPopups="false"
+            locationURI="popup:org.eclipse.jdt.ui.PackageExplorer?after=group.new">
+         <menu
+               id="general.[getProperty('prefix_name')/].project"
+               label="General Modular Project"
+               mnemonic="L">
+            <command
+                  commandId="[anProjectName.toLower()/].general.[getProperty('prefix_name')/].contrib"
+                  id="[anProjectName.toLower()/].[getProperty('prefix_name')/].general.id"
+                  label="Generate Complete Model"
+                  mnemonic="L"
+                  style="push">
+            </command>
+         </menu>
+      </menuContribution>
+	</extension>
+	<!--HANDLERS -->
+	<extension
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="[anProjectName.toLower()/].[getProperty('prefix_name')/].nature.GenerateCompleteModel"
+            commandId="[anProjectName.toLower()/].general.[getProperty('prefix_name')/].contrib">
+      </handler>
+   </extension>	
+</plugin>
+[/file]
+[/template]

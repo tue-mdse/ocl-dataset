@@ -1,0 +1,141 @@
+[module sqlcreate('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::sql::services::sqltypeservices /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[template public generateSqlCreate(model:Model)]
+[comment This template is called by the main module file /]
+[file (model.pathToMainResources().concat('/').concat(model.projectName()).concat('-ddl.sql'), false))]
+-- [protected ('use')]
+-- TODO specify the name of database used
+USE [model.projectName()/];
+-- [/protected]
+
+	[for (class:Class|model.allOwnedElements()->filter(Class))]
+		[if (class.isEntity())]
+-- Tables for Entity [class.name/] 
+
+DROP TABLE IF EXISTS [class.name.toSqlNotation()/];
+CREATE TABLE [class.name.toSqlNotation()/]
+(
+[comment  Class attribute iteration /][comment  attribute.filterExistProperty("association",false) 
+COMMENT ON COLUMN/]
+			[if (class.superClass->isEmpty())]
+    ID CHAR(32) NOT NULL,
+			[/if]
+[comment  Properties /]
+			[for (prop:Property|class.ownedAttribute)]
+[comment  Array of primitives types are not generated /]
+				[if (not (prop.isDerived) and prop.upper = 1)]
+    [prop.name.toSqlNotation()/] [prop.type.convertToSqlType() /] 
+					[if (prop.lower > 0)]NOT [/if]NULL,
+				[/if]
+			[/for]
+[comment  Direct associations /]
+			[for (prop:Property|class.getOppositeAttributes())]
+[comment  n---n /]
+				[if (prop.opposite = null)]
+[comment  |n|-->n /]
+					[if (prop.upper = 1)]
+[comment  |n|-->1 /]
+						[if (prop.oppositeAttribute().upper = 1)]
+[comment  |1|-->1 /]    
+	[prop.genForeignKey()/] UNIQUE,
+						[else]
+[comment  |*|-->1 /]    
+	[prop.genForeignKey()/],
+						[/if]
+					[else]
+[comment  n-->* /]
+						[if (prop.oppositeAttribute().upper = 1)]
+[comment  |1|-->* /]
+						[else]
+[comment  |*|-->* /]
+						[/if]
+					[/if]
+				[elseif ((prop.oppositeAttribute().upper = -1 or prop.oppositeAttribute().upper > 1) and prop.upper = 1)]
+[comment  |*|<-->1 /]    
+	[prop.genForeignKey()/],
+				[elseif (prop.isMainEndPoint() = 'true')]
+[comment  |n|<-->n /]
+					[if (prop.upper = 1 and prop.oppositeAttribute().upper = 1)]
+[comment  |1|<-->1 /]    
+	[prop.genForeignKey()/] UNIQUE,
+					[/if]
+				[/if]
+			[/for]
+[comment  Opposite associations /]
+			[for (prop:Property|class.pointedAttribute()->filter(Property))]
+[comment  n---|n| /]
+				[if (prop.opposite = null)]
+[comment  n-->|n| /]
+					[if (prop.upper <> 1)]
+[comment  n-->|*| /]
+						[if (prop.oppositeAttribute().upper = 1)]
+[comment  1-->|*| /]    
+	FK_[prop.oppositeAttribute().type.name.toSqlNotation()/]_[prop.name.toSqlNotation()/]_ID CHAR(32)[if (prop.lower > 0)] NOT NULL[/if],
+						[/if]
+					[/if]
+				[/if]
+			[/for]
+[comment  Inheritance /]
+			[if (not (class.superClass->isEmpty()))]
+    FK_INHERITS_[class.superClass.name.toSqlNotation()/]_ID CHAR(32) NOT NULL,    
+    PRIMARY KEY (FK_INHERITS_[class.superClass.name.toSqlNotation()/]_ID)
+			[else]
+    PRIMARY KEY (ID)
+			[/if]
+);
+
+[comment  Join table for many to many associations /]
+			[for (prop:Property|class.getOppositeAttributes())]
+[comment  n---n /]
+				[if (prop.upper <> 1 and prop.oppositeAttribute().upper <> 1)]
+[comment  *---* /]
+					[if (prop.opposite = null or prop.isMainEndPoint())]
+[comment  *-->|*| /]DROP TABLE IF EXISTS JOIN_[prop.oppositeAttribute().type.name.toSqlNotation()/]_[prop.type.name.toSqlNotation()/];
+CREATE TABLE JOIN_[prop.oppositeAttribute().type.name.toSqlNotation()/]_[prop.type.name.toSqlNotation()/]
+(
+    [prop.oppositeAttribute().type.name.toSqlNotation()/]_ID CHAR(32) NOT NULL,
+    [prop.type.name.toSqlNotation()/]_ID CHAR(32) NOT NULL,
+    PRIMARY KEY ([prop.oppositeAttribute().type.name.toSqlNotation()/]_ID, [prop.type.name.toSqlNotation()/]_ID)
+);
+
+					[/if]
+				[/if]
+			[/for]
+		[/if]
+	[/for]
+
+[/file]
+[/template]
+
+
+[template public convertToSqlType(type:Type)]
+[comment For ddl generation specific to MySQL /]
+[type.getProperty('sql.typeconversion.'+type.name)/]
+[/template]
+
+
+[template public genForeignKey(property:Property)]
+FK_[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_ID CHAR(32)[if (property.lower > 0)] NOT NULL[/if]
+[/template]
+
+
+[query public isMainEndPoint(property:Property) : Boolean =
+if (property.aggregation = 'composite' or 
+	(property.oppositeAttribute().aggregation <> 'composite' and 
+	(compare(property.class.name, property.type.name) > 0 or (property.class = property.type and 
+	compare(property.name, property.opposite.name) > 0)))) then 
+	true 
+else 
+	false 
+endif
+/]
+
+
+

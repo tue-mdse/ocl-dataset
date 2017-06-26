@@ -1,0 +1,211 @@
+[comment encoding = UTF-8 /]
+[module generateGspnDefFile('http:///ptnet.ecore')]
+
+[template public generateGspnDefFile(petriNet : PetriNet) post(trim())]
+[file (petriNet.id.concat('.def'), false, 'Cp1252')]
+|256
+%
+|
+[markingDef(petriNet)/]
+[colorSetDef(petriNet)/]
+[colorDef(petriNet)/]
+[/file]
+[/template]
+
+[template public getColorMarking(col : ToolInfo, petriNet : PetriNet) post (trim())]
+[if isArcOrdered(getColorSetTypeByColor(col,petriNet)) and (getnumElementsColor(col) >= 1)]
+<[getId(col)/]1>
+[elseif isArcUnion(getColorSetTypeByColor(col,petriNet)) and (getnumElementsColor(col) >= 1)]
+<S [getColorName(col)/]>
+[elseif isArcUnion(getColorSetTypeByColor(col,petriNet)) and (getnumElementsColor(col) < 1)]
+0
+[/if]
+[/template]
+
+[template public getColorMarkingList(place : Place, petriNet : PetriNet) post (trim())]
+[for (col : ToolInfo | colorsWithTokens(place)) separator('+')][getColorMarking(col,petriNet)/][/for]
+[/template]
+
+[template public markingDefLine(place : Place, petriNet : PetriNet) post (trim())]
+[comment COL ::= "(" NAME space CT space coords space "(@" CT "\n"
+ <fun_def> "\n ))"/]
+([getPlaceMarkingName(place)/] [ct(place)/] [placeMarkingCoords(place)/] (@[ct(place)/]
+[getColorMarkingList(place,petriNet)/]
+))
+[/template]
+
+[template public markingDef(petriNet : PetriNet) post (trim())]
+[comment COLOR ::= COL COLOR | empty /]
+[for (place : Place | allPlacesWithColoredTokens(petriNet)->sortedBy(id)) separator('\n')][markingDefLine(place, petriNet)/][/for]
+[/template]
+
+[template public colorSetDefLine(petriNet: PetriNet, colorset : ToolInfo) post (trim())]
+[comment COL ::= "(" NAME space CT space coords space "(@" CT "\n"
+ <fun_def> "\n ))"/]
+([getColorSetName(colorset)/] [ct(colorset)/] [colorSetCoords(colorset)/] (@[ct(colorset)/]
+[getColorSetTypeText(petriNet, colorset)/] [for (c : ToolInfo | allColorsColorSet(petriNet, colorset)) separator(',')][getColorName(c)/][/for]
+))
+[/template]
+
+[template public colorSetDef(petriNet : PetriNet) post (trim())]
+[comment COLOR ::= COL COLOR | empty /]
+[for (colorset : ToolInfo | allColorSets(petriNet))]
+[colorSetDefLine(petriNet, colorset)/]
+[/for]
+[/template]
+
+[template public colorDefLine(petriNet: PetriNet, color : ToolInfo) post (trim())]
+[comment COL ::= "(" NAME space CT space coords space "(@" CT "\n"
+ <fun_def> "\n ))"/]
+([getColorName(color)/] [ct(color)/] [colorSetCoords(color)/] (@[ct(color)/]
+[getId(color)/]{1-[getnumElementsColor(color)/]}
+))
+[/template]
+
+[template public colorDef(petriNet : PetriNet) post (trim())]
+[comment COLOR ::= COL COLOR | empty /]
+[for (color : ToolInfo | allColors(petriNet))]
+[colorDefLine(petriNet, color)/]
+[/for]
+[/template]
+
+[template public ct(colorset : ToolInfo) post (trim())]
+[comment CT ::= "c" | "f" | "m" /]
+c
+[/template]
+
+[template public ct(place : Place) post (trim())]
+[comment CT ::= "c" | "f" | "m" /]
+m
+[/template]
+
+[template public colorSetCoords(colorset : ToolInfo) post (trim())] 
+0.0 0.0
+[/template]
+
+[template public colorCoords(color : ToolInfo) post (trim())] 
+0.0 0.0
+[/template]
+
+[template public placeMarkingCoords(place : Place) post (trim())]
+0.0 0.0
+[/template]
+
+[template public getColorSetTypeText(petriNet : PetriNet, colorset : ToolInfo) post (trim())]
+[if isArcUnion(colorset)] u 
+[elseif isArcOrdered(colorset)] o 
+[/if]
+[/template]
+
+[query public allPlaces(petriNet : PetriNet) : Collection(Place) = 
+	petriNet.pages.objects->flatten()->selectByKind(Place)->sortedBy(id)
+/]
+
+[query public allPlacesWithColoredTokens(petriNet : PetriNet) : Collection(Place) = 
+	allPlaces(petriNet)->select(p: Place | hasColoredTokens(p))->sortedBy(id)
+/]
+
+[query public hasColoredTokens(place : Place) : Boolean = 
+	colorsWithTokens(place)->size() > 0 
+/]
+
+[query public colorsWithTokens(place : Place) : Collection(ToolInfo) = 
+	allColors(place)->select(col: ToolInfo | getnumElementsColor(col) > 0 )->sortedBy(formattedXMLBuffer.toString())
+/]
+
+[query public getPlaceMarkingName(place : Place) : String = 
+	'M_' + place.id 
+/]
+
+[query public getColorSetTypeIndex(colorset : ToolInfo) : String = 
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','getColorSetTypeIndex(fr.lip6.move.pnml.ptnet.ToolInfo)', Sequence{colorset})
+/]
+
+[query public getColorSetType(colorset : ToolInfo) : Integer = 
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','getColorSetTypeIndex(fr.lip6.move.pnml.ptnet.ToolInfo)', Sequence{colorset})
+/]
+
+[query public getColorSetTypeByColor(color : ToolInfo, petriNet : PetriNet) : Integer = 
+	getColorSetType(getColorSet(color, petriNet))
+/]
+
+[query public getColorSetName(colorset : ToolInfo) : String = 
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','getColorSetName(fr.lip6.move.pnml.ptnet.ToolInfo)', Sequence{colorset})
+/]
+
+[query public getColorName(color : ToolInfo) : String = 
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','getColorName(fr.lip6.move.pnml.ptnet.ToolInfo)', Sequence{color})
+/]
+
+[query public getColorSetNameColor(colorset : ToolInfo) : String = 
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','getColorSetNameColor(fr.lip6.move.pnml.ptnet.ToolInfo)', Sequence{colorset})
+/]
+
+[query public getnumElementsColor(color : ToolInfo) : Integer = 
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','getnumElementsColor(fr.lip6.move.pnml.ptnet.ToolInfo)', Sequence{color})
+/]
+
+[query public isColor(color: ToolInfo) : Boolean = 
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','isColor(fr.lip6.move.pnml.ptnet.ToolInfo)', Sequence{color})
+/]
+
+[query public isColorSet(colorset: ToolInfo) : Boolean = 
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','isColorSet(fr.lip6.move.pnml.ptnet.ToolInfo)', Sequence{colorset})
+/]
+
+[query public allColors(place : Place) : Collection(ToolInfo) = 
+	place.toolspecifics->select(e: ToolInfo | isColor(e))->flatten()->asSet()->sortedBy(formattedXMLBuffer.toString())
+/]
+
+[query public allColors(petriNet : PetriNet) : Collection(ToolInfo) = 
+	petriNet.toolspecifics->select(e: ToolInfo | isColor(e))->flatten()->asSet()->sortedBy(formattedXMLBuffer.toString())
+/]
+
+[query public allColorSets(petriNet : PetriNet) : Set(ToolInfo) = 
+	petriNet.toolspecifics->select(e: ToolInfo | isColorSet(e))->flatten()->asSet()->sortedBy(formattedXMLBuffer.toString())
+/]
+
+[query public allColorsColorSet(petriNet : PetriNet, colorset : ToolInfo) : Collection(ToolInfo) = 
+	allColors(petriNet)->
+			 select(e : ToolInfo | getColorSetName(colorset) = getColorSetNameColor(e))->sortedBy(formattedXMLBuffer.toString())
+/]
+
+[query public getColorSet(color : ToolInfo, petriNet : PetriNet) : ToolInfo = 
+	-- 
+	allColorSets(petriNet)->select(e: ToolInfo | getColorSetName(e) = getColorSetNameColor(color))->asSequence()->first()
+/]
+
+[query public isArcUnion(colorset : ToolInfo) : Boolean = 
+	isArcUnion(getColorSetType(colorset))
+/]
+
+[query public isArcOrdered(colorset : ToolInfo) : Boolean = 
+	isArcOrdered(getColorSetType(colorset))
+/]
+
+[query public isArcUnion(value : Integer) : Boolean = 
+	value = 0
+/]
+
+[query public isArcOrdered(value : Integer) : Boolean = 
+	value = 1
+/]
+
+[query public getId(color : ToolInfo) : String = 
+	getIdColorSet(color) + getIdColor(color)
+/]
+
+[query public getIdColorSet(color : ToolInfo) : String = 
+	getColorSetNameColor(color).first(1)
+/]
+
+[query public getIdColor(color : ToolInfo) : String = 
+	-- ToolInfo-related queries are executed via the global utility methods
+	invoke('es.unizar.disco.pnml.m2t.utils.PnmlToolInfoUtils','getColorNameIndex(fr.lip6.move.pnml.ptnet.ToolInfo)', Sequence{color})
+/]

@@ -1,0 +1,176 @@
+[comment]
+  Copyright 2015
+[/comment]
+[module inputManager('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import common/]
+
+[template public generateClassInputManager(c : Class)]
+[c.packageBlock()/]
+
+[_commentBodyBlock()/]
+[for (i : Interface | c.getImplementedInterfaces())]
+[if (i.name = 'KeyListener')]
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.util.ArrayList;
+import java.util.HashMap;
+[/if]
+[if (i.name = 'MouseInputListener')]
+import java.awt.Point;
+import java.awt.event.MouseEvent;
+import javax.swing.event.MouseInputListener;
+[/if]
+[/for]
+
+public class InputManager [for (interf : Interface | c.getImplementedInterfaces()) before(' implements ') separator(',')] [interf.name/][/for] {
+
+	static private InputManager instance;
+[for (i : Interface | c.getImplementedInterfaces())]
+[if (i.name = 'KeyListener')]
+	static protected int KEY_RELEASED = 0;
+	static protected int KEY_JUST_PRESSED = 1;
+	static protected int KEY_PRESSED = 2;
+	private HashMap<Integer, Integer> keyCache;
+	private ArrayList<Integer> pressedKeys;
+	private ArrayList<Integer> releasedKeys;
+[/if]
+[if (i.name = 'MouseInputListener')]
+	private boolean mouseButton1;
+	private boolean mouseButton2;
+	private Point mousePos;
+[/if]
+[/for]
+
+	private InputManager() {
+[for (i : Interface | c.getImplementedInterfaces())]
+[if (i.name = 'KeyListener')]
+		keyCache = new HashMap<Integer, Integer>();
+		pressedKeys = new ArrayList<Integer>();
+		releasedKeys = new ArrayList<Integer>();
+[/if]
+[if (i.name = 'MouseInputListener')]
+		mousePos = new Point();
+[/if]
+[/for]
+	}
+
+	static public InputManager getInstance() {
+		if (instance == null) {
+			instance = new InputManager();
+		}
+		return instance;
+	}
+[for (i : Interface | c.getImplementedInterfaces())]
+[if (i.name = 'KeyListener')]
+	public boolean isPressed(int keyId) {
+		return keyCache.containsKey(keyId)
+				&& !keyCache.get(keyId).equals(KEY_RELEASED);
+	}
+
+	public boolean isJustPressed(int keyId) {
+		return keyCache.containsKey(keyId)
+				&& keyCache.get(keyId).equals(KEY_JUST_PRESSED);
+	}
+
+	public boolean isReleased(int keyId) {
+		return !keyCache.containsKey(keyId)
+				|| keyCache.get(keyId).equals(KEY_RELEASED);
+	}
+
+	public void update() {
+		synchronized (pressedKeys) {
+			synchronized (releasedKeys) {
+				for (Integer keyCode : keyCache.keySet()) {
+					if (isJustPressed(keyCode)) {
+						keyCache.put(keyCode, KEY_PRESSED);
+					}
+				}
+				for (int i = 0; i < releasedKeys.size(); i++) {
+					keyCache.put(releasedKeys.get(i), KEY_RELEASED);
+				}
+				for (int i = 0; i < pressedKeys.size(); i++) {
+					if (isReleased(pressedKeys.get(i))) {
+						keyCache.put(pressedKeys.get(i), KEY_JUST_PRESSED);
+					} else {
+						keyCache.put(pressedKeys.get(i), KEY_PRESSED);
+					}
+				}
+				pressedKeys.clear();
+				releasedKeys.clear();
+			}
+		}
+	}
+
+	public void keyTyped(KeyEvent e) {
+		// Rotina não utilizada. Evento de tecla teclada.
+	}
+
+	public void keyPressed(KeyEvent e) {
+		pressedKeys.add(e.getKeyCode());
+	}
+
+	public void keyReleased(KeyEvent e) {
+		releasedKeys.add(e.getKeyCode());
+	}
+[/if]
+[if (i.name = 'MouseInputListener')]
+	public boolean isMousePressed(int buttonId) {
+		if (buttonId == MouseEvent.BUTTON1) {
+			return mouseButton1;
+		}
+		if (buttonId == MouseEvent.BUTTON2) {
+			return mouseButton2;
+		}
+		return false;
+	}
+
+	public int getMouseX() {
+		return (int) mousePos.getX();
+	}
+
+	public int getMouseY() {
+		return (int) mousePos.getY();
+	}
+
+	public Point getMousePos() {
+		return mousePos;
+	}
+
+	public void mouseClicked(MouseEvent e) {
+	}
+
+	public void mousePressed(MouseEvent e) {
+		if (e.getButton() == MouseEvent.BUTTON1) {
+			mouseButton1 = true;
+		}
+		if (e.getButton() == MouseEvent.BUTTON2) {
+			mouseButton2 = true;
+		}
+	}
+
+	public void mouseReleased(MouseEvent e) {
+		if (e.getButton() == MouseEvent.BUTTON1) {
+			mouseButton1 = false;
+		}
+		if (e.getButton() == MouseEvent.BUTTON2) {
+			mouseButton2 = false;
+		}
+	}
+
+	public void mouseEntered(MouseEvent e) {
+	}
+
+	public void mouseExited(MouseEvent e) {
+	}
+
+	public void mouseDragged(MouseEvent e) {
+		mousePos.setLocation(e.getPoint());
+	}
+
+	public void mouseMoved(MouseEvent e) {
+		mousePos.setLocation(e.getPoint());
+	}
+[/if]
+[/for]
+}
+[/template]

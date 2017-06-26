@@ -1,0 +1,67 @@
+[comment encoding = UTF-8 /]
+[module DbContextCSharpFile('platform:/plugin/PIM2DotNetPlugin/metamodels/PSMMetamodel.ecore')]
+[import org::eclipse::acceleo::psm2code::utilities::DataHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyFileHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyClassHelpers/]
+
+[template public generateDbContext(aRESTfulServicePSM : RESTfulServicePSM)]
+
+[file (aRESTfulServicePSM.generateDbContextPath(), false, 'UTF-8')]
+[aRESTfulServicePSM.genFileDocumentation(aRESTfulServicePSM.Dbrief() , aRESTfulServicePSM.Ddetails())/]
+namespace [aRESTfulServicePSM.name/].Data
+{
+	using System;
+    using System.Data.Entity;
+    using System.Data.Entity.ModelConfiguration.Conventions;
+	using MySql.Data.Entity;
+    using System.Linq;
+	
+	using [aRESTfulServicePSM.name/].Models;
+	using [aRESTfulServicePSM.name/].Data.Configuration;
+
+	[aRESTfulServicePSM.genClassDocumentation(aRESTfulServicePSM.DbCCbrief() , aRESTfulServicePSM.DbCCdetails())/]
+	['['/]DbConfigurationType(typeof(MySqlEFConfiguration))[']'/]
+	public partial class [aRESTfulServicePSM.generateDbContextName()/] : DbContext
+	{
+		public [aRESTfulServicePSM.generateDbContextName()/]() : base("name=[aRESTfulServicePSM.name/]Database")
+		{
+
+
+			Database.SetInitializer<[aRESTfulServicePSM.generateDbContextName()/]>(new DropCreateDatabaseIfModelChanges<[aRESTfulServicePSM.generateDbContextName()/]>());
+
+			//Database.SetInitializer<[aRESTfulServicePSM.generateDbContextName()/]>(new DropCreateDatabaseAlways<[aRESTfulServicePSM.generateDbContextName()/]>());
+			//Database.SetInitializer<[aRESTfulServicePSM.generateDbContextName()/]>(new CreateDatabaseIfNotExists<[aRESTfulServicePSM.generateDbContextName()/]>());
+			
+			// Do NOT enable proxied entities, else serialization fails.
+            this.Configuration.ProxyCreationEnabled = false;
+ 
+            // Load navigation properties explicitly or eagerly (avoid serialization trouble)
+            this.Configuration.LazyLoadingEnabled = false;
+
+		}
+	
+		[for ( aCSharpResourceModel : CSharpResourceModel | aRESTfulServicePSM.hasCSharpRModel)]
+		public DbSet<[aCSharpResourceModel.name/]> [aCSharpResourceModel.name.toLowerFirst()/]Set { get; set; } 			///< This DbSet represents the collection of all entities in the context, or that can be queried from the database, of type [aCSharpResourceModel.name/].
+		[/for]
+
+		protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        {
+        
+			modelBuilder.Conventions.Remove<OneToManyCascadeDeleteConvention>();
+    
+		[for ( aCSharpResourceModel : CSharpResourceModel | aRESTfulServicePSM.hasCSharpRModel)]
+			modelBuilder.Configurations.Add(new [aCSharpResourceModel.name/]Config());
+		[/for]
+
+        }			
+	}
+}
+[/file]
+[/template]
+
+[template private genFKNullCheck(aCSharpResourceModel : CSharpResourceModel)]
+[for (p: PSMComponentProperty | aCSharpResourceModel.CSharpRModelHasProperty -> select(a | a.bIsForeignKey)) separator('&&')]
+ o.[p.name/] == null [/for]
+[/template]
+
+

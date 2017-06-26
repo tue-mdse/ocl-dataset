@@ -1,0 +1,279 @@
+[comment encoding = UTF-8 /]
+[module entities('http://iwz/appmodel')]
+
+[import iwz::appmodel::acceleo::templates::common/]
+[import iwz::appmodel::acceleo::templates::server::php::names/]
+
+[template public generateEntities(db : Database)]
+[file ('/server/php/src/Entity.php', false, 'UTF-8')]
+<?php
+
+abstract class Entity {
+
+	abstract static public function toArray (Entity $entity);
+	abstract static public function fromArray (array $array);
+
+	final static public function toArrays (\Iterator $entities) {
+
+		$arrays = array();
+
+		foreach ($entities as $entity) {
+
+			if ($entity instanceof Entity) {
+
+				array_push($arrays, static::toArray($entity));
+
+			}
+
+		}
+
+		return $arrays;
+
+	}
+
+	final static public function fromArrays (array $arrays) {
+
+		$entities = new \ArrayIterator();
+
+		foreach ($arrays as $array) {
+
+			if (is_array($array)) {
+				
+				$entities->append(static::fromArray($array));
+
+			}
+
+		}
+
+		return $entities;
+
+	}
+	
+	final static public function toJson ($mixed) {
+
+		if ($mixed instanceof \Iterator) {
+
+			return json_encode(self::toArrays($mixed), JSON_PRETTY_PRINT);
+
+		}
+		elseif ($mixed instanceof Entity) {
+
+			return json_encode(static::toArray($mixed), JSON_PRETTY_PRINT);
+
+		}
+
+	}
+	
+	final static public function fromJson ($json,$many=false) {
+
+		if ($many) {
+
+			return self::fromArrays(json_decode($json,true));
+
+		}
+
+		return static::fromArray(json_decode($json,true));
+		
+	}
+	
+}
+
+?>
+[/file]
+[/template]
+
+[template private phpDeclaration(p : Property)]
+
+/**
+ * @var
+ */
+private [p.phpVarName()/];[p.lineSeparator()/]
+[/template]
+
+[template private phpDeclaration(r : Relation)]
+
+/**
+ * @var [if(r.isOneToOne())][r.target.phpName()/][else]\Iterator[/if] 
+ */
+private [r.phpVarName()/];[r.lineSeparator()/]
+[/template]
+
+[template private phpAccessors(p : Property)]
+
+/**
+ * Gets [p.name/]
+ * @return
+ */
+public function [p.phpGetterName()/] () {
+	return [p.phpThisVarName()/];
+}
+
+/**
+ * Sets [p.name/]
+ * @return
+ */
+public function [p.phpSetterName()/] ([p.phpVarName()/]) {
+	[p.phpThisVarName()/] = [p.phpVarName()/];
+}
+[/template]
+
+[template private phpAccessors(r : Relation)]
+
+/**
+ * Gets [r.name/]
+ * @return
+ */
+public function [r.phpGetterName()/] () {
+	return [r.phpThisVarName()/];
+}
+
+/**
+ * Sets [r.name/]
+ * @return
+ */
+public function [r.phpSetterName()/] ([if(r.isOneToOne())][r.target.phpName()/] [else]\Iterator [/if][r.phpVarName()/]) {
+	[r.phpThisVarName()/] = [r.phpVarName()/];
+}
+[/template]
+
+[template private phpConstructor(e : Entity)]
+
+/**
+ * Creates new [e.name/]
+ * @return
+ */
+public function __construct () {
+
+	[for (p : Property | e.getProperties())]
+	$this->[p.phpSetterName()/](null);
+	[/for]
+	[for (r : Relation | e.getOneToManyRelations())]
+	$this->[r.phpSetterName()/](new \ArrayIterator());
+	[/for]
+	[for (r : Relation | e.getManyToManyRelations())]
+	$this->[r.phpSetterName()/](new \ArrayIterator());
+	[/for]
+
+}
+[/template]
+
+[template private phpToArray(e : Entity)]
+
+
+static public function toArray (\Entity [e.phpVarName()/]) {
+
+	$array = array();
+
+	if ([e.phpVarName()/] instanceof [e.phpName()/]) {
+
+		[for (p : Property | e.getProperties())]
+		$array['["'+p.phpName()+'"]'/] = [e.phpVarName()/]->[p.phpGetterName()/]();
+		[/for]
+		[for (r : Relation | e.getOneToOneRelations())]
+		if (!is_null([e.phpVarName()/]->[r.phpGetterName()/]())) {
+			$array['["'+r.phpName()+'"]'/] = [r.getTarget().phpNamespaceName()/]::toArray([e.phpVarName()/]->[r.phpGetterName()/]());
+		}
+		else {
+			$array['["'+r.phpName()+'"]'/] = array();
+		}
+		[/for]
+		[for (r : Relation | e.getOneToManyRelations())]
+		$array['["'+r.phpName()+'"]'/] = [r.getTarget().phpNamespaceName()/]::toArrays([e.phpVarName()/]->[r.phpGetterName()/]());
+		[/for]
+		[for (r : Relation | e.getManyToManyRelations())]
+		$array['["'+r.phpName()+'"]'/] = [r.getTarget().phpNamespaceName()/]::toArrays([e.phpVarName()/]->[r.phpGetterName()/]());
+		[/for]
+
+	}
+
+	return $array;
+
+}
+[/template]
+
+[template private phpFromArray(e : Entity)]
+
+
+static public function fromArray (array $array) {
+
+	[e.phpVarName()/] = new [e.phpNamespaceName()/]();
+
+	[for (p : Property | e.getProperties())]
+	if (isset($array['["'+p.phpName()+'"]'/])) {
+		[e.phpVarName()/]->[p.phpSetterName()/]($array['["'+p.phpName()+'"]'/]);
+	}
+	[/for]
+	[for (r : Relation | e.getOneToOneRelations())]
+	if (isset($array['["'+r.phpName()+'"]'/]) 
+		&& is_array($array['["'+r.phpName()+'"]'/])) {
+		[e.phpVarName()/]->[r.phpSetterName()/]([r.getTarget().phpNamespaceName()/]::fromArray($array['["'+r.phpName()+'"]'/]));
+	}
+	[/for]
+	[for (r : Relation | e.getOneToManyRelations())]
+	if (isset($array['["'+r.phpName()+'"]'/]) 
+		&& is_array($array['["'+r.phpName()+'"]'/])) {
+		[e.phpVarName()/]->[r.phpSetterName()/]([r.getTarget().phpNamespaceName()/]::fromArrays($array['["'+r.phpName()+'"]'/]));
+	}
+	[/for]
+	[for (r : Relation | e.getManyToManyRelations())]
+	if (isset($array['["'+r.phpName()+'"]'/]) 
+		&& is_array($array['["'+r.phpName()+'"]'/])) {
+		[e.phpVarName()/]->[r.phpSetterName()/]([r.getTarget().phpNamespaceName()/]::fromArrays($array['["'+r.phpName()+'"]'/]));
+	}
+	[/for]
+
+	return [e.phpVarName()/];
+
+}
+[/template]
+
+[template private phpExtends(e : Entity)]
+[/template]
+
+[template public phpClass(r : Relation)]
+[file ('/server/php/src/entities/'+r.getSource().phpName()+r.phpName().toUpperFirst()+'.php', false, 'UTF-8')]
+<?php
+
+namespace entities {
+
+	/**
+	 * RelationTarget: [r.name/]
+	 */
+	class [r.getSource().phpName()/][r.phpName().toUpperFirst()/] extends [r.getTarget().phpName()/] {
+	
+		
+	
+	}
+
+}
+
+?>
+[/file]
+[/template]
+
+[template public generatePHPClass(e : Entity)]
+[file ('/server/php/src/entities/'+e.phpName()+'.php', false, 'UTF-8')]
+<?php
+
+namespace entities {
+
+	/**
+	 * Entity: [e.name/]
+	 */
+	class [e.phpName()/] extends \Entity {
+	
+		[e.phpToArray()/]
+		[e.phpFromArray()/]
+		[e.properties.phpDeclaration()/]
+		[e.relations.phpDeclaration()/]
+		[e.phpConstructor()/]
+		[e.properties.phpAccessors()/]
+		[e.relations.phpAccessors()/]
+
+	}
+
+}
+
+?>
+[/file]
+[/template]

@@ -1,0 +1,225 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2012, 2015 CNES and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Cedric Notot (Obeo) - initial API and implementation
+ *     JF Rolland (ATOS) - implementation of rtsj specific generation
+[/comment]
+
+
+[module classFile('http://www.eclipse.org/umlgen/dsl/asl','http://www.eclipse.org/umlgen/dsl/eth','http://www.eclipse.org/uml2/5.0.0/UML') extends org::eclipse::umlgen::gen::autojava::files::classFile] 
+
+[import org::eclipse::umlgen::gen::autojava::files::paramFile /]
+[import org::eclipse::umlgen::gen::autojava::files::ethernetComFile /]
+[import org::eclipse::umlgen::gen::autojava::specific::port /]
+[import org::eclipse::umlgen::gen::rtsj::specific::thread /]
+[import org::eclipse::umlgen::gen::autojava::specific::stateMachine /]
+[import org::eclipse::umlgen::gen::autojava::specific::root /]
+[import org::eclipse::umlgen::gen::autojava::specific::lib::common /]
+[import org::eclipse::umlgen::gen::autojava::specific::lib::feature /]
+[import org::eclipse::umlgen::gen::autojava::specific::lib::type /]
+[import org::eclipse::umlgen::gen::autojava::specific::lib::requests::common /]
+[import org::eclipse::umlgen::gen::autojava::requests::port /]
+[import org::eclipse::umlgen::gen::autojava::requests::common /]
+[import org::eclipse::umlgen::gen::autojava::requests::ethernet /]
+[import org::eclipse::umlgen::gen::autojava::services::rtsjServices /]
+[import org::eclipse::umlgen::gen::autojava::services::utilServices /]
+[import org::eclipse::umlgen::gen::autojava::common::imports /]
+[import org::eclipse::umlgen::gen::autojava::common::common /]
+
+[template public genFileBody(aClass : Class) overrides genFileBody]
+[aClass.genFilePath().genPackageDeclaration()/]
+[comment Generate import of class /]
+[aClass.genImport()/]
+[aClass.genThreadImport()/]
+[if (aClass.isMessage())]
+[aClass.genMessageImport()/]
+[/if]
+[if (aClass.getAllSignals()->notEmpty())]
+[aClass.genSignalImport()/]
+[/if]
+[if (aClass.needsBuffer())]
+[aClass.genBufferImport()/]
+[/if]
+import org.eclipse.umlgen.rtsj.framework.*;
+import org.eclipse.umlgen.rtsj.framework.types.*;
+[for (port : Port | aClass.get('ownedPort')->filter(Port)->union(aClass.getParents()->select(c : Classifier | c.isAbstract).get('ownedPort')->filter(Port)))]
+	[for (interface : Interface | port.getAllPortInterfaces())]
+import [port.genFilePath()/].[interface.genClassPortName(port)/];
+	[/for]
+[/for]
+[for (interface : Interface | aClass.getAllProvidedInterfaces())]
+import [interface.genPackagePath()/].[interface.genName()/];
+[/for]
+[for(aType : Type | minimize(aClass.getAllSignals()->union(aClass.getParents()->select(c : Classifier | c.isAbstract)->filter(Class).getAllSignals()).get('ownedAttribute')->filter(Property).type->select(aType : Type | not aType.isJavaPrimitive()))->filter(Type))]
+import [aType.genFilePath()/].[aType.name/];
+[/for]
+[if (not aClass._package.isOnlyEthernetPackage())]
+import [aClass.genPackagePath()/].*;
+[/if]
+[aClass.genEthernetComImports()/]
+// [protected ('to add imports for '.concat(aClass.genName()))]
+
+// [/protected]
+
+[comment Generate class comment /]
+[aClass.genCommentBis() /]
+
+[if (getProperty('gen.annotations') = 'true')]
+[aClass.genThreadAnnotations()/][/if]
+[comment Class declaration /]
+[aClass.genVisibility()/][aClass.genAbstract()/][aClass.genFinal()/]class [aClass.genName()/] [aClass.genInheritance()/] [aClass.genInterfaceRealization()/] {
+	[aClass.genClassBody()/]
+}
+[/template]
+
+[template protected genClassBody(aClass : Class) overrides genClassBody]
+[comment Generate root methods /]
+[if (aClass.isRoot())]
+[aClass.genRoot()/]
+[/if]
+
+[comment Generate static memory buffer attribute /]
+[aClass.genStaticMemoryBuffer()/]
+
+[comment Generate attributes /]
+[for (p : Property | aClass.getAttributes())]
+[p.genAttribute()/]
+[/for]
+// [protected ('to add fields for '.concat(genName()))]
+
+// [/protected]
+
+public void readObject(ArgsBuffer argsBuffer) {
+[if (aClass.general->size() > 0)]
+	super.readObject(argsBuffer);
+[/if]
+[for (aProperty : Property | aClass.getAttributes()->select(aProperty : Property | not aProperty.isNotSerialized()))]
+	[aProperty.genReader()/]
+[/for]
+}
+
+public void writeObject(ArgsBuffer argsBuffer) {
+[if (aClass.general->size() > 0)]
+	super.writeObject(argsBuffer);
+[/if]
+[for (aProperty : Property | aClass.getAttributes()->select(aProperty : Property | not aProperty.isNotSerialized()))]
+	[aProperty.genWriter()/]
+[/for]		
+}
+
+[comment Generate signal interface declaration /]
+[if (aClass.ownedBehavior->filter(StateMachine)->notEmpty())]
+/**  SIGNALS.  ***/
+[if (getProperty('gen.annotations') = 'true')]
+@ignore
+[/if]
+interface SMState {
+	[for (s : Signal | aClass.getAllSignals()->union(aClass.getParents()->select(c : Classifier | c.isAbstract)->filter(Class).getAllSignals()))]
+	/**
+ 	* Description of the method [s.genName()/].
+ 	*
+ 	*/
+	void [s.genName()/]([s.get('ownedAttribute')->filter(Property).genAttributeProperty()->sep(', ')/]);
+	[/for]
+	/**
+	 * Description of the method enterHState.
+	 *
+	 * @return SMState
+	 */
+	SMState enterHState();
+	/**
+	 * Description of the method exitToState.
+	 *
+	 * @param s SMState
+	 */
+	void exitToState(SMState s);
+}
+[/if]
+
+[comment Generate all inner class /]
+[for (c : Class | aClass.get('nestedClassifier')->filter(Class)->select(itC : Class | not itC.eClass().name.equalsIgnoreCase('Behavior') and itC.ownedBehavior->isEmpty()))]
+[c.genCommentBis()/]
+[c.genVisibility()/][c.genAbstract()/][c.genFinal()/]class [c.genName()/] [c.genInheritance()/] [c.genInterfaceRealization()/] {
+[c.genClassBody()/]
+}
+[/for]
+
+[comment Generate getters and setters /]
+[for (p : Property | aClass.get('ownedAttribute')->excluding(aClass.get('ownedPort'))->asSequence()->union(aClass.getAssociations().navigableOwnedEnd->select(itP : Property | itP.type <> aClass)->asSequence())->filter(Property))][p.genAccessors(aClass)/][/for]
+
+[comment Generate state machine methods /]
+[for (b : Behavior | aClass.get('ownedBehavior')->filter(StateMachine))]
+[b.genStateMachine()/]
+[/for]
+[comment Generate constructor /]
+[aClass.genConstructor()/]
+[comment Generate methods /]
+[for (o : Operation | aClass.get('ownedOperation')->filter(Operation)->select(itO : Operation | not itO.name.equalsIgnoreCase(aClass.name)))]
+[o.genOperation()/]
+[/for]
+[comment Generate periodic/aperiodic methods /]
+[aClass.genThread()/]
+
+[comment Generate ports declaration /]
+/**  CONNECTORS.  ***/
+[for (port : Port | aClass.get('ownedPort')->filter(Port))]
+	[for (interface : Interface | port.getAllPortInterfaces())]
+protected [interface.genClassPortName(port)/] [port.name/];
+	[/for]
+[/for]
+
+[if (not aClass.isAbstract and aClass.ownedPort->notEmpty())]
+public void initPortsGenerator(String componentInstance, CommunicationLayer communicationLayer) {
+[for (port : Port | aClass.get('ownedPort')->filter(Port)->union(aClass.getParents()->select(aParent : Classifier | aParent.isAbstract).get('ownedPort')->filter(Port)))]
+	[for (interface : Interface | port.getAllPortInterfaces())]
+	[port.name/] = new [interface.genPortConstructorCall(port,'componentInstance')/];
+	[/for]
+[/for]
+[if (aClass.getParents()->notEmpty())]
+	[if (aClass.getParents()->select(aParent : Classifier | not aParent.isAbstract).get('ownedPort')->filter(Port).getAllPortInterfaces()->notEmpty())]
+	super.initPortsGenerator(componentInstance, communicationLayer);
+	[/if]
+[/if]
+}
+[/if]
+
+[for (port : Port | aClass.get('ownedPort')->filter(Port)->select(p : Port | p.isReceiver()))]
+public EventDataPort get[port.name.toUpperFirst()/]() {
+	return [port.name/];
+}
+[/for]
+
+[if (not aClass.isAbstract)]
+[for (s : Signal | minimize(aClass.getAsyncInterfacesPortProvider().get('nestedClassifier')->filter(Signal)->union(aClass.getAsyncInterfacesPortProvider().get('ownedElement')->filter(Reception).signal))->filter(Signal)->union(aClass.getParents()->filter(Class)->select(c : Class | c.isAbstract).get('nestedClassifier')->filter(Signal)->union(aClass.getParents()->filter(Class)->select(c : Class | c.isAbstract).getAsyncInterfacesPortProvider().get('ownedElement')->filter(Reception).signal))->filter(Signal))]
+public void [s.genName()/]([s.get('ownedAttribute')->filter(Property).genAttributeProperty()->sep(', ')/]) {
+[if (aClass.get('ownedBehavior')->filter(StateMachine)->notEmpty())]
+	[aClass.get('ownedBehavior')->filter(StateMachine)->first().genName()/].current_state.[s.genName()/]([s.get('ownedAttribute')->filter(Property).name->sep(', ')/]);
+[else]
+	// [protected ('for method '
+	+ aClass.genName()
+	+ '.' + s.genName() +'('
+	+ s.get('ownedAttribute')->filter(Property).genAttributeProperty()->sep(', ').oclAsType(String)
+	+ '): void')]
+	// [/protected]
+[/if]	
+}
+[/for]
+[/if]
+[/template]
+
+[template public genInterfaceRealization(aClass : Class) overrides genInterfaceRealization post (trim())]
+[if (aClass.getInterfacesRealization()->notEmpty())]implements [aClass.getInterfacesRealization().genName()->sep(', ')/][/if][if(aClass.isPeriodic() or aClass.isAperiodic() or aClass.isSporadic())][if (aClass.getInterfacesRealization()->notEmpty())], [else]implements [/if]  [if (aClass.isAperiodic() or aClass.isSporadic())]CommunicationExceptionInterface, AperiodicRealtimeEntry [else]PeriodicRealtimeEntry [/if][/if]
+[/template]
+
+[template protected genThread(aClass : Class) overrides genThread]
+[if (aClass.isPeriodic() or aClass.isAperiodic() or aClass.isSporadic())]
+PortBuffer pbuffer = new PortBuffer([aClass.getPortBuffer()/]);
+[aClass.genThreadInfo()/]
+[/if]
+[/template]

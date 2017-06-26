@@ -1,0 +1,90 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2015 Spacebel SA.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Johan Hardy (Spacebel) - initial API and implementation
+[/comment]
+[module property('http://www.eclipse.org/uml2/5.0.0/UML')/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::namedelement/]
+
+[query public isPrivate(p : uml::Property) : Boolean = 
+(visibility = VisibilityKind::private)/]
+
+[query public isPublic(p : uml::Property) : Boolean = 
+(visibility = VisibilityKind::public)/]
+
+[query public getPrivate(seq : Sequence(uml::Property)) : Sequence(uml::Property) =  
+seq->select(p : uml::Property | p.isPrivate())->asSequence()/]
+
+[query public getNotPrivate(seq : Sequence(uml::Property)) : Sequence(uml::Property) =  
+seq->select(p : uml::Property | not(p.isPrivate()))->asSequence()/]
+
+[query public getPublic(seq : Sequence(uml::Property)) : Sequence(uml::Property) =  
+seq->select(p : uml::Property | p.isPublic())->asSequence()/]
+
+[query public getNotPublic(seq : Sequence(uml::Property)) : Sequence(uml::Property) =  
+seq->select(p : uml::Property | not(p.isPublic()))->asSequence()/]
+
+[query public getReadOnly(seq : Sequence(uml::Property)) : Sequence(uml::Property) =  
+seq->select(p : uml::Property | p.isReadOnly)->asSequence()/]
+
+[query public getNotReadOnly(seq : Sequence(uml::Property)) : Sequence(uml::Property) =  
+seq->select(p : uml::Property | not(p.isReadOnly))->asSequence()/]
+
+[query public getUsesStaticMethods(seq : Sequence(uml::Property)) : Sequence(uml::Property) =  
+seq->select(p : uml::Property | p.isUsesStaticMethods())->asSequence()/]
+
+[query public getNotUsesStaticMethods(seq : Sequence(uml::Property)) : Sequence(uml::Property) =  
+seq->select(p : uml::Property | not(p.isUsesStaticMethods()))->asSequence()/]
+
+[query public getHasNoTypeApplied(seq : Sequence(uml::Property)) : Sequence(uml::Property) =  
+seq->select(p : uml::Property | (p.type->isEmpty()))->asSequence()/]
+
+[query public getHasTypeApplied(seq : Sequence(uml::Property)) : Sequence(uml::Property) =  
+seq->select(p : uml::Property | not(p.type->isEmpty()))->asSequence()/]
+
+[query public isArrray(p : uml::Property) : Boolean = 
+if p.hasStereotype('embedded_C::Array') then true
+else false 
+endif
+/]
+
+[query public getMultiplicity(p : uml::Property) : String = 
+if p.hasStereotype('embedded_C::Array') then p.getValue(p.getAppliedStereotype('embedded_C::Array'), 'Multiplicity')
+else false 
+endif
+/]
+
+[query private getPointerKind(p : uml::Property) : String = 
+if p.hasStereotype('embedded_C::Pointer') then p.getValue(p.getAppliedStereotype('embedded_C::Pointer'), 'Pointer').oclAsType(uml::EnumerationLiteral).name
+else ''
+endif
+/]
+
+[query public isStruct(p : uml::Property) : Boolean = 
+if p.hasStereotype('embedded_C::Struct') then true
+else false 
+endif
+/]
+
+[query public isVolatile(p : uml::Property) : Boolean = 
+if p.hasStereotype('embedded_C::Volatile') then true
+else false 
+endif
+/]
+
+[query public hasAttribute(p : uml::Property) : Boolean = p.hasStereotype('embedded_C::Attribute')/]
+
+[query public getAttribute(p : uml::Property) : String = 
+p.getValue(p.getAppliedStereotype('embedded_C::Attribute'), 'Attribute').toString()/]
+
+[query public isUsesStaticMethods(p : uml::Property) : Boolean = p.hasStereotype('embedded_C::UsesStaticMethods')/]
+
+[template public genPointer(p : uml::Property)]
+[if (getPointerKind() = 'Simple')] *[elseif (getPointerKind() = 'Double')] **[else][/if]
+[/template]

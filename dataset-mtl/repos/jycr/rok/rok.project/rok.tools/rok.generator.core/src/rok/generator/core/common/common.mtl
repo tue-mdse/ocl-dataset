@@ -1,0 +1,56 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generate.
+ */]
+[module common('http://www.eclipse.org/emf/2002/Ecore')]
+
+[template public generics(c : EClassifier) post (clearSpace())]
+[for (g : ETypeParameter | c.eTypeParameters) before ('<') separator (', ') after ('>')]
+	[g.name/]
+[/for]
+[/template]
+
+[template public log(message : String)]
+[file ('log.txt', false, 'UTF-8')][message/][/file]
+[/template]
+
+[template public clearLog()]
+[file ('log.txt', true, 'UTF-8')][/file]
+[/template]
+
+[template public clearSpace(o : String) ][o.replaceAll('\\s+', '')/][/template]
+
+[template public packageFullName(o : OclAny,separator : String) post (clearSpace().replaceAll('^\\.|\\.$',''))]
+[if (not(o.oclIsUndefined()))]
+	[o.eContainer().packageFullName(separator)/]
+	[if (o.oclIsTypeOf(EPackage))]
+		[separator/][o.oclAsType(EPackage).name/]
+	[/if]
+[/if]
+[/template]
+
+[template public javaImports(imports : String) post(replaceAll('\\s',' ').replaceAll('static ','¤').tokenize()->asSet().prefix('import ').concat(';\n').replaceAll('¤','static '))]
+[imports/]
+[/template]
+
+[template public documentation(c : EClassifier)]
+/**
+ * [c.getDocumentation().replaceAll('\n','\n *')/]
+[for (g : ETypeParameter | c.eTypeParameters)]
+ *
+ * @param <[g.name/]>
+ *          [g.getDocumentation().replaceAll('\n\\s*','\n *          ')/]
+[/for]
+ */
+[/template]
+
+[template public getDocumentation(m : EModelElement) post (replaceAll('^\\s*|\\s*$',''))]
+[for (e : EStringToStringMapEntry | m.eAnnotations->select(a : EAnnotation | a.source = 'http://www.eclipse.org/emf/2002/GenModel').details->select(m : EStringToStringMapEntry | m.key = 'documentation'))]
+[e.value/]
+[/for]	
+[/template]
+
+[query public oclIsDefined(o : Set(OclAny)) : Boolean = o->size()>0  /]
+[query public getExtendsEClass(c : EClass) : OrderedSet(EClass) = c.eSuperTypes->select(ec : EClass | not(ec.interface)) /]
+[query public getImplementsEClass(c : EClass) : OrderedSet(EClass) = c.eSuperTypes->select(ec : EClass | ec.interface) /]
+

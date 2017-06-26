@@ -1,0 +1,133 @@
+[comment encoding = UTF-8 /]
+[module controllerFile('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import fr::bermosa::acceleo::exemple::common::common /]
+[import fr::bermosa::acceleo::exemple::common::declaration /]
+[import fr::bermosa::acceleo::exemple::common::imports /]
+[import fr::bermosa::acceleo::exemple::common::type /]
+[import fr::bermosa::acceleo::exemple::files::commonFile /]
+[import fr::bermosa::acceleo::exemple::services::commonServices /]
+[import fr::bermosa::acceleo::exemple::common::operations /]
+
+
+[template public genControllerFileBody(aClass : Class)]
+[aClass.genControllerPackageDeclaration()/]
+[aClass.genControllerImports()/]
+[aClass.genServiceImports()/]
+[aClass.genImport()/]
+// [protected ('(imports)')]
+
+// [/protected]
+
+[aClass.genBody()/]
+[/template]
+
+[template public genControllerFullPathFile(aClass : Class)]
+[aClass.genFullPathFile().replace('/service/', '/web/')/]
+[/template]
+
+[template public genControllerPackageDeclaration(aClass : Class)]
+[aClass.genPackageDeclaration().replace('.service', '.web')/]
+[/template]
+
+[template protected genControllerImports(aClass : Class)]
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+[if (aClass.hasRESTfulOperation())]
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+[/if]
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.ModelMap;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+[/template]
+
+[template protected genServiceImports(aClass : Class) post (trim())]
+[if (aClass.getAssociationsTypeList()->size() > 0)]
+[for (aType : Type | aClass.getAssociationsTypeList())]
+[if (not aType.importValue().equalsIgnoreCase(''))]
+import [aType.importValue()/];
+[/if]
+[/for]
+[/if]
+[/template]
+
+[template protected genBody(aClass : Class)]
+@Controller
+// [protected ('(annotations)')]
+@RequestMapping("/[aClass.genControllerMapping()/]")
+// [/protected]
+[aClass.genVisibility()/][aClass.genAbstract()/][aClass.genFinal()/]class [aClass.genName()/][aClass.genInheritance()/][aClass.genInterfaceRealization()/] {
+
+	/** A commons logger for diagnostic messages. */
+	private static Log log = LogFactory.getLog([aClass.genName()/].class);
+
+	// [protected ('(attributes)')]
+
+	// [/protected]
+	[aClass.genServicesReferences()/]
+	[aClass.genControllerActions()/]
+}
+[/template]
+
+[template protected genControllerMapping(aClass : Class) post (trim())]
+[if (aClass.name.endsWith('Controller'))]
+[aClass.genName().replace('Controller', '').toLower()/]s
+[else]
+[aClass.genName().toLower()/]s
+[/if]
+[/template]
+
+[template protected genServicesReferences(aClass : Class)]
+[for (aProperty : Property | aClass.getAssociations().navigableOwnedEnd)]
+
+@Autowired
+private [aProperty.genType()/] [aProperty.genName()/];
+[/for]
+[/template]
+
+[template protected genControllerActions(aClass : Class)]
+[for (anOperation : Operation | aClass.ownedOperation)]
+
+[anOperation.genControllerActionPrototype()/]
+[/for]
+[/template]
+
+[template protected genControllerActionPrototype(anOperation : Operation)]
+// [protected ('- annotations for '.concat(anOperation.name))]
+@RequestMapping(value = "/[anOperation.genName()/]")
+// @Secured("ROLE_ADMIN")
+// [/protected]
+[if (anOperation.hasEAnnotation('@RESTful'))]
+[genVisibility()/]ResponseEntity<?> [genName()/](
+[else]
+[genVisibility()/]String [genName()/](
+[/if]
+		// [protected ('- parameters for '.concat(anOperation.name))]
+
+		// [/protected]
+		ModelMap modelMap) {
+
+	// [protected ('- logic for '.concat(anOperation.name))]
+
+	[if (anOperation.hasEAnnotation('@RESTful'))]
+	return new ResponseEntity<Object>(modelMap, HttpStatus.OK);
+	[else]
+	return "[anOperation.class.genControllerMapping()/]/[anOperation.genName()/]";
+	[/if]
+	// [/protected]
+}
+[/template]
+
+[query private getAssociationsTypeList(aClass : Class) : Sequence(Type) = 
+	if getAssociations()->size() > 0 and (getAssociations().navigableOwnedEnd->size() > 0) then getAssociations().navigableOwnedEnd.type->asSequence() else Sequence(Type){} endif
+/]
+
+[** Return true if at least one operation is marked has RESTful *]
+[query private hasRESTfulOperation(aClass : Class) : Boolean
+	= aClass.getOperations()->select(hasEAnnotation('@RESTful'))->size() > 0 /]

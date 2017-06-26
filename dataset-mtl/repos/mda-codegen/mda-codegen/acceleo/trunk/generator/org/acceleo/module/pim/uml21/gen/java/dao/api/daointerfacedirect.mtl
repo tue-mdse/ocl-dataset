@@ -1,0 +1,96 @@
+[module daointerfacedirect('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon/]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /] 
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[comment][template private fullFilePath(class:Class)]
+[if (class.isEntity())]
+[class.pathToMainJava()/]/[class.daoInterfacePackage().toPath()/]/[class.daoInterfaceName()/].java
+[/if]
+
+[/template][/comment]
+
+
+[template public generateDaoInterfaceDirect(class:Class)? (class.isEntity())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(), class.daoInterfacePackage().toPath(), class.daoInterfaceName().concat('.java')), false))]
+package [class.daoInterfacePackage()/];
+
+// [protected ('imports')]
+// for import
+import java.util.Collection;
+
+[class.importDaoException()/]
+import [class.entityQualifiedName()/];
+
+// [/protected] for import
+
+/**
+ * This class provides the data access layer to the [class.name/] entity class.<br/>
+ * This is the interface which represents the contract of the DAO access.
+ */
+public interface [class.daoInterfaceName()/] {
+
+    /**
+     * Creates a new element.
+     * @param [class.name.toLowerFirst()/] Element to create.
+     * @throws DaoException If a Dao problem occurs.
+     */
+    void create[class.name/]([class.name/] [class.name.toLowerFirst()/]) throws DaoException;
+
+    /**
+     * Updates an existing element.
+     * @param [class.name.toLowerFirst()/] Element to update.
+     *            If the element has an id, it may use it.
+     * @throws DaoException If a Dao problem occurs.
+     */
+    void update[class.name/]([class.name/] [class.name.toLowerFirst()/]) throws DaoException;
+
+    /**
+     * Deletes an element.
+     * Only id can be used to find which element must be deleted.
+     * @param [class.name.toLowerFirst()/] Element which will be deleted.
+     * @throws DaoException If a Dao problem occurs.
+     */
+    void delete[class.name/]([class.name/] [class.name.toLowerFirst()/]) throws DaoException;
+
+    /**
+     * Finds all elements.
+     * @return A list with all elements, without any filter.
+     * @throws DaoException If a Dao problem occurs.
+     */
+    Collection<[class.name/]> findAll[class.name/]s() throws DaoException;
+
+    /**
+     * Finds one entity by its primary key.
+     * @param some[class.getPKName().toLowerFirst()/] The PK of the entity
+     * @return The entity found.
+     * @throws DaoException If a Dao problem occurs.
+     */
+    [class.findByPKItfSignature()/];
+
+[comment  Generate additional methods declaration /]
+	[for (oper:Operation|class.ownedOperation)]
+[comment  Generate methods with find stereotypes /]
+		[if (oper.hasStereotype(getProperty('find')))]
+	[oper.generateJavadoc()/]
+    [oper.returnResult().convertToJavaType()/] [oper.name/]([oper.generateParameters()/]) throws DaoException;
+
+		[/if]
+	[/for]
+[comment  N.B. It is mandatory to have identical lines for start and end user code !!!/]
+    // [protected ('access-api')]
+    // for technical dao access api
+	// [/protected] for technical dao access api
+}
+
+[/file]
+[/template]
+
+
+

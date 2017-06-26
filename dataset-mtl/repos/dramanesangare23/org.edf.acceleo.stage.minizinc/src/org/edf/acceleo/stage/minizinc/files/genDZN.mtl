@@ -1,0 +1,266 @@
+[comment encoding = UTF-8 /]
+[**
+ * Documentation of the module genDZN
+ * Le module de generation du fichier de donnees au fichier de contrainte (le programme minizinc).
+ * Il depend d'un fichier uml -cette dependance est exprimee en parametre du module- comme tous les autres
+ * modules du projet.
+ * Il est compose d'un seul template portant le meme nom que lui
+*/]
+[module genDZN('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[**
+ * Documentation of the template genDZN
+ * @param aPackage correspond au package parent des packages d'objets.
+ * Les objets d'une meme classe sont places dans un meme package. Autant de packages d'objets que de 
+ * classes. Tous ces packages sont a leur tour places dans un seul package parent aussi. Et c'est a ce
+ * package parent que correspond le parametre @param aPackage
+*/]
+[template public genDZN(aPackage : Package)]
+[file (('entrees.dzn'), false, 'UTF-8') ]
+[comment]Nous recuperons le dossier (package) contenant les classes[/comment]
+[let classes : Package = 
+	aPackage.precedingSiblings(Package)->select(
+		p : Package | 
+		p.packagedElement->filter(Class)->size() <> 0
+	)->at(1)
+]
+[comment]On selectionne la premiere classe qui nous interesse 
+(contenant les attributs identifiantVE, autonomie ou niveauBatterie)[/comment]
+[let classVE : Class =
+	classes.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.attribute->exists(
+			p : Property | 
+			p.name.toLower().contains('niveaubatterie') or
+			p.name.toLower().contains('identifiantve') or
+			p.name.toLower().contains('identifiantve') 
+		)
+	)->asOrderedSet()->at(1)
+] 
+[let classVT : Class =
+	classes.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.attribute->exists(
+			p : Property | 
+			p.name.toLower().contains('identifiantvt') 
+		)
+	)->asOrderedSet()->at(1)
+]
+[comment]L'expression booleen avec "or" rend la recherche plus rapide[/comment]
+[comment]On selectionne la deuxieme classe qui nous interesse 
+(contenant l'attribut distanceTournee)[/comment]
+[let classTournee : Class =
+	classes.packagedElement->filter(Class)->select(
+		c : Class | 
+		c.attribute->exists(
+			p : Property | 
+			p.name.toLower().contains('distancetournee') 
+		)
+	)->asOrderedSet()->at(1)
+]
+[comment]Recuperation des attributs de la classe[/comment]
+[comment]Les variables suivantes vont nous servir au moment ou on souhaite recuperer un attribut voulu parmi tous
+les attributs d'un objet (ces attributs sont places dans des elements appeles "Slot" possedant chacun une 
+propriete nomme definingFeature qui correspond a l'attribut dont il represente).
+Il suffira donc de comparer cette proriete d'un "slot" d'un objet a la variable representant l'attribut, et, s'il
+y a egalite, alors le slot correspond bien a l'attribut voulu de l'objet[/comment]
+[let proprieteIdentifiantVE : Property = 
+	classVE.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('identifiantve'))->at(1)
+]
+[let proprieteAutonomie : Property =
+	classVE.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('autonomie'))->at(1) 
+]
+[let proprieteNiveauBatterie : Property = 
+	classVE.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('niveaubatterie')
+	)->at(1) 
+]
+[let proprieteDistanceTournee : Property = 
+	classTournee.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('distancetournee')
+	)->at(1) 
+]
+[let proprieteIdentifiantVT : Property = 
+	classVT.attribute->select(
+		p : Property | 
+		p.name.toLower().contains('identifiantvt'))->at(1)
+]
+[comment]On se positionne sur les packages qui contiennent les objets des classes un a un[/comment]
+[for (objectsPackage : Package | 
+	aPackage.packagedElement->filter(Package)
+	)
+	separator ('\n') 
+] 
+[comment ]Dans le fichier minizinc on affecte la variable correspondant au nombre d'instances 
+de chaque classe UML[/comment]
+[comment]"InstanceSpecification" est l'element qui represente un objet (qui equivaut l'instance) 
+[/comment]
+[comment]Affectations des tableaux des attributs des objets[/comment]
+[comment]S'il s'agit du package des tournees nomme Tournees[/comment]
+[comment]Dans le fichier minizinc, affectation du tableau de distances des tournees[/comment]
+[comment]On parcourt la liste des objets pour recuperer leur "Slot" qui nous interesse[/comment]
+[comment]On recupere le "Slot" qui correspond a l'attribut voulu[/comment]
+[if (objectsPackage.name.toLower().contains('tournees'))]
+nbre[classTournee.name /] = [ objectsPackage.packagedElement->filter(
+	InstanceSpecification)->size() 
+/];
+[proprieteDistanceTournee.name /] = [for (anInstanceSpecification : InstanceSpecification | 
+	objectsPackage.packagedElement->filter(InstanceSpecification)) 
+	before('[') 
+	separator(', ') 
+	after ('];\n') 
+]
+[let aSlot : Slot = 
+	anInstanceSpecification.slot->select(
+		s : Slot | 
+		s.definingFeature.name = proprieteDistanceTournee.name
+	)->asOrderedSet()->at(1)
+]
+[aSlot.value->at(1).oclAsType(LiteralInteger).value /][/let][/for]
+[comment]S'il s'agit d'un des packages de vehicules[/comment]
+[elseif (objectsPackage.name.toLower().contains('v'))]
+[comment]S'il s'agit du package des vehicules electriques nomme VEs[/comment]
+[comment]Dans le fichier minizinc, affectation du tableau des identifianst des VEs[/comment]
+[comment]On parcourt la liste des objets pour recuperer leur "Slot" qui nous interesse[/comment]
+[comment]On recupere le "Slot" qui correspond a l'attribut voulu[/comment]
+[if (objectsPackage.name.toLower().contains('e'))]
+nbre[classVE.name /] = [ objectsPackage.packagedElement->filter(
+	InstanceSpecification)->size() 
+/];
+[proprieteIdentifiantVE.name /] = [for (anInstanceSpecification : InstanceSpecification | 
+	objectsPackage.packagedElement->filter(InstanceSpecification))
+	before('[') 
+	separator(', ') 
+	after ('];\n') 
+]
+[let aSlot : Slot = 
+	anInstanceSpecification.slot->select(
+		s : Slot | 
+		s.definingFeature.name = proprieteIdentifiantVE.name
+	)->asOrderedSet()->at(1)
+]
+[aSlot.value->at(1).oclAsType(LiteralInteger).value /][/let][/for]
+[comment]Dans le fichier minizinc, affectation du tableau des autonomies des VEs[/comment]
+[comment]On parcourt la liste des objets pour recuperer leur "Slot" qui nous interesse[/comment]
+[comment]On recupere le "Slot" qui correspond a l'attribut voulu[/comment]
+[proprieteAutonomie.name /] = [for (unInstanceSpecification : InstanceSpecification | 
+	objectsPackage.packagedElement->filter(InstanceSpecification)) 
+	before('[') 
+	separator(', ') 
+	after ('];\n') 
+]
+[let aSlot : Slot = 
+	unInstanceSpecification.slot->select(
+		s : Slot | 
+		s.definingFeature.name = proprieteAutonomie.name
+	)->asOrderedSet()->at(1)
+]
+[aSlot.value->at(1).oclAsType(LiteralInteger).value /][/let][/for]
+[comment]Dans le fichier minizinc, affectation du tableau des niveaux de batterie des VEs[/comment]
+[comment]On parcourt la liste des objets pour recuperer leur "Slot" qui nous interesse[/comment]
+[comment]On recupere le "Slot" qui correspond a l'attribut voulu[/comment]
+[proprieteNiveauBatterie.name /] = [for (unInstanceSpecification : InstanceSpecification | 
+	objectsPackage.packagedElement->filter(InstanceSpecification)) 
+	before('[') 
+	separator(', ') 
+	after ('];\n') 
+]
+[let aSlot : Slot = 
+	unInstanceSpecification.slot->select(
+		s : Slot | 
+		s.definingFeature.name = proprieteNiveauBatterie.name
+	)->asOrderedSet()->at(1)
+]
+[aSlot.value->at(1).oclAsType(LiteralInteger).value /][/let][/for]
+[comment]S'il s'agit du package des vehicules thermiques nomme VTs[/comment]
+[comment]Dans le fichier minizinc, affectation du tableau des identifianst des VTs[/comment]
+[comment]On parcourt la liste des objets pour recuperer leur "Slot". [/comment]
+[comment]Recuperation du "Slot"[/comment]
+[comment]Ici on n'a pas besoin de tester si la propriete definingFeature correspond a l'attribut a 
+afficher ou pas puisque la classe VehiculeThermique ne possede qu'un seul attribut qui est 
+identifiant, ses instances donc aussi. Il suffit donc de recup�rer le "Slot" de l'objet[/comment]
+[elseif (objectsPackage.name.toLower().contains('t'))]
+nbre[classVT.name /] = [ objectsPackage.packagedElement->filter(
+	InstanceSpecification)->size() 
+/];
+[proprieteIdentifiantVT.name /] = [for (anInstanceSpecification : InstanceSpecification | 
+	objectsPackage.packagedElement->filter(InstanceSpecification)) 
+	before('[') 
+	separator(', ') 
+	after ('];\n') 
+]
+[let aSlot : Slot = 
+	anInstanceSpecification.slot->asOrderedSet()->at(1)
+]
+[aSlot.value->at(1).oclAsType(LiteralInteger).value /][/let][/for]
+[/if]
+[/if]
+[/for]
+
+[comment]Maintenant on affecte la variable qui contient les identifiants de tous les 
+vehicules "lesVehicules"[/comment] 
+[comment]"lesVehicules" est ensemble (set en minizinc). On comme par les ID des VEs 
+ensuite ceux des VTs[/comment]
+[for (vePackages : Package | 
+	aPackage.packagedElement->
+	filter(Package)->
+	select(p : Package | 
+		p.name.toString() = 'VEs')
+)
+	separator ('\n') 
+] 
+lesVehicules = [for (anInstanceSpecification : InstanceSpecification | 
+	vePackages.packagedElement->filter(InstanceSpecification))
+	before('{') 
+	separator(', ') 
+	after(', ')
+]
+[let aSlot : Slot = 
+	anInstanceSpecification.slot->select(
+		s : Slot | 
+		s.definingFeature.name = proprieteIdentifiantVE.name
+	)->asOrderedSet()->at(1)
+]
+[aSlot.value->at(1).oclAsType(LiteralInteger).value /][/let][/for]
+[/for]
+[comment]Apres VEs on passe aux VTs[/comment]
+[for (vtPackages : Package | 
+	aPackage.packagedElement->
+	filter(Package)->
+	select(p : Package | 
+		p.name.toString() = 'VTs')
+)
+	separator ('\n') 
+] 
+[for (anInstanceSpecification : InstanceSpecification | 
+	vtPackages.packagedElement->filter(InstanceSpecification))
+	separator(', ') 
+	after ('};\n\n') 
+]
+[let aSlot : Slot = 
+	anInstanceSpecification.slot->select(
+		s : Slot | 
+		s.definingFeature.name = proprieteIdentifiantVT.name
+	)->asOrderedSet()->at(1)
+]
+[aSlot.value->at(1).oclAsType(LiteralInteger).value /][/let][/for]
+[/for]
+
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/file]
+
+[/template]

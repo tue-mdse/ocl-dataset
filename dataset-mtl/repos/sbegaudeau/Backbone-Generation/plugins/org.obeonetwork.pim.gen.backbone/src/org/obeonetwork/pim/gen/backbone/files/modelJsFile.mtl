@@ -1,0 +1,35 @@
+[comment encoding = UTF-8 /]
+[module modelJsFile('http://www.obeonetwork.org/2012/backbone')]
+
+[import org::obeonetwork::pim::gen::backbone::common::fileUtils /]
+
+[template private modelJsFilePath(aModel : Model)]
+[aModel.name/].js
+[/template]
+
+[template public genModelJsFile(aModel : Model)]
+[file (aModel.modelJsFilePath(), false, 'UTF-8')]
+[aModel.genCopyrightHeader()/]
+
+var [aModel.application.name.toUpperFirst()/] = [aModel.application.name.toUpperFirst()/] || {};
+[aModel.application.name.toUpperFirst()/].[aModel.name.toUpperFirst()/] = Backbone.Model.extend({
+	defaults: {
+		[for (anAttribute : Attribute | aModel.attributes) separator(',')]
+		[anAttribute.name.toLowerFirst()/]: [anAttribute.defaultValue/]
+		[/for]
+		[for (aReference : Reference | aModel.references) separator(',')]
+		[aReference.name.toLowerFirst()/]: [if(aReference.cardinality = CardinalityKind::ONE)]{}[else]['[]'/][/if]
+		[/for]
+	},
+	initialize: function(){
+		
+	}[if (aModel.operations->size() > 0)],[/if]
+	[for (anOperation : Operation | aModel.operations) separator(',')]
+	[anOperation.name/]: function([anOperation.parameters.name->sep(', ')/]) {
+		
+	}
+	[/for]
+});
+
+[/file]
+[/template]

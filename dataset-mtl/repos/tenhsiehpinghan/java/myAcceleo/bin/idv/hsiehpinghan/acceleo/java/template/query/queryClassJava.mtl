@@ -1,0 +1,152 @@
+[comment encoding = UTF-8 /]
+[**
+ * 負責產生templateClassJava所需的query。
+ */]
+[module queryClassJava('http://www.eclipse.org/uml2/4.0.0/UML') extends idv::hsiehpinghan::acceleo::java::template::query::queryClassifier]
+
+[comment]---------------------------public---------------------------[/comment]
+[**
+ * 判斷一個class是否需自動產生getter及setter
+ * @param anElement
+ */]
+[query public queryIsAutoGenerateGetterAndSetterElement(anElement : Element) : Boolean = 
+	anElement.queryIsDatabaseElement() = true
+/]
+
+[**
+ * 判斷一個element是否為資料庫物件
+ * @param anElement
+ */]
+[query public queryIsDatabaseElement(anElement : Element) : Boolean = 
+	(anElement.getAppliedStereotype('javax::persistence::Entity').oclIsUndefined() = false) or
+	(anElement.getAppliedStereotype('javax::persistence::Embeddable').oclIsUndefined() = false)
+/]
+
+[**
+ * 取得某個class realize了那些interface。
+ * @param aClass
+ */]
+[query public queryClassImplements(aClass : Class) : Set(Interface) = 
+	aClass.getAllImplementedInterfaces()
+/]
+
+[**
+ * 取得某個class需實做的interface operations。
+ * @param aClass
+ */]
+[query public queryClassImplementsOperations(aClass : Class) : Set(Operation) = 
+	aClass.queryClassImplements().queryOperations()->flatten()->asSet()
+/]
+
+[**
+ * 取得有那些class需要import。
+ * @param aClassifier
+ */]
+[query public queryClassImports(aClass : Class) : Set(Classifier) = 
+	aClass.queryUsedClassInDifferentPackages()
+	->filterClassifiers()
+/]
+
+[**
+ * 取得有那些非直接在uml圖上顯示的classifier需要import
+ * @param aClass
+ */]
+[query public queryClassAdditionalImports(aClass : Class) : Set(Classifier) = 
+	Set{}
+	->addAll(Set{aClass}->select(c : Class | c.getAppliedStereotype('org::springframework::transaction::annotation::Transactional').oclIsUndefined() = false).queryOrgSpringframeworkTransactionAnnotationPropagations())
+	->addAll(Set{aClass}->select(c : Class | c.queryIsDatabaseElement() = true).queryJavaIoSerializables())
+	->addAll(aClass.queryProperties().queryType()->select(t : Type | t.getAppliedStereotype('javax::persistence::Embeddable').oclIsUndefined() = false).queryJavaxPersistenceEmbeddeds())
+/]
+
+[**
+ * 判斷是否需產生implements section
+ * @param aClassifier
+ */]
+[query public queryIsGenerateImplementsSectioin(aClass : Class) : Boolean = 
+	(aClass.queryClassImplements()->isEmpty() = false) or
+	(aClass.queryIsDatabaseElement() = true)
+/]
+
+[**
+ * 取得某個classifier需額外extends那些interface。
+ * @param aClass
+ */]
+[query public queryClassAdditionalImplements(aClass : Class) : Set(Interface) = 
+	Set{}
+	->addAll(Set{aClass}->select(c : Class | c.queryIsDatabaseElement() = true).queryJavaIoSerializables())
+/]
+
+[**
+ * 取得那個class擁有這個operation。
+ * @param anOperation
+ */]
+[query public queryClass(anOperation : Operation) : Class = 
+	anOperation.class
+/]
+
+[**
+ * 取得property的owner。
+ * @param aProperty
+ */]
+[query public queryOwner(aProperty : Property) : Element = 
+	aProperty.owner
+/]
+[comment]--------------------------protected-------------------------[/comment]
+
+
+[comment]---------------------------private--------------------------[/comment]
+[**
+ * 取得有那些classi有被使用到。
+ * @param aClass
+ */]
+[query private queryUsedClassifiers(aClass : Class) : Set(Classifier) = 
+	aClass.queryClassifierImports()
+	->addAll(aClass.queryClassImplements())
+	->addAll(aClass.queryClassImplements().queryOperations().ownedParameter.queryType()->filter(Classifier))
+	->addAll(aClass.queryClassImplements().queryOperations().getAppliedStereotypes())
+	->addAll(aClass.getAppliedStereotypes())
+	->addAll(aClass.queryProperties().getAppliedStereotypes())
+	->addAll(aClass.queryOperations().getAppliedStereotypes())
+/]
+
+[**
+ * 取得不在同一個package但有使用到的class。
+ * @param aClass
+ */]
+[query private queryUsedClassInDifferentPackages(aClass : Class) : Set(Classifier) = 
+	aClass.queryUsedClassifiers()
+	->reject(aClassifier : Classifier | aClass.queryPackage() = aClassifier.queryPackage())
+/]
+
+[**
+ * 取得java.util.List的interface
+ * @param aClass
+ */]
+[comment][query private queryJavaUtilLists(aClass : Class) : Bag(Interface) = 
+	aClass.getModel().queryModelOwnImportedPackages('java').queryPackageOwnPackages('util').queryPackageOwnInterfaces('List')
+/][/comment]
+
+
+[**
+ * 取得org.springframework.transaction.annotation.Propagation的annotation
+ * @param aClass
+ */]
+[query private queryOrgSpringframeworkTransactionAnnotationPropagations(aClass : Class) : Bag(Stereotype) = 
+	aClass.getModel().queryModelAppliedProfiles('org::springframework::transaction::annotation').queryProfileOwnStereotype('Propagation')
+/]
+
+[**
+ * 取得java.io.Serializable的interface
+ * @param aClass
+ */]
+[query private queryJavaIoSerializables(aClass : Class) : Bag(Interface) = 
+	aClass.getModel().queryModelOwnImportedPackages('java').queryPackageOwnPackages('io').queryPackageOwnInterfaces('Serializable')
+/]
+
+[**
+ * 取得javax.persistence.Embedded的annotation
+ * @param aType
+ */]
+[query private queryJavaxPersistenceEmbeddeds(aType : Type) : Bag(Stereotype) = 
+	aType.getModel().queryModelAppliedProfiles('javax::persistence').queryProfileOwnStereotype('Embedded')
+/]

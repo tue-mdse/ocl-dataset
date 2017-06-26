@@ -1,0 +1,201 @@
+[comment encoding = UTF-8 /]
+[module genCRUD('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::gen::php::service::genServices /]
+[import com::mgs::uml::common::services /]
+[import com::mgs::uml::gen::php::dao::daoCommon /]
+[import com::mgs::uml::gen::php::entity::entityCommon /]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::gen::php::common::phpUtils /]
+[import com::mgs::uml::common::umlUtils /]
+
+
+[template public genServiceCrudName(c : Class) post (trim())]
+	[c.name.toUpperFirst()/]_CRUD
+[/template]
+
+[template public genCRUD(c : Class) ? (profile_isCRUD())]
+	
+[comment @main /]
+[file ('services/' + c.genServiceCrudName() + '.php' , false, 'UTF-8')]
+<?php
+
+/**
+ * CRUD Services implementation for [c.name/].
+ */
+class [c.genServiceCrudName()/] {
+
+	[c.genServiceCreate()/]
+	[c.genServiceRetrieve()/]
+	[c.genServiceUpdate()/]
+	[c.genServiceDelete()/]
+
+}
+
+?>
+[/file]
+	
+[/template]
+
+[template public genServiceCreate(c : Class)]
+/**
+ * Creation service.
+ * @param $instanceVO the object to create (value object form)
+ * @return [c.genNameVO()/] the entity created (value object form)
+ * @throw Exception if an error occurs nothing is created
+ */
+public function create([c.genNameVO()/] $instanceVO){
+	$connection = Connection::createNewConnection();
+	$connection->open(false);
+	try{
+		$dao = new [c.daoName()/]();
+		$instanceEntity = EntityFactory::getInstance()->create[c.entityName()/]FromVO($instanceVO);
+		$dao->[c.daoCreate()/]($connection, $instanceEntity);
+		$connection->commit();
+		$connection->close();
+		$createdVO = ValueObjectFactory::getInstance()->create[c.entityName()/]Recursive($instanceEntity);
+		return $createdVO;
+	}catch(Exception $e){
+		$connection->rollback();
+		$connection->close();
+		throw $e;
+	}
+}
+[/template]
+
+[template public genServiceUpdate(c : Class)]
+/**
+ * Update service.
+ * @param $instanceVO the object to update (value object form)
+ * @return [c.genNameVO()/] the entity created (value object form)
+ * @throw Exception if an error occurs nothing is updated
+ */
+public function update([c.genNameVO()/] $instanceVO){
+	$connection = Connection::createNewConnection();
+	$connection->open(false);
+	try{
+		$dao = new [c.daoName()/]();
+		$instanceEntity = EntityFactory::getInstance()->create[c.entityName()/]FromVO($instanceVO);
+		$dao->[c.daoUpdate()/]($connection, $instanceEntity);
+		$connection->commit();
+		$connection->close();
+	}catch(Exception $e){
+		$connection->rollback();
+		$connection->close();
+		throw $e;
+	}
+}
+[/template]
+
+[template public genServiceDelete(c : Class)]
+/**
+ * Delete service.
+ * @param $instanceVO the object to update (value object form)
+ * @throw Exception if an error occurs nothing is deleted
+ */
+public function delete([c.genNameVO()/] $instanceVO){
+	$connection = Connection::createNewConnection();
+	$connection->open(false);
+	try{
+		$dao = new [c.daoName()/]();
+		$instanceEntity = EntityFactory::getInstance()->create[c.entityName()/]FromVO($instanceVO);
+		$dao->[c.daoDelete()/]($connection, $instanceEntity);
+		$connection->commit();
+		$connection->close();
+	}catch(Exception $e){
+		$connection->rollback();
+		$connection->close();
+		throw $e;
+	}
+}
+[/template]
+
+[template public genServiceRetrieve(c : Class)]
+/**
+ * RetrieveAll service.
+ * @return [c.genNameVO()/] array the entiies found (value object form)
+ * @throw Exception if an error occurs.
+ */
+public function retrieveAll(){
+	$connection = Connection::createNewConnection();
+	$connection->open(false);
+	try{
+		$dao = new [c.daoName()/]();
+		$objects = $dao->findAll($connection);
+		$allVO = array();
+		foreach($objects as $object){
+			// load all the related objects (1 level)
+[for (p : Property | c.profile_propertiesEntity()) ? (type.oclIsTypeOf(Class))]
+			$object->[p.getterName()/](true, $connection);
+[/for]			
+		}
+		$connection->commit();
+		$connection->close();
+		foreach($objects as $object){
+			// load all the related objects (1 level)
+			array_push($allVO, ValueObjectFactory::getInstance()->create[c.entityName()/]Recursive($object, 1));
+		}
+		return $allVO;
+	}catch(Exception $e){
+		$connection->rollback();
+		$connection->close();
+		throw $e;
+	}
+}
+/**
+ * Retrieve by Id service.
+ * @param $id the id requested.
+ * @return [c.genNameVO()/] the entity found (value object form) or null if not found
+ * @throw Exception if an error occurs.
+ */
+public function retrieveById($id){
+	$connection = Connection::createNewConnection();
+	$connection->open(false);
+	try{
+		$dao = new [c.daoName()/]();
+		$object = $dao->findById($connection, $id);
+		if($object != null){
+			// load all the related objects (1 level)
+[for (p : Property | c.profile_propertiesEntity()) ? (type.oclIsTypeOf(Class))]
+			$object->[p.getterName()/](true, $connection);
+[/for]			
+		}
+		$connection->commit();
+		$connection->close();
+		$createdVO = ValueObjectFactory::getInstance()->create[c.entityName()/]Recursive($object, 1);
+		return $createdVO;
+	}catch(Exception $e){
+		$connection->rollback();
+		$connection->close();
+		throw $e;
+	}
+}
+[for (p : Property | c.simplePrimitiveAttributes()) ? (isUnique)]
+/**
+ * Retrieve by [p.name/] service.
+ * @param $value the value requested.
+ * @return [c.genNameVO()/] the entity found (value object form) or null if not found
+ * @throw Exception if an error occurs.
+ */
+public function retrieveBy[p.name.toUpperFirst()/]($value){
+	$connection = Connection::createNewConnection();
+	$connection->open(false);
+	try{
+		$dao = new [c.daoName()/]();
+		$object = $dao->findBy[p.name.toUpperFirst()/]($connection, $value);
+		if($object != null){
+			// load all the related objects (1 level)
+			$object->[p.getterName()/](true, $connection);
+		}
+		$connection->commit();
+		$connection->close();
+		$createdVO = ValueObjectFactory::getInstance()->create[c.entityName()/]Recursive($object, 1);
+		return $createdVO;
+	}catch(Exception $e){
+		$connection->rollback();
+		$connection->close();
+		throw $e;
+	}
+}
+[/for]			
+[/template]

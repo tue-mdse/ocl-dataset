@@ -1,0 +1,42 @@
+[comment encoding = UTF-8 /]
+[module entity('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import at::fhv::pme::tyme::common::uml2service /]
+[import at::fhv::pme::tyme::common::dataType /]
+[import at::fhv::pme::tyme::common::classGenerator /]
+
+[template public generate(aClass : Class)]
+ 
+
+[file (aClass.namespace.toPath().concat(aClass.name.toUpperFirst()).concat('.java'), false, 'UTF-8')]
+// [protected('imports')]
+[aClass.generateImports()/]
+// [/protected]
+
+/**
+ * [aClass.name/]
+ */
+public class [aClass.name.toUpperFirst()/] {
+
+	[if (aClass.hasStereotype('Singleton'))]
+	static [aClass.name.toUpperFirst()/] _instance = null;
+
+	public static [aClass.name.toUpperFirst()/] getInstance() {
+		if(_instance == null) {
+			_instance = new [aClass.name.toUpperFirst()/]();
+		}
+		return _instance;
+	}
+	[/if]
+
+	[aClass.generateConstructor(aClass.hasStereotype('Singleton'))/]
+
+	[aClass.generateProperties()/]
+
+	[for (o : Operation | aClass.ownedOperation) separator('\n')]
+  		[o.generateOperation()/]
+	[/for]
+}
+[/file]
+
+[/template]

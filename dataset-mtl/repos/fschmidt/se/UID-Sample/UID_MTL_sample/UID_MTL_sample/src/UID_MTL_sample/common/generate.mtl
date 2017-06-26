@@ -1,0 +1,146 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generate.
+ */]
+[module generate('http://uid/1.0')]
+
+
+[**
+ * The documentation of the template generateElement.
+ * @param anApp
+ */]
+[template public generateElement(anApp : App)]
+[comment @main/]
+
+
+[file (anApp.name.toUpperFirst()+'.java', false, 'UTF-8')]
+
+class [anApp.name.toUpperFirst()/]{
+
+	public static void main(String [getBrackets()/] args) {
+	
+	[for (window : Window| anApp.hasIE->select(oclIsTypeOf(Window)))]
+	[if (window.main)]
+    [window.name/] [window.name.toString().toLowerFirst()/] = new [window.name/]();
+	[window.name.toString().toLowerFirst()/].setVisible(true);
+	[/if]
+	[/for] 
+	
+	}
+}
+[/file]
+
+[for (window : Window| anApp.hasIE->select(oclIsTypeOf(Window)))]
+   [generateWindow(window)/]
+[/for] 
+[/template]
+
+
+[template public generateWindow(window : Window)]
+[file (window.name+'.java', false, 'UTF-8')]
+
+import java.awt.event.KeyEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
+import java.awt.Event;
+import java.awt.GridBagLayout;
+import javax.swing.BoxLayout;
+
+import javax.swing.JCheckBox;
+import javax.swing.JTextField;
+import javax.swing.JLabel;
+import javax.swing.KeyStroke;
+import javax.swing.JPanel;
+import javax.swing.JMenuItem;
+import javax.swing.JMenuBar;
+import javax.swing.JMenu;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JButton;
+
+import java.awt.Toolkit;
+import java.util.ArrayList;
+
+public final class [window.name/] extends JFrame {
+private JPanel navPanel = new JPanel();
+
+[for (iElement : IE | window.hasElements)]
+[generateVariable(iElement)/]
+[/for]
+
+public  [window.name/] () {
+	this.setSize(400, 300);
+	navPanel.setLayout(new GridBagLayout());
+	this.setContentPane(navPanel);
+	this.setTitle("[window.name/]");
+	BoxLayout bl;
+[for (container : Container | window.hasElements->select(oclIsTypeOf(Container)))]
+	navPanel.add([container.name.toLowerFirst()/]);
+	[generateContainer(container)/]
+[/for]
+[generateAssoc(window)/]
+	}	
+}
+[/file]
+[/template]
+
+[template public generateAssoc (element : IE) ]
+[for (ieAssoc: IEAssoc| element.ieAssoc)]
+	[if (element.oclIsTypeOf(Button) and ieAssoc.ie.oclIsTypeOf(Window))]
+[element.name.toLowerFirst()/].addActionListener(new ActionListener() {
+  public void actionPerformed(ActionEvent e) {
+		[ieAssoc.ie.name/] [ieAssoc.ie.name.toLowerFirst()/] = new [ieAssoc.ie.name/]();
+		[ieAssoc.ie.name.toLowerFirst()/].setVisible(true);
+    }
+  }
+);
+	[/if]
+[/for]
+[/template]
+
+[template public generateVariable (iElement : IE) ]
+[if (iElement.oclIsTypeOf(Container))]
+private JPanel [iElement.name.toLowerFirst()/] = new JPanel();
+[for (containerElement : UIE | iElement.oclAsType(Container).hasElements)]
+[generateVariable(containerElement)/]
+	[/for]
+[/if]
+[if (iElement.oclIsTypeOf(Button))]
+private JButton [iElement.name.toLowerFirst()/] = new JButton("[iElement.oclAsType(Button).text/]");
+[/if]
+[if (iElement.oclIsTypeOf(List))]
+[/if]
+[if (iElement.oclIsTypeOf(TextField))]
+private JTextField [iElement.name.toLowerFirst()/] = new JTextField();
+[/if]
+[if (iElement.oclIsTypeOf(CheckBox))]
+private JCheckBox [iElement.name.toLowerFirst()/] = new JCheckBox("[iElement.oclAsType(CheckBox).text/]");
+[/if]
+[if (iElement.oclIsTypeOf(Label))]
+private JLabel [iElement.name.toLowerFirst()/] = new JLabel("[iElement.oclAsType(Label).text/]");
+[/if]
+[/template]
+
+[query public getBrackets() : String = '[]'/]
+
+[template public generateContainer (container : Container) ]
+[setLabel(container)/]
+[generateAssoc(container)/]
+[for (iElement : UIE | container.hasElements)]
+	[if (iElement.oclIsTypeOf(Container))]
+[generateContainer(iElement.oclAsType(Container))/]
+ 	[else]
+[generateAssoc(iElement)/]
+	[/if]
+[container.name.toLowerFirst()/].add([iElement.name.toLowerFirst()/]);
+[/for]
+[/template]
+
+[template public setLabel (container : Container) ]
+[if (container.AllignHorizontal)]
+bl = new BoxLayout([container.name.toLowerFirst()/], BoxLayout.X_AXIS);
+[else]
+bl = new BoxLayout([container.name.toLowerFirst()/], BoxLayout.Y_AXIS);
+[/if]
+[container.name.toLowerFirst()/].setLayout(bl);
+[/template]

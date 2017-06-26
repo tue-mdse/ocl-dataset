@@ -1,0 +1,450 @@
+[comment encoding = UTF-8 /]
+[module migrationExecutor('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/SearchLayerPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/MDEMigratorPSMMetamodel')]
+
+
+[template public migrationExecutor(anAnnotationStack : AnnotationStack)]
+
+[file (anAnnotationStack.hasCorePSM.name + 'DBMigrator' + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/' + 'migration' + '/MigrationPerformer.java', false, 'UTF-8')]
+/*
+ * ARISTOTLE UNIVERSITY OF THESSALONIKI
+ * Copyright (C) 2015
+ * Aristotle University of Thessaloniki
+ * Department of Electrical & Computer Engineering
+ * Division of Electronics & Computer Engineering
+ * Intelligent Systems & Software Engineering Lab
+ *
+ * Project             : [anAnnotationStack.hasCorePSM.name/]
+ * WorkFile            : 
+ * Compiler            : 
+ * File Description    : 
+ * Document Description: 
+* Related Documents	   : 
+* Note				   : 
+* Programmer		   : RESTful MDE Engine created by Christoforos Zolotas
+* Contact			   : christopherzolotas@issel.ee.auth.gr
+*/
+
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].migration;
+
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.Date;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+
+
+[for (targetRelation : TargetRelation | anAnnotationStack.getTargetRelationAnnotations()->sortedBy(migrationOrderIndex))]
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[targetRelation.isTargetRelationJavaResourceModel.parentName.toLowerCase()/].[targetRelation.isTargetRelationJavaResourceModel.name/];
+[/for]
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.HibernateController;
+
+
+public class MigrationPerformer{
+
+    static final private String strJDBCDRIVER = [if (anAnnotationStack.hasDBMigrationLayer.strDBType = 'MySQL')]"com.mysql.jdbc.Driver";[else]"org.postgresql.Driver";[/if]
+    static final private String strDBType = "[anAnnotationStack.hasDBMigrationLayer.strDBType/]";
+   	static final private String strDatabaseURL = String.format("jdbc:%s://%s/%s", strDBType.toLowerCase(), "[anAnnotationStack.hasDBMigrationLayer.strDBURL/]", "[anAnnotationStack.hasDBMigrationLayer.strDBName/]");
+   	static final private String strUsername = "[anAnnotationStack.hasDBMigrationLayer.strDBUsername/]";
+   	static final private String strPassword = "[anAnnotationStack.hasDBMigrationLayer.strDBPassword/]";
+   	static final private String strDBName = "[anAnnotationStack.hasDBMigrationLayer.strDBName/]";
+	static final private HibernateController oHibernateController = HibernateController.getHibernateControllerHandle();
+
+	static private Connection oConnection = null;
+	static private Statement oStatement = null;
+	static private DatabaseMetaData oDatabaseMetaData;
+
+	[for (targetRelation : TargetRelation | anAnnotationStack.getTargetRelationAnnotations()->sortedBy(migrationOrderIndex))]
+	static private HashMap<String, Integer> oHMFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/]= new HashMap<String, Integer>();
+	[/for]
+
+    public static void main( String['['/][']'/] args )
+    {
+        System.out.println( "Starting Database Migration!" );
+		
+		migrateDatabase();
+    }
+
+	private static void migrateDatabase(){
+		//connect to source the database
+		if(connectToSourceDB() == false){
+			return;
+		}
+	
+		//begin data migration
+		migirateData();
+	}
+
+	private static boolean connectToSourceDB(){
+		try{
+			//register the jdbc driver
+			Class.forName(strJDBCDRIVER);
+        
+        	//connect to database
+        	oConnection = DriverManager.getConnection(strDatabaseURL, strUsername, strPassword);
+        
+        	//initialize the database creating statement
+        	oStatement = oConnection.createStatement();
+        	String strCheckIfDatabaseExistsQuery;
+        	if(strDBType.equalsIgnoreCase("MySQL")){
+        		strCheckIfDatabaseExistsQuery = String.format("select SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '%s';", strDBName);
+        	}
+        	else{
+        		strCheckIfDatabaseExistsQuery = String.format("select datname FROM pg_database WHERE datname = '%s';", strDBName);
+        	}
+        
+        	//execute query
+        	ResultSet oResultSet = oStatement.executeQuery(strCheckIfDatabaseExistsQuery);
+        	if(oResultSet.next() == false){
+            	System.out.println("The database does not exist!");
+            	return false;
+        	}
+        	else{
+				System.out.println("Successfully connected to source database!");
+            	System.out.println("The database already exists!");
+            	oDatabaseMetaData = oConnection.getMetaData();
+            	return true;
+        	}
+    	}
+    	catch(SQLException SQLe){
+			System.out.println("Failed to connect to source database!");
+        	SQLe.printStackTrace();
+        	return false;
+    	}
+        catch(Exception ex){
+			System.out.println("Failed to connect to source database!");
+            ex.printStackTrace();
+            return false;
+        }
+	}
+
+	public static void migirateData(){
+		[for (targetRelation : TargetRelation | anAnnotationStack.getTargetRelationAnnotations()->sortedBy(migrationOrderIndex)) separator('\n')]
+			if( migrateDataFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]RelationTo[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/]Resource([if (targetRelation.hasParentMapping->exists(parentMapping | parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name.equalsIgnoreCase(targetRelation.isTargetRelationJavaResourceModel.name)))]false[/if]) == false){
+				System.out.println("Failed to perform partially or fully the [targetRelation.relationMappingName/] migration");
+				return;
+			}
+			else{
+				[if (targetRelation.hasParentMapping->exists(parentMapping | parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name.equalsIgnoreCase(targetRelation.isTargetRelationJavaResourceModel.name)))]
+//				if( migrateDataFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]RelationTo[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/]Resource(true) == false){
+//					System.out.println("Failed to perform partially or fully the [targetRelation.relationMappingName/] migration");
+//					return;
+//				}
+				[/if]
+				System.out.println("Successfully completed the [targetRelation.relationMappingName/] migration.");
+			}
+		[/for]
+
+		System.out.println("Migration completed successfully");
+		[if (anAnnotationStack.bHasSearchLayer)]System.out.println("Do not forget to copy the generated indexes at folder {output}/[anAnnotationStack.hasCorePSM.name + 'DBMigrator/webapps/' + anAnnotationStack.hasCorePSM.name + 'LuceneIndexes'/] to your deployment directory alongside you service WAR file!");[/if]
+	}
+
+	[for (targetRelation : TargetRelation | anAnnotationStack.getTargetRelationAnnotations()->sortedBy(migrationOrderIndex)) separator('\n')]
+	private static boolean migrateDataFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]RelationTo[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/]Resource([if (targetRelation.hasParentMapping->exists(parentMapping | parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name.equalsIgnoreCase(targetRelation.isTargetRelationJavaResourceModel.name)))]boolean bSelfReferenceRun[/if]){
+	[if (targetRelation.bHasParentMapping = false)]
+		[anAnnotationStack.migrateDataWithoutParentMapping(targetRelation)/]
+	[elseif(targetRelation.hasParentMapping->exists(parentMapping | parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name.equalsIgnoreCase(targetRelation.isTargetRelationJavaResourceModel.name)))]
+		[anAnnotationStack.migrateDataWithParentMappingAndSelfReference(targetRelation)/]
+	[else]
+		[anAnnotationStack.migrateDataWithParentMapping(targetRelation)/]
+	[/if]
+	}
+
+	private static String calculateHMKeyFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/](ResultSet rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/]){
+		
+		try{
+			StringBuilder oStringBuilder = new StringBuilder();
+			[for (pkColumn : SourceColumn | targetRelation.isMappedFromRelation.hasPrimaryKeyColumn->sortedBy(name)) separator('\n')]
+			oStringBuilder.append(rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/].get[if (pkColumn.type.equalsIgnoreCase('Integer'))]Int[elseif(pkColumn.type.equalsIgnoreCase('Double'))]Double[elseif(pkColumn.type.equalsIgnoreCase('Float'))]Float[elseif(pkColumn.type.equalsIgnoreCase('Long'))]Long[elseif(pkColumn.type.equalsIgnoreCase('Boolean'))]Boolean[elseif(pkColumn.type.equalsIgnoreCase('Date'))]Date[else]String[/if]("[pkColumn.name/]"));
+			[/for]
+
+			return oStringBuilder.toString();
+		}catch (Exception e ) {
+            e.printStackTrace();
+            return null;
+        }
+	}
+	[/for]
+
+	private static boolean hasValidFKs(ResultSet rs, List<String> listOfFKs){
+		
+        try{
+            
+            Iterator<String> iteratorOfFKs = listOfFKs.iterator();
+
+            while(iteratorOfFKs.hasNext()){
+                if(rs.getString(iteratorOfFKs.next()) == null){
+                    return false;
+                }
+            }
+
+            return true;
+        }catch (SQLException e ) {
+            e.printStackTrace();
+            return false;
+        }
+	}
+
+	private static String getFKKey(ResultSet rs, List<String> listOfFKs){
+		
+        try{
+            StringBuilder oStringBuilder = new StringBuilder();
+            Iterator<String> iteratorOfFKs = listOfFKs.iterator();
+
+            while(iteratorOfFKs.hasNext()){
+                oStringBuilder.append(rs.getString(iteratorOfFKs.next()));
+            }
+
+            return oStringBuilder.toString();
+        }catch (SQLException e ) {
+            e.printStackTrace();
+            return null;
+        }
+	}
+
+	private static boolean isResourceAlreadyCreated(HashMap<String, Integer> oHashMap, ResultSet rsResource, List<String> listOfFKs){
+		if(oHashMap.get(getFKKey(rsResource, listOfFKs)) == null){
+			return false;
+		}
+		else{
+			return true;
+		}
+	}
+}
+
+[/file]
+[/template]
+
+[template public migrateDataWithoutParentMapping(anAnnotationStack : AnnotationStack, targetRelation : TargetRelation)]
+try {
+	//disable auto commit in order to enable transparent jdbc driver caching
+	oConnection.setAutoCommit(false);
+	Statement st[targetRelation.isMappedFromRelation.name.toUpperFirst()/] = oConnection.createStatement();
+
+	//turn the cursor on
+	st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].setFetchSize(50);
+	ResultSet rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/] = st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].executeQuery("SELECT * FROM [targetRelation.isMappedFromRelation.name /]");		
+
+	//while there exist more [targetRelation.isMappedFromRelation.name.toUpperFirst()/] source relation entries to transform  
+	while (rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/].next()){
+
+		//create a new model object
+		[targetRelation.isTargetRelationJavaResourceModel.name/] o[targetRelation.isTargetRelationJavaResourceModel.name/] = new [targetRelation.isTargetRelationJavaResourceModel.name/]();
+		[for (targetColumn : TargetColumn | targetRelation.hasTargetColumn)]
+		o[targetRelation.isTargetRelationJavaResourceModel.name/].set[targetColumn.isAnnotatedPSMComponentProperty.name/](rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/].get[if (targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('int'))]Int[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('double'))]Double[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('float'))]Float[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('long'))]Long[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('boolean'))]Boolean[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('Date'))]Date[else]String[/if]("[targetColumn.isMappedFromColumn.name/]"));
+		[/for]
+
+		o[targetRelation.isTargetRelationJavaResourceModel.name/] = oHibernateController.post[targetRelation.isTargetRelationJavaResourceModel.parentName/](o[targetRelation.isTargetRelationJavaResourceModel.name/]);
+		//save the primary mapping between [targetRelation.isMappedFromRelation.name.toUpperFirst()/] relation and [targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/] resource
+		oHMFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].put(calculateHMKeyFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/](rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/]), o[targetRelation.isTargetRelationJavaResourceModel.name/].get[targetRelation.isTargetRelationJavaResourceModel.parentName/]Id());
+	}
+		
+	rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/].close();
+		
+	// Close the statement.
+	st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].close();
+} catch (SQLException e ) {
+	e.printStackTrace();
+	return false;
+} 
+	
+return true;
+[/template]
+
+[template public migrateDataWithParentMappingAndSelfReference(anAnnotationStack : AnnotationStack, targetRelation : TargetRelation)]
+try {
+	//disable auto commit in order to enable transparent jdbc driver caching
+	oConnection.setAutoCommit(false);
+	Statement st[targetRelation.isMappedFromRelation.name.toUpperFirst()/] = oConnection.createStatement();
+
+	//turn the cursor on
+	st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].setFetchSize(50);
+	ResultSet rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/] = rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/] = st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].executeQuery("SELECT * FROM [targetRelation.isMappedFromRelation.name /]");	;
+
+	[for (parentMapping : ParentMapping | targetRelation.hasParentMapping) separator('\n')]
+		[if (targetRelation.isTargetRelationJavaResourceModel.name.equalsIgnoreCase(parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name) = false)]
+	if(bSelfReferenceRun == false){
+		//calculating new SQL query to source database taking into account the [parentMapping.sourceRelationFKMappingName/]
+			[if (parentMapping.requiresJoinTable = true)]
+		rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/] = st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].executeQuery("SELECT * FROM [targetRelation.isMappedFromRelation.name /] INNER JOIN [parentMapping.joinTableName/] On [for (joingFKColumn : JoinColumn | parentMapping.hasJoinFKToSourceRelation->sortedBy(hasFKOrder)) separator('AND ')][targetRelation.isMappedFromRelation.name /].[targetRelation.isMappedFromRelation.hasPrimaryKeyColumn->at(joingFKColumn.hasFKOrder).name/] = [parentMapping.joinTableName/].[joingFKColumn.name/] [/for]");	
+			[else]
+		rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/] = st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].executeQuery("SELECT * FROM [targetRelation.isMappedFromRelation.name /]");	
+			[/if]
+
+		//while there exist more [targetRelation.isMappedFromRelation.name.toUpperFirst()/] source relation entries to transform  
+		while (rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/].next()){
+
+			//create a new model object
+			[targetRelation.isTargetRelationJavaResourceModel.name/] o[targetRelation.isTargetRelationJavaResourceModel.name/] = new [targetRelation.isTargetRelationJavaResourceModel.name/]();
+			[for (targetColumn : TargetColumn | targetRelation.hasTargetColumn)]
+			o[targetRelation.isTargetRelationJavaResourceModel.name/].set[targetColumn.isAnnotatedPSMComponentProperty.name/](rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/].get[if (targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('int'))]Int[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('double'))]Double[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('float'))]Float[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('long'))]Long[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('boolean'))]Boolean[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('Date'))]Date[else]String[/if]("[targetColumn.isMappedFromColumn.name/]"));
+			[/for]
+			List<String> listOfFKColumns;
+			List<String> listOfPKColumns;
+
+			//if the foreign keys from source relation [targetRelation.isMappedFromRelation.name/] are valid foreign keys to its parent relation [parentMapping.hasParentTargetRelation.isMappedFromRelation.name/]
+			[if (parentMapping.requiresJoinTable = true)]
+			listOfFKColumns = Arrays.asList([for (fkColumn : JoinColumn | parentMapping.hasJoinFKToParentSourceRelation->sortedBy(hasFKOrder)) separator(', ')]"[fkColumn.name/]"[/for]);
+			[else]
+			listOfFKColumns = Arrays.asList([for (fkColumn : SourceColumn | parentMapping.hasForeignKeyColumn->sortedBy(hasFKOrder)) separator(', ')]"[fkColumn.name/]"[/for]);
+			[/if]		
+			listOfPKColumns = Arrays.asList([for (pkColumn : SourceColumn | targetRelation.isMappedFromRelation.hasPrimaryKeyColumn->sortedBy(hasPkOrder)) separator(', ')]"[pkColumn.name/]"[/for]);	
+			if(hasValidFKs(rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfFKColumns)){
+				[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/] o[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/] = new [parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/]();
+				o[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/].set[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName/]Id(oHMFrom[parentMapping.hasParentTargetRelation.isMappedFromRelation.name.toUpperFirst()/]To[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].get(getFKKey(rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfFKColumns)));
+				o[targetRelation.isTargetRelationJavaResourceModel.name/].getSetOfParent[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/]().add(o[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/]);
+				if(isResourceAlreadyCreated(oHMFrom[parentMapping.hasParentTargetRelation.isMappedFromRelation.name.toUpperFirst()/]To[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/], rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfPKColumns) == false){ //if the resource is not yet created
+					o[targetRelation.isTargetRelationJavaResourceModel.name/] = oHibernateController.post[targetRelation.isTargetRelationJavaResourceModel.parentName/](o[targetRelation.isTargetRelationJavaResourceModel.name/]);
+					//save the primary mapping between [targetRelation.isMappedFromRelation.name.toUpperFirst()/] relation and [targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/] resource
+					oHMFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].put(calculateHMKeyFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/](rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/]), o[targetRelation.isTargetRelationJavaResourceModel.name/].get[targetRelation.isTargetRelationJavaResourceModel.parentName/]Id());
+				}
+				else{
+					o[targetRelation.isTargetRelationJavaResourceModel.name/].set[targetRelation.isTargetRelationJavaResourceModel.parentName/]Id(oHMFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].get(calculateHMKeyFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/](rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/])));
+					o[targetRelation.isTargetRelationJavaResourceModel.name/] = oHibernateController.put[targetRelation.isTargetRelationJavaResourceModel.parentName/](o[targetRelation.isTargetRelationJavaResourceModel.name/], "true", "true", "[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName/]", "true", oHMFrom[parentMapping.hasParentTargetRelation.isMappedFromRelation.name.toUpperFirst()/]To[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].get(getFKKey(rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfFKColumns)));
+				}
+			}
+		}
+	}
+		[else]
+	if(bSelfReferenceRun == true){
+		//calculating new SQL query to source database taking into account the [parentMapping.sourceRelationFKMappingName/]
+		[if (parentMapping.requiresJoinTable = true)]
+		rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/] = st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].executeQuery("SELECT * FROM [targetRelation.isMappedFromRelation.name /] INNER JOIN [parentMapping.joinTableName/] On [for (joingFKColumn : JoinColumn | parentMapping.hasJoinFKToSourceRelation->sortedBy(hasFKOrder)) separator('AND ')][targetRelation.isMappedFromRelation.name /].[targetRelation.isMappedFromRelation.hasPrimaryKeyColumn->at(joingFKColumn.hasFKOrder).name/] = [parentMapping.joinTableName/].[joingFKColumn.name/] [/for]");	
+		[else]
+		rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/] = st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].executeQuery("SELECT * FROM [targetRelation.isMappedFromRelation.name /]");	
+		[/if]
+		List<String> listOfFKColumns;
+		List<String> listOfPKColumns;
+
+		//while there exist more [targetRelation.isMappedFromRelation.name.toUpperFirst()/] source relation entries to transform  
+		while (rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/].next()){
+			//create a new model object
+			[targetRelation.isTargetRelationJavaResourceModel.name/] o[targetRelation.isTargetRelationJavaResourceModel.name/] = new [targetRelation.isTargetRelationJavaResourceModel.name/]();
+			[for (targetColumn : TargetColumn | targetRelation.hasTargetColumn)]
+			o[targetRelation.isTargetRelationJavaResourceModel.name/].set[targetColumn.isAnnotatedPSMComponentProperty.name/](rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/].get[if (targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('int'))]Int[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('double'))]Double[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('float'))]Float[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('long'))]Long[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('boolean'))]Boolean[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('Date'))]Date[else]String[/if]("[targetColumn.isMappedFromColumn.name/]"));
+			[/for]
+
+			//if the foreign keys from source relation [targetRelation.isMappedFromRelation.name/] are valid foreign keys to its parent relation [parentMapping.hasParentTargetRelation.isMappedFromRelation.name/]
+			[if (parentMapping.requiresJoinTable = true)]
+			listOfFKColumns = Arrays.asList([for (fkColumn : JoinColumn | parentMapping.hasJoinFKToParentSourceRelation->sortedBy(hasFKOrder)) separator(', ')]"[fkColumn.name/]"[/for]);
+			[else]
+			listOfFKColumns = Arrays.asList([for (fkColumn : SourceColumn | parentMapping.hasForeignKeyColumn->sortedBy(hasFKOrder)) separator(', ')]"[fkColumn.name/]"[/for]);
+			[/if]
+			listOfPKColumns = Arrays.asList([for (pkColumn : SourceColumn | targetRelation.isMappedFromRelation.hasPrimaryKeyColumn->sortedBy(hasPkOrder)) separator(', ')]"[pkColumn.name/]"[/for]);
+			if(hasValidFKs(rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfFKColumns)){
+				[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/] oSource[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/] = new [parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/]();
+				oSource[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/].set[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName/]Id(oHMFrom[parentMapping.hasParentTargetRelation.isMappedFromRelation.name.toUpperFirst()/]To[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].get(getFKKey(rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfFKColumns)));
+				o[targetRelation.isTargetRelationJavaResourceModel.name/].getSetOfParent[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/]().add(oSource[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/]);
+				if(isResourceAlreadyCreated(oHMFrom[parentMapping.hasParentTargetRelation.isMappedFromRelation.name.toUpperFirst()/]To[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/], rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfPKColumns) == false){ //if the resource is not yet created
+					o[targetRelation.isTargetRelationJavaResourceModel.name/] = oHibernateController.post[targetRelation.isTargetRelationJavaResourceModel.parentName/](o[targetRelation.isTargetRelationJavaResourceModel.name/]);
+					//save the primary mapping between [targetRelation.isMappedFromRelation.name.toUpperFirst()/] relation and [targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/] resource
+					oHMFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].put(calculateHMKeyFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/](rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/]), o[targetRelation.isTargetRelationJavaResourceModel.name/].get[targetRelation.isTargetRelationJavaResourceModel.parentName/]Id());
+				}
+				else{
+					o[targetRelation.isTargetRelationJavaResourceModel.name/].set[targetRelation.isTargetRelationJavaResourceModel.parentName/]Id(oHMFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].get(calculateHMKeyFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/](rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/])));
+					o[targetRelation.isTargetRelationJavaResourceModel.name/] = oHibernateController.put[targetRelation.isTargetRelationJavaResourceModel.parentName/](o[targetRelation.isTargetRelationJavaResourceModel.name/], "true", "true", "[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName/]", "true", oHMFrom[parentMapping.hasParentTargetRelation.isMappedFromRelation.name.toUpperFirst()/]To[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].get(getFKKey(rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfFKColumns)));
+				}
+			}
+		}
+	}
+	[/if]
+	[/for]
+		
+	rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/].close();
+		
+	// Close the statement.
+	st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].close();
+} catch (SQLException e ) {
+	e.printStackTrace();
+	return false;
+} 
+	
+return true;	
+[/template]
+
+[template public migrateDataWithParentMapping(anAnnotationStack : AnnotationStack, targetRelation : TargetRelation)]
+try {
+	//disable auto commit in order to enable transparent jdbc driver caching
+	oConnection.setAutoCommit(false);
+	Statement st[targetRelation.isMappedFromRelation.name.toUpperFirst()/] = oConnection.createStatement();
+
+	//turn the cursor on
+	st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].setFetchSize(50);
+	ResultSet rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/];
+		
+	[for (parentMapping : ParentMapping | targetRelation.hasParentMapping) separator('\n')]
+	//calculating new SQL query to source database taking into account the [parentMapping.sourceRelationFKMappingName/]
+	[if (parentMapping.requiresJoinTable = true)]
+	rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/] = st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].executeQuery("SELECT * FROM [targetRelation.isMappedFromRelation.name /] INNER JOIN [parentMapping.joinTableName/] On [for (joingFKColumn : JoinColumn | parentMapping.hasJoinFKToSourceRelation->sortedBy(hasFKOrder)) separator('AND ')][targetRelation.isMappedFromRelation.name /].[targetRelation.isMappedFromRelation.hasPrimaryKeyColumn->at(joingFKColumn.hasFKOrder).name/] = [parentMapping.joinTableName/].[joingFKColumn.name/] [/for]");	
+	[else]
+	rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/] = st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].executeQuery("SELECT * FROM [targetRelation.isMappedFromRelation.name /]");	
+	[/if]
+
+	//while there exist more [targetRelation.isMappedFromRelation.name.toUpperFirst()/] source relation entries to transform  
+	while (rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/].next()){
+
+		//create a new model object
+		[targetRelation.isTargetRelationJavaResourceModel.name/] o[targetRelation.isTargetRelationJavaResourceModel.name/] = new [targetRelation.isTargetRelationJavaResourceModel.name/]();
+		[for (targetColumn : TargetColumn | targetRelation.hasTargetColumn)]
+		o[targetRelation.isTargetRelationJavaResourceModel.name/].set[targetColumn.isAnnotatedPSMComponentProperty.name/](rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/].get[if (targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('int'))]Int[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('double'))]Double[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('float'))]Float[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('long'))]Long[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('boolean'))]Boolean[elseif(targetColumn.isAnnotatedPSMComponentProperty.type.equalsIgnoreCase('Date'))]Date[else]String[/if]("[targetColumn.isMappedFromColumn.name/]"));
+		[/for]
+		List<String> listOfFKColumns;
+		List<String> listOfPKColumns;
+
+		//if the foreign keys from source relation [targetRelation.isMappedFromRelation.name/] are valid foreign keys to its parent relation [parentMapping.hasParentTargetRelation.isMappedFromRelation.name/]
+		[if (parentMapping.requiresJoinTable = true)]
+		listOfFKColumns = Arrays.asList([for (fkColumn : JoinColumn | parentMapping.hasJoinFKToParentSourceRelation->sortedBy(hasFKOrder)) separator(', ')]"[fkColumn.name/]"[/for]);
+		[else]
+		listOfFKColumns = Arrays.asList([for (fkColumn : SourceColumn | parentMapping.hasForeignKeyColumn->sortedBy(hasFKOrder)) separator(', ')]"[fkColumn.name/]"[/for]);
+		[/if]
+		listOfPKColumns = Arrays.asList([for (pkColumn : SourceColumn | targetRelation.isMappedFromRelation.hasPrimaryKeyColumn->sortedBy(hasPkOrder)) separator(', ')]"[pkColumn.name/]"[/for]);
+		if(hasValidFKs(rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfFKColumns)){
+			if(oHMFrom[parentMapping.hasParentTargetRelation.isMappedFromRelation.name.toUpperFirst()/]To[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].get(getFKKey(rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfFKColumns)) == null){
+				System.out.println("Cannot migrate [targetRelation.isMappedFromRelation.name /] with FK key = " + getFKKey(rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfFKColumns) + " because there is no migrated parent [parentMapping.hasParentTargetRelation.isMappedFromRelation.name.toUpperFirst()/] that has a relation to it.");
+				continue;
+			}
+			[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/] o[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/] = new [parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/]();
+			o[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/].set[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName/]Id(oHMFrom[parentMapping.hasParentTargetRelation.isMappedFromRelation.name.toUpperFirst()/]To[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].get(getFKKey(rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfFKColumns)));
+			o[targetRelation.isTargetRelationJavaResourceModel.name/].getSetOfParent[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/]().add(o[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.name/]);
+			if(isResourceAlreadyCreated(oHMFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/], rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfPKColumns) == false){ //if the resource is not yet created
+				o[targetRelation.isTargetRelationJavaResourceModel.name/] = oHibernateController.post[targetRelation.isTargetRelationJavaResourceModel.parentName/](o[targetRelation.isTargetRelationJavaResourceModel.name/]);
+				//save the primary mapping between [targetRelation.isMappedFromRelation.name.toUpperFirst()/] relation and [targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/] resource
+				oHMFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].put(calculateHMKeyFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/](rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/]), o[targetRelation.isTargetRelationJavaResourceModel.name/].get[targetRelation.isTargetRelationJavaResourceModel.parentName/]Id());
+			}
+			else{
+				o[targetRelation.isTargetRelationJavaResourceModel.name/].set[targetRelation.isTargetRelationJavaResourceModel.parentName/]Id(oHMFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].get(calculateHMKeyFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/](rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/])));
+				o[targetRelation.isTargetRelationJavaResourceModel.name/] = oHibernateController.put[targetRelation.isTargetRelationJavaResourceModel.parentName/](o[targetRelation.isTargetRelationJavaResourceModel.name/], "true", "true", "[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName/]", "true", oHMFrom[parentMapping.hasParentTargetRelation.isMappedFromRelation.name.toUpperFirst()/]To[parentMapping.hasParentTargetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/].get(getFKKey(rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/], listOfFKColumns)));
+			}
+		}
+		else{
+			System.out.println("Skipping [targetRelation.isMappedFromRelation.name.toUpperFirst()/] entry with PK " + calculateHMKeyFrom[targetRelation.isMappedFromRelation.name.toUpperFirst()/]To[targetRelation.isTargetRelationJavaResourceModel.parentName.toUpperFirst()/](rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/]) + " since it has no valid FKs to relation [parentMapping.hasParentTargetRelation.isMappedFromRelation.name.toUpperFirst()/].");
+		}
+
+	}
+	[/for]
+		
+	rs[targetRelation.isMappedFromRelation.name.toUpperFirst()/].close();
+		
+	// Close the statement.
+	st[targetRelation.isMappedFromRelation.name.toUpperFirst()/].close();
+} catch (SQLException e ) {
+	e.printStackTrace();
+	return false;
+} 
+	
+return true;
+[/template]
+
+[query private getTargetRelationAnnotations(anAnnotationStack : AnnotationStack) : Sequence(TargetRelation) =
+	anAnnotationStack.hasDBMigrationLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(TargetRelation))->asSequence()
+/]

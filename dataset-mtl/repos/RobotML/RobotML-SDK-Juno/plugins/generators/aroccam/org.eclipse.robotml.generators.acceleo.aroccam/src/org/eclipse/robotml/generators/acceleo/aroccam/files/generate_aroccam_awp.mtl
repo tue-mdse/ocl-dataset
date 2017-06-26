@@ -1,0 +1,120 @@
+[comment encoding = UTF-8 /]
+[module generate_aroccam_awp('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DataTypeQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DeploymentQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::FSMQueries /]
+
+
+[template public generateAroccamAWP(model : Model)]
+
+[file (model.name + 'Application.awp', false, 'UTF-8')]
+<?xml version="1.0"?>
+<project version="2.0" template="templateAppDefault">
+   <name>[model.name/]Application</name>
+	[for (inst: InstanceSpecification | getInstanceSpecifications(model))]
+		[let p: Property = getInstance(model, inst)]
+			[if (p.isProperty() and p.type.oclAsType(Class).hasStereotype('CameraSystem'))]
+		<interface model="model_simulated_ros_camera" type="camera">
+			<name>[p.name/]</name>
+			<driver id="driver_ros" configId="all">
+				<parameter id="topic_name">camera</parameter>
+			</driver>
+			<recorder id="recorder_video" configId="avi_video">
+				<parameter id="bitrate">3000</parameter>
+				<parameter id="codec">ffvhuff</parameter>
+				<parameter id="video_format">avi</parameter>
+			</recorder>
+			<event bufferSize="10" priority="0" id="image" state="active">
+				<handler processingChoice="Acquisition + Visualization" state="0">frame[p.name/]</handler>
+			</event>
+		</interface>
+			[/if]
+			[if (p.isProperty() and p.type.oclAsType(Class).hasStereotype('LidarSystem'))]
+		<interface model="model_simulated_ros_rangefinder" type="rangefinder">
+			<name>[p.name/]</name>
+			<driver id="driver_ros" configId="all">
+				<parameter id="timeout">1000</parameter>
+				<parameter id="topic_name">rangefinder</parameter>
+			</driver>
+			<event bufferSize="10" priority="0" id="distance" state="active">
+				<handler processingChoice="Acquisition + Visualization" state="0">frame[p.name/]</handler>
+			</event>
+		</interface>
+			[/if]
+			[if (p.isProperty() and p.type.oclAsType(Class).hasStereotype('GPSSystem'))]
+		<interface model="model_simulated_ros_gps" type="gps">
+			<name>[p.name/]</name>
+			<driver id="driver_ros" configId="all">
+				<parameter id="timeout">2000</parameter>
+				<parameter id="topic_name">gps</parameter>
+			</driver>
+			<recorder id="recorder_nmea_text" configId="all"/>
+			<event bufferSize="10" priority="0" id="NMEA_GGA" state="active">
+				<handler processingChoice="Acquisition + Visualization" state="0">frame[p.name/]_GGA</handler>
+			</event>
+		</interface>
+			[/if]
+			[if (p.isProperty() and (	p.type.oclAsType(Class).hasStereotype('OdometrySystem')
+										or p.type.oclAsType(Class).hasStereotype('Robot')	)
+			)]
+				[let ugvKind : String = getAttributeValue(p.type.oclAsType(Class), 'kind', 'Robot', 'car')]
+				[if(ugvKind.equalsIgnoreCase('UGVdifferential'))]
+		<interface model="model_simulated_ros_wifibot" type="vehicle">
+			<name>[p.name/]</name>
+			<driver id="driver_ros" configId="wifibot">
+				<parameter id="command_topic_name">wifibot_command</parameter>
+				<parameter id="timeout">1000</parameter>
+				<parameter id="topic_name">wifibot_odometry</parameter>
+			</driver>
+			<event bufferSize="20" priority="0" id="genericodometry" state="active">
+				<handler processingChoice="Acquisition + Visualization" state="0">frame[p.name/]_genericodometry</handler>
+			</event>
+			<event bufferSize="20" priority="0" id="wifibotspecific" state="active">
+				<handler processingChoice="Acquisition + Visualization" state="0">frame[p.name/]_wifibotspecific</handler>
+			</event>
+		</interface>
+				[else]
+		<interface model="model_simulated_ros_vipalab" type="vehicle">
+			<name>[p.name/]</name>
+			<driver id="driver_ros" configId="all">
+				<parameter id="command_topic_name">vipalab_command</parameter>
+				<parameter id="timeout">1000</parameter>
+				<parameter id="topic_name">vipalab_odometry</parameter>
+			</driver>
+			<event bufferSize="10" priority="0" id="genericodometry" state="active">
+				<handler processingChoice="Acquisition + Visualization" state="0">frame[p.name/]_genericodometry</handler>
+			</event>
+		</interface>
+				[/if]
+				[/let]
+		<interface model="generic_timer" type="timer">
+			<name>[p.name/]_TimerCommand</name>
+			<sensor id="timer" configId="all">
+				<parameter id="period">100</parameter>
+			</sensor>
+			<event bufferSize="20" priority="0" id="tick" state="active">
+				<handler processingChoice="Acquisition + Visualization" state="0">frame[p.name/]_timercommand</handler>
+			</event>
+		</interface>
+			[/if]
+			[if (p.isProperty() and p.type.oclAsType(Class).hasStereotype('InertialMeasurementUnitSystem'))]
+		<interface model="model_simulated_ros_imu" type="imu">
+			<name>[p.name/]</name>
+			<driver id="driver_ros" configId="all">
+				<parameter id="timeout">1000</parameter>
+				<parameter id="topic_name">imu</parameter>
+			</driver>
+			<event bufferSize="10" priority="0" id="GLOBAL" state="active">
+				<handler processingChoice="Acquisition" state="0">frame[p.name/]_GLOBAL</handler>
+			</event>
+		</interface>
+			[/if]
+		[/let]
+	[/for]
+</project>
+[/file]
+
+[/template]

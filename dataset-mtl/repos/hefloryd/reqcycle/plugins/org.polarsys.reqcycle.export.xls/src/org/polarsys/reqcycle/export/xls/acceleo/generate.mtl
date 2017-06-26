@@ -1,0 +1,175 @@
+[comment encoding = UTF-8 /]
+[module generate('http://www.polarsys.org/reqcycle/reqexport/1.0')/]
+
+[template public generate(export : Export)]
+	
+	[comment @main /]
+	[file (export.path, false, 'UTF-8')]
+<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+  <Author>ReqCycle</Author>
+  <Created>[export.date/]</Created>
+  <Company>ReqCycle</Company>
+  <Version>14.00</Version>
+ </DocumentProperties>
+ <OfficeDocumentSettings xmlns="urn:schemas-microsoft-com:office:office">
+  <AllowPNG/>
+ </OfficeDocumentSettings>
+ <ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">
+  <WindowHeight>3150</WindowHeight>
+  <WindowWidth>9315</WindowWidth>
+  <WindowTopX>480</WindowTopX>
+  <WindowTopY>120</WindowTopY>
+  <ProtectStructure>False</ProtectStructure>
+  <ProtectWindows>False</ProtectWindows>
+ </ExcelWorkbook>
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Bottom"/>
+   <Borders/>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#000000"/>
+   <Interior/>
+   <NumberFormat/>
+   <Protection/>
+  </Style>
+  <Style ss:ID="s00">
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="s01">
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1"/>
+    <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1"/>
+    <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1"/>
+   </Borders>
+   <Interior ss:Color="#DCE6F1" ss:Pattern="Solid"/>
+  </Style>
+ </Styles>
+[for (m : Model | export.models)]
+ <Worksheet ss:Name="[m.name/]">
+  <Table x:FullColumns="1"
+   x:FullRows="1" ss:DefaultColumnWidth="60" ss:DefaultRowHeight="15">
+	[comment headers /]
+		<Column ss:AutoFitWidth="0"/>
+	[for(a:Attribute | m.attributes)]
+	  	<Column ss:AutoFitWidth="0"/>
+	[/for]
+	   <Row ss:AutoFitHeight="0">
+	   <Cell ss:Index="1" ss:StyleID="s01"><Data ss:Type="String">ID</Data></Cell>
+	[for(a:Attribute | m.attributes)]
+	    <Cell ss:StyleID="s01"><Data ss:Type="String">[a.name/]</Data></Cell>
+	[/for]
+	   </Row>
+	[for (r : Requirement | m.requirements)]
+		[let count : Integer = i]
+			[if (r.downwardTraceability->size() = 0)]
+				[reqDetail(r, m.attributes, r.values->asSequence(),count+1)/]
+			[else]
+				[for (t : Traceability | r.downwardTraceability)]
+					[reqDetail(r, m.attributes, Sequence{r.values->asSequence(),t.traceabilityValues->asSequence()}->flatten(),count+i)/]
+				[/for]
+			[/if]
+		[/let]
+	[/for]
+	<Row ss:AutoFitHeight="0" />
+	[for (p : Property | m.metadata)]
+   <Row ss:AutoFitHeight="0">
+    <Cell ss:StyleID="s0[i.mod(2)/]"><Data ss:Type="String">[cdata(p.name)/]</Data></Cell><Cell ss:StyleID="s01"><Data ss:Type="String">[p.value/]</Data></Cell>
+   </Row>
+	[/for]
+   <Row ss:AutoFitHeight="0">
+    <Cell ss:StyleID="s01"><Data ss:Type="String">Version</Data></Cell><Cell ss:StyleID="s01"><Data ss:Type="String">[m.version/]</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <PageSetup>
+    <Header x:Margin="0.3"/>
+    <Footer x:Margin="0.3"/>
+    <PageMargins x:Bottom="0.75" x:Left="0.7" x:Right="0.7" x:Top="0.75"/>
+   </PageSetup>
+   <Unsynced/>
+   <Print>
+    <ValidPrinterInfo/>
+    <PaperSizeIndex>9</PaperSizeIndex>
+    <HorizontalResolution>600</HorizontalResolution>
+    <VerticalResolution>600</VerticalResolution>
+   </Print>
+   <Selected/>
+   <Panes>
+    <Pane>
+     <Number>3</Number>
+     <ActiveRow>9</ActiveRow>
+     <ActiveCol>3</ActiveCol>
+    </Pane>
+   </Panes>
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+  </WorksheetOptions>
+ </Worksheet>
+[/for]
+</Workbook>
+	[/file]
+	
+[/template]
+
+[template public reqDetail (r : Requirement, allAttributes : OrderedSet(Attribute), values : Sequence(AttributeValue), count : Integer)]
+<Row ss:AutoFitHeight="0">
+	<Cell ss:Index="1" ss:StyleID="s0[count.mod(2)/]"><Data ss:Type="String">[cdata(r.ID)/]</Data></Cell>
+[for(att: Attribute | allAttributes)]
+	[if(getValue(values, att).toString().size()=0)]
+	    <Cell ss:StyleID="s0[count.mod(2)/]"/>
+	[else]
+		<Cell ss:StyleID="s0[count.mod(2)/]"><Data ss:Type="[getType(att)/]">[cdata(getValue(values, att))/]</Data></Cell>
+	[/if]
+[/for]
+</Row>
+[/template]
+
+[query public cdata(arg : String) : String =
+if(arg.size()=0) then  
+	arg
+else
+	'<![CDATA[' + arg + ']]>'
+endif
+/]
+
+
+[query public getValue(values : Sequence(AttributeValue), a : Attribute) : String =  	
+	 let value : AttributeValue = values->select(v : AttributeValue | v.attribute = a)->first() in 
+	 if (value.oclIsUndefined()) then 
+	  '' 
+	 else  value.value
+	 endif
+/]
+
+[query public getType(arg : Attribute) : String = 
+if (arg.type.oclIsUndefined()) then
+ 'String'
+else 
+ if arg.type.toLowerCase().contains('string') then 'String'
+ else 
+	if arg.type.toLowerCase().contains('boolean') then 'String'
+	else 
+		if arg.type.toLowerCase().contains('int') then 'Number' 
+		else
+		'String'
+		endif
+	endif
+ endif
+endif
+/]
+
+
+
+

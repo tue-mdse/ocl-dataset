@@ -1,0 +1,162 @@
+MainModel : /Models/SimplePDL.ecore
+
+
+context Process
+inv nameIsDefined:
+    if  self.name.oclIsUndefined() then
+	false
+    else
+	self.name <> ''
+    endif
+
+inv containmentConsistency:
+  let elements : Set(ProcessElement) = self.processElements in
+    let wds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(WorkDefinition)) in
+      let wss: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(WorkSequence)) in
+        -- WS linked to a process WD are elements of this process
+        wds->forAll(wd: ProcessElement |
+            elements->includesAll(wd.oclAsType(WorkDefinition).linksToPredecessors)
+            and elements->includesAll(wd.oclAsType(WorkDefinition).linksToSuccessors))
+        -- source and target of a process WS are elements of this process
+        and wss->forAll(ws: ProcessElement |
+            elements->includes(ws.oclAsType(WorkSequence).predecessor)
+            and elements->includes(ws.oclAsType(WorkSequence).successor))
+
+inv WDparameterWDConsistency:
+  let elements : Set(ProcessElement) = self.processElements in
+    let wds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(WorkDefinition)) in
+      let parwds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(ParameterWD)) in
+        -- ParWD linked to a process WD are elements of this process
+        wds->forAll(wd: ProcessElement |
+			elements->includesAll(wd.oclAsType(WorkDefinition).needsWD))
+        -- source and target of a process WS are elements of this process
+        and parwds->forAll(par: ProcessElement |
+            elements->includes(par.oclAsType(ParameterWD).workDefinition))
+
+inv SWDparameterSWDConsistency:
+  let elements : Set(ProcessElement) = self.processElements in
+    let swds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(SubWorkDefinition)) in
+      let parswds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(ParameterSWD)) in
+        -- ParSWD linked to a process SWD are elements of this process
+        swds->forAll(swd: ProcessElement |
+			elements->includesAll(swd.oclAsType(SubWorkDefinition).needsSWD))
+        -- source and target of a process WS are elements of this process
+        and parswds->forAll(par: ProcessElement |
+            elements->includes(par.oclAsType(ParameterSWD).subWorkDefinition))
+
+inv parameterWDConsistency:
+  let elements : Set(ProcessElement) = self.processElements in
+    let parwds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(ParameterWD)) in
+      let res: Set(Resource) = self.resources in
+        -- ParWD linked to a resource Res are elements of this process
+        parwds->forAll(par: ProcessElement |
+			res->includes(par.oclAsType(ParameterWD).resource))
+
+inv parameterSWDConsistency:
+  let elements : Set(ProcessElement) = self.processElements in
+    let parswds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(ParameterSWD)) in
+        -- ParWD linked to a process WD are elements of this process
+        parswds->forAll(par: ProcessElement |
+			elements->includes(par.oclAsType(ParameterSWD).internResource))
+
+inv familyConsistency:
+  let elements : Set(ProcessElement) = self.processElements in
+    let wds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(WorkDefinition)) in
+      let swds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(SubWorkDefinition)) in
+        -- ParSWD linked to a process SWD are elements of this process
+        wds->forAll(wd: ProcessElement |
+			elements->includesAll(wd.oclAsType(WorkDefinition).children))
+        -- source and target of a process WS are elements of this process
+        and swds->forAll(swd: ProcessElement |
+            elements->includes(swd.oclAsType(SubWorkDefinition).parent))
+
+inv activitiesDiffName :
+	self.processElements->forAll(e1,e2 | e1<>e2 implies e1.oclAsType(Activities).name<>e2.oclAsType(Activities).name)
+
+inv parametersDiffName :
+	self.processElements->forAll(e1,e2 | e1<>e2 implies e1.oclAsType(Parameter).name<>e2.oclAsType(Parameter).name)
+
+inv nameSize :
+	self->forAll(e|e.name.size()>0)
+
+inv min_timeMax_timeAreDefined:
+    if  self.min_time.oclIsUndefined() or self.max_time.oclIsUndefined() then
+	false
+    else
+	self.min_time >= 0 and (self.max_time >= self.min_time or self.max_time = -1)
+    endif
+
+inv resourcesDiffName:
+	self.resources->forAll(r1,r2 | r1<>r2 implies r1.oclAsType(Resource).name<>r2.oclAsType(Resource).name)
+
+inv globalMax_time:
+	self.processElements->forAll(e | (e.oclAsType(WorkDefinition).max_time <= self.max_time or self.max_time = -1))
+
+context WorkSequence
+inv notReflexive:
+	self.predecessor<>self.successor
+
+context Activities
+inv nameIsDefined:
+    if  self.name.oclIsUndefined() then
+	false
+    else
+	self.name <> ''
+    endif
+
+inv min_timeMax_timeAreDefined:
+    if  self.min_time.oclIsUndefined() or self.max_time.oclIsUndefined() then
+	false
+    else
+	self.min_time >= 0 and (self.max_time >= self.min_time or self.max_time = -1)
+    endif
+
+context WorkDefinition
+inv parameterDiffResource:
+	self.needsWD->forAll(p1,p2 | p1<>p2 implies p1.resource.oclAsType(Resource).name<>p2.resource.oclAsType(Resource).name)
+
+context SubWorkDefinition
+inv parameterDiffParameter:
+	self.needsSWD->forAll(p1,p2 | p1<>p2 implies p1.internResource.oclAsType(ParameterWD).name<>p2.internResource.oclAsType(ParameterWD).name)
+
+inv parentDifferent:
+	self.parent <> self
+
+context Resource
+inv nameIsDefined:
+    if  self.name.oclIsUndefined() then
+	false
+    else
+	self.name <> ''
+    endif
+
+inv markingIsDefined:
+    if  self.marking.oclIsUndefined() then
+	false
+    else
+	self.marking >= 0
+    endif
+
+context Parameter
+inv nameIsDefined:
+    if  self.name.oclIsUndefined() then
+	false
+    else
+	self.name <> ''
+    endif
+
+context ParameterWD
+inv nbNeedsIsDefined:
+    if  self.nbNeeds.oclIsUndefined() then
+	false
+    else
+	self.nbNeeds >= 0 and self.nbNeeds <= self.resource.oclAsType(Resource).marking
+	endif
+
+context ParameterSWD
+inv nbNeedsIsDefined:
+    if  self.nbNeeds.oclIsUndefined() then
+	false
+    else
+	self.nbNeeds >= 0 and self.nbNeeds <= self.internResource.oclAsType(Parameter).nbNeeds
+    endif

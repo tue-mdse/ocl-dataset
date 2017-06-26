@@ -1,0 +1,256 @@
+[comment encoding = UTF-8 /]
+[module ModularNewProjectCreationPageJAVA('http://www.eclipse.org/emf/2002/Ecore','http://mondo.org/runtimePatterns')]
+[import org::mondo::generate::modular::project::main::requests::global_queriesModularProject /]
+
+[template public ModularNewProjectCreationPageJAVA(anProjectName : String,c : ClassRoleInstance)]
+
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name') + '.' + c.element.name).replaceAll('\\.','/').concat('/wizard/').concat(c.element.name.toString()).concat('NewProjectCreationPage.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].[c.element.name.toLowerCase()/].wizard;
+
+import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.wizard.WizardPage;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+
+public class [c.element.name/]NewProjectCreationPage extends WizardPage {
+
+	private Composite container;
+	[if (c.HasTypeFeature_EAttribute('name')=false)]
+	//Project Name
+	private String projectname;
+	private Label lbl_projectname;
+	private Text txt_projectname;
+	[/if]
+	//Attributes
+	[for (attr : EAttribute | c.element.eAllAttributes)]
+	private Label lbl_[attr.name /];
+	private Text txt_[attr.name /];
+	[/for]	
+	private [c.element.name/]ProjectFeatures features;
+	//Select Model 
+	private Button create_project;
+	private Text txt_loc;
+	private Button btn_select;
+	private String diagram_address;
+
+	public [c.element.name/]NewProjectCreationPage(String pageName) {
+		super(pageName);
+		diagram_address = null;
+		features = new [c.element.name/]ProjectFeatures();
+				
+	}
+
+	public [c.element.name/]NewProjectCreationPage(String pageName, String title,
+			ImageDescriptor titleImage) {
+		super(pageName, title, titleImage);
+		// TODO Auto-generated constructor stub
+	}
+
+	@Override
+	public void createControl(Composite parent) {
+		// TODO Auto-generated method stub
+		    
+		container = new Composite(parent, SWT.NONE);
+		GridLayout layout = new GridLayout();
+		container.setLayout(layout);
+		layout.numColumns = 3;
+		
+		[if (c.HasTypeFeature_EAttribute('name')=false)]
+		lbl_projectname = new Label(container, SWT.NONE);
+		lbl_projectname.setText("Project Name");
+		txt_projectname = new Text(container, SWT.BORDER | SWT.SINGLE );
+		txt_projectname.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+	    txt_projectname.setText(features.get_ProjectName());
+		new Label(container, SWT.NONE);	
+		[/if]
+		
+		//Attributes
+		[for (attr : EAttribute | c.element.eAllAttributes)]
+		lbl_[attr.name /] = new Label(container, SWT.NONE);
+		[if (c.HasTypeFeature_EAttribute('name')=true)]
+			[if(c.Get_ClassRoleInstance_TypeFeature_EAttribute('name').name<>attr.name)]
+			lbl_[attr.name /].setText("[attr.name /]: ");
+			[else]
+			lbl_[attr.name /].setText("Project Name([attr.name /]): ");	
+			[/if]
+		[else]
+		lbl_[attr.name /].setText("[attr.name /]: ");
+		[/if]
+		txt_[attr.name /] = new Text(container, SWT.BORDER | SWT.SINGLE );
+		txt_[attr.name /].setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		new Label(container, SWT.NONE);	
+		[/for]	
+		
+		
+		//Add Listeners
+		[for (attr : EAttribute | c.element.eAllAttributes)]
+
+		txt_[attr.name /].addModifyListener(new ModifyListener() {
+			
+			@Override
+			public void modifyText(ModifyEvent e) {
+				// TODO Auto-generated method stub
+				features.Set_[attr.name /]([Data_Type_Parse_With_Value(attr,'txt_'.concat(attr.name).concat('.getText()'))/]);
+				 Validate_Form();
+			}
+		});
+
+		[/for]
+		
+		[if (c.HasTypeFeature_EAttribute('name')=false)]
+		//Project Name Listener
+		txt_projectname.addModifyListener(new ModifyListener() {
+			
+			@Override
+			public void modifyText(ModifyEvent e) {
+				// TODO Auto-generated method stub
+				features.set_ProjectName(txt_projectname.getText());
+				 Validate_Form();
+			}
+		});
+		[/if]		
+		//Select Model
+		create_project = new Button(container, SWT.CHECK);
+		create_project.setText("Select Model");
+		create_project.setSelection(false);
+		
+		create_project.addSelectionListener(new SelectionAdapter() {
+
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				// TODO Auto-generated method stub
+				super.widgetSelected(e);
+				if(create_project.getSelection()){
+					[for (attr : EAttribute | c.element.eAllAttributes)]
+					txt_[attr.name /].setEnabled(false);
+					[/for]					
+					txt_loc.setEnabled(true);
+					btn_select.setEnabled(true);
+					diagram_address = (txt_loc.getText()!="")?txt_loc.getText():null;
+					if(diagram_address==null)
+						setPageComplete(false);
+					else
+						setPageComplete(true);
+				}		
+				else
+				{
+					[for (attr : EAttribute | c.element.eAllAttributes)]
+					txt_[attr.name /].setEnabled(true);
+					[/for]	
+					txt_loc.setEnabled(false);
+					btn_select.setEnabled(false);
+					diagram_address = null;
+					Validate_Form();
+				}				
+			}
+			
+		});
+		
+		new Label(container, SWT.NONE);
+		new Label(container, SWT.NONE);
+		
+		Label lbl_loc = new Label(container, SWT.NONE);
+		lbl_loc.setText("Location: ");
+				
+		txt_loc = new Text(container, SWT.BORDER | SWT.SINGLE);
+		txt_loc.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		txt_loc.setEnabled(false);
+		
+		txt_loc.addModifyListener(new ModifyListener() {
+			
+			@Override
+			public void modifyText(ModifyEvent e) {
+				// TODO Auto-generated method stub
+				if(txt_loc.getText()!=""){
+					diagram_address = txt_loc.getText();
+					setPageComplete(true);
+					}
+				else{
+					diagram_address = null;
+					setPageComplete(false);
+				}
+			}
+		});
+		
+		btn_select = new Button(container, SWT.PUSH);
+		btn_select.setText("Browse");
+		btn_select.setEnabled(false);
+		btn_select.addSelectionListener(new SelectionAdapter() {
+
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				// TODO Auto-generated method stub
+				super.widgetSelected(e);
+				FileDialog dialog = new FileDialog(getShell(), SWT.OPEN);
+				dialog.setFilterExtensions(new String ['[]' /] {"*.xmi","*.*"});				
+				diagram_address = dialog.open();	
+				if(diagram_address!=null){
+					txt_loc.setText(diagram_address);
+					setPageComplete(true);
+				}
+			}				
+			
+		});
+		
+		// Required to avoid an error in the system
+		setControl(container);
+		setPageComplete(false);
+
+	}
+	
+	[if (c.HasTypeFeature_EAttribute('name')=false)]
+	public String getProjectname() {
+		return projectname;
+	}
+
+	public void setProjectname(String projectname) {
+		this.projectname = projectname;
+	}	
+	[/if]
+
+	@Override
+	public boolean canFlipToNextPage() {
+		// TODO Auto-generated method stub
+		//return super.canFlipToNextPage();
+		return false;
+	}
+
+	public void Validate_Form()
+	{
+		setPageComplete(false);
+		[for (attr : EAttribute | c.element.eAllAttributes)]
+			if(txt_[attr.name /].getText().equals(""))
+				return;
+		[/for]
+		[if (c.HasTypeFeature_EAttribute('name')=false)]
+			if(txt_projectname.getText().equals(""))
+				return;
+		[/if]
+		setPageComplete(true);
+	}
+	
+	public [c.element.name/]ProjectFeatures Get_Features()
+	{
+		return features;
+	}
+	
+	public String getDiagram_address() {
+		return diagram_address;
+	}
+
+}
+
+
+[/file]
+
+[/template]

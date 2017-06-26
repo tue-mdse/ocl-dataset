@@ -1,0 +1,174 @@
+[comment encoding = UTF-8 /]
+[module locationProvider('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::android::common::xisMobileUtils /]
+[import xismobile::pim::uml2::gen::android::common::utils /]
+[import xismobile::pim::uml2::gen::android::files::provider /]
+[import xismobile::pim::uml2::gen::android::services::services /]
+
+[template public generateLocationProvider(c : Class)]
+
+[file ('src/' + c.getPackageDirectoryPath() + '/' + c.name.toUpperFirst() + 'LocationProvider.java', false, 'UTF-8')]
+package [c.getPackagePath()/];
+
+import android.app.AlertDialog;
+import android.app.Service;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.os.Bundle;
+import android.os.IBinder;
+import android.provider.Settings;
+import android.util.Log;
+
+public class [c.name.toUpperFirst()/]LocationProvider extends Service implements LocationListener {
+
+	private final Context context;
+	
+	private static [c.name.toUpperFirst()/]LocationProvider instance = null;
+	// Minimum time interval between location updates, in milliseconds
+    private static final long MIN_TIME_BW_UPDATES = 1000 * 60 * 1;
+    // Minimum distance between location updates, in meters
+    private static final long MIN_DISTANCE_CHANGE_FOR_UPDATES = 10;
+    
+    private boolean isGPSEnabled = false;
+    private boolean isNetworkEnabled = false;
+    private boolean canGetLocation = false;
+    private Location location;
+    private double latitude;
+    private double longitude;
+    private LocationManager locationManager;
+ 
+    protected [c.name.toUpperFirst()/]LocationProvider(Context context) {
+        this.context = context;
+    }
+
+	public static [c.name.toUpperFirst()/]LocationProvider getInstance(Context context) {
+		if (instance == null) {
+			instance = new [c.name.toUpperFirst()/]LocationProvider(context);
+		}
+		return instance;
+	}
+[let services : Sequence(Interface) = c.getXisInternalServices()]
+[if (services->size() > 0)]
+
+	[services->writeServiceArea()/]
+[/if]
+[/let]
+
+    public boolean canGetLocation() {
+        return canGetLocation;
+    }
+    
+    public Location getLocation() {
+        try {
+            locationManager = (LocationManager) context.getSystemService(LOCATION_SERVICE);
+            isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+            isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+
+            if (isGPSEnabled) {
+                canGetLocation = true;
+            	
+                if (location == null) {
+                    locationManager.requestLocationUpdates(
+                        LocationManager.GPS_PROVIDER,
+                        MIN_TIME_BW_UPDATES,
+                        MIN_DISTANCE_CHANGE_FOR_UPDATES, this);
+
+                    if (locationManager != null) {
+                        location = locationManager
+                            .getLastKnownLocation(LocationManager.GPS_PROVIDER);
+
+                        if (location != null) {
+                            latitude = location.getLatitude();
+                            longitude = location.getLongitude();
+                        }
+                    }
+                }
+            } else if (isNetworkEnabled) {
+            	canGetLocation = true;
+            	locationManager.requestLocationUpdates(
+            		LocationManager.NETWORK_PROVIDER,
+            		MIN_TIME_BW_UPDATES,
+            		MIN_DISTANCE_CHANGE_FOR_UPDATES, this);
+
+                if (locationManager != null) {
+                    location = locationManager
+                    	.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+
+                    if (location != null) {
+                        latitude = location.getLatitude();
+                        longitude = location.getLongitude();
+                    }
+                }
+            } else {
+            	showLocationSettingsAlert();
+            }
+        } catch (Exception e) {
+            Log.e("LOCATION", "Exception encountered while retrieving location: " + e);
+        }
+        return location;
+    }
+
+    public double getLatitude() {
+        if (location != null) {
+            latitude = location.getLatitude();
+        }
+        return latitude;
+    }
+
+    public double getLongitude() {
+        if (location != null){
+            longitude = location.getLongitude();
+        }
+        return longitude;
+    }
+    
+    public void stopLocationUpdates() {
+        if (locationManager != null) {
+            locationManager.removeUpdates(this);
+        }
+    }
+    
+    private void showLocationSettingsAlert() {
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(context);
+        alertDialog.setTitle("Location Access Settings");
+        alertDialog.setMessage("Location access is not enabled. Do you want to go to the Location Access Settings?");
+
+        alertDialog.setPositiveButton("Settings", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog,int which) {
+                Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                context.startActivity(intent);
+            }
+        });
+
+        alertDialog.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+            	dialog.cancel();
+            }
+        });
+        alertDialog.show();
+    }
+	
+	@Override
+	public void onLocationChanged(Location location) { }
+
+	@Override
+	public void onProviderDisabled(String provider) { }
+
+	@Override
+	public void onProviderEnabled(String provider) { }
+
+	@Override
+	public void onStatusChanged(String provider, int status, Bundle extras) { }
+
+	@Override
+	public IBinder onBind(Intent intent) {
+		return null;
+	}
+}
+[/file]
+[/template]

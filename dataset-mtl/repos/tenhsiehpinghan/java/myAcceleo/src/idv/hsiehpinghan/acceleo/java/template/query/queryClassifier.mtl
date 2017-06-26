@@ -1,0 +1,343 @@
+[comment encoding = UTF-8 /]
+[**
+ * 負責產生templateClassifier所需的query。
+ */]
+[module queryClassifier('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[comment]---------------------------public---------------------------[/comment]
+[**
+ * 取得anElement的ownedComments
+ * @param anElement
+ */]
+[query public queryOwnedComments(anElement : Element) : Set(Comment) = 
+	anElement.ownedComment
+/]
+
+[**
+ * 取得comment的body
+ * @param aComment
+ */]
+[query public queryCommentBody(aComment : Comment) : String = 
+	aComment._body
+/]
+
+[**
+ * 取得namedElement的name
+ * @param aNamedElement
+ */]
+[query public queryName(aNamedElement : NamedElement) : String = 
+	aNamedElement.name
+/]
+
+[**
+ * 取得namedElement的qualifiedName
+ * @param aNamedElement
+ */]
+[query public queryQualifiedName(aNamedElement : NamedElement) : String = 
+	aNamedElement.qualifiedName
+/]
+
+[**
+ * 取得namedElement的visibilityKind
+ * @param aNamedElement
+ */]
+[query public queryVisibilityKind(aNamedElement : NamedElement) : VisibilityKind = 
+	aNamedElement.visibility
+/]
+
+[**
+ * 取得feature是否為static
+ * @param aFeature
+ */]
+[query public queryIsStatic(aFeature : Feature) : Boolean = 
+	aFeature.isStatic
+/]
+
+[**
+ * 取得structuralFeature是否為readOnly
+ * @param aStructuralFeature
+ */]
+[query public queryIsReadOnly(aStructuralFeature : StructuralFeature) : Boolean = 
+	aStructuralFeature.isReadOnly
+/]
+
+[**
+ * 取得redefinableElement是否為leaf
+ * @param aRedefinableElement
+ */]
+[query public queryIsLeft(aRedefinableElement : RedefinableElement) : Boolean = 
+	aRedefinableElement.isLeaf
+/]
+
+[**
+ * 取得某個type的package的Sequence(String)。
+ * @param aType
+ */]
+[query public queryPackage(aType : Type) : Sequence(String) = 
+	aType.ancestors(Package)->reject(aPackage : Package | aPackage.oclIsTypeOf(Model))->reverse().queryName()->sep('.')
+/]
+
+[**
+ * 取得typedElement的type
+ * @param aTypedElement
+ */]
+[query public queryType(aTypedElement : TypedElement) : Type = 
+	aTypedElement.type
+/]
+
+[**
+ * 取得typedElement的typeName
+ * @param aTypedElement
+ */]
+[query public queryTypeName(aTypedElement : TypedElement) : String = 
+	aTypedElement.queryType().name
+/]
+
+[**
+ * 取得operation的type
+ * @param aOperation
+ */]
+[query public queryType(aOperation : Operation) : Type = 
+	aOperation.type
+/]
+
+[**
+ * 取得operation的typeName
+ * @param aOperation
+ */]
+[query public queryTypeName(aOperation : Operation) : String = 
+	aOperation.queryType().name
+/]
+
+[**
+ * 取得某個operation的return parameter是什麼。
+ * @param anOperation
+ */]
+[query public queryReturnParameters(anOperation : Operation) : OrderedSet(Parameter) = 
+	anOperation.ownedParameter->select(aParameter : Parameter | aParameter.direction = ParameterDirectionKind::return)
+/]
+
+[**
+ * 取得某個operation有那些parameter。
+ * @param anOperation
+ */]
+[query public queryParameters(anOperation : Operation) : OrderedSet(Parameter) = 
+	anOperation.ownedParameter->select(aParameter : Parameter | aParameter.direction = ParameterDirectionKind::_in)
+/]
+
+[**
+ * 取得classifier的qualifiedName
+ * @param aClassifier
+ */]
+[query public queryQualifiedName(aClassifier : Classifier) : String = 
+	aClassifier.qualifiedName
+/]
+
+[**
+ * 取得property的valueSpecification
+ * @param aProperty
+ */]
+[query public queryDefaultValue(aProperty : Property) : ValueSpecification = 
+	aProperty.defaultValue
+/]
+
+[**
+ * 取得property的default
+ * @param aProperty
+ */]
+[query public queryDefault(aProperty : Property) : String = 
+	aProperty.default
+/]
+
+[**
+ * 取得有那些class需要import。
+ * @param aClassifier
+ */]
+[query public queryClassifierImports(aClassifier : Classifier) : Set(Classifier) = 
+	aClassifier.queryUsedClassifiersInDifferentPackages()
+	->filterClassifiers()
+/]
+
+[**
+ * 取得某個classifier generalize了那些classifier。
+ * @param aClassifier
+ */]
+[query public queryClassifierExtends(aClassifier : Classifier) : Set(Classifier) = 
+	aClassifier.getGenerals()
+/]
+
+[**
+ * 取得某個classifier有那些property。
+ * @param aClassifier
+ */]
+[query public queryProperties(aClassifier : Classifier) : Set(Property) = 
+	aClassifier.attribute
+/]
+
+[**
+ * 取得某個classifier有那些operation。
+ * @param aClassifier
+ */]
+[query public queryOperations(aClassifier : Classifier) : Set(Operation) = 
+	aClassifier.getOperations()
+/]
+
+[**
+ * 過濾不要的classifier。(排除java.lang及default package的classifier)
+ * @param aCollection
+ */]
+[query protected filterClassifiers(aCollection : Set(Classifier)) : Collection(Classifier) = 
+	aCollection
+	->reject(aClassifier : Classifier | aClassifier.ancestors(Package)->reject(aPackage : Package | aPackage.oclIsTypeOf(Model))->reverse().name = Sequence{'java', 'lang'})
+	->reject(aClassifier : Classifier | aClassifier.ancestors(Package)->reject(aPackage : Package | aPackage.oclIsTypeOf(Model))->reverse().name = Sequence{})
+/]
+
+
+[comment]--------------------------protected-------------------------[/comment]
+[**
+ * 取得某個model下的importedPackage。
+ * @param aModel
+ * @param importedPackageName
+ */]
+[query protected queryModelOwnImportedPackages(aModel : Model, importedPackageName : String) : Set(Package) = 
+	aModel.getImportedPackages()->select(aPackage : Package | aPackage.name = importedPackageName)
+/]
+
+[**
+ * 取得某個package下的package。
+ * @param aPackage
+ * @param packageName
+ */]
+[query protected queryPackageOwnPackages(aPackage : Package, packageName : String) : Set(Package) = 
+	aPackage.getOwnedMembers()->filter(Package)->select(aPackage : Package | aPackage.name = packageName)
+/]
+
+[**
+ * 取得某個package下的interface。
+ * @param aPackage
+ * @param interfaceName
+ */]
+[query protected queryPackageOwnInterfaces(aPackage : Package, interfaceName : String) : Set(Interface) = 
+	aPackage.getOwnedMembers()->filter(Interface)->select(aInterface : Interface | aInterface.name = interfaceName)
+/]
+
+[**
+ * 取得某個model applied的profile
+ * @param aModel
+ * @param profileName
+ */]
+[query protected queryModelAppliedProfiles(aModel : Model, profileName : String) : Set(Profile) = 
+	aModel.getAllAppliedProfiles()->select(aProfile : Profile | aProfile.qualifiedName = profileName)
+/]
+
+[**
+ * 取得某個profile下的stereotype。
+ * @param aProfile
+ * @param stereotypeName
+ */]
+[query protected queryProfileOwnStereotype(aProfile : Profile, stereotypeName : String) : Set(Stereotype) = 
+	aProfile.allOwnedElements()->filter(Stereotype)->select(aStereotype : Stereotype | aStereotype.name = stereotypeName)
+/]
+
+
+[comment]---------------------------private--------------------------[/comment]
+[**
+ * 取得有那些classifier有被使用到。
+ * @param aClassifier
+ */]
+[query private queryUsedClassifiers(aClassifier : Classifier) : Set(Classifier) = 
+	aClassifier.queryClassifierExtends()
+	->addAll(aClassifier.queryClassifierExtends().queryClassifierTemplate())
+	->addAll(aClassifier.queryClassifierExtends().queryParameterSubstitution())
+	->addAll(aClassifier.queryPropertiesClassifiers())
+	->addAll(aClassifier.queryPropertiesClassifiers().queryClassifierTemplate())
+	->addAll(aClassifier.queryPropertiesClassifiers().queryParameterSubstitution())
+	->addAll(aClassifier.queryOperationsClassifiers())
+	->addAll(aClassifier.queryOperationsClassifiers().queryClassifierTemplate())
+	->addAll(aClassifier.queryOperationsClassifiers().queryParameterSubstitution())
+	->addAll(aClassifier.queryOperationsParametersClassifiers())
+	->addAll(aClassifier.queryOperationsParametersClassifiers().queryClassifierTemplate())
+	->addAll(aClassifier.queryOperationsParametersClassifiers().queryParameterSubstitution())
+	->addAll(aClassifier.queryOperations().ownedParameter->select(aParameter : Parameter | not aParameter.getAppliedStereotype('idv::hsiehpinghan::Generics').oclIsUndefined()).queryParameterGenericsClassifier())
+/]
+
+[**
+ * 取得某個classifier的operations使用了那些classifier。
+ * @param aClassifier
+ */]
+[query private queryOperationsParametersClassifiers(aClassifier : Classifier) : Set(Classifier) = 
+	aClassifier.queryOperations().ownedParameter.queryType()->filter(Classifier)->asSet()
+/]
+
+[**
+ * 取得某個classifier的operations的type有那些classifier。
+ * @param aClassifier
+ */]
+[query private queryOperationsClassifiers(aClassifier : Classifier) : Set(Classifier) = 
+	aClassifier.queryOperations().queryType()->filter(Classifier)->asSet()
+/]
+
+[**
+ * 取得某個classifier的properties的type有那些classifier。
+ * @param aClassifier
+ */]
+[query private queryPropertiesClassifiers(aClassifier : Classifier) : Set(Classifier) = 
+	aClassifier.queryProperties().queryType()->filter(Classifier)->asSet()
+/]
+
+[**
+ * 取得某個classifier的templateBinding有那些。
+ * @param aClassifier
+ */]
+[query private queryTemplateBinding(aClassifier : Classifier) : Set(TemplateBinding) = 
+	aClassifier.templateBinding
+/]
+
+[**
+ * 取得某個classifier的parameterSubstitution有那些。
+ * @param aClassifier
+ */]
+[query private queryParameterSubstitution(aClassifier : Classifier) : Set(Classifier) = 
+	(aClassifier.queryTemplateBinding().parameterSubstitution.actual)->asSet()
+/]
+
+[**
+ * 取得某個templateBinding的signature有那些。
+ * @param aTemplateBinding
+ */]
+[query private queryTemplateSignature(aTemplateBinding : TemplateBinding) : TemplateSignature = 
+	aTemplateBinding.signature
+/]
+
+[**
+ * 取得某個templateSignature的templateableElement。
+ * @param aTemplateSignature
+ */]
+[query private queryTemplate(aTemplateSignature : TemplateSignature) : TemplateableElement = 
+	aTemplateSignature.template
+/]
+
+[**
+ * 取得某個templateSignature的templateableElement。
+ * @param aClassifier
+ */]
+[query private queryClassifierTemplate(aClassifier : Classifier) : Set(TemplateableElement) = 
+	(aClassifier.queryTemplateBinding().queryTemplateSignature().queryTemplate())->asSet()
+/]
+
+[**
+ * 取得不在同一個package但有使用到的classifier。
+ * @param aClassifier
+ */]
+[query private queryUsedClassifiersInDifferentPackages(aClassifier : Classifier) : Set(Classifier) = 
+	aClassifier.queryUsedClassifiers()
+	->reject(aUsedClassifier : Classifier | aClassifier.queryPackage() = aUsedClassifier.queryPackage())
+/]
+
+[**
+ * 取得某個parameter的generics使用了那些classifier。
+ * @param aClassifier
+ */]
+[query private queryParameterGenericsClassifier(aParameter : Parameter) : Set(Classifier) = 
+	aParameter.getValue(self.getAppliedStereotype('idv::hsiehpinghan::Generics'), 'extends')
+/]

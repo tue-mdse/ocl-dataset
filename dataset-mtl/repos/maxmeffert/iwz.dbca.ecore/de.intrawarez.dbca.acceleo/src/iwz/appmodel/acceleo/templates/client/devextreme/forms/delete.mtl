@@ -1,0 +1,93 @@
+[comment encoding = UTF-8 /]
+[module delete('http://iwz/appmodel')]
+
+[import iwz::appmodel::acceleo::queries::common::client/]
+[import iwz::appmodel::acceleo::templates::common/]
+[import iwz::appmodel::acceleo::templates::client::devextreme::dxgrid/]
+
+[template public generateDeleteView(ev : EntityForm)]
+[file ('/client/devextreme/'+ev.getClientName().toLower()+'/html/view.'+ev.entity.name.toLower()+'.'+ev.type.toString().toLower()+'.html', false, 'UTF-8')]
+<div data-options="dxView : { name: '[ev.name/]'} ">
+	<div data-options="dxContent: { targetPlaceholder: 'content' }">
+		<div class="content-body">
+			<div data-bind="dxBox: { direction: 'row' }">
+				<div data-options="dxItem: {ratio: 1}">
+					<h1>Eintr&auml;ge L&ouml;schen?</h1>
+				</div>
+				<div data-options="dxItem: {ratio: 0.25}">
+					<div data-bind="dxButton: { text: 'Löschen', icon: 'trash', width: 'inherit', onClick: $parent.del }"></div>
+				</div>
+			</div>
+			<div data-bind="dxBox: { direction: 'row' }">
+				<div data-options="dxItem: {ratio: 1}">
+					<div data-bind="dxList: $parent.dxListConfig">
+						<div data-options="dxTemplate: { name: 'deletee' }">
+			        		<p style="font-size:larger;">
+								[for (p : Property | ev.entity.properties->select(type.toString()<>'GUID'))]
+								<b data-bind="text: [p.name/]"></b>
+								[/for]
+							</p>
+		    			</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+[/file]
+[file ('/client/devextreme/'+ev.getClientName().toLower()+'/js/view.'+ev.entity.name.toLower()+'.'+ev.type.toString().toLower()+'.js', false, 'UTF-8')]
+(function thornms_routes ($, DX, ko, [ev.ancestors(Client)->first().name/], undefined){
+
+	[ev.ancestors(Client)->first().name/].views = [ev.ancestors(Client)->first().name/].views || {};
+
+	[ev.ancestors(Client)->first().name/].views['["'+ev.name+'"]'/] = function () {
+		
+		var dxListInstance;
+
+		var dxListConfig = {};
+		dxListConfig.editEnabled = true;
+		dxListConfig.allowItemDeleting = true;
+		dxListConfig.itemDeleteMode = 'static';
+		dxListConfig.itemTemplate = "deletee";
+		dxListConfig.dataSource = [ev.getClientName()/].deletees.[ev.entity.name/];
+		dxListConfig.onInitialized = function (e) {
+
+			dxListInstance = e.component;
+
+		};
+
+		var viewModel = {};
+		viewModel.dxListConfig = dxListConfig;
+		viewModel.del = function () {
+
+			$.each(dxListConfig.dataSource._array, function(i, val){
+				[ev.getClientName()/].stores.[ev.entity.name/].remove(val);
+			});
+
+			[if (ev.selectRelatedEntityViews()->select(isSelectView())->notEmpty())]
+			[ev.getClientName()/].app.navigate({ view: "[ev.selectRelatedEntityViews()->select(isSelectView()).name/]" });
+			[/if]
+
+		};
+		viewModel.viewShown = function () {
+
+			if (typeof dxListInstance === "undefined") {
+	
+				throw new Error("KatalogeDeleteView: _dxListInstance is undefined!");
+	
+			}
+	
+			dxListInstance.reload();
+	
+		};
+
+		return viewModel;
+
+		// [protected('viewmodel:'+ev.name)]
+		// [/protected]
+		
+	};
+
+}(jQuery, DevExpress, ko, (window.[ev.ancestors(Client)->first().name/] = window.[ev.ancestors(Client)->first().name/] || {}) ));
+[/file]
+[/template]

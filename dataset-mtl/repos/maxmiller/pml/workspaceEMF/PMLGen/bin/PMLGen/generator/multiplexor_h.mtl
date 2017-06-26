@@ -1,0 +1,91 @@
+[comment encoding = UTF-8 /]
+[module multiplexor_h('/PML/model/pml.ecore')]
+
+[import PMLGen::generator::pmlutil /]
+
+[template public generateElement(c : Multiplexor)]
+	[file (c.name.concat('_untimed.h'), false, 'UTF-8')]
+	#ifndef [c.name.concat('_h')/]
+	#define  [c.name.concat('_h')/]
+	#include "systemc.h"
+	
+	SC_MODULE([c.name/]){
+ 		sc_port<read_in> in;
+	    sc_port<write_in> out;
+
+	 	[for (p : Input | c.inmux)]
+	    	[forIn(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+        [for (p : Output | c.outmux)]
+	    	[forIn(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+		[for (p : Seletor | c.seletormux)]
+	    	[forSel(p.name, p.type.toString(), p.bit) /]	    
+	    [/for]
+        [for (o : Behavior | c.behaviormux)]
+        	[o.typeBehavior.toString().toLower()/] [o.name.toLower()/]();/*
+			{
+				if([c.seletormux.name /].read().to_int() < num_inputs){
+					[c.outmux.name/] = [c.inmux.name /][ '['/][c.seletormux.name /].read().to_int()[ ']' /] ;
+				}else{
+					[c.outmux.name/] = [c.inmux.name /][ '['/]0[ ']' /] ;
+				}
+			    wait(1);
+
+			}*/
+        [/for]
+        
+		SC_CTOR([c.name/]) {
+        	
+			
+			[for (o : Behavior | c.behaviormux)]
+	        	SC_METHOD([o.name.toLower()/]); 
+	        [/for]
+			[for (p : Input | c.inmux)]
+				[if(p.sensitive) ]
+				   [forSensitive(p.name, p.length.abs())/]
+				[/if]
+	   		[/for]
+        }       
+	};
+	#endif
+	
+	[/file]
+
+    [file (c.name.concat('_timed.h'), false, 'UTF-8')]
+	#ifndef [c.name.concat('_h')/]
+	#define  [c.name.concat('_h')/]
+	#include "systemc.h"
+	
+	SC_MODULE([c.name/]){
+	 	[for (p : Input | c.inmux)]
+	    	[forInTimed(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+		[for (p : Output | c.outmux)]
+	    	[forOut(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+		[for (p : Seletor | c.seletormux)]
+	    	[forSel(p.name, p.type.toString(), p.bit) /]	    
+	    [/for]
+        [for (o : Behavior | c.behaviormux)]
+        	[o.typeBehavior.toString().toLower()/] [o.name.toLower()/](); /*
+		{
+				[switchIn(c.inmux.name, c.seletormux.name, c.outmux.name, c.inmux.length) /]
+		}*/
+        [/for]
+		SC_CTOR([c.name/]) {
+			[for (o : Behavior | c.behaviormux)]
+	        	SC_THREAD([o.name.toLower()/]); 
+	        [/for]
+			[for (p : Input | c.inmux)]
+	        	[if(p.sensitive) ]
+				   [forSensitiveTimed(p.name, p.length.abs())/]
+				[/if]
+				
+	   		[/for]
+        }       
+	};
+	#endif
+	
+	[/file]
+[/template]

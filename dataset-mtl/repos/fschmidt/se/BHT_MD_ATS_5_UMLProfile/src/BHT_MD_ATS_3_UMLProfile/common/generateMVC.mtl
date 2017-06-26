@@ -1,0 +1,94 @@
+
+[module generateMVC('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import utils /] 
+  
+[template public generateClass(m : Model)]
+	[comment @main /]
+	[for (p:Package | m.ownedElement)]
+		  [generateClass(p)/]
+	[/for]
+[/template]
+
+[template public generateClass(p : Package)]
+	[for (e:Element | p.ownedElement)]
+	  [if  (e.oclIsTypeOf(Class) or e.oclIsTypeOf(AssociationClass))]
+        [let c : Class = e.oclAsType(Class)]
+          [if (c.getAppliedStereotypes()->select(s:Stereotype|s.name.equalsIgnoreCase('model'))->size()>0)]
+		     [generateModelClass2Java(e.oclAsType(Class))/]
+          [else]
+            [if (c.getAppliedStereotypes()->select(s:Stereotype|s.name.equalsIgnoreCase('view'))->size()>0)]
+		      [generateViewClass2Java(e.oclAsType(Class))/]
+            [/if]
+          [/if]
+         [/let]
+	   [elseif (e.oclIsTypeOf(Package))]
+	      [generateClass(e.oclAsType(Package))/]
+	   [/if]	
+		  
+	[/for]
+[/template]
+
+[template public generateModelClass2Java(class : Class)]		
+	[file (getJavaFileName(class,false), false)]
+	[JavaClassDefHeader(class.visibility, class.name, null)/]
+	 
+	[comment Properties/]
+	[for (prop:Property | class.ownedAttribute)]
+		// Properties
+	[/for]
+
+    [comment Operations/]
+	[comment for (op:Operation | allOperations(class)) /]
+    [for (op:Operation | class.getOperations())] [comment ->select(o:Operation | o.isAbstract=false)/]
+		// Operations
+	[/for]
+	
+    [comment Getter and Setter for Properties/] 
+	[for (prop:Property | class.attribute)]
+		// Getter / Setter 
+	[/for]	 
+	 
+	[comment Associations/] 
+	[for (assoc:Association | class.getAssociations())]
+		// Associations
+	[/for]
+	 
+	}
+
+	[/file]
+
+[/template]
+
+
+
+[template public generateViewClass2Java(class : Class)]		
+	[file (getJavaFileName(class,false), false)]
+	[JavaClassDefHeader(class.visibility, class.name, null)/]
+	 
+	[comment Properties/]
+	[for (prop:Property | class.ownedAttribute)]
+		// Properties
+	[/for]
+
+    [comment Operations/]
+	[comment for (op:Operation | allOperations(class)) /]
+    [for (op:Operation | class.getOperations())] [comment ->select(o:Operation | o.isAbstract=false)/]
+		// Operations
+	[/for]
+	
+    [comment Getter and Setter for Properties/] 
+	[for (prop:Property | class.attribute)]
+		// Getter / Setter 
+	[/for]	 
+	 
+	[comment Associations/] 
+	[for (assoc:Association | class.getAssociations())]
+		// Associations
+	[/for]
+	 
+	}
+
+	[/file]
+
+[/template]
+

@@ -1,0 +1,73 @@
+[comment encoding = UTF-8 /]
+[module generateExchangeController('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::menuQueries /]
+
+[template public generateExchangeController(aModel : Model)]
+[file ('src/'.concat(aModel.name).concat('/presentation/ExchangeController.java'), false, 'UTF-8')]
+package [aModel.name.toLowerCase()/].presentation;
+
+import java.io.InputStream;
+import javax.inject.Inject;
+import javax.inject.Named;
+import [aModel.name.toLowerCase()/].exchange.xml.ExportXML;
+import [aModel.name.toLowerCase()/].exchange.xml.ImportXML;
+import org.primefaces.model.DefaultStreamedContent;
+import org.primefaces.model.StreamedContent;
+import org.primefaces.model.UploadedFile;
+
+@Named("ExchangeController")
+public class ExchangeController {
+	
+	@Inject
+	private ImportXML importXml;
+
+	@Inject
+	private ExportXML exportXml;
+	
+	public  ExchangeController()
+	{
+		System.out.println("ExchangeController constructor");
+	}
+	/*
+	 * Return a StreamedContent object that contain xml data exported
+	 * from database. This object is downloaded as a xml file by the 
+	 * web browser.
+	 * @return exported data 
+	 * @see xml file
+	 */
+	public StreamedContent  getExportXmlFile() throws Exception
+	{		
+		//Transform outputStream from exportFeatures method to an inputStream. 
+		InputStream in = exportXml.exportFeatures();
+		long epoch = System.currentTimeMillis()/1000;
+		return  new DefaultStreamedContent(in,"text/xml","export_"+epoch	+".xml");
+	}
+
+	public UploadedFile getImportXmlFile() 
+	{
+		System.out.println("getImportXmlFile from xml file");
+		return null;
+	}
+
+	/*
+	 * Import and persist data from an UploadedFile object that contain
+	 * xml
+	 * @param file selected and uploaded from web browser
+	 */
+	public void setImportXmlFile(UploadedFile file) throws Exception {
+		System.out.println("setImportXmlFile from xml file");
+		 //Transform UploadedFile to an InputStream
+		InputStream in = file.getInputstream();
+		try
+		{
+			importXml.importFeatures(in);
+		}catch(Exception e)
+		{
+			throw e;
+		}
+	}
+
+}
+[/file]
+[/template]
+	

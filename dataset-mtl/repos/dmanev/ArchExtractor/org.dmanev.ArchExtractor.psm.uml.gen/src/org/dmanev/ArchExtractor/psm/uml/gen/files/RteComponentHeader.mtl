@@ -1,0 +1,92 @@
+[comment encoding = UTF-8 /]
+[module RteComponentHeader('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import org::dmanev::ArchExtractor::psm::uml::gen::services::uml2services]
+
+[template public genRteComponentHeader(aComponent : Component)]
+
+[file (aComponent.getModel().nestedPackage.nestedPackage->
+        select(ifPack: Package | ifPack.name.equalsIgnoreCase('Interfaces')).getElementPath()
+        + '/Interfaces/rte_' + aComponent.name + '.h',
+        false, 'UTF-8')]
+//***********************************************************************************************************************
+//   Company:      Personal use
+//   ---------------------------------------------------------------------------------------------------------------------
+//   Copyright:    GPL v3
+//   ---------------------------------------------------------------------------------------------------------------------
+//   Project:      RTE Simualation
+//   Language:     ANSI-C
+//   ---------------------------------------------------------------------------------------------------------------------
+//   Component:    RTE
+//  ---------------------------------------------------------------------------------------------------------------------
+//
+//***********************************************************************************************************************
+
+#ifndef I_[aComponent.name.toUpper() /]_H
+#define I_[aComponent.name.toUpper() /]_H (1)
+
+
+//------------------------------------------------------------------------------
+// Included files to resolve specific definitions in this file
+//------------------------------------------------------------------------------
+
+#include "rte.h"
+
+//------------------------------------------------------------------------------
+// Local macros
+//
+// #define mMacroName   (MacroDefinition)
+//------------------------------------------------------------------------------
+
+    [comment]Provided SenderReceiverInterface's getter/setter methods[/comment]
+    [for(SRIf: Interface | aComponent.interfaceRealization.supplier->filter(Interface)->
+                                select(iface: Interface | 
+                                iface.generalization.general.
+                                    name.equalsIgnoreCase('SenderReceiverInterface')->includes(true))->
+                                        sortedBy(name))]
+        [comment]SenderReceiverInterface setter[/comment]
+        [for(prop: Property | SRIf.ownedElement->filter(Property))]
+// Provided Setter for "[SRIf.name /]" interface of type "[SRIf.generalization.general.name /]" data element "[prop.name /]"
+#define Write_de_[prop.name /](data)    Write_[SRIf.name /]_de_[prop.name /](data)
+        [/for]
+        [comment]SenderReceiverInterface getter[/comment]
+        [for(prop: Property | SRIf.ownedElement->filter(Property))]
+// Provided Getter for "[SRIf.name /]" interface of type "[SRIf.generalization.general.name /]" data element "[prop.name /]"
+#define Read_de_[prop.name /](data) Read_[SRIf.name /]_de_[prop.name /](data)
+        [/for]
+    [/for]
+
+    [comment]Required SenderReceiverInterface's getter/setter methods[/comment]
+    [for(SRIf: Interface | aComponent.ownedElement->filter(Usage).supplier->filter(Interface)->
+                                select(iface: Interface | 
+                                iface.generalization.general.
+                                    name.equalsIgnoreCase('SenderReceiverInterface')->includes(true))->
+                                        sortedBy(name))]
+        [comment]SenderReceiverInterface setter[/comment]
+        [for(prop: Property | SRIf.ownedElement->filter(Property))]
+// Required Setter for "[SRIf.name /]" interface of type "[SRIf.generalization.general.name /]" data element "[prop.name /]"
+#define Write_de_[prop.name /](data)    Write_[SRIf.name /]_de_[prop.name /](data)
+        [/for]
+        [comment]SenderReceiverInterface getter[/comment]
+        [for(prop: Property | SRIf.ownedElement->filter(Property))]
+// Required Getter for "[SRIf.name /]" interface of type "[SRIf.generalization.general.name /]" data element "[prop.name /]"
+#define Read_de_[prop.name /](data) Read_[SRIf.name /]_de_[prop.name /](data)
+        [/for]
+    [/for]
+
+    [comment]ClientServerInterface's required methods[/comment]
+    [for(CSIf: Interface | aComponent.ownedElement->filter(Usage).supplier->filter(Interface)->
+                                select(iface: Interface | 
+                                iface.generalization.general.
+                                    name.equalsIgnoreCase('ClientServerInterface')->includes(true))->
+                                        sortedBy(name))]
+        [comment]ClientServerInterface call[/comment]
+        [for(op: Operation | CSIf.ownedElement->filter(Operation))]
+// Required Call of "[CSIf.name /]" interface of type "[CSIf.generalization.general.name /]" operation "[op.name /]"
+#define Call_[CSIf.name /]_[op.name /]([for(par: Parameter | op.ownedElement->filter(Parameter)) separator(',')][par.name/][/for])    [CSIf.name /]_[op.name /]([for(par: Parameter | op.ownedElement->filter(Parameter)) separator(',')]([par.name/])[/for])
+        [/for]
+    [/for]
+
+#endif   // I_[aComponent.name.toUpper() /]_H
+[/file]
+[/template]

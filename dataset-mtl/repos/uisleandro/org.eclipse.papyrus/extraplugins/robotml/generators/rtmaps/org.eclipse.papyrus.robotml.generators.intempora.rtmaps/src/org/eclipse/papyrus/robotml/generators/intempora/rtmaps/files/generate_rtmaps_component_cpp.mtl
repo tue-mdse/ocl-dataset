@@ -1,0 +1,270 @@
+[comment encoding = UTF-8 /]
+[comment]
+/*****************************************************************************
+ * Copyright (c) 2013 INTEMPORA S.A.
+ *
+ * This software is a computer program whose purpose is to transform RobotML models
+ * into RTMaps diagrams and RTMaps components via source code generation techniques.
+ * 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *  Nicolas DU LAC (INTEMPORA) - Initial API and implementation
+ *
+ *****************************************************************************/
+[/comment]
+
+[module generate_rtmaps_component_cpp('http://www.eclipse.org/uml2/3.0.0/UML', 'http://Papyrus/RobotML/1')]
+
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::GeneralQueries /]
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::ArchitectureQueries /]
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::DataTypeQueries /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::RTMapsDataTypeQueries /]
+
+[template public generateRTMapsComponentCpp(c : Class, root_model : Model)]
+[file ('user_sdk/' + root_model.name + '.u/src/maps_' + c.name + '.cpp', false, 'UTF-8')]
+
+#include "maps_[c.name/].h"
+// [protected ('Additional includes')]
+// [/protected]
+
+// Use the macros to declare the inputs
+MAPS_BEGIN_INPUTS_DEFINITION(MAPS[c.name/])
+	[let elt : Element = c.oclAsType(Element)]
+	[for (port : Port | getInputPortsForElement(elt))]
+	[if (isPrimitiveType(port.type))]
+	[getRTMapsInputDefForPrimitiveType(port.name, port.type.name)/]
+	[else]
+	MAPS_INPUT("[port.name/]",MAPSFilter[port.type.name/],MAPS::FifoReader)
+	[/if]
+	[/for]
+	[/let]
+// 	[protected ('Additional input definitions')]
+// 	[/protected]
+MAPS_END_INPUTS_DEFINITION
+
+// Use the macros to declare the outputs
+MAPS_BEGIN_OUTPUTS_DEFINITION(MAPS[c.name/])
+	[let elt : Element = c.oclAsType(Element)]
+	[for (port : Port | getOutputPortsForElement(elt))]
+	[if (isPrimitiveType(port.type))]
+	[getRTMapsOutputDefForPrimitiveType(port.name, port.type.name, port.upper)/]
+	[else]
+	//Declare a vector of max 0 elements in order to be able to handle the output buffers
+	//allocation "manually" later (in ::Birth()).
+	MAPS_OUTPUT_USER_STRUCTURES_VECTOR("[port.name/]",[port.type.name/], 0)
+	[/if]
+	[/for]
+	[/let]
+// 	[protected ('Additional output definitions')]
+// 	[/protected]
+MAPS_END_OUTPUTS_DEFINITION
+
+// Use the macros to declare the properties
+MAPS_BEGIN_PROPERTIES_DEFINITION(MAPS[c.name/])
+// 	[protected ('Additional property definitions')]
+// 	[/protected]
+MAPS_END_PROPERTIES_DEFINITION
+
+// Use the macros to declare the actions
+MAPS_BEGIN_ACTIONS_DEFINITION(MAPS[c.name/])
+// 	[protected ('Additional action definitions')]
+// 	[/protected]
+MAPS_END_ACTIONS_DEFINITION
+
+// Use the macros to declare this component ([c.name/]) behaviour
+MAPS_COMPONENT_DEFINITION(MAPS[c.name/],"[c.name/]","1.0",128,
+			  MAPS::Threaded,MAPS::Threaded,
+			  -1, // Nb of inputs. Leave -1 to use the number of declared input definitions
+			  -1, // Nb of outputs. Leave -1 to use the number of declared output definitions
+			  -1, // Nb of properties. Leave -1 to use the number of declared property definitions
+			  -1) // Nb of actions. Leave -1 to use the number of declared action definitions
+
+
+// [protected ('Overloaded methods from MAPSComponent (Dynamic, Set...')]
+// [/protected]
+
+//***********************************************
+// INITIALIZATION FUNCTION.
+// CALLED ONCE AT DIAGRAM EXECUTION START.
+//***********************************************
+void MAPS[c.name/]::Birth()
+{
+
+	[if getOutputPortsForElement(c.oclAsType(Element))->size() > 0]
+	//********************************************************************
+	//Output buffers allocation 
+	//Performed "by hand" (the code is quite ugly but it is
+	//the only way for the most generic cases we have to deal with
+	//in RobotML).
+	//********************************************************************
+		[for (port : Port | getOutputPortsForElement(c.oclAsType(Element)))]
+			[if (isPrimitiveType(port.type) = false)]
+	_[port.name/]_buffers.Clear();
+	MAPSIOMonitor &monitor_[port.name/]=Output([i-1/]).Monitor();
+	MAPSFastIOHandle it_[port.name/];
+	it_[port.name/]=monitor_[port.name/].InitBegin();
+	while (it_[port.name/]) {
+		MAPSIOElt &IOElt_[port.name/]=monitor_[port.name/]['['/]it_[port.name/][']'/];
+		IOElt_[port.name/].Data() = (void*) new [port.type.name/]['[1]'/]; //TODO: replace 1 by port.upper.
+		if (IOElt_[port.name/].Data() == NULL)
+			Error("Not enough memory.");
+		_[port.name/]_buffers.Append(([port.type.name/]*)IOElt_[port.name/].Data());
+		monitor_[port.name/].InitNext(it_[port.name/]);
+	}
+			[/if]
+		[/for]
+	[/if]
+	[if getInputPortsForElement(c.oclAsType(Element))->size() > 0]
+
+	//Initialize a member array containing pointers to the component inputs for
+	//use in the Core() function with the asynchronous StartReading.
+	_nb_inputs = [getInputPortsForElement(c.oclAsType(Element))->size()/];
+	_inputs = new MAPSInput*['[_nb_inputs]'/];
+	for (int i=0; i<_nb_inputs; i++) {
+		_inputs['[i]'/] = &Input(i);
+	}
+	[/if] 
+
+// 	[protected ('User-specific initalizations')]
+// 	[/protected]
+
+}
+
+//****************************************************************************
+// Core() IS THE MAIN EXECUTION LOOP FUNCTION.
+// THE ONE AND ONLY BLOCKING CALL IN HERE SHALL BE THE StartReading function.
+//****************************************************************************
+void MAPS[c.name/]::Core() 
+{
+	[if getInputPortsForElement(c.oclAsType(Element))->size() > 0]
+	//Without specification of reading policies, let's implement the most generic case:
+	//an asynchronous blocking read on all the inputs.
+	int input_that_answered;
+	MAPSIOElt* ioelt_in = StartReading(_nb_inputs, _inputs, &input_that_answered);
+	if (ioelt_in == NULL)
+		return;
+
+	MAPSTimestamp timestamp_in = ioelt_in->Timestamp();
+
+	switch (input_that_answered) {
+	[for (port : Port | getInputPortsForElement(c.oclAsType(Element)))]
+		case [i-1/]: //We received an element from port [port.name/].
+			{
+			[getNbElementsInVector(port.type.name,'ioelt_in','count')/]
+			[getMAPSIOEltAccessFunction(port.type.name,'ioelt_in','data_in')/]
+			[port.type.name/]_Received_on_[port.name/]_InPort(data_in,count, ioelt_in->Timestamp());			
+			} 
+			break;
+	[/for]	
+		default:
+			Error("Unknown input.");	
+	}
+// 	[protected ('Core processing')]
+// 	[/protected]
+	[else]
+	//There are no inputs to read from in this component.
+	//Make sure you have one and only blocking function (Rest, Wait, MAPS::Sleep, select, whatever...)
+	//inside Core().
+// 	[protected ('Core processing with no inputs')]
+	Wait4Event(isDyingEvent); //Pause the current thread until shutdown.
+// 	[/protected]
+	[/if]
+
+}
+
+[if getInputPortsForElement(c.oclAsType(Element))->size() > 0]
+
+//**********************************************************************************************
+// INPUT METHODS CALLED FROM THE Core() METHOD WHENEVER A SAMPLE IS RECEIVED ON AN INPUT PORT
+// NOTE THAT IN CORE, OTHER SAMPLING STRATEGIES COULD BE AVAILABE (SYNCHRONIZED, TRIGGERED, RESAMPLING...)
+// BUT ARE NOT IMPLEMENTED YET.
+//**********************************************************************************************
+
+	[for (port : Port | getInputPortsForElement(c.oclAsType(Element)))]
+//This callback will be called each time a new sample is received on the corresponding input port.
+void MAPS[c.name/]::[port.type.name/]_Received_on_[port.name/]_InPort([port.type.name/]* data_in, int count, MAPSTimestamp t)
+{
+//	[protected ('Processing code for samples received on ' + port.type.name)]
+//	[/protected]
+}
+	[/for]
+[/if]
+
+
+[if getOutputPortsForElement(c.oclAsType(Element))->size() > 0]
+//**********************************************************************************************
+// OUTPUT METHODS TO BE CALLED BY THE PROGRAMMER FOR EMITTING A SAMPLE ON AN OUTPUT PORT.
+//**********************************************************************************************
+
+	[for (port : Port | getOutputPortsForElement(c.oclAsType(Element)))]
+//To be completed by programmer, then called by programmer whenever necessary in order to
+//output a data sample on output port [port.name/]
+void MAPS[c.name/]::Output_[port.name/](MAPSTimestamp t)
+{
+	MAPSIOElt* ioeltout = StartWriting(Output("[port.name/]"));
+
+// 	[protected ('Output on ' + port.name + ' implementation')]
+	int count_[port.type.name/]_out = 1; 	//changed it to the number of samples to write in output MAPSIOElt 
+											//(but never more than the max vector size allocated on the output).
+	[getMAPSIOEltAccessFunction(port.type.name,'ioeltout','data_out')/]
+
+	//Fill in data_out here.
+	//....
+
+	[if (isPrimitiveType(port.type) = false)]	
+	ioeltout->VectorSize() =  count_[port.type.name/]_out * sizeof([port.type.name/]); //For non-standard datatypes, by convention,  
+	[else]
+	ioeltout->VectorSize() =  count_[port.type.name/]_out; //Number of elements in output vector (not number of bytes).
+	[/if]
+//	[/protected]
+
+	ioeltout->Timestamp() = t;	
+	StopWriting(ioeltout);
+}
+	[/for]
+[/if]
+
+//**********************************************************************************************
+// RELEASE FUNCTION.
+// CALLED ONCE WHEN DIAGRAMS STOPS EXECUTING OR AFTER A CALL TO Error("..."); IN Birth OR Core.
+//**********************************************************************************************
+void MAPS[c.name/]::Death()
+{
+// 	[protected ('Death implementation')]
+// 	[/protected]
+
+}
+
+[if getOutputPortsForElement(c.oclAsType(Element))->size() > 0]
+//*******************************************************************************************************************
+// OVERLOADED METHOD: WILL BE CALLED AT DIAGRAM EXECUTION SHUTDOWN ONCE ALL THE COMPONENTS HAVE GONE THROUGH Death().
+// THIS IS THE PLACE WHERE TO RELEASE BUFFERS THAT WERE DYNAMICALLY ALLOCATED BY THE PROGRAMMER IN BIRTH. 
+//*******************************************************************************************************************
+void MAPS[c.name/]::FreeBuffers()
+{
+	//Let's release the memory we allocated on the output buffers.
+		[let elt : Element = c.oclAsType(Element)]	
+		[for (port : Port | getOutputPortsForElement(elt))]
+			[if (isPrimitiveType(port.type) = false)]
+	MAPSListIterator it_[port.name/];
+	MAPSForallItems(it_[port.name/],_[port.name/]_buffers) {
+		delete ['[]'/] _[port.name/]_buffers['['/]it_[port.name/] [']'/];
+	}
+	_[port.name/]_buffers.Clear();
+			[/if]
+		[/for]
+		[/let]
+	
+	MAPSComponent::FreeBuffers();
+}
+[/if]
+
+// [protected ('Additional methods for MAPS' + c.name)]
+// [/protected]
+
+[/file]
+[/template]

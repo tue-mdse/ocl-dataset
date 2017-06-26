@@ -1,0 +1,147 @@
+[
+  {
+    "name": "PM",
+    "expressions": [
+      {
+        "operations": {
+          "<=": 1,
+          "sum": 1
+        },
+        "name": "ResourceLimit",
+        "body": "\n\t\t\thost->collect(e | e.req)->sum() <= res",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 2,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "VmPlacement::PM::host",
+          "VmPlacement::PM::res",
+          "VmPlacement::VM::req"
+        ]
+      },
+      {
+        "operations": {
+          "allInstances": 1,
+          "=": 1
+        },
+        "name": "host",
+        "body": "VM.allInstances()->select(e | e.plc = self)",
+        "type": "PropertyImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 2,
+          "TypeExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["VmPlacement::VM::plc"]
+      }
+    ],
+    "properties": [
+      "host",
+      "near",
+      "name",
+      "VM",
+      "res",
+      "System"
+    ]
+  },
+  {
+    "name": "System",
+    "expressions": [],
+    "properties": [
+      "pm",
+      "name",
+      "app",
+      "vm"
+    ]
+  },
+  {
+    "name": "VM",
+    "expressions": [
+      {
+        "operations": {
+          "<>": 1,
+          "and": 1,
+          "allInstances": 1,
+          "=": 1
+        },
+        "name": "backup",
+        "body": "VM.allInstances()->select(v|v.host.name = self.host.name and v<>self)",
+        "type": "PropertyImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 4,
+          "VariableExpImpl": 4,
+          "TypeExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "VmPlacement::VM::host",
+          "VmPlacement::App::name"
+        ]
+      },
+      {
+        "operations": {"<>": 1},
+        "name": "BackupSplit",
+        "body": "backup->forAll(vm : VM | self.plc <> vm.plc)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "VmPlacement::VM::plc",
+          "VmPlacement::VM::backup"
+        ]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "includes": 1,
+          "=": 1
+        },
+        "name": "FrequentCloser",
+        "body": "frequent->forAll(v : VM | self.plc.near->includes(v.plc) or self.plc = v.plc)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 5,
+          "OperationCallExpImpl": 3,
+          "PropertyCallExpImpl": 6
+        },
+        "properties": [
+          "VmPlacement::PM::near",
+          "VmPlacement::VM::plc",
+          "VmPlacement::VM::frequent"
+        ]
+      }
+    ],
+    "properties": [
+      "host",
+      "PM",
+      "plc",
+      "VM",
+      "backup",
+      "frequent",
+      "name",
+      "req",
+      "System"
+    ]
+  },
+  {
+    "name": "App",
+    "expressions": [],
+    "properties": [
+      "System",
+      "name",
+      "type",
+      "destination"
+    ]
+  }
+]

@@ -1,0 +1,370 @@
+[comment encoding = UTF-8 /]
+[module Ctrls('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthenticationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+[template public Ctrls(anAnnotationStack: AnnotationStack)]
+[for (p: JavaResourceControllerManager | anAnnotationStack.hasCorePSM.hasJavaRCManager)][if (anAnnotationStack.otherLayer()->collectNested(parentName)->flatten()->includes(p.parentName) or (anAnnotationStack.topLayer()->size()=1 and anAnnotationStack.topLayer()->at(1).parentName=p.parentName))]
+[file ('/' + anAnnotationStack.hasCorePSM.name + 'Client/js/' + p.parentName + 'Ctrl.js', false, 'UTF-8')]
+var [anAnnotationStack.hasCorePSM.name/] = angular.module('[anAnnotationStack.hasCorePSM.name/].controllers'[if (anAnnotationStack.topLayer()->size()=1 and anAnnotationStack.topLayer()->at(1).parentName=p.parentName)],['['/][']'/][/if]);
+
+[anAnnotationStack.hasCorePSM.name/].controller('[p.parentName/]Ctrl',['['/]'$scope','$resource','$location','$route','$routeParams','popupService', '[p.parentName/]Factory',[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]'SignIn',[/if]
+	function($scope,$resource, $location, $route,$routeParams,popupService, [p.parentName/]Factory,[if (anAnnotationStack.bHasAuthenticationAnnotation=true)] SignIn,[/if] $window)
+    {	$scope.$location = {};
+     	var result = $location.url();
+		$scope.list = true;
+		
+[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]
+		$scope.credentials = SignIn.getHeader();
+
+		$scope.signOut = function(){
+		      SignIn.setsignedIn(false);
+		      SignIn.setHeader({});
+		      $location.path('/SignIn');
+		    };
+[/if]
+
+//Detail methods	
+		if($routeParams.[p.parentName/]Id != null){
+			$scope.detail = true;
+			$scope.list = false;
+		}
+
+       	// callback for ng-click 'details' :
+       	$scope.details = function ([p.parentName/]Id) {
+       		$scope.detail = true;
+			$scope.list = false;
+			if($routeParams.[p.parentName/]Id == null){
+			[if (p.setIds(anAnnotationStack)->size()>2)]switch(true){[/if]
+			[for (c: String | p.setIds(anAnnotationStack))][if (anAnnotationStack.topLayer().parentName->includes(p.parentName) or not(c=p.parentName))]
+			[if (p.setIds(anAnnotationStack)->size()>2)]
+			case compare("[c/]"):[/if]
+            $scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[c/].get({[if (not(c=p.parentName))][c/]Id: $routeParams.[c/]Id,[/if][p.parentName/]Id: [p.parentName/]Id});
+			[if (p.setIds(anAnnotationStack)->size()>2)]break;[/if]
+			[/if][/for][if (p.setIds(anAnnotationStack)->size()>2)]}[/if]}
+       	};
+		
+		// callback for ng-click 'hideDetails' :
+		$scope.hideDetails = function () {
+			$scope.detail = false;
+			$scope.list = true;
+			if ($routeParams.[p.parentName/]Id != null) {
+				var temp = location.href.lastIndexOf("/");
+				location.replace(location.href.slice(0,temp));}
+			else {
+				[if (p.setIds(anAnnotationStack)->size()>2 )]
+				switch(true){[/if] 
+		
+					[for (c: String | p.setIds(anAnnotationStack))][if (anAnnotationStack.topLayer().parentName->includes(p.parentName) or not(c=p.parentName))]
+					[if (p.setIds(anAnnotationStack)->size()>2)]
+					case compare("[c/]"):[/if]
+		            $scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[c/].get[if (p.setIds(anAnnotationStack)->size()>2)]List[/if]({[if (not(c=p.parentName))][c/]Id: $routeParams.[c/]Id,[/if][p.parentName/]Id: $routeParams.[p.parentName/]Id});
+					[if (p.setIds(anAnnotationStack)->size()>2)]break;[/if]
+					[/if][/for][if (p.setIds(anAnnotationStack)->size()>2)]}[/if]
+			}
+		};
+//End of detail methods
+
+//Back Button
+		[if (anAnnotationStack.hasCorePSM.hasJavaRModel.hasRelatedJavaRMManager->includes(p.hasAssociatedRMManager))]
+		//callback for ng-click 'Back':
+       	$scope.Back = function () {
+			if(!($scope.[p.parentName/].linklist == null)){
+			if($scope.[p.parentName/]){
+       		for(var i=0; i<$scope.[p.parentName/].linklist.length; i++){
+       			if($scope.[p.parentName/].linklist['['/]i].linkVerb=="GET" && $scope.[p.parentName/].linklist['['/]i].linkType=="Parent"){
+				var temp = $scope.[p.parentName/].linklist['['/]i].linkURI.replace("/[anAnnotationStack.hasCorePSM.name/]/",location.pathname.concat("#/")).replace("/api","");
+              	location.replace(temp);
+       		}}}}
+       		else{$location.path('/[if (anAnnotationStack.topLayer()->size()>1)]front[else][anAnnotationStack.topLayer().parentName/][/if]');}
+       	};[/if]
+
+
+// Get the list of [p.parentName.toUpperFirst()/]	
+	[if (p.setIds(anAnnotationStack)->size()>2 )]
+		function compare(term){
+    		return result.includes(term);
+    	};
+      
+		switch(true){[/if] 
+
+			[for (c: String | p.setIds(anAnnotationStack))][if (anAnnotationStack.topLayer().parentName->includes(p.parentName) or not(c=p.parentName))]
+			[if (p.setIds(anAnnotationStack)->size()>2)]
+			case compare("[c/]"):[/if]
+            $scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[c/].get[if (p.setIds(anAnnotationStack)->size()>2)]List[/if]({[if (not(c=p.parentName))][c/]Id: $routeParams.[c/]Id,[/if][p.parentName/]Id: $routeParams.[p.parentName/]Id});
+			[if (p.setIds(anAnnotationStack)->size()>2)]break;[/if]
+			[/if][/for][if (p.setIds(anAnnotationStack)->size()>2)]}[/if]
+
+
+//Edit methods
+		[let e: String = 'PUT'][for (c: JavaResourceController | anAnnotationStack.hasCorePSM.hasJavaRController)][for (d: HTTPActivity | c.JavaRControllerHasHTTPActivity)][if (d.ActivityHTTPVerb.toString()=e and c.parentName = p.parentName and self.name=c.firstOnly(e))]
+		// callback for ng-click 'edit[p.parentName.toUpperFirst()/]':
+		$scope.edit[p.parentName.toUpperFirst()/] = function ([p.parentName/]Id) {
+			$scope.edit = true;
+			$scope.create = false;
+			$scope.detail = false;
+			[if (p.setIds(anAnnotationStack)->size()>2)]switch(true){[/if]
+			[for (c: String | p.setIds(anAnnotationStack))][if (anAnnotationStack.topLayer().parentName->includes(p.parentName) or not(c=p.parentName))]
+			[if (p.setIds(anAnnotationStack)->size()>2)]
+			case compare("[c/]"):[/if]
+            $scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[c/].get({[if (not(c=p.parentName))][c/]Id: $routeParams.[c/]Id,[/if][p.parentName/]Id: [p.parentName/]Id});
+			[if (p.setIds(anAnnotationStack)->size()>2)]break;[/if]
+			[/if][/for][if (p.setIds(anAnnotationStack)->size()>2)]}[/if]
+			document.getElementById("new").reset();
+		};
+
+		// callback for ng-click 'update[p.parentName.toUpperFirst()/]':
+        $scope.doupdate = function ([p.parentName/]Id) {
+			[if (p.setIds(anAnnotationStack)->size()>2)]switch(true){[/if]
+            [for (c: String | p.setIds(anAnnotationStack))][if (anAnnotationStack.topLayer().parentName->includes(p.parentName) or not(c=p.parentName))]
+			[if (p.setIds(anAnnotationStack)->size()>2)]
+			case compare("[c/]"):[/if]
+			[p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[c/].update({[if (not(c=p.parentName))][c/]Id: $routeParams.[c/]Id,[/if][p.parentName/]Id: [p.parentName/]Id}, $scope.[p.parentName/]);
+			[if (p.setIds(anAnnotationStack)->size()>2)]break;[/if]
+			[/if][/for][if (p.setIds(anAnnotationStack)->size()>2)]}[/if]
+			
+			document.getElementById("update").reset();
+			$scope.edit = false;
+
+				[if (p.setIds(anAnnotationStack)->size()>2 )]
+			switch(true){[/if] 
+	
+				[for (c: String | p.setIds(anAnnotationStack))][if (anAnnotationStack.topLayer().parentName->includes(p.parentName) or not(c=p.parentName))]
+				[if (p.setIds(anAnnotationStack)->size()>2)]
+				case compare("[c/]"):[/if]
+	            $scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[c/].get[if (p.setIds(anAnnotationStack)->size()>2)]List[/if]({[if (not(c=p.parentName))][c/]Id: $routeParams.[c/]Id,[/if][p.parentName/]Id: $routeParams.[p.parentName/]Id});
+				[if (p.setIds(anAnnotationStack)->size()>2)]break;[/if]
+				[/if][/for][if (p.setIds(anAnnotationStack)->size()>2)]}[/if]
+        };
+		[/if][/for][/for][/let]
+//End of edit methods
+
+//Delete methods
+		[let e: String = 'delete'][for (c: JavaResourceController | anAnnotationStack.hasCorePSM.hasJavaRController)][for (d: HTTPActivity | c.JavaRControllerHasHTTPActivity)][if (d.ActivityHTTPVerb.toString()='DELETE' and c.parentName = p.parentName and self.name=c.firstOnly(e))]
+		// callback for ng-click 'delete[p.parentName.toUpperFirst()/]':
+		$scope.delete[p.parentName.toUpperFirst()/] = function ([p.parentName/]Id){
+			if(popupService.showPopup('Are you sure you want to delete this [p.parentName/]?')){
+			[if (p.setIds(anAnnotationStack)->size()>2)]switch(true){[/if]
+			[for (c: String | p.setIds(anAnnotationStack))][if (anAnnotationStack.topLayer().parentName->includes(p.parentName) or not(c=p.parentName))]
+			[if (p.setIds(anAnnotationStack)->size()>2)]
+			case compare("[c/]"):[/if]
+			[p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[c/].delete({[if (not(c=p.parentName))][c/]Id: $routeParams.[c/]Id,[/if][p.parentName/]Id: [p.parentName/]Id});
+			[if (p.setIds(anAnnotationStack)->size()>2)]break;[/if]
+			[/if][/for][if (p.setIds(anAnnotationStack)->size()>2)]}[/if]
+			
+			//update the list of [p.parentName.toUpperFirst()/]
+			[if (p.setIds(anAnnotationStack)->size()>2 )]
+			switch(true){[/if] 
+
+			[for (c: String | p.setIds(anAnnotationStack))][if (anAnnotationStack.topLayer().parentName->includes(p.parentName) or not(c=p.parentName))]
+			[if (p.setIds(anAnnotationStack)->size()>2)]
+			case compare("[c/]"):[/if]
+            $scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[c/].get[if (p.setIds(anAnnotationStack)->size()>2)]List[/if]({[if (not(c=p.parentName))][c/]Id: $routeParams.[c/]Id,[/if][p.parentName/]Id: $routeParams.[p.parentName/]Id});
+			[if (p.setIds(anAnnotationStack)->size()>2)]break;[/if]
+			[/if][/for][if (p.setIds(anAnnotationStack)->size()>2)]}[/if]
+			}};
+			[/if]
+			[/for][/for][/let]
+//End of delete methods
+
+//Routing methods
+		
+		[for (c: JavaResourceModelManager | p.hasAssociatedRMManager.hasRelatedJavaRModel.hasRelatedJavaRMManager)]
+		[if (not(c.parentName).oclIsInvalid())]
+ 		//callback for ng-click "[c.parentName/]":
+        $scope.choose[c.parentName.toUpperFirst()/] = function([p.parentName/]Id){
+        $location.path('/[p.parentName/]/' + [p.parentName/]Id + '/[c.parentName/]' );
+       	};
+		[/if]
+		[/for]
+		
+//End of routing methods
+
+//Create methods		
+		// callback for ng-click 'createNew[p.parentName.toUpperFirst()/]':
+        $scope.createNew[p.parentName.toUpperFirst()/] = function () {
+		[if (p.setIds(anAnnotationStack)->size()>2)]switch(true){[/if]
+        [for (c: String | p.setIds(anAnnotationStack))][if (anAnnotationStack.topLayer().parentName->includes(p.parentName) or not(c=p.parentName))]
+		[if (p.setIds(anAnnotationStack)->size()>2)]
+		case compare("[c/]"):[/if]  
+		[p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[c/].create([if (not(c=p.parentName))]{[c/]Id: $routeParams.[c/]Id},[/if]$scope.[p.parentName/]);
+		[if (p.setIds(anAnnotationStack)->size()>2)]break;[/if]
+		[/if][/for][if (p.setIds(anAnnotationStack)->size()>2)]}[/if]
+		
+		//update the list of [p.parentName.toUpperFirst()/]
+		[if (p.setIds(anAnnotationStack)->size()>2)]
+		switch(true){[/if] 
+
+			[for (c: String | p.setIds(anAnnotationStack))][if (anAnnotationStack.topLayer().parentName->includes(p.parentName) or not(c=p.parentName))]
+			[if (p.setIds(anAnnotationStack)->size()>2)]
+			case compare("[c/]"):[/if]
+            $scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[c/].get[if (p.setIds(anAnnotationStack)->size()>2)]List[/if]({[if (not(c=p.parentName))][c/]Id: $routeParams.[c/]Id,[/if][p.parentName/]Id: $routeParams.[p.parentName/]Id});
+			[if (p.setIds(anAnnotationStack)->size()>2)]break;[/if]
+			[/if][/for][if (p.setIds(anAnnotationStack)->size()>2)]}[/if]	
+			document.getElementById("new").reset();
+			$scope.create = false;
+        };
+
+        //callback for ng-click 'chooseCreate':
+        $scope.chooseCreate = function() {
+			$scope.create = true;
+			$scope.edit = false;
+		    $scope.detail = false;
+            document.getElementById("update").reset();
+            document.getElementById("new").reset();
+			
+        };
+        
+        // callback for ng-click 'cancelCreate':
+        $scope.cancel = function () {
+           $scope.create=false;
+           document.getElementById("new").reset();
+        };
+//End of create methods
+        }
+[']'/]);
+[/file]
+[/if][/for]
+
+[if (anAnnotationStack.topLayer()->size()>1)]
+[file ('/' + anAnnotationStack.hasCorePSM.name + 'Client/js/frontCtrl.js', false, 'UTF-8')]
+var [anAnnotationStack.hasCorePSM.name/] = angular.module('[anAnnotationStack.hasCorePSM.name/].controllers',['['/][']'/]);
+
+[anAnnotationStack.hasCorePSM.name/].controller('frontCtrl',['['/]'$scope','$resource','$location','$route','$routeParams','popupService', [for (layer: JavaResourceModelManager| anAnnotationStack.topLayer())]'[layer.parentName/]Factory',[/for][if (anAnnotationStack.bHasAuthenticationAnnotation=true)]'SignIn',[/if]
+	function($scope,$resource, $location, $route,$routeParams,popupService,[for (layer: JavaResourceModelManager| anAnnotationStack.topLayer())] [layer.parentName/]Factory,[/for] [if (anAnnotationStack.bHasAuthenticationAnnotation=true)]SignIn,[/if]$window)
+    {	[for (p: JavaResourceControllerManager | anAnnotationStack.hasCorePSM.hasJavaRCManager)][for (layer: JavaResourceModelManager | anAnnotationStack.topLayer())][if (p.parentName=layer.parentName)]
+//[p.parentName.toUpper()/]
+		$scope.$location = {};
+     	var result = $location.url();
+		$scope.list[p.parentName/] = true;
+
+[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]
+		$scope.credentials = SignIn.getHeader();
+
+		$scope.signOut = function(){
+		      SignIn.setsignedIn(false);
+		      SignIn.setHeader({});
+		      $location.path('/SignIn');
+		    };
+[/if]
+
+//Detail methods[p.parentName/]	
+		if($routeParams.[p.parentName/]Id != null){
+			$scope.detail[p.parentName/] = true;
+			$scope.list[p.parentName/] = false;
+		}
+
+       	// callback for ng-click 'details[p.parentName/]' :
+       	$scope.details[p.parentName/] = function ([p.parentName/]Id) {
+       		$scope.detail[p.parentName/] = true;
+			$scope.list[p.parentName/] = false;
+			if($routeParams.[p.parentName/]Id == null){
+            $scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[p.parentName/].get({[p.parentName/]Id: [p.parentName/]Id});
+			}
+       	};
+		
+		// callback for ng-click 'hideDetails[p.parentName/]' :
+		$scope.hideDetails[p.parentName/] = function () {
+			$scope.detail[p.parentName/] = false;
+			$scope.list[p.parentName/] = true;
+			if ($routeParams.[p.parentName/]Id != null) {
+			var temp = location.href.lastIndexOf("/");
+			location.replace(location.href.slice(0,temp));}
+			else {
+				 $scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[p.parentName/].get({[p.parentName/]Id: $routeParams.[p.parentName/]Id});
+			}
+		};
+//End of detail methods
+
+// Get the list of [p.parentName.toUpperFirst()/]		 
+$scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[p.parentName/].get({[p.parentName/]Id: $routeParams.[p.parentName/]Id});
+			
+
+//Edit methods[p.parentName/]
+		[let e: String = 'put'][for (c: JavaResourceController | anAnnotationStack.hasCorePSM.hasJavaRController)][for (d: HTTPActivity | c.JavaRControllerHasHTTPActivity)][if (d.ActivityHTTPVerb.toString()='PUT' and c.parentName = p.parentName and self.name=c.firstOnly(e))]
+		// callback for ng-click 'edit[p.parentName.toUpperFirst()/]':
+		$scope.edit[p.parentName.toUpperFirst()/] = function ([p.parentName/]Id) {
+			$scope.Edit[p.parentName/] = true;
+			$scope.create[p.parentName/] = false;
+			$scope.detail[p.parentName/] = false;
+			$scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[p.parentName/].get({[p.parentName/]Id: [p.parentName/]Id});
+			document.getElementById("new").reset();
+		};
+
+		// callback for ng-click 'update[p.parentName.toUpperFirst()/]':
+        $scope.doupdate[p.parentName/] = function ([p.parentName/]Id) {
+			[p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[p.parentName/].update({[p.parentName/]Id: [p.parentName/]Id}, $scope.[p.parentName/]);
+			$scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[p.parentName/].get({[p.parentName/]Id: $routeParams.[p.parentName/]Id});
+			document.getElementById("update").reset();
+			$scope.Edit[p.parentName/] = false;
+        };
+
+		//callback for ng-click 'cancelEdit[p.parentName/]':
+		$scope.cancelEdit[p.parentName/] = function (){
+			$scope.Edit[p.parentName/] = false;
+			document.getElementById("update").reset();
+		};
+		[/if][/for][/for][/let]
+//End of edit methods
+
+//Delete methods[p.parentName/]
+		[let e: String = 'DELETE'][for (c: JavaResourceController | anAnnotationStack.hasCorePSM.hasJavaRController)][for (d: HTTPActivity | c.JavaRControllerHasHTTPActivity)][if (d.ActivityHTTPVerb.toString()='DELETE' and c.parentName = p.parentName and self.name=c.firstOnly(e))]
+		// callback for ng-click 'delete[p.parentName.toUpperFirst()/]':
+		$scope.delete[p.parentName.toUpperFirst()/] = function ([p.parentName/]Id){
+			if(popupService.showPopup('Are you sure you want to delete this [p.parentName/]?')){
+			[p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[p.parentName/].delete({[p.parentName/]Id: [p.parentName/]Id});
+			
+			//update the list of [p.parentName.toUpperFirst()/]
+			$scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[p.parentName/].get({[p.parentName/]Id: $routeParams.[p.parentName/]Id});
+			}};
+			[/if][/for][/for][/let]
+//End of delete methods
+
+//Routing methods[p.parentName/]
+		[if (p.hasAssociatedRMManager.hasRelatedJavaRModel.hasRelatedJavaRMManager.parentName->size()>=1)]
+		[for (c: JavaResourceModelManager | p.hasAssociatedRMManager.hasRelatedJavaRModel.hasRelatedJavaRMManager)]
+		[if (not(c.parentName).oclIsInvalid())]
+ 		//callback for ng-click "[c.parentName/]":
+        $scope.choose[c.parentName.toUpperFirst()/] = function([p.parentName/]Id){
+        $location.path('/[p.parentName/]/' + [p.parentName/]Id + '/[c.parentName/]' );
+       	};
+		[/if]
+		[/for]
+		[/if]
+//End of routing methods
+
+//Create methods		
+		// callback for ng-click 'createNew[p.parentName.toUpperFirst()/]':
+        $scope.createNew[p.parentName.toUpperFirst()/] = function () {
+		[p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[p.parentName/].create($scope.[p.parentName/]);
+		
+			//update the list of [p.parentName.toUpperFirst()/]
+			$scope.[p.parentName/] = [p.parentName/]Factory[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]($scope.credentials)[/if].[p.parentName/].get({[p.parentName/]Id: $routeParams.[p.parentName/]Id});
+			document.getElementById("new").reset();
+			$scope.create[p.parentName/] = false;
+        };
+
+        //callback for ng-click 'chooseCreate[p.parentName/]':
+        $scope.chooseCreate[p.parentName/] = function() {
+			$scope.create[p.parentName/] = true;
+			$scope.Edit[p.parentName/] = false;
+		    $scope.detail[p.parentName/] = false;
+            document.getElementById("update").reset();
+            document.getElementById("new").reset();
+        };
+        
+        // callback for ng-click 'cancelCreate[p.parentName/]':
+        $scope.cancel[p.parentName/] = function () {
+           $scope.create[p.parentName/]=false;
+           document.getElementById("new").reset();
+        };
+//End of create methods
+//END OF [p.parentName.toUpper()/]        
+[/if][/for][/for]}
+]);
+[/file]
+[/if]
+[/template]
+
+[query public topLayer(anAnnotationStack: AnnotationStack): OrderedSet(JavaResourceModelManager) = (anAnnotationStack.hasCorePSM.hasJavaRMManager-anAnnotationStack.hasCorePSM.hasJavaRMManager->intersection(anAnnotationStack.hasCorePSM.hasJavaRModel.hasRelatedJavaRMManager->asOrderedSet()))->asOrderedSet()/]
+[query public otherLayer(anAnnotationStack: AnnotationStack): OrderedSet(JavaResourceModelManager) = (anAnnotationStack.hasCorePSM.hasJavaRMManager->intersection(anAnnotationStack.hasCorePSM.hasJavaRModel.hasRelatedJavaRMManager->asOrderedSet()))->asOrderedSet()/]
+[query public firstOnly(c: JavaResourceController,e: String): String =  c.JavaRControllerHasHTTPActivity->select(s: HTTPActivity | s.ActivityHTTPVerb.toString().equalsIgnoreCase(e))->asSequence()->first().name/]
+[query public setIds(p: JavaResourceControllerManager,anAnnotationStack: AnnotationStack): OrderedSet(String) =  p.JavaRCManagerHasHTTPActivity.hasHTTPActivityParameter.name.substitute('Id', '')->asOrderedSet()->intersection(anAnnotationStack.hasCorePSM.hasJavaRCManager.parentName->asOrderedSet())->including(p.parentName)->asOrderedSet()/]

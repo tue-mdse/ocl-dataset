@@ -1,0 +1,91 @@
+[comment encoding = UTF-8 /]
+[module generateHubFacades('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::name::fileNameQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::imports::classImports/]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries /]
+[**
+ * This template generates the facade for a class.
+ * @param aClass
+ */]
+[template public generateHubFacades(aClass : Class) ? (isFeatureClass(aClass) or isObjectClass(aClass))]
+
+[if aClass.isAbstract._not()]
+[file (getPersistenceHubFileName(aClass), false, 'UTF-8')]
+package [aClass.getModel().name.toLower()/].persistence.hubs;
+
+import [aClass.getModel().name.toLower()/].persistence.[aClass.name/]Facade;
+[for (aProperty : Property | aClass.attribute->asSequence()->sortedBy(name)) 
+	? (aProperty.isAssociationAttribute() and aProperty.getAssociation().name.size() > 0)]
+import [aClass.getModel().name.toLower()/].persistence.[aProperty.getAssociation().name/]Facade;
+[/for]
+[generateModelElementImport(aClass)/]
+[for (aProperty : Property | aClass.attribute->asSequence()->sortedBy(name)) 
+	? (aProperty.isAssociationAttribute() and aProperty.getAssociation().name.size() > 0)]
+import [getModelPackageName(aProperty.class)/].[aProperty.getAssociation().name/];
+[/for]
+import [aClass.getModel().name.toLower()/].annotations.Facade;
+import [aClass.getModel().name.toLower()/].annotations.FeatureType;
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
+import javax.ejb.Stateless;
+import javax.inject.Inject;
+
+@Stateless
+public class [aClass.name /]HubFacade implements Serializable {
+
+	@Inject [if (aClass.isFeatureClass())]@Facade(FeatureType.[aClass.name/])[/if]
+	private [aClass.name/]Facade [aClass.name.toLowerFirst()/]Facade;
+	[for (aProperty : Property | aClass.attribute->asSequence()->sortedBy(name)) 
+	? (aProperty.isAssociationAttribute() and aProperty.getAssociation().name.size() > 0)]
+	@Inject [if (getDestinationClass(aProperty, aProperty.getAssociation()).isFeatureClass())]@Facade(FeatureType.[aProperty.getAssociation().name/])[/if]
+	private [aProperty.getAssociation().name/]Facade [aProperty.getAssociation().name.toLowerFirst()/]Facade;
+	[/for]
+
+    public [aClass.name /] create([aClass.name /] [aClass.name.toLowerFirst() /]) {
+        return [aClass.name.toLowerFirst() /]Facade.create([aClass.name.toLowerFirst() /]);
+    }
+
+    public [aClass.name /] edit([aClass.name /] [aClass.name.toLowerFirst() /]) {
+        return [aClass.name.toLowerFirst() /]Facade.edit([aClass.name.toLowerFirst() /]);
+    }
+
+    public void remove([aClass.name /] [aClass.name.toLowerFirst() /]) {
+        [aClass.name.toLowerFirst() /]Facade.remove([aClass.name.toLowerFirst() /]);
+    }
+
+    public [aClass.name /] find(Object id) {
+        return [aClass.name.toLowerFirst() /]Facade.find(id);
+    }
+
+    public int count(Map<String, String> condition) {
+        return [aClass.name.toLowerFirst() /]Facade.count(condition);
+    }
+
+    public List<[aClass.name /]> searchRange(int['[]'/] range,
+            List<String> projection,
+            Map<String, Object> condition,
+            Map<String, Object> orderBy) {
+        return [aClass.name.toLowerFirst() /]Facade.searchRange(range, condition, orderBy);
+    }
+
+	[for (aProperty : Property | aClass.attribute->asSequence()->sortedBy(name)) 
+	? (aProperty.isAssociationAttribute() and aProperty.getAssociation().name.size() > 0)]
+    public List<[aProperty.getAssociation().name/]> search[aClass.name/][aProperty.getAssociation().name/]sRange(int['[]'/] range,
+            Long id,
+            Map<String, Object> condition,
+            Map<String, Object> orderBy) {
+        return [aProperty.getAssociation().name.toLowerFirst()/]Facade.searchRangeBySupLevel(range, new String['[]'/]{id.toString()}, "[aClass.name.toLower()/]", "id", condition, orderBy);
+    }
+
+    public Long count[aClass.name/][aProperty.getAssociation().name/]s(Long id,
+            Map<String, Object> condition) {
+        return [aProperty.getAssociation().name.toLowerFirst()/]Facade.countBySupLevel(new String['[]'/]{id.toString()}, "[aClass.name.toLower()/]", "id", condition);
+    }
+	[/for]
+}
+[/file]
+[/if]
+[/template]

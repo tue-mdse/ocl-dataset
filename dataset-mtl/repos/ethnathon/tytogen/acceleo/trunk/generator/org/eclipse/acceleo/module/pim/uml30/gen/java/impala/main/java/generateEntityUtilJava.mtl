@@ -1,0 +1,70 @@
+[comment encoding = UTF-8 /]
+[module generateEntityUtilJava('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::common::migrated::files::main /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::generateJavaClass /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+
+[template public generateEntityUtilJava(aModel : Model)]
+	[file (aModel.generateProjectFolder().concat(aModel.pathToMainJava()).concat('/org/springframework/').concat(aModel.generateSpecificProjectFolder('')).concat('/util/EntityUtils.java'), false, 'UTF-8')]
+package org.springframework.[aModel.generateSpecificProjectFolder('')/].util
+
+import java.util.Collection;
+import java.util.Iterator;
+
+import org.springframework.orm.ObjectRetrievalFailureException;
+
+[for (anEntity : Class | aModel.eAllContents(Class)->select(aClass:Class|aClass.isEntity()))]
+import [anEntity.generateJavaPackage()/].[anEntity.name/];
+[/for]
+
+/**
+ * Utility methods for handling entities.
+ * Separate from the BaseEntity class mainly because of dependency
+ * on the ORM-associated [aModel.generateSpecificProjectFolder('')/].
+ *
+ */
+@SuppressWarnings("unchecked")
+public abstract class EntityUtils {
+    /**
+     * Look up the entity of the given class with the given id
+     * in the given collection.
+     * @param entities the collection to search
+     * @param entityClass the entity class to look up
+     * @param entityId the entity id to look up
+     * @return the found entity
+     * @throws ObjectRetrievalFailureException if the entity was not found
+     */
+    private static Object getBy_Id(Collection entities, Class<?> entityClass, int entityId)
+        throws ObjectRetrievalFailureException {
+
+        for (Iterator it = entities.iterator(); it.hasNext();) {
+            Class<?> entity = (Class<?>) it.next();
+            if (entity.getId().intValue() == entityId && entityClass.isInstance(entity)) {
+                return entity;
+            }
+        }
+        throw new ObjectRetrievalFailureException(entityClass, new Integer(entityId));
+    }
+
+	[for (anEntity : Class | aModel.eAllContents(Class)->select(aClass:Class|aClass.isEntity()))]
+    /**
+     * Look up the entity of the given class with the given id
+     * in the given collection.
+     * @param entities the collection to search
+     * @param entityClass the entity class to look up
+     * @param entityId the entity id to look up
+     * @return the found entity
+     * @throws ObjectRetrievalFailureException if the entity was not found
+     */
+    public static [anEntity.name/] getById(Collection entities, [anEntity.name/] entityClass, int entityId)
+        throws ObjectRetrievalFailureException {
+		return getBy_Id(entities, entityClass, entityId);
+    }
+	[/for]
+}
+	[/file]
+[/template]

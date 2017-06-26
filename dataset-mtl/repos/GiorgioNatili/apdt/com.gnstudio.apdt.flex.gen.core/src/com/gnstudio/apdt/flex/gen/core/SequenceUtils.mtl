@@ -1,0 +1,224 @@
+[comment encoding = UTF-8 /]
+[module  SequenceUtils('http:///org/gnstudio/apdt/model.ecore')/]
+[import CommentUtils /]
+[import ImportUtils /]
+
+[comment  Recover /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Recover)) post (trim()){ t : Recover = s.oclAsType(Recover); }]
+// RECOVER [t.text/]
+[/template]
+
+[comment  Store /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Store)) post (trim()){ t : Store = s.oclAsType(Store); }]
+// SET [t.text/]
+[/template]
+
+[comment  CalculateStore /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(CalculateStore)) post (trim()){ t : CalculateStore = s.oclAsType(CalculateStore); }]
+// CALCULATE [t.text/]
+[/template]
+
+[comment  Print /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Print)) post (trim()){ t : Print = s.oclAsType(Print); }]
+// PRINT [t.text/]
+[/template]
+
+[comment  Show /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Show)) post (trim()){ t : Show = s.oclAsType(Show); }]
+// SHOW [t.text/]
+[/template]
+
+[comment  Prompt /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Prompt)) post (trim()){ t : Prompt = s.oclAsType(Prompt); }]
+// PROMPT [t.text/]
+[/template]
+
+[comment  Read /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Read)) post (trim()){ t : Read = s.oclAsType(Read); }]
+// READ [t.text/]
+[/template]
+
+[comment  Write /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Write)) post (trim()){ t : Write = s.oclAsType(Write); }]
+// WRITE [t.text/]
+[/template]
+
+[comment  Recursion /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Recursion)) post (trim()){ t : Recursion = s.oclAsType(Recursion); }]
+// RECURSION [t.text/]
+[/template]
+
+[comment  MethodReturn /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(MethodReturn)) post (trim()){ t : MethodReturn = s.oclAsType(MethodReturn); }]
+return [t.note/];
+[/template]
+
+[comment  Comment /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Comment)) post (trim()){ t : Comment = s.oclAsType(Comment); }]
+// [t.text/]
+[/template]
+
+[comment  Variable /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Variable)) post (trim()){ t : Variable = s.oclAsType(Variable); }]
+[getBlockComment(t.description,t.note)/]
+[getVarDeclaration(t.declaration)/] [getVarName(t)/]:[getBaseType(t.type)/] = [getVarValue(t)/];
+[/template]
+
+[comment  SequenceGroup /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(SequenceGroup)) { t : SequenceGroup = s.oclAsType(SequenceGroup); }]
+
+[for (s : Sequence | t.sequences)]
+[getSequence(s)/]
+[/for]
+[/template]
+
+[comment  ControlSequence /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(ControlSequence)){ t : ControlSequence = s.oclAsType(ControlSequence); }]
+if ([t.ifGroup.name/]) {
+
+    [for (s : Sequence | t.ifGroup.sequences)]
+    [getSequence(s)/]
+    [/for]
+
+}[for (elseifGroup : SequenceGroup | t.elseifGroups)] else if ([elseifGroup.name/]) {
+
+    [for (s : Sequence | elseifGroup.sequences)]
+    [getSequence(s)/]
+    [/for]
+
+}[/for][if (not t.elseGroup.oclIsUndefined())] else [if not t.elseGroup.name.oclIsUndefined() and t.elseGroup.name.trim().size()>0]/*[t.elseGroup.name/]*/ [/if]{
+
+    [for (s : Sequence | t.elseGroup.sequences)]
+    [getSequence(s)/]
+    [/for]
+
+}[/if]
+[/template]
+
+[comment  SwitchSequence /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(SwitchSequence)){ t : SwitchSequence = s.oclAsType(SwitchSequence); }]
+switch ([t.note/]) {
+
+    [for (g : SequenceGroup | t.cases)]
+    case [g.name/]:
+        [for (s : Sequence | g.sequences)]
+        [getSequence(s)/]
+        [/for]
+        break;
+        
+    [/for]
+    [if (not t.defaultCase.oclIsUndefined())]
+    default:
+        [for (s : Sequence | t.defaultCase.sequences)]
+        [getSequence(s)/]
+        [/for]
+        break;
+        
+    [/if]
+}
+[/template]
+
+[comment  TrySequence /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(TrySequence)){ t : TrySequence = s.oclAsType(TrySequence); }]
+try  {
+
+    [for (s : Sequence | t.tryGroup.sequences)]
+    [getSequence(s)/]
+    [/for]
+
+}[for (catchGroup : SequenceGroup | t.catchGroups)] catch ([catchGroup.name/]) {
+
+    [for (s : Sequence | catchGroup.sequences)]
+    [getSequence(s)/]
+    [/for]
+
+}[/for][if (not t.finallyGroup.oclIsUndefined())] finally {
+
+    [for (s : Sequence | t.finallyGroup.sequences)]
+    [getSequence(s)/]
+    [/for]
+
+}[/if]
+[/template]
+
+
+[comment Iteration types ------- /]
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Iteration) and s.oclAsType(Iteration).type=IterationType::FOR) { t : Iteration = s.oclAsType(Iteration); }]
+for ([t.name/]){
+
+    [for (s : Sequence | t.sequences)]
+    [getSequence(s)/]
+    [/for]
+
+}
+[/template]
+
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Iteration) and s.oclAsType(Iteration).type=IterationType::FOR_EACH) { t : Iteration = s.oclAsType(Iteration); }]
+for each ([t.name/]){
+
+    [for (s : Sequence | t.sequences)]
+    [getSequence(s)/]
+    [/for]
+
+}
+[/template]
+
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Iteration) and s.oclAsType(Iteration).type=IterationType::WHILE) { t : Iteration = s.oclAsType(Iteration); }]
+while ([t.name/]){
+
+    [for (s : Sequence | t.sequences)]
+    [getSequence(s)/]
+    [/for]
+
+}
+[/template]
+
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(Iteration) and s.oclAsType(Iteration).type=IterationType::DO_WHILE) { t : Iteration = s.oclAsType(Iteration); }]
+do {
+
+    [for (s : Sequence | t.sequences)]
+    [getSequence(s)/]
+    [/for]
+
+} while ([t.name/]);
+[/template]
+[comment loops -------end /]
+
+[template public getSequence(s : Sequence) ?
+ (s.oclIsTypeOf(MethodCall)) post (trim()){ t : MethodCall = s.oclAsType(MethodCall); }]
+[t.name/]([if( not t.arguments.oclIsUndefined())][t.arguments.trim()/][/if]);
+[/template]
+
+
+[comment support methods /]
+[template private  getVarDeclaration(aDeclaration : DeclarationType)]
+[if (aDeclaration = DeclarationType::FINAL)]const[else]var[/if]
+[/template]
+
+[template private getVarName(v : Variable)]
+[if ((not v.name.oclIsUndefined()) and v.name.trim().size()>0)][v.name/][else]RENAME_ME[/if]
+[/template]
+
+[template private getVarValue(v : Variable)]
+[if ( (not v.value.oclIsUndefined()) and v.value.trim().size()>0)][v.value/][else]null[/if]
+[/template]

@@ -1,0 +1,57 @@
+[comment encoding = UTF-8 /]
+[module unit(
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::criteria::m2t::criteria/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::names/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::files/]
+
+[template public model(unit : DynamicUnit)]
+[file(unit.modelFilename(), false)]
+<?php
+namespace [unit.modelsNamespace()/];
+
+class [unit.modelName()/] extends [comment unit services->first() modelName()/]
+{
+[for (field : InterfaceField | unit.interfaceFields())]
+    [field.fieldFeature()/]
+
+[/for]
+
+[if (unit.hasDefaultValueFields())]
+    [unit.constructor()/]
+
+[/if]
+[for (field : InterfaceField | unit.interfaceFields())]
+    [field.fieldMethods()/]
+
+[/for]
+}
+[/file]
+[/template]
+
+[template private fieldFeature(field : InterfaceField) post(trim())]
+/**
+ **/
+protected $[field.modelPropertyName()/];
+[/template]
+
+[template private constructor(unit : DynamicUnit) post(trim())]
+public function __construct()
+{
+[for (field : UnitField | unit.defaultValueFields())]
+	[if (field.oclIsTypeOf(UnitAttribute))]
+//	$this->[field.modelPropertyName()/] = [field.oclAsType(UnitAttribute).defaultValue.valueExpression()/];
+	[else]
+//	$this->[field.modelPropertyName()/] = [field.oclAsType(InterfaceField).defaultValue.valueExpression()/];
+	[/if]
+[/for]
+}
+[/template]
+
+[template private fieldMethods(field : InterfaceField) post(trim())]
+public function [if (field.isBooleanDataType())]is[else]get[/if][field.modelPropertyName().toUpperFirst()/]()
+{
+    return $this->[field.modelPropertyName()/];
+}
+[/template]

@@ -1,0 +1,482 @@
+[comment encoding = UTF-8 /]
+[module transformer('http://www.clinigrid.org/Capillary/2011/Transformation', 'http://www.eclipse.org/emf/2002/Ecore')/]
+
+[import metaModel /]
+
+[**
+ * 
+ * @param e 
+ */]
+[template public transformer(transformation : Transformation)]
+[comment @main /]
+[file (transformation.javaClassFileName(), false)]
+package [transformation.javaPackage()/];
+
+import static org.clinigrid.capillary.runtime.impl.transformation.Expressions.*;
+
+import org.clinigrid.capillary.runtime.IMetaModel.BaseTypes;
+import org.clinigrid.capillary.runtime.IMetaModel.Class;
+import org.clinigrid.capillary.runtime.IMetaModel.Feature;
+import org.clinigrid.capillary.runtime.TransformationException;
+import org.clinigrid.capillary.runtime.impl.transformation.AModelTransformer;
+import org.clinigrid.capillary.runtime.impl.transformation.IExpression;
+import org.clinigrid.capillary.runtime.impl.transformation.IExpressionBuilder;
+import org.clinigrid.capillary.runtime.impl.transformation.VariableDefinition;
+//import org.clinigrid.capillary.runtime.extensions.ExtensionsPackage;
+
+[for (metamodel : MetamodelDeclaration | transformation.metamodelDeclarations)]
+[let metaModelClassName : String = qualifiedPackageClassName(metamodel._package)]import [metaModelClassName/];[/let]
+[/for]
+
+public class [transformation.javaClassName()/] extends AModelTransformer {
+
+	@Override
+	protected ClassMapping getClassMapping(final Class source, final Class target) throws TransformationException {
+		ClassMapping mapping = null;
+
+		[for (sourceMetamodel : SourceMetamodel | usedSourceMetamodels(transformation))]
+		[sourceSwitch(sourceMetamodel)/]
+		[/for]
+
+		return null;
+	}
+
+[for (mapping : AbstractMapping | transformation.mappings) separator ('\n')]
+	[typeMapping(mapping)/]
+[/for]
+}
+[/file]
+[/template]
+
+[template private sourceSwitch(sourceMetamodel : SourceMetamodel)]
+mapping = new [sourceMetamodel.cannonicalName()/].ClassSwitch<ClassMapping>() {
+	[for (source : EClass | usedSourceClasses(sourceMetamodel)) separator ('\n')]
+	[sourceSwitchCase(sourceMetamodel, source)/]
+	[/for]
+}.doSwitch(target);
+if (mapping != null) return mapping;
+[/template]
+
+[template private sourceSwitchCase(sourceMetamodel : SourceMetamodel, source : EClass)]
+public ClassMapping case_[source.javaName()/](Class [source.name.toLowerFirst()/]) {
+	if (target == null)
+		return [let mapping : ClassMapping = defaultClassMapping(sourceMetamodel, source)][mapping.cannonicalName()/][else]null[/let];
+
+	ClassMapping mapping = null;
+
+	[for (targetMetamodel : TargetMetamodel | usedTargetMetamodels(sourceMetamodel, source)) separator ('\n')]
+	[targetSwitch(sourceMetamodel, source, targetMetamodel)/]
+	[/for]
+
+	return null;
+}
+[/template]
+
+[template private targetSwitch(sourceMetamodel : SourceMetamodel, source : EClass, targetMetamodel : TargetMetamodel)]
+mapping = new [targetMetamodel.cannonicalName()/].ClassSwitch<ClassMapping>() {
+	[for (target : EClass | usedTargetClasses(sourceMetamodel, source, targetMetamodel)) separator ('\n')]
+	[targetSwitchCase(sourceMetamodel, source, targetMetamodel, target)/]
+	[/for]
+}.doSwitch(target);
+if (mapping != null) return mapping;
+[/template]
+
+[template private targetSwitchCase(sourceMetamodel : SourceMetamodel, source : EClass, targetMetamodel : TargetMetamodel, target : EClass)]
+public ClassMapping case_[target.javaName()/](Class [target.name.toLowerFirst()/]) {
+	return [let mapping : ClassMapping = classMapping(sourceMetamodel, source, targetMetamodel, target)][mapping.cannonicalName()/][else]null[/let];
+}
+[/template]
+
+[template private typeMapping(mapping : ClassMapping)]
+private final ClassMapping [mapping.cannonicalName()/] = new ClassMapping(
+	[mapping.source.qualifiedJavaName()/](), [mapping.target.qualifiedJavaName()/](),
+	[contentMapping(mapping.content)/]
+);
+[/template]
+
+[template private typeMapping(mapping : DataTypeMapping)]
+private final DataTypeMapping [mapping.cannonicalName()/] = new DataTypeMapping(
+	[mapping.source.qualifiedJavaName()/](), [mapping.target.qualifiedJavaName()/](),
+	[contentMapping(mapping.content)/]
+);
+[/template]
+
+[template private typeMapping(mapping : AbstractMapping) ]
+INVALID_MAPPING
+[/template]
+
+[template private cannonicalName(mapping : ClassMapping)]
+_[mapping.source.javaName()/]_[mapping.target.javaName()/]_mapper
+[/template]
+
+[template private cannonicalName(mapping : DataTypeMapping)]
+_[mapping.source.javaName()/]_[mapping.target.javaName()/]_mapper
+[/template]
+
+[template private cannonicalName(metamodel : SourceMetamodel)]
+[metamodel._package.metaModelClassName()/]
+[/template]
+
+[template private cannonicalName(metamodel : TargetMetamodel)]
+[metamodel._package.metaModelClassName()/]
+[/template]
+
+[template arrayBrackets()]
+['['/][']'/]
+[/template]
+
+[template private contentMappings(mappings : Set(ContentMapping))]
+new ContentMapping[arrayBrackets()/] {
+[for (mapping : ContentMapping | mappings) separator(',\n')]
+	[contentMapping(mapping)/][/for]
+
+}
+[/template]
+
+[template private contentMapping(mapping : ContentMapping)]
+[/template]
+
+[template private contentMapping(mapping : CompositeMapping)]
+new CompositeMapping(
+	[contentMappings(mapping.children)/]
+)
+[/template]
+
+[template private contentMapping(mapping : ConditionalMapping)]
+new ConditionalMapping(
+	new WhenClause[arrayBrackets()/] {
+	[for (clause : WhenClause | mapping.whenClauses) separator(',\n')]
+		[contentMapping(clause)/][/for]
+
+	},
+	[contentMapping(mapping.otherwiseClause)/]
+)
+[/template]
+
+[template private contentMapping(clause : WhenClause)]
+new WhenClause(
+	[expression(clause.condition)/],
+	[contentMappings(clause.children)/]
+)
+[/template]
+
+[template private contentMapping(clause : OtherwiseClause)]
+new OtherwiseClause(
+	[contentMappings(clause.children)/]
+)
+[/template]
+
+[template private contentMapping(mapping : ResultMapping)]
+new ResultMapping(
+	[expression(mapping.value)/]
+)
+[/template]
+
+[template private contentMapping(mapping : FeatureMapping)]
+new FeatureMapping([mapping.target.qualifiedJavaName()/](),
+	[expression(mapping.value)/]
+)
+[/template]
+
+[template public expression(e : Expression) ]
+INVALID_EXPRESSION
+[/template]
+
+[template public expression(e : If) ]
+new ConditionalExpression(
+	[expression(e.condition)/],
+	[expression(e.thenExpression)/],
+	[expression(e.elseExpression)/]
+)
+[/template]
+
+[template public expression(e : Let) ]
+subExpression(new IExpressionBuilder() {
+	public IExpression buildExpression() {
+	[for (initialization : VariableInitialization | e.variables)]
+		VariableDefinition [initialization.variable.name/] = new VariableDefinition("[initialization.variable.name/]");
+	[/for]
+		return new Let(
+			new VariableInitialization[arrayBrackets()/] {
+			[for (initialization : VariableInitialization | e.variables) separator(',\n')]
+				new VariableInitialization([initialization.variable.name/],
+					[expression(initialization.value)/]
+				)[/for]
+
+			},
+			[expression(e.result)/]
+		);
+	}
+})
+[/template]
+
+[template public expression(e : ConditionalExpression) ]
+new ConditionalExpression(
+	[expression(e.condition)/],
+	[expression(e.trueExpression)/],
+	[expression(e.falseExpression)/]
+)
+[/template]
+
+[template public expression(e : CoalescingExpression) ]
+new CoalescingExpression(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : Or) ]
+new Or(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : And) ]
+new And(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : Equal) ]
+new Equal(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : Different) ]
+new Different(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : Less) ]
+new Less(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : Greater) ]
+new Greater(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : LessOrEqual) ]
+new LessOrEqual(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : GreaterOrEqual) ]
+new GreaterOrEqual(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : Addition) ]
+new Addition(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : Subtraction) ]
+new Subtraction(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : Multiplication) ]
+new Multiplication(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : Division) ]
+new Division(
+	[expression(e.left)/],
+	[expression(e.right)/]
+)
+[/template]
+
+[template public expression(e : Negation) ]
+new Negation(
+	[expression(e.operand)/]
+)
+[/template]
+
+[template public expression(e : Minus) ]
+new Minus(
+	[expression(e.operand)/]
+)
+[/template]
+
+[template public expression(e : FeatureAccess) ]
+[if (e.feature.isExtension())]
+new ExtensionFunction(
+	[expression(e.object)/],
+	[e.feature.getExtension()/]
+)
+[else]
+new FeatureAccess(
+	[expression(e.object)/],
+[if (e.feature.oclIsKindOf(EStructuralFeature))]
+	[e.feature.oclAsType(EStructuralFeature).qualifiedJavaName()/](),
+[else]
+	[e.feature.oclAsType(EOperation).qualifiedJavaName()/](),
+[/if]
+	[if (e.nullable)]true[else]false[/if],
+	[if (e.spreading)]true[else]false[/if]
+)
+[/if]
+[/template]
+
+[template public expression(e : TypeOfExpression) ]
+new TypeOf(
+	[expression(e.object)/]
+)
+[/template]
+
+[template public expression(e : ExtentExpression) ]
+new ExtentOf(
+	[expression(e.source)/]
+)
+[/template]
+
+[template public expression(e : Invocation) ]
+new Invocation(
+	[expression(e.function)/],
+	new IExpression[arrayBrackets()/] {
+	[for (parameter : Expression | e.parameters) separator(',\n')]
+		[expression(parameter)/][/for]
+
+	}
+)
+[/template]
+
+[template public expression(e : Lambda) ]
+subExpression(new IExpressionBuilder() {
+	public IExpression buildExpression() {
+	[for (parameter : VariableDefinition | e.parameters)]
+		VariableDefinition [parameter.name/] = new VariableDefinition("[parameter.name/]");
+	[/for]
+		return new Lambda(
+			new VariableDefinition[arrayBrackets()/] {
+			[for (parameter : VariableDefinition | e.parameters) separator(',\n')]
+				[parameter.name/][/for]
+
+			},
+			[expression(e.result)/]
+		);
+	}
+})
+[/template]
+
+[template public expression(e : Map) ]
+new Map(
+	[expression(e.value)/],
+	[if (e.target = null)]null[else][e.target.qualifiedJavaName()/][/if]
+)
+[/template]
+
+[template public expression(e : Source) ]
+new Source()
+[/template]
+
+[template public expression(e : VariableUse) ]
+new VariableUse([e.variable.name/])
+[/template]
+
+[template public expression(e : ClassLiteral) ]
+new Literal([e.objectType.javaName().replaceAll('_', '\\.') /].class)
+[/template]
+
+[template public expression(e : EnumLiteral) ]
+new Literal([e.enumConstant.qualifiedJavaName()/])
+[/template]
+
+[template public expression(e : BooleanLiteral) ]
+new Literal([if (e.value)]true[else]false[/if])
+[/template]
+
+[template public expression(e : IntegerLiteral) ]
+new Literal([e.value/])
+[/template]
+
+[template public expression(e : RealLiteral) ]
+new Literal([e.value/]f)
+[/template]
+
+[template public expression(e : StringLiteral) ]
+new Literal("[e.value/]")
+[/template]
+
+[query public javaClassFileName(transformation : Transformation) : String =
+	transformation.javaPackage().replaceAll('\\.', '/').concat('/').concat(transformation.javaClassName()).concat('.java')
+/]
+
+[query public javaPackage(transformation : Transformation) : String =
+	transformation.name.substring(1, transformation.name.lastIndex('.') - 1).replaceAll('\\^', '')
+/]
+
+[query public javaClassName(transformation : Transformation) : String =
+	transformation.name.substring(transformation.name.lastIndex('.') + 1).replaceAll('\\^', '').toUpperFirst().concat('Transformer')
+/]
+
+[query public usedSourceMetamodels(transformation : Transformation) : Sequence(SourceMetamodel) =
+	invoke('org.clinigrid.capillary.generator.services.TransformationServices',
+		'usedSourceMetamodels(org.clinigrid.capillary.transformation.Transformation)',
+		Sequence{transformation})
+/]
+
+[query public usedSourceClasses(sourceMetamodel : SourceMetamodel) : Sequence(EClass) =
+	invoke('org.clinigrid.capillary.generator.services.TransformationServices',
+		'usedSourceClasses(org.clinigrid.capillary.transformation.SourceMetamodel)',
+		Sequence{sourceMetamodel})
+/]
+
+[query public defaultClassMapping(sourceMetamodel : SourceMetamodel, source : EClass) : ClassMapping =
+	invoke('org.clinigrid.capillary.generator.services.TransformationServices',
+		'defaultClassMapping(org.clinigrid.capillary.transformation.SourceMetamodel, org.eclipse.emf.ecore.EClass)',
+		Sequence{sourceMetamodel, source})
+/]
+
+[query public usedTargetMetamodels(sourceMetamodel : SourceMetamodel, source : EClass) : Sequence(TargetMetamodel) =
+	invoke('org.clinigrid.capillary.generator.services.TransformationServices',
+		'usedTargetMetamodels(org.clinigrid.capillary.transformation.SourceMetamodel, org.eclipse.emf.ecore.EClass)',
+		Sequence{sourceMetamodel, source})
+/]
+
+[query public usedTargetClasses(sourceMetamodel : SourceMetamodel, source : EClass, targetMetamodel : TargetMetamodel) : Sequence(EClass) =
+	invoke('org.clinigrid.capillary.generator.services.TransformationServices',
+		'usedTargetClasses(org.clinigrid.capillary.transformation.SourceMetamodel, org.eclipse.emf.ecore.EClass, org.clinigrid.capillary.transformation.TargetMetamodel)',
+		Sequence{sourceMetamodel, source, targetMetamodel})
+/]
+
+[query public classMapping(sourceMetamodel : SourceMetamodel, source : EClass, targetMetamodel : TargetMetamodel, target : EClass) : ClassMapping =
+	invoke('org.clinigrid.capillary.generator.services.TransformationServices',
+		'classMapping(org.clinigrid.capillary.transformation.SourceMetamodel, org.eclipse.emf.ecore.EClass, org.clinigrid.capillary.transformation.TargetMetamodel, org.eclipse.emf.ecore.EClass)',
+		Sequence{sourceMetamodel, source, targetMetamodel, target})
+/]
+
+[query public isExtension(feature : ETypedElement) : Boolean =
+	invoke('org.clinigrid.capillary.generator.services.TransformationServices',
+		'isExtension(org.eclipse.emf.ecore.ETypedElement)',
+		Sequence{feature})
+/]
+
+[query public getExtension(feature : ETypedElement) : String =
+	invoke('org.clinigrid.capillary.generator.services.TransformationServices',
+		'getExtension(org.eclipse.emf.ecore.ETypedElement)',
+		Sequence{feature})
+/]

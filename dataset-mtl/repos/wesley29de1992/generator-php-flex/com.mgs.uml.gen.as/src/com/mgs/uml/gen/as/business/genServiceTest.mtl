@@ -1,0 +1,125 @@
+[comment encoding = UTF-8 /]
+[module genServiceTest('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::gen::as::common::asUtils /]
+[import com::mgs::uml::gen::as::business::genServices /]
+[import com::mgs::uml::gen::as::business::genValueObject /]
+[import com::mgs::uml::gen::as::common::asUtils /]
+[import com::mgs::uml::common::services /]
+[import com::mgs::uml::gen::as::common::mxmlUtils /]
+[import com::mgs::uml::common::umlUtils /]
+
+
+
+[template public testServiceName(c : Class) post (trim())]
+	Test[genServiceName()/]
+[/template]
+
+[template public genServiceTest(c : Class) ? (profile_isEntity())]
+
+[comment @main /]
+
+[file ('test/' + c.testServiceName() + '.as', false, 'UTF-8')]
+package test
+{
+	import org.flexunit.async.Async;
+
+	// import service to test.
+	import services.[c.genPackage()/].[c.genServiceName()/];
+
+[for (linkedClass : Class | c.getModel().eAllContents(Class)) ? (profile_isEntity())]
+	import [linkedClass.genPackageVO()/].[linkedClass.genNameVO()/];
+	import services.[linkedClass.genPackage()/].[linkedClass.serviceEventName()/];
+[/for]
+	import flash.events.Event;
+	import mx.rpc.events.FaultEvent;
+	import services.ServiceEvent;
+
+	public class [c.testServiceName()/]
+	{
+		['[Test(async)]'/]
+		public function testCreate():void
+		{
+			var service:[c.genServiceName()/] = new [c.genServiceName()/]();
+			var voToCreate:[c.genNameVO()/] = new [c.genNameVO()/]();
+			Async.failOnEvent(this, service, FaultEvent.FAULT);
+			Async.proceedOnEvent(this, service, [c.serviceEventName()/].UPDATE);
+			service.create(voToCreate);
+		}
+		
+		['[Test(async)]'/]
+		public function testDelete():void
+		{
+			var service:[c.genServiceName()/] = new [c.genServiceName()/]();
+			var voToCreate:[c.genNameVO()/] = new [c.genNameVO()/]();
+			Async.failOnEvent(this, service, FaultEvent.FAULT);
+			Async.proceedOnEvent(this, service, [c.serviceEventName()/].UPDATE);
+			service.deleteObject(voToCreate);
+		}
+		
+		['[Test(async)]'/]
+		public function testRetrieve():void
+		{
+			var service:[c.genServiceName()/] = new [c.genServiceName()/]();
+			Async.failOnEvent(this, service, FaultEvent.FAULT);
+			Async.proceedOnEvent(this, service, ServiceEvent.SERVICE_RESULT);
+			service.retrieveAll();
+		}
+		
+		['[Test(async)]'/]
+		public function testRetrieveById():void
+		{
+			var service:[c.genServiceName()/] = new [c.genServiceName()/]();
+			Async.failOnEvent(this, service, FaultEvent.FAULT);
+			Async.proceedOnEvent(this, service, ServiceEvent.SERVICE_RESULT);
+			service.retrieveById("1");
+		}
+		
+		['[Test(async)]'/]
+		public function testUpdate():void
+		{
+			var service:[c.genServiceName()/] = new [c.genServiceName()/]();
+			var voToCreate:[c.genNameVO()/] = new [c.genNameVO()/]();
+			Async.failOnEvent(this, service, FaultEvent.FAULT);
+			Async.proceedOnEvent(this, service, [c.serviceEventName()/].UPDATE);
+			service.update(voToCreate);
+		}
+		
+[for (p : Property | c.profile_propertiesEntity()) ? (isSimplePrimitive() and isUnique)]
+		['[Test(async)]'/]
+		public function testRetrieveBy[p.name.toUpperFirst()/]():void
+		{
+			var service:[c.genServiceName()/] = new [c.genServiceName()/]();
+			Async.failOnEvent(this, service, FaultEvent.FAULT);
+			Async.proceedOnEvent(this, service, ServiceEvent.SERVICE_RESULT);
+			service.retrieveBy[p.name.toUpperFirst()/]("value");
+		}
+[/for]
+
+[for (p : Property | c.allProperties()) ? (not isSimplePrimitive() and p.type.oclAsType(Class).profile_isEntity())]
+[for (cc : Class | p.type.oclAsType(Class).getChildClasses()->append(p.type.oclAsType(Class)))]
+		['[Test(async)]'/]
+		public function testCreateClusterWith[p.name.toUpper()/]_As[cc.genName()/]():void
+		{
+			var voToCreate:[c.genNameVO()/] = new [c.genNameVO()/]();
+			var voRelated:[cc.genNameVO()/] = new [cc.genNameVO()/]();
+[if (p.upper = 1)]
+			voToCreate.[p.genNameVO()/] = voRelated;
+[else]
+			voToCreate.[p.genNameVO()/] = new Array();
+			voToCreate.[p.genNameVO()/].push(voRelated);
+[/if]
+			var service:[c.genServiceName()/] = new [c.genServiceName()/]();
+			Async.failOnEvent(this, service, FaultEvent.FAULT);
+			Async.proceedOnEvent(this, service, [c.serviceEventName()/].UPDATE);
+			service.create(voToCreate);
+		}
+[/for]
+[/for]
+
+	}
+}
+[/file]
+
+
+[/template]

@@ -1,0 +1,53 @@
+[comment encoding = UTF-8 /]
+[module generate_camera('http://www.eclipse.org/uml2/3.0.0/UML')] 
+[comment][import org::eclipse::robotml::generators::acceleo::mmqueries::MMQueries /][/comment]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /] 
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import generate_system /]
+ 
+[template public generateCamera(aClass : Class, model : Model)]
+
+[file ('scripts/' + model.name + '/' + aClass.name + '.lua', false, 'UTF-8')]
+require "LuaCycabTK"
+require "LuaCameraSimulator"
+
+--Definition of class [aClass.name/]
+class '[aClass.name/]' (cycabtk.CameraSimulator)
+function [aClass.name/]:__init(name)
+	cycabtk.CameraSimulator.__init(self, name)
+	
+	self.config = cycabtk.CameraConfig
+	self.config.width = [getAttributeValue(aClass, 'width', 'CameraSystem', '640')/]
+	self.config.height = [getAttributeValue(aClass, 'height', 'CameraSystem', '480')/]
+	self.config.alpha_u = [getAttributeValue(aClass, 'alpha_u', 'CameraSystem', '600.')/]
+	self.config.alpha_v = [getAttributeValue(aClass, 'alpha_v', 'CameraSystem', '600.')/]
+	self.config.u0 = [getAttributeValue(aClass, 'u0', 'CameraSystem', 'self.config.width/2')/]
+	self.config.v0 = [getAttributeValue(aClass, 'v0', 'CameraSystem', 'self.config.height/2')/]
+	self.config.freq = [getAttributeValue(aClass, 'frequency', 'CameraSystem', '25.')/]
+	self.config.far = 1000.
+	[let color_format : String = getAttributeValue(aClass, 'color_format', 'CameraSystem')]
+		[if color_format.equalsIgnoreCase('RGB8')]
+	self.config.color=true
+		[else]
+	self.config.color=false
+		[/if]
+	[/let]
+	self:SetConfig(self.config)
+	
+	[generateSystemCommon(aClass, model)/]
+	
+	self:Start()
+	
+	-- Connectors
+	[for( connector: Port | getOutputPortsForElement(aClass) )]
+		[if ( isDataFlowPort(connector))]
+			[if(connector.type.name = 'Image')]
+	require "LuaCameraRosInterface"
+	self.[connector.name/] = cycabtk.CameraRosInterface( name..".[connector.name/]" )
+	self:AddPostProcessing( name..".[connector.name/]")
+			[/if]
+		[/if]
+	[/for]
+end
+[/file]
+[/template]

@@ -1,0 +1,35 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2010, 2014 Obeo and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Mikael Barbero (Obeo) - initial API and implementation
+ *     Fabien Toral (CS Information Systems) - Circular dependencies and other corrections for PolarSys migration
+[/comment]
+[module property('http://www.eclipse.org/uml2/4.0.0/UML', 'http://www.eclipse.org/emf/2002/Ecore')/]
+[import org::eclipse::umlgen::gen::c::files::common /]
+[import org::eclipse::umlgen::gen::c::files::structural::valueSpecification /]
+[import org::eclipse::umlgen::gen::c::files::structural::dataTypeQueries /]
+
+[comment]generate a property[/comment]
+[template public gen(e : Property, kind : String)]
+[e.storageModifier(kind)/][e.type.name/] [e.commonGen(kind)/];
+[/template]
+
+[template private storageModifier(p : Property, kind: String) ? (type.name <> 'Macro')]
+[if isPublic() and kind = 'H']extern [/if][if isRegister()]register [/if][if isVolatile()]volatile [/if][if p.isStatic and isPrivate()]static [/if][if p.isReadOnly]const [/if]
+[/template]
+
+[template private commonGen(e : Property, kind: String)]
+[e.name/][if e.qualifier->select(name = 'size')->size() > 0][e.qualifier->select(name = 'size').defaultValue.serialize()/][/if][if not e.defaultValue.oclIsUndefined() and kind = 'C'] = [e.defaultValue.serialize()/][/if]
+[/template]
+
+[template public commonGen(e : Property)]
+[name/][if qualifier->select(name = 'size')->size() > 0][qualifier->select(name = 'size').defaultValue.serialize()/][/if][if not defaultValue.oclIsUndefined()] = [defaultValue.serialize()/][/if]
+[/template]
+
+[template public gen(e : Property) ? (not isReadOnly and (type.name.oclIsUndefined() or type.name.startsWith('Anonymous__')))/]

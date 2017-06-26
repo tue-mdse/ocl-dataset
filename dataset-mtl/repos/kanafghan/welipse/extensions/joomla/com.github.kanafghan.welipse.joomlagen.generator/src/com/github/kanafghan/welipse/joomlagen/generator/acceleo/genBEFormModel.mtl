@@ -1,0 +1,67 @@
+[comment encoding = UTF-8 /]
+[module genBEFormModel('http://github.com/kanafghan/welipse/joomlagen/1.0', 'http://github.com/kanafghan/welipse/webdsl/1.0', 'http://www.eclipse.org/emf/2002/Ecore')]
+
+[template public generateFormModel(model : GenClass, genModel : JoomlaGenModel)]
+[comment @main/]
+[file (model.itemMVCName.toLower().concat('.php'), false, 'UTF-8')]
+<?php
+// No direct access to this file
+defined('_JEXEC') or die('Restricted access');
+ 
+// import Joomla model library
+jimport('joomla.application.component.modelform');
+ 
+/**
+ * [model.itemMVCName.toUpperFirst()/] Model
+ */
+class [genModel.extensionName.toUpperFirst()/]Model[model.itemMVCName.toUpperFirst()/] extends JModelForm
+{
+    /**
+     * (non-PHPdoc)
+     * @see JModel::getTable()
+     */
+    public function getTable($type = '[model.databaseTableName.toUpperFirst()/]', $prefix = '[genModel.extensionName.toUpperFirst()/]Table', $config = array()) 
+    {
+        return JTable::getInstance($type, $prefix, $config);
+    }
+
+	/**
+	 * (non-PHPdoc)
+	 * @see JModelForm::getForm()
+	 */
+	public function getForm($data = array(), $loadData = true)
+	{	
+		// Get the form.
+		$form = $this->loadForm('[genModel.componentName/].[model.itemMVCName.toLower()/]', 
+								'[model.itemMVCName.toLower()/]', 
+								array('control' => 'jform', 'load_data' => $loadData));
+		if (empty($form))
+		{
+			return false;
+		}
+
+		return $form;
+	}
+	
+	/**
+	 * (non-PHPdoc)
+	 * @see JModelForm::loadFormData()
+	 */	
+	protected function loadFormData()
+	{
+		$app = JFactory::getApplication();
+		$input = $app->input;
+		
+		// Check the session for previously entered form data.
+		$data = $app->getUserState('[genModel.componentName/].edit.[model.itemMVCName.toLower()/].data', array());
+
+		if (empty($data))
+		{
+			$data = $this->getItem();
+		}
+
+		return $data;
+	}
+}
+[/file]
+[/template]

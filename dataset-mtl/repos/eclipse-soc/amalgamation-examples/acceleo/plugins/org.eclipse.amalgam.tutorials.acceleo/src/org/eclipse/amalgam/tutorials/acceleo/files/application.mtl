@@ -1,0 +1,54 @@
+[comment encoding = UTF-8 /]
+[module application('http://www.eclipse.org/amalgam/tutorials/xtext/Droid')/]
+
+[import org::eclipse::amalgam::tutorials::acceleo::files::manifest /]
+[import org::eclipse::amalgam::tutorials::acceleo::files::valueResourceXML /]
+
+[template public application(aApplication : Application)]
+	[file ('AndroidManifest.xml', false, 'UTF-8')]
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+      package="[aApplication.packageName/]"
+      android:versionCode="1"
+      android:versionName="1.0">
+
+    <application android:icon="@drawable/icon" android:label="@string/app_name">
+        <activity android:name=".[aApplication.eContents(Activity)->first().name.toUpperFirst()/]Screen"
+                  android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+[comment][for (activity : Activity | aApplication.activities->first()->followingSiblings(Activity))][/comment]
+[for (activity : Activity | aApplication.activities->subOrderedSet(2, aApplication.activities->size()))]
+		<activity android:name=".[activity.name.toUpperFirst()/]Screen"></activity>	
+[/for]
+    </application>
+  	[comment][manifest(aApplication.manifest)/][/comment]
+</manifest>
+	[/file]
+[/template]
+
+
+[template public applicationResources(app : Application)]
+	[comment stringResourceXML(app.eContents(StringValueResource))/]
+  	[stringResourceXML(app)/]
+  	[integerResourceXML(app.resources->filter(IntegerResource))/]
+  	[colorResourceXML(app.resources->filter(ColorResource))/]
+	[dimensionResourceXML(app.resources->filter(DimensionResource))/]
+[/template]
+
+
+[template private stringResourceXML(app : Application)]
+	[file ('/res/values/gen-strings.xml', false, 'UTF-8')]
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Auto-generated from Application.name -->
+  <string name="app_name">[app.name/]</string>
+
+  <!-- resources -->
+[stringResourceXMLElements(app.resources->filter(StringResource))/]
+</resources>
+	[/file]
+[/template]

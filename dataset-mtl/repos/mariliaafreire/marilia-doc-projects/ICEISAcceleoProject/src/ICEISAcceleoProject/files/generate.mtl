@@ -1,0 +1,82 @@
+[comment encoding = UTF-8 /]
+[module generate('urn:jbpm.org:jpdl-3.1')/]
+
+[template public generate(p :ProcessDefinitionType)]
+	[file ('process-definition.xml', false, 'UTF-8')]
+	
+<?xml version="1.0" encoding="UTF-8"?>
+<process-definition name = "[p.name/]">
+
+<swimlane name="manager">
+	<assignment actor-id="manager"/>
+</swimlane>
+
+
+[for (p.startState)]
+	<start-state name="[name/]">
+		<task name="[name/]" swimlane="manager">
+			<controller>			
+				<variable  name="comment" access="read,write,required"/>
+			</controller>
+		</task>
+		[for (transition)]
+			<transition name="[name/]" to="[to/]"/>
+		[/for]
+		<event type="node-end">
+			<action name="start" class="br.ufrn.dimap.ppgsc.InitiateVariablesActionHandler"/>
+		</event>
+	</start-state>
+[/for]
+[for (p.taskNode)]
+	<task-node name="[name/]" >
+	[if (task->isEmpty())]
+	<task name="[name/]" swimlane="manager">
+			  <controller>			
+				<variable  name="comment" access="read,write,required"/>
+			  </controller>
+	</task>
+		
+	[/if]
+		[for (task) ]
+		 
+			<task name="[name/]" swimlane="manager">
+			  <controller>			
+				<variable  name="comment" access="read,write,required"/>
+			  </controller>				
+			</task>
+		[/for]
+		[for (transition)]
+			<transition name="[name/]" to="[to/]"/>
+		[/for]
+		
+		[for (event)]
+			<event type="[type/]">
+				[for (action)]
+					<action name="[name/]Time" class="[_class/]">
+					</action>
+				[/for]
+			</event>
+		[/for]
+	</task-node>
+[/for]
+[for (p.fork)]
+	<fork name="[name/]">
+		[for (transition)]
+			<transition name="[name/]" to="[to/]"/>
+		[/for]
+	</fork>
+[/for]
+[for (join)]
+	<join name="[name/]">
+		[for (transition)]
+			<transition name="[name/]" to="[to/]"/>
+		[/for]
+	</join>
+[/for]
+[for (endState)]
+	<end-state name="[name/]"/>
+[/for]
+</process-definition>
+[/file]
+	
+[/template]

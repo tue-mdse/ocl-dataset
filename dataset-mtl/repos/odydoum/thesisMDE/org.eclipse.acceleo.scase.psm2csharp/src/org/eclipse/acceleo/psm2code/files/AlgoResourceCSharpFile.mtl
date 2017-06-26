@@ -1,0 +1,62 @@
+[comment encoding = UTF-8 /]
+[module AlgoResourceCSharpFile('platform:/plugin/PIM2DotNetPlugin/metamodels/PSMMetamodel.ecore')]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyFileHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyClassHelpers/]
+[import org::eclipse::acceleo::psm2code::utilities::DoxyPropertiesHelpers/]
+
+[template public generateAlgoResourceClasses(aCSharpAlgoResourceModel : CSharpAlgoResourceModel)]
+
+[file (aCSharpAlgoResourceModel.genAlgoModelFileName(), false, 'UTF-8')]
+[aCSharpAlgoResourceModel.genFileDocumentation(aCSharpAlgoResourceModel.Rbrief() , aCSharpAlgoResourceModel.Rdetails())/]
+namespace [aCSharpAlgoResourceModel.ancestors(RESTfulServicePSM).name/].Models
+{
+	using System;
+	using System.Collections.Generic;
+	using System.Runtime.Serialization;
+
+	[aCSharpAlgoResourceModel.genClassDocumentation( aCSharpAlgoResourceModel.RCbrief() , '' )/]
+	[aCSharpAlgoResourceModel.CSharpAlgoRModelHasDataContractAnnotation.dataContractAnnotationText/]
+	public class [aCSharpAlgoResourceModel.name/] {
+
+		[for (p: PSMComponentProperty | aCSharpAlgoResourceModel.CSharpAlgoModelHasProperty) separator('\n')]
+		private [getType(p , aCSharpAlgoResourceModel)/] [p.correspondingField/] ;
+		
+
+		[p.genPropDocumentation(p.Pbrief() , p.Pdetails())/]
+		[p.PropertyHasDataAnnotation.dataContractAnnotationText/]
+		public [getType(p , aCSharpAlgoResourceModel)/] [p.name/] {
+			get
+	            {  [if (not p.bIsUnique) ]
+
+					if ( [p.correspondingField/] == null)
+					{ 
+						[p.correspondingField/] = new List<[p.getAccessType()/]>();
+					}
+					return [p.correspondingField/]; 
+				}
+[else]return [p.correspondingField/]; }
+[/if]		
+	        set
+	            { [p.correspondingField/] =[if (not p.bIsUnique) ] new List<[p.getAccessType()/]>(value)[else] value[/if]; }
+        }
+		[/for]
+
+	}
+}
+[/file]
+[/template]
+
+[query private getAccessType(p : PSMComponentProperty) : String = 
+ 	if (not (p.bIsUnique or p.type = 'HypermediaLink' or p.bIsNavigationProperty) ) 
+	then p.eContainer(CSharpResourceModel).name.concat(p.name.toUpperFirst()) 
+	else p.type 
+	endif
+/]
+
+[template public genAlgoModelFileName(aCSharpAlgoResourceModel : CSharpAlgoResourceModel)]
+	[aCSharpAlgoResourceModel.ancestors(RESTfulServicePSM).name/]/[aCSharpAlgoResourceModel.ancestors(RESTfulServicePSM).name/]/Models/[aCSharpAlgoResourceModel.parentName.toUpperFirst()/].cs
+[/template]
+
+[template private getType(aProperty : PSMComponentProperty , aCSharpAlgoResourceModel : CSharpAlgoResourceModel)]
+[if (not aProperty.bIsUnique)]ICollection<[/if][if ((not aProperty.bIsUnique) and (not (aProperty.name.startsWith('setOf') or aProperty.name = 'linklist'))) ][aCSharpAlgoResourceModel.name/][aProperty.name.toUpperFirst()/][else][aProperty.type/][/if][if (not aProperty.bIsUnique)]>[/if]
+[/template]

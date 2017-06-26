@@ -1,0 +1,60 @@
+[comment encoding = UTF-8 /]
+[module ClassUtils('http:///org/gnstudio/apdt/model.ecore')/]
+[import CommentUtils /]
+[import AccessUtils /]
+[import ImportUtils /]
+[import SequenceUtils /]
+
+[template public getClassBody(aClass : ClassElement)]
+[if(aClass.members->notEmpty())][for (aMember : ClassMember | aClass.members)]
+[getComment(aMember.description,aMember.note)/]
+[getAccess(aMember.access)/] [getMemberDeclaration(aMember.declaration)/]var [getMemberName(aMember)/]:[getBaseType(aMember.type)/];
+[/for]
+[/if]
+[for (aMethod : Method | aClass.methods)]
+[getComment(aMethod.description,aMethod.note)/]
+[getOverride(aMethod.signature.declaration)/][getAccess(aMethod.signature.access)/] [getDeclaration(aMethod.signature.declaration)/]function [getMethodName(aMethod)/]([getArgsElement(aMethod)/]):[getReturnType(aMethod.signature)/] {
+
+    [for (s : Sequence | aMethod.sequences)]
+    [getSequence(s)/]
+    [/for]
+ 
+}
+[/for]
+[/template]
+
+
+
+[template public getOverride(aDeclaration : DeclarationType)]
+[if (aDeclaration = DeclarationType::OVERRIDDEN)]override 
+[/if]
+[/template]
+
+[template private getMethodName(aMethod : Method)]
+[if ((not aMethod.signature.oclIsUndefined()) and (not aMethod.signature.name.oclIsUndefined()) and aMethod.signature.name.trim().size()>0)][aMethod.signature.name/][else]RENAME_ME[/if]
+[/template]
+
+[template private getMemberName(aMember : ClassMember)]
+[if ((not aMember.name.oclIsUndefined()) and aMember.name.trim().size()>0)][aMember.name/][else]RENAME_ME[/if]
+[/template]
+
+[template private  getReturnType(aSignature : MethodSignature)]
+[if ((not aSignature.returnType.oclIsUndefined()) and (not aSignature.returnType.name.oclIsUndefined()) and aSignature.returnType.name.trim().size()>0)][getBaseType(aSignature.returnType)/][else]Void[/if]
+[/template]
+
+
+
+[template private  getArgsElement(aMethod : Method)]
+[for (aArg : MethodArgument | aMethod.arguments) separator (', ')][aArg.name/]:[getBaseType(aArg.type)/][/for]
+[/template]
+
+
+[template private  getDeclaration(aDeclaration : DeclarationType)]
+[if (aDeclaration = DeclarationType::FINAL)]inline [elseif(aDeclaration = DeclarationType::STATIC)]static [/if]
+[/template]
+
+
+
+[template private  getMemberDeclaration(aDeclaration : DeclarationType)]
+[if (aDeclaration = DeclarationType::FINAL)]inline [elseif(aDeclaration = DeclarationType::STATIC)]static [elseif(aDeclaration = DeclarationType::CONSTANT)]static inline [/if]
+[/template]

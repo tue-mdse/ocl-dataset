@@ -1,0 +1,132 @@
+[comment encoding = UTF-8 /]
+[module user('http://www.i-mogene.org/imogene/1.0')/]
+
+[import org::imogene::acceleo::generator::common::common::entitiesGen::entitiesGen /]
+
+[template public user(aProject : Project)]
+[for (anEntity : CardEntity | aProject.entities)]
+[if (anEntity.oclIsTypeOf(Actor))]
+
+[file ('/src/org/imogene/entities/security/'.concat(anEntity.name.toUpperFirst()).concat('.java'), false, 'UTF-8')]
+
+package org.imogene.entities.security;
+
+import javax.persistence.Entity;
+import javax.persistence.Table;
+
+import org.imogene.entities.AbstractEntity;
+
+@Entity
+@Table(name = "USERS")
+public class [anEntity.name.toUpperFirst()/] extends AbstractEntity {
+	private static final long serialVersionUID = 1L;
+
+	// Properties
+	//Default properties
+	private String login;
+	private String password;
+	//Properties add by [anEntity.name/]
+
+	[for (fields : FieldEntity | anEntity.groups.fields)]
+	[fields.generateEntityFields() /]
+	[/for]
+
+	//Relations fields	
+	[for (fields : FieldEntity | anEntity.groups.fields)]
+	[if (fields.oclIsUndefined())] //Some relation fields are undefined
+	[elseif (fields.oclIsKindOf(MainRelationFieldEntity))]
+	[fields.oclAsType(MainRelationFieldEntity).generateMainRelationFields()/]
+	[elseif (fields.oclIsKindOf(ReverseRelationFieldEntity))]
+	//Enter the reverse relation field generator
+	[fields.oclAsType(ReverseRelationFieldEntity).generateReverseRelationField()/]
+	[/if]
+	[/for]
+
+
+
+
+	// Constructors
+	public [anEntity.name.toUpperFirst()/]() {
+	}
+
+	public [anEntity.name.toUpperFirst()/](String login, String password) {
+		this.login = login;
+		this.password = password;
+	}
+
+	//A contructor using [anEntity.name/]
+	public [anEntity.name.toUpperFirst().toUpperFirst()/]([anEntity.name.toUpperFirst() /] [anEntity.name.toLowerFirst()/]){
+		[for (fields : FieldEntity | anEntity.groups.fields)]
+		[if (fields.oclIsInvalid())]
+		[elseif (fields.oclIsKindOf(MainRelationFieldEntity))]
+		[fields.oclAsType(MainRelationFieldEntity).generateMainRelationFieldForContructor(anEntity)/]	
+		[elseif (fields.oclIsKindOf(ReverseRelationFieldEntity))]
+		[fields.oclAsType(ReverseRelationFieldEntity).generateReverseFieldForConstructor(anEntity)/]	
+		[else]
+		this.[fields.name.toLowerFirst()/]=[anEntity.name.toLowerFirst()/].[fields.name.toLowerFirst()/];
+		[/if]
+		[/for]
+	}
+
+	// To String method
+	@Override
+	public String toString() {
+		return String.format("[anEntity.name.toUpperFirst()/]['['/]%s,%s,%s[']'/]", login, password);
+	}
+
+	// getters and setters for default fields
+	public String getLogin() {
+		return login;
+	}
+
+	public void setLogin(String login) {
+		this.login = login;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	//Getters and setters for [anEntity.name/] files
+// getters
+	[for (fields : FieldEntity | anEntity.groups.fields)]
+	[if (fields.oclIsUndefined())] //Nothing define
+	[else]
+	//Something define
+		public [fields.getFieldType() /] get[fields.name.toUpperFirst()/](){
+			[if (fields.oclIsKindOf(MainRelationFieldEntity))]
+			return [fields.oclAsType(MainRelationFieldEntity).getMainRelationTypeName()/];
+			[elseif (fields.oclIsKindOf(ReverseRelationFieldEntity))]
+			return [fields.oclAsType(ReverseRelationFieldEntity).getReverseRelationTypeName()/];
+			[else]
+			return this.[fields.name.toLowerFirst()/];	
+			[/if]
+			
+		}		
+	[/if]
+	[/for]
+	//Setter
+	[for (field : FieldEntity | anEntity.groups.fields)]
+	[if (field.oclIsUndefined())]
+	[else]
+		public void set[field.name.toUpperFirst()/]([field.getFieldType() /] [field.name.toLowerFirst()/]) {
+			[if (field.oclIsKindOf(MainRelationFieldEntity))]
+			this.[field.oclAsType(MainRelationFieldEntity).getMainRelationTypeName()/]=[field.oclAsType(MainRelationFieldEntity).getMainRelationTypeName()/];
+			[elseif (field.oclIsKindOf(ReverseRelationFieldEntity))]
+			this.[field.oclAsType(ReverseRelationFieldEntity).getReverseRelationTypeName()/]=[field.oclAsType(ReverseRelationFieldEntity).getReverseRelationTypeName()/];
+			[else]
+			this.[field.name.toLowerFirst()/] = [field.name.toLowerFirst()/];	
+			[/if]
+			
+		}		
+	[/if]
+	[/for]
+}
+[/file]
+[/if]
+[/for]
+[/template]

@@ -1,0 +1,123 @@
+[comment encoding = UTF-8 /]
+[module Auth('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthenticationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+[template public Auth(anAnnotationStack: AnnotationStack)]
+[if (anAnnotationStack.bHasAuthenticationAnnotation=true)]
+[file ('/' + anAnnotationStack.hasCorePSM.name + 'Client/views/' + 'SignIn.html', false, 'UTF-8')]
+<div ng-controller="LoginCtrl" > 
+<!-- Header -->							
+[if (anAnnotationStack.cssSelection='Default')]
+	<div style="background-color:#00cc99" class="w3-container  w3-center w3-padding-100px"><a href="#" style="text-decoration: none">
+      <h1 style="color:grey" class="w3-margin w3-jumbo">[anAnnotationStack.hasCorePSM.name/]</h1></a>
+    </div>
+    <div class="w3-container w3-grey w3-center" >
+      <h3 ng-show="!signedIn && !signedUp">Sign In</h3><h3 ng-show="!signedIn && signedUp">Sign Up</h3>
+    </div>
+[else]
+	<div style="background-color:#fcc7ad" class="w3-container  w3-center w3-padding-100px"><a href="#" style="text-decoration: none">
+      <h1 style="color:#425e6c" class="w3-margin w3-jumbo">[anAnnotationStack.hasCorePSM.name/]</h1></a>
+	</div>
+    <div class="w3-container w3-center" style="background-color:#425e6c">
+      <h3 style="color:#fcc7ad" ng-show="!signedIn && !signedUp">Sign In</h3><h3 style="color:#fcc7ad" ng-show="!signedIn && signedUp">Sign Up</h3>
+    </div>
+[/if]
+<div ng-controller="LoginCtrl" > 
+<form class="form" ng-show="!signedIn && !signedUp">
+[for (p: String | anAnnotationStack.getAuthenticationPerformer().hasAuthenticationToken.name)]
+            <label>[p.toUpperFirst()/]<input type="[if (p='password')]password[else]text[/if]" name="input[p.toUpperFirst()/]" ng-model="[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/].[p/]"></label>
+[/for]
+            <input type="button" class="button" ng-click="signIn()" value="Sign In">
+</form>
+</div>
+<div>
+<p ng-show="!signedUp">If you don't have an account, please sign up!
+<input type="button" class="button" ng-click="signedUp=true" value="Sign Up"></p>
+<form id="new" class="form" ng-show="!signedIn && signedUp">
+[for (p: JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel)]
+[if (p.JavaRModelHasProperty.type->includes('Java' + anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName + 'Model'))]
+			<div class="w3-container w3-grey">
+            <h3>New [p.parentName.toUpperFirst()/] Form</h3>
+        	</div>
+			[for (c: PSMComponentProperty | p.JavaRModelHasProperty)][if ((c.type.startsWith('String')))]
+			<label>[c.name.toUpperFirst()/]<input type="[if (c.name='password')]password[else]text[/if]" name="input[c.name.toUpperFirst()/]" ng-model="[p.parentName/].[c.name/]"></label>[lineSeparator()/][/if][/for] 
+[/if]
+[/for]
+[for (p: JavaResourceModel | anAnnotationStack.hasCorePSM.hasJavaRModel)][if (p.parentName=anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName)]
+            <div class="w3-container w3-grey">
+            <h3>New [p.parentName.toUpperFirst()/] Form</h3>
+        	</div>
+        [for (c: PSMComponentProperty | p.JavaRModelHasProperty)][if ((c.type.startsWith('String')))]
+			<label>[c.name.toUpperFirst()/]<input type="[if (c.name='password')]password[else]text[/if]" name="input[c.name.toUpperFirst()/]" ng-model="[p.parentName/].[c.name/]"></label>[lineSeparator()/][/if][/for] 
+			<input type="button" class="button" ng-click="signUp()" value="Sign Up">
+	        <input type="button" class="button" ng-click="cancel()" value="Cancel">
+[/if][/for]
+</form>	
+</div>
+</div>
+[/file]
+
+
+[file ('/'+ anAnnotationStack.hasCorePSM.name + 'Client/js/LoginCtrl.js', false, 'UTF-8')]
+var [anAnnotationStack.hasCorePSM.name/] = angular.module('[anAnnotationStack.hasCorePSM.name/].controllers');
+
+[anAnnotationStack.hasCorePSM.name/].controller('LoginCtrl',['['/]'$scope','$http','$location','SignIn', '$resource','popupService','[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/]Factory',[for (p: JavaResourceControllerManager | anAnnotationStack.hasCorePSM.hasJavaRCManager)][if (anAnnotationStack.ifResult(p) and not(p.controllerURI='/' + anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName))]'[p.controllerURI.getFirstResourceUri()/]Factory',[/if][/for]
+    function($scope, $http,$location, SignIn, $resource, popupService, [anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/]Factory, [for (p: JavaResourceControllerManager | anAnnotationStack.hasCorePSM.hasJavaRCManager)][if (anAnnotationStack.ifResult(p) and not(p.controllerURI='/' + anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName))][p.controllerURI.getFirstResourceUri()/]Factory,[/if][/for] $window){
+    
+    SignIn.setsignedIn(false);
+    $scope.signeUp = false;
+    $scope.signIn = function([anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/]){
+    $scope.credentials = btoa($scope.[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/].username + ':' + $scope.[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/].password);
+      
+    [for (p: JavaResourceControllerManager | anAnnotationStack.hasCorePSM.hasJavaRCManager)]
+	[if (anAnnotationStack.ifResult(p))]
+	[if (p.controllerURI='/' + anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName)] 
+	[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/]Factory($scope.credentials).[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/].get().$promise 
+	[else]
+	[p.controllerURI.getFirstResourceUri()/]Factory($scope.credentials).[p.controllerURI.getFirstResourceUri()/].get().$promise
+	[/if][/if][/for]
+      .then(function(response){      
+        SignIn.setHeader($scope.credentials);
+        popupService.showPopup("Welcome " + $scope.[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/].username);
+        // console.log('signedIn!');
+        SignIn.setsignedIn(true);
+        //$scope.clearCurrent();
+        $location.path( "/[if (anAnnotationStack.topLayer(anAnnotationStack)->size()>1)]front[else][anAnnotationStack.topLayer().parentName/][/if]" );
+      }).catch(function(error){
+        console.log(error);
+        popupService.showPopup("Wrong username or password. Please try again.");
+      });
+    };
+    
+    $scope.signUp = function(){
+		$scope.credentials = btoa('guest');       
+[for (p: JavaResourceControllerManager | anAnnotationStack.hasCorePSM.hasJavaRCManager)]
+[if (anAnnotationStack.ifResult(p))]
+[if (p.controllerURI='/' + anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName)]
+		[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/]Factory($scope.credentials).[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/].save($scope.[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/]);
+[else]
+		[p.controllerURI.getFirstResourceUri()/]Factory($scope.credentials).[p.controllerURI.getFirstResourceUri()/].save($scope.[p.controllerURI.getFirstResourceUri()/]).$promise.then( function([p.controllerURI.getFirstResourceUri()/]){
+		$scope.[p.controllerURI.getFirstResourceUri()/] = [p.controllerURI.getFirstResourceUri()/];
+		[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/]Factory($scope.credentials).[p.controllerURI.getFirstResourceUri()/].save({[p.controllerURI.getFirstResourceUri()/]Id: $scope.[p.controllerURI.getFirstResourceUri()/].[p.controllerURI.getFirstResourceUri()/]Id},$scope.[anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/]);
+		});
+[/if]
+		document.getElementById("new").reset();
+        $location.path('/');
+[/if]
+[/for]};
+
+	// callback for ng-click 'cancel':
+	        $scope.cancel = function () {
+	           	$scope.create=false;
+	           	document.getElementById("new").reset();
+				$location.path('/');
+	        };
+
+}[']'/]);
+[/file]
+[/if]
+[/template]
+
+[query public ifResult(anAnnotationStack: AnnotationStack, p: JavaResourceControllerManager) : Boolean = p.parentName=anAnnotationStack.getAuthenticationPerformer().authenticationModelParentName/]
+[query public getFirstResourceUri(p: String) : String = p.substring(p.index('{'), p.index('}')).substituteAll('{', '').substituteAll('Id}', '')/]
+[query private getAuthenticationPerformer(anAnnotationStack : AnnotationStack) : AuthenticationPerformer = anAnnotationStack.hasAuthenticationLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(AuthenticationPerformer))->at(1)/]
+[query public topLayer(anAnnotationStack: AnnotationStack): OrderedSet(JavaResourceModelManager) = (anAnnotationStack.hasCorePSM.hasJavaRMManager-anAnnotationStack.hasCorePSM.hasJavaRMManager->intersection(anAnnotationStack.hasCorePSM.hasJavaRModel.hasRelatedJavaRMManager->asOrderedSet()))->asOrderedSet()/]

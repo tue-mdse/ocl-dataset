@@ -1,0 +1,69 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2010, 2014 Obeo and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Mikael Barbero (Obeo) - initial API and implementation
+ *     Fabien Toral (CS Information Systems) - Circular dependencies and other corrections for Polarsys migration
+[/comment]
+[module cfile('http://www.eclipse.org/uml2/4.0.0/UML', 'http://www.eclipse.org/emf/2002/Ecore')/]
+[import org::eclipse::umlgen::gen::c::files::common /]
+[import org::eclipse::umlgen::gen::c::files::structural::typedef /]
+[import org::eclipse::umlgen::gen::c::files::structural::enum /]
+[import org::eclipse::umlgen::gen::c::files::structural::struct /]
+[import org::eclipse::umlgen::gen::c::files::structural::macros /]
+[import org::eclipse::umlgen::gen::c::files::structural::operation /]
+[import org::eclipse::umlgen::gen::c::files::structural::property /]
+[import org::eclipse::umlgen::gen::c::files::structural::fallthrough /]
+[import org::eclipse::umlgen::gen::c::files::structural::dataTypeQueries /]
+
+[template public hheaderDefine(c : Class) post (trim())]
+[if c.IfNDefConditionAnnotation()->isEmpty()]
+[c.name.toUpper().replaceAll('-', '_')/]_
+[else]
+[c.IfNDefConditionAnnotation()->first()/]
+[/if]
+[/template]
+
+[template public cfile(c : Class) post (trim())]
+[let generatedComment : String = getComment()]
+[if (generatedComment.size() > 0)]
+[generatedComment.format()/]
+[/if]
+[/let]
+
+[comment]Includes[/comment]
+[c.genIncludes('C')/]
+
+[comment]Macro declaration : focus on private Macro typed properties[/comment]
+[for (macroDecl : Property | c.eContents(Property)->select(isPrivate() and type.isMacro()))] 
+[let generated : String = macroDecl.gen()][macroDecl.addComment(generated)/][/let]
+
+[/for]
+[comment]DataType and subtypes (Enumeration)[/comment]
+[for (type : DataType | c.eContents(DataType)->select(isPrivate()))]
+[let generated : String = type.gen()][type.addComment(generated)/][/let]
+[/for]
+[comment]Private declaration of operations[/comment]
+[for (opDecl : Operation | c.eContents(Operation)->select(isPrivate()))]
+[opDecl.gen('C')/]
+
+[/for]
+[comment]Property[/comment]
+[for (property : Property | c.eContents(Property)->reject(not type.isValidType()))]
+[let generated : String = property.gen('C')][property.addComment(generated)/][/let]
+
+[/for]
+[comment]Public implementation of operations[/comment]
+[for (opImpl : OpaqueBehavior | c.eContents(OpaqueBehavior)->select(isPublic()))]
+[opImpl.gen()/]
+[/for]
+[comment]Private implementation of operations[/comment]
+[for (opImpl : OpaqueBehavior | c.eContents(OpaqueBehavior)->select(isPrivate()))]
+[opImpl.gen()/]
+[/for]
+[/template]

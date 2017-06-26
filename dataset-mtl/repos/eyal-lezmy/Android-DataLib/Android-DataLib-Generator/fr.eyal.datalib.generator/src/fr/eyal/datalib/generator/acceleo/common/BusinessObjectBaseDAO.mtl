@@ -1,0 +1,530 @@
+[comment encoding = UTF-8 /]
+[module BusinessObjectBaseDAO('http://www.eyal.fr/android/datalib')/]
+[import fr::eyal::datalib::generator::acceleo::common::Tools /]
+[import fr::eyal::datalib::generator::acceleo::common::BusinessObjectTool /]
+
+[template public businessObjectBaseDAO(aBusinessObject : BusinessObjectDAO) {
+project:DataLibProject = aBusinessObject.project; 
+_package:String = aBusinessObject._package+'.model.'+getPackage(aBusinessObject);
+_directory:String = getDirectoryFromPackage(_package);
+_class:String = aBusinessObject.javaName.toUpperFirst();
+} ]
+[file (_directory + _class + 'Base.java', false, 'UTF-8')]
+package [_package/];
+
+import java.util.ArrayList;
+import java.util.Calendar;
+
+import android.content.ContentProviderOperation;
+import android.content.ContentProviderResult;
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.OperationApplicationException;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Parcel;
+import android.os.Parcelable;
+import android.os.RemoteException;
+import fr.eyal.lib.data.model.BusinessObjectDAO;
+[comment we include the provider/]
+import [getProviderPackage(project)/].[getProviderClassName(project)/];
+
+public class [_class/]Base extends BusinessObjectDAO {
+
+    protected long _parentId = ID_INVALID;
+
+	[declareFields(aBusinessObject)/]
+
+    public [_class/]Base() {
+        super();
+    }
+
+    public [_class/]Base(final long id) {
+        super(id);
+    }
+
+    @Override
+    protected void initialize() {
+        super.initialize();
+    }
+
+    /**
+     * DATABASE MANAGEMENT
+     */
+
+    /**
+     * Constants used with a ContentProvider's access
+     */
+    public static final String CONTENT_PATH = "[aBusinessObject.javaName.toLower()/]";
+    public static final String CONTENT_URL = [getProviderClassName(project)/].PROVIDER_PREFIX + [getProviderClassName(project)/].AUTHORITY + "/" + CONTENT_PATH;
+    public static final Uri CONTENT_URI = Uri.parse(CONTENT_URL);
+
+    /**
+     * SQL databases table's name
+     */
+    public static String DATABASE_TABLE_NAME = "[aBusinessObject.javaName.toLower()/]";
+
+    /**
+     * SQL database table's fields names
+     */
+    public static final String FIELD__ID = BusinessObjectDAO.FIELD_ID;
+    public static final String FIELD__UPDATED_AT = BusinessObjectDAO.FIELD_UPDATED_AT;
+    public static final String FIELD__PARENT_ID = "_parent_id";
+	[if (aBusinessObject.attributes->size() > 0)]
+	//list of attributes
+	[for (field : Field | aBusinessObject.attributes)]
+    public static final String FIELD_ATTR_[field.javaName.toUpper()/] = "ATTR_[field.javaName.toLowerFirst()/]";
+	[/for]
+
+	[/if]
+    [if (aBusinessObject.contentFields->size() > 0)]
+	//list of content
+	[for (field : Field | aBusinessObject.contentFields)]
+    public static final String FIELD_[field.javaName.toUpper()/] = "[field.javaName.toLowerFirst()/]";
+	[/for]
+	[/if]
+
+    /**
+     * List of SQL database fields' names
+     */
+    public static String['['/]] DATABASE_TABLE_FIELDS_NAMES = {
+			// header
+            FIELD__ID, // _id
+            FIELD__UPDATED_AT, // updated_at
+            FIELD__PARENT_ID, // sensors_id
+			[if (aBusinessObject.attributes->size() > 0)]
+            //list of attributes
+			[for (field : Field | aBusinessObject.attributes)]
+		    FIELD_ATTR_[field.javaName.toUpper()/], //[field.javaName.toLowerFirst()/];
+			[/for]
+
+			[/if]
+			[if (aBusinessObject.contentFields->size() > 0)]
+		    //list of content
+			[for (field : Field | aBusinessObject.contentFields)]
+		    FIELD_[field.javaName.toUpper()/], //[field.javaName.toLowerFirst()/];
+			[/for]
+			[/if]
+    };
+
+    /**
+     * SQL fields' types in the table
+     */
+    static String['['/]] DATABASE_TABLE_FIELDS_TYPES = {
+            // prevision_meteo_meteo_weather
+            // header
+            "integer", "integer", "integer",
+			
+			[if (aBusinessObject.attributes->size() > 0)]
+			//list of attributes
+			[for (field : Field | aBusinessObject.attributes)]
+				[if (field.type = ParameterType::String)]
+			"text",
+				[elseif (field.type = ParameterType::int)]
+			"integer",
+				[elseif (field.type = ParameterType::float)]
+			"real",
+				[elseif (field.type = ParameterType::boolean)]
+			"tinyint",
+				[else]
+			//[field.type/] unknown
+				[/if]
+			[/for]
+			[/if]
+		
+		    [if (aBusinessObject.contentFields->size() > 0)]
+			//list of content
+			[for (field : Field | aBusinessObject.contentFields)]
+				[if (field.type = ParameterType::String)]
+			"text",
+				[elseif (field.type = ParameterType::int)]
+			"integer",
+				[elseif (field.type = ParameterType::float)]
+			"real",
+				[elseif (field.type = ParameterType::boolean)]
+			"tinyint",
+				[else]
+			//[field.type/] type unknown
+				[/if]
+			[/for]
+			[/if]
+
+    };
+
+    /**
+     * SQLite scripts to create the table
+     */
+    public static String CREATE_TABLE = "CREATE TABLE " + DATABASE_TABLE_NAME + " (" 
+			+ DATABASE_TABLE_FIELDS_NAMES['['/]0] + " " + DATABASE_TABLE_FIELDS_TYPES['['/]0] + " PRIMARY KEY AUTOINCREMENT" + ", "
+            + DATABASE_TABLE_FIELDS_NAMES['['/]1] + " " + DATABASE_TABLE_FIELDS_TYPES['['/]1] + ", "
+            + DATABASE_TABLE_FIELDS_NAMES['['/]2] + " " + DATABASE_TABLE_FIELDS_TYPES['['/]2] + " REFERENCES "
+            + [aBusinessObject.parent.javaName.toUpperFirst()/].DATABASE_TABLE_NAME + "(" + [aBusinessObject.parent.javaName.toUpperFirst()/].DATABASE_TABLE_FIELDS_NAMES['['/]0] + ") ON DELETE CASCADE" + ", "
+
+			[if (aBusinessObject.attributes->size() > 0)]
+			//list of attributes
+			[for (field : Field | aBusinessObject.attributes){offset:Integer = 2; totalSize:Integer = aBusinessObject.attributes->size() + aBusinessObject.contentFields->size();}]
+				[if (i < totalSize)]
+			+ DATABASE_TABLE_FIELDS_NAMES['['+(i+offset)+']'/] + " " + DATABASE_TABLE_FIELDS_TYPES['['+(i+offset)+']'/] + ", "
+				[else]
+			+ DATABASE_TABLE_FIELDS_NAMES['['+(i+offset)+']'/] + " " + DATABASE_TABLE_FIELDS_TYPES['['+(i+offset)+']'/] + "); "
+				[/if]
+			[/for]
+
+			[/if]
+		    [if (aBusinessObject.contentFields->size() > 0)]
+			//list of content
+			[for (field : Field | aBusinessObject.contentFields) {offset:Integer = aBusinessObject.attributes->size()+2; totalSize:Integer = aBusinessObject.contentFields->size();}]
+				[if (i < totalSize)]
+			+ DATABASE_TABLE_FIELDS_NAMES['['+(i+offset)+']'/] + " " + DATABASE_TABLE_FIELDS_TYPES['['+(i+offset)+']'/] + ", "
+				[else]
+			+ DATABASE_TABLE_FIELDS_NAMES['['+(i+offset)+']'/] + " " + DATABASE_TABLE_FIELDS_TYPES['['+(i+offset)+']'/] + "); "
+				[/if]
+			[/for]
+
+			[/if]
+            + "CREATE INDEX "
+            + DATABASE_TABLE_NAME + "_" + DATABASE_TABLE_FIELDS_NAMES['['/]0] + " ON " + DATABASE_TABLE_NAME + " (" + DATABASE_TABLE_FIELDS_NAMES['['/]0] + ");";
+
+
+    @Override
+    protected ContentResolver getContentResolver() {
+        try {
+        return [getProviderClassName(project)/].getContentResolver();
+		} catch (InstantiationException e) {
+			e.printStackTrace();
+		}
+        return null;
+    }
+
+    @Override
+    public ContentValues getContentValues() {
+        // we create the values to add
+        final ContentValues values = new ContentValues();
+
+        if (_id != ID_INVALID)
+            values.put(FIELD__ID, _id);
+        if (_parentId != ID_INVALID)
+            values.put(FIELD__PARENT_ID, _parentId);
+        values.put(FIELD__UPDATED_AT, _updatedAt.getTimeInMillis() / 1000);
+
+		[if (aBusinessObject.attributes->size() > 0)]
+		//list of attributes
+		[for (field : Field | aBusinessObject.attributes)]
+	    values.put(FIELD_ATTR_[field.javaName.toUpper()/], attr[field.javaName.toUpperFirst()/]);
+		[/for]
+		[/if]
+	
+		[if (aBusinessObject.contentFields->size() > 0)]
+	    //list of content
+		[for (field : Field | aBusinessObject.contentFields)]
+	    values.put(FIELD_[field.javaName.toUpper()/], [field.javaName.toLowerFirst()/]);
+		[/for]
+		[/if]
+		
+        return values;
+    }
+
+    @Override
+    protected void fillFromDatabaseById(final long id) {
+        // we define the access condition to the object
+        final String['['/]] columns = new String['['/]DATABASE_TABLE_FIELDS_NAMES.length];
+        for (int i = 0; i < DATABASE_TABLE_FIELDS_NAMES.length; i++) {
+            columns['['/]i] = DATABASE_TABLE_FIELDS_NAMES['['/]i];
+        }
+
+        final String where = FIELD__ID + "=?";
+        final String['['/]] args = { id + "" };
+
+        // we check the existence inside the database
+        final Cursor cursor = mResolver.query(CONTENT_URI, // [aBusinessObject.name/]
+                columns, // id
+                where, // id=?
+                args, // id
+
+                FIELD__UPDATED_AT + " DESC"); // ORDER BY updated_at DESC
+
+        // we fill the object thanks to the Cursor recieved
+        if (cursor.moveToFirst()) {
+            fillObjectFromCursor(cursor);
+        }
+
+        if (!cursor.isClosed()) {
+            cursor.close();
+        }
+
+        // we get the childs content
+        fillChildrenFromDatabase();
+
+    }
+
+    @Override
+    protected void fillObjectFromCursor(final Cursor cursor) {
+		[if (aBusinessObject.childs->size() > 0)]
+		// we initialize the childs tabs
+		[for (child : BusinessObject | aBusinessObject.childs)]
+        	[child.javaName.toLowerFirst()/] = new ArrayList<[child.javaName.toUpperFirst()/]>();
+		[/for]
+		[/if]
+
+		// if we have a content
+        if (!cursor.isClosed() && !cursor.isAfterLast()) {
+
+            int i = 0;
+
+            // header
+            _id = cursor.getLong(i++);
+            _updatedAt = Calendar.getInstance();
+            _updatedAt.setTimeInMillis(cursor.getLong(i++) * 1000);
+            _parentId = cursor.getLong(i++);
+
+			[if (aBusinessObject.attributes->size() > 0)]
+			//list of attributes
+			[for (field : Field | aBusinessObject.attributes)]
+				[if (field.type = ParameterType::String)]
+			attr[field.javaName.toUpperFirst()/] = cursor.getString(i++);
+				[elseif (field.type = ParameterType::int)]
+			attr[field.javaName.toUpperFirst()/] = cursor.getInt(i++);
+				[elseif (field.type = ParameterType::float)]
+			attr[field.javaName.toUpperFirst()/] = cursor.getFloat(i++);
+				[elseif (field.type = ParameterType::boolean)]
+			attr[field.javaName.toUpperFirst()/] = cursor.getShort(i++)==1;
+				[else]
+			//[field.type/] unknonwn
+				[/if]
+			[/for]
+			[/if]
+		
+		    [if (aBusinessObject.contentFields->size() > 0)]
+			//list of content
+			[for (field : Field | aBusinessObject.contentFields)]
+				[if (field.type = ParameterType::String)]
+			[field.javaName.toLowerFirst()/] = cursor.getString(i++);
+				[elseif (field.type = ParameterType::int)]
+			[field.javaName.toLowerFirst()/] = cursor.getInt(i++);
+				[elseif (field.type = ParameterType::float)]
+			[field.javaName.toLowerFirst()/] = cursor.getFloat(i++);
+				[elseif (field.type = ParameterType::boolean)]
+			[field.javaName.toLowerFirst()/] = cursor.getShort(i++)==1;
+				[else]
+			//[field.type/] type unknonwn
+				[/if]
+			[/for]
+			[/if]
+
+        } else {
+            _id = ID_INVALID;
+        }
+
+    }
+
+    @Override
+    public ContentProviderResult['['/]] save() throws OperationApplicationException, RemoteException {
+
+        // we define the access conditions to the object
+        final String['['/]] columns = {
+                FIELD__ID
+        };
+        final String where = FIELD__ID + " LIKE ?"; // id LIKE {this.id}
+        final String['['/]] args = {
+                _id + ""
+        };
+
+        return save(columns, where, args, CONTENT_URI, [getProviderClassName(project)/].AUTHORITY);
+
+    }
+
+
+	@Override
+	protected int updateChildrenId(long['['/]] ids, int index, int parentIndex) {
+		[if (aBusinessObject.childs->size() > 0)]
+			[for (child : BusinessObject | aBusinessObject.childs)]
+        for (final [child.javaName.toUpperFirst()/] [child.javaName.toLowerFirst()/]Element : [child.javaName.toLowerFirst()/]) {
+            index = [child.javaName.toLowerFirst()/]Element.updateId(ids, index, parentIndex);
+        }
+
+			[/for]
+		[else]
+		// Nothing to do
+
+		[/if]
+		return index;
+	}
+
+    @Override
+	public int updateId(long['['/]] ids, int index, int parentIndex) {
+		if(parentIndex >= 0)
+			_parentId = ids['['/]parentIndex];
+		
+		return super.updateId(ids, index);
+	}
+
+
+    @Override
+    protected void updateIntoTheDatabase(final ArrayList<ContentProviderOperation> batch) {
+        updateIntoTheDatabase(batch, CONTENT_URI);
+    }
+
+    @Override
+    public ContentProviderResult['['/]] delete() throws OperationApplicationException, RemoteException {
+        // we define the access conditions to the object
+        final String['['/]] columns = { FIELD__ID };
+        final String where = FIELD__ID + "=?"; // _url LIKE {this.url}
+        final String['['/]] args = { _id + "" };
+
+        return delete(columns, where, args, CONTENT_URI, [getProviderClassName(project)/].AUTHORITY);
+    }
+
+    @Override
+    public boolean deleteFromDatabase(final ArrayList<ContentProviderOperation> batch) {
+        return deleteFromDatabase(batch, CONTENT_URI);
+    }
+
+    @Override
+    public void deleteChildsFromDatabase(final ArrayList<ContentProviderOperation> batch) {
+        [if (aBusinessObject.childs->size() > 0)]
+			[for (child : BusinessObject | aBusinessObject.childs)]
+        // we first remove all the childs of the childs of the object
+        for (final [child.javaName.toUpperFirst()/] [child.javaName.toLowerFirst()/]Element : [child.javaName.toLowerFirst()/]) {
+            [child.javaName.toLowerFirst()/]Element.deleteChildsFromDatabase(batch);
+        }
+			[/for]
+
+		String whereClause = "";
+		final String['['/]] argsClause = { _id + "" };
+
+        	[if (aBusinessObject.childs->size() > 0)]
+        // we delete all the child entries
+				[for (child : BusinessObject | aBusinessObject.childs)]
+        whereClause = [child.javaName.toUpperFirst()/].FIELD__PARENT_ID + "=?"; // [aBusinessObject.javaName.toLower()/]_id=?
+        batch.add(ContentProviderOperation.newDelete([child.javaName.toUpperFirst()/].CONTENT_URI)
+                .withSelection(whereClause, argsClause)
+                .build());
+
+				[/for]
+			[/if]
+		[else]
+		// Nothing to do
+		[/if]
+    }
+
+
+    @Override
+    public void addChildsIntoDatabase(final ArrayList<ContentProviderOperation> batch, final int previousResult) {
+        [if (aBusinessObject.childs->size() > 0)]
+		[for (child : BusinessObject | aBusinessObject.childs)]
+		for (final [child.javaName.toUpperFirst()/] [child.javaName.toLowerFirst()/]Element : [child.javaName.toLowerFirst()/]) {
+            [child.javaName.toLowerFirst()/]Element.addIntoDatabase(batch, [child.javaName.toUpperFirst()/].CONTENT_URI, [child.javaName.toUpperFirst()/].FIELD__PARENT_ID, previousResult);
+        }
+		[/for]
+		[else]
+		// Nothing to do
+		[/if]
+    }
+
+    @Override
+    public void addChildsIntoDatabase(final ArrayList<ContentProviderOperation> batch) {
+        [if (aBusinessObject.childs->size() > 0)]
+			[for (child : BusinessObject | aBusinessObject.childs)]
+		for (final [child.javaName.toUpperFirst()/] [child.javaName.toLowerFirst()/]Element : [child.javaName.toLowerFirst()/]) {
+            [child.javaName.toLowerFirst()/]Element._parentId = _id;
+            [child.javaName.toLowerFirst()/]Element.addIntoDatabase(batch, [child.javaName.toUpperFirst()/].CONTENT_URI);
+        }
+			[/for]
+		[else]
+		// Nothing to do
+		[/if]
+    }
+
+
+    @Override
+    protected void fillChildrenFromDatabase() {
+        [if (aBusinessObject.childs->size() > 0)]
+		String['['/]] columns;
+        String where;
+        String['['/]] args;
+        Cursor cursor;
+
+			[for (child : BusinessObject | aBusinessObject.childs)]
+        // we define the access conditions to the objects
+        columns = new String['['/][child.javaName.toUpperFirst()/].DATABASE_TABLE_FIELDS_NAMES.length];
+        for (int i = 0; i < [child.javaName.toUpperFirst()/].DATABASE_TABLE_FIELDS_NAMES.length; i++) {
+            columns['['/]i] = [child.javaName.toUpperFirst()/].DATABASE_TABLE_FIELDS_NAMES['['/]i];
+        }
+
+        where = [child.javaName.toUpperFirst()/].FIELD__PARENT_ID + "=?";
+        args = new String['['/]1];
+        args['['/]0] = _id + "";
+
+        // we check the existence of the entry inside the database
+        cursor = mResolver.query([child.javaName.toUpperFirst()/].CONTENT_URI,
+                columns, // all the columns of the object
+                where, // [aBusinessObject.javaName.toLower()/]_id=?
+                args, // id of the object
+                null);
+
+        // if we get a result
+        if (cursor.moveToFirst()) {
+
+            do {
+                // we create and then fill the item with the Cursor
+                final [child.javaName.toUpperFirst()/] item[child.javaName.toUpperFirst()/] = new [child.javaName.toUpperFirst()/]();
+                item[child.javaName.toUpperFirst()/].fillObjectFromCursor(cursor);
+                [child.javaName.toLowerFirst()/].add(item[child.javaName.toUpperFirst()/]); // we add a new object to the list
+
+            } while (cursor.moveToNext());
+        }
+        cursor.close();			
+			[/for]
+		[else]
+		// Nothing to do
+		[/if]
+    }
+
+	/**
+     * This function build an array of {@link [_class/]Base} thanks to a Cursor
+     * object received from the database.
+     * 
+     * @param c The cursor object.
+     * @param join Tells if the child of the objects have to be recursively
+     *            filled from the database.
+     * @return Returns an {@link ArrayList} of the result fill with the content
+     *         of the Cursor. If the Cursor is empty, it returns an empty array.
+     *  	   <b>The result of this function is return as ArrayList<?>. It has
+     *  	   to be casted into the expected class to be useful.</b>
+     *  	   Ex: Cast to ArrayList<{@link [_class/]}> if you want it as {@link [_class/]}
+     */
+    public static ArrayList<?> buildArrayFromCursor(final Cursor c, final boolean join) {
+
+        final ArrayList<[_class/]Base> result = new ArrayList<[_class/]Base>();
+
+        if (c.moveToFirst()) {
+            do {
+                // we create and fill the item
+                final [_class/]Base newObject = new [_class/]Base();
+                newObject.fillObjectFromCursor(c);
+                // if it's asked we fill the childs of the item
+                if (join) {
+                    newObject.fillChildrenFromDatabase();
+                }
+                // we add the element to the result
+                result.add(newObject);
+            } while (c.moveToNext());
+        }
+
+        return result;
+    }
+
+
+    /**
+     * PARCELABLE MANAGMENT
+     */
+
+	[declareParcelableCreator(aBusinessObject)/]
+
+	[writeParcel(aBusinessObject, true, false)/]
+
+	[readParcel(aBusinessObject, true, false)/]    
+}
+
+	[/file]
+[/template]

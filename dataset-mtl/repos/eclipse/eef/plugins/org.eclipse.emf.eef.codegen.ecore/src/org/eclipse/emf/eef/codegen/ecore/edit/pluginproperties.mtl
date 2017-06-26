@@ -1,0 +1,81 @@
+[comment encoding = UTF-8 
+/**
+ * <copyright>
+ *
+ * Copyright (c) 2002-2011 IBM Corporation and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *   IBM - Initial API and implementation
+ *   Obeo - Migrate to Acceleo
+ *
+ * </copyright>
+ */
+/]
+[module pluginproperties('http://www.eclipse.org/emf/2002/GenModel')/]
+
+[import org::eclipse::emf::eef::codegen::ecore::services::common /]
+[import org::eclipse::emf::eef::codegen::ecore::services::header /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenModel /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenClass /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenFeature /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenEnum /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenEnumLiteral /]
+
+[template public pluginproperties(genModel : GenModel)]
+[file (pluginpropertiesPath(), false, 'UTF-8')]
+[includeHeaderProperties()/]
+pluginName = [genModel.modelName/] Edit Support
+providerName = www.example.org
+[if (genModel.runtimePlatform <> GenRuntimePlatform::GWT)]
+
+[if (genModel.creationCommands)]
+_UI_CreateChild_text = {0}
+_UI_CreateChild_text2 = {1} [if (genModel.creationSubmenus)]| [/if]{0}
+_UI_CreateChild_text3 = {1}
+_UI_CreateChild_tooltip = Create New {0} Under {1} Feature
+_UI_CreateChild_description = Create a new child of type {0} for the {1} feature of the selected {2}.
+_UI_CreateSibling_description = Create a new sibling of type {0} for the selected {2}, under the {1} feature of their parent.
+
+[/if]
+_UI_PropertyDescriptor_description = The {0} of the {1}
+
+[for (genPackage : GenPackage | genModel.getAllGenAndUsedGenPackagesWithClassifiers())]
+  [if (genPackage.genModel = genModel or not genPackage.genModel.hasEditSupport())]
+    [for (genClass : GenClass | genPackage.genClasses)]
+_UI_[genClass.getName()/]_type = [genClass.getFormattedName()/]
+    [/for]
+  [/if]
+[/for]
+_UI_Unknown_type = Object
+
+_UI_Unknown_datatype= Value
+
+[for (genFeature : GenFeature | genModel.getFilteredAllGenFeatures())]
+_UI_[genFeature.genClass.getName()/]_[genFeature.getName()/]_feature = [genFeature.getFormattedName()/]
+  [if (not genFeature.propertyDescription.oclIsUndefined() and genFeature.propertyDescription->size() > 0)]
+_UI_[genFeature.genClass.getName()/]_[genFeature.getName()/]_description = [genFeature.propertyDescription/]
+  [/if]
+[/for]
+_UI_Unknown_feature = Unspecified
+
+[for (genPackage : GenPackage | genModel.getAllGenAndUsedGenPackagesWithClassifiers())]
+  [if (genPackage.genModel = genModel or not genPackage.genModel.hasEditSupport())]
+    [for (genEnum : GenEnum | genPackage.genEnums)]
+      [for (genEnumLiteral : GenEnumLiteral | genEnum.genEnumLiterals)]
+_UI_[genEnum.getName()/]_[genEnumLiteral.getName()/]_literal = [genEnumLiteral.getLiteral()/]
+      [/for]
+    [/for]
+  [/if]
+[/for]
+[for (category : String | genModel.getPropertyCategories())]
+[genModel.getPropertyCategoryKey(category)/] = [category/]
+[/for]
+[/if]
+[/file]
+[/template]
+
+[query public pluginpropertiesPath(genModel : GenModel) : String = 'plugin.properties' /]

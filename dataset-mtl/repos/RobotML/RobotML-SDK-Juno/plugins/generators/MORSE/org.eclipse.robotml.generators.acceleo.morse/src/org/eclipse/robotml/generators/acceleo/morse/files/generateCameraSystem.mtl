@@ -1,0 +1,47 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generateCameraSystem.
+ */]
+[module generateCameraSystem('http://www.eclipse.org/uml2/4.0.0/UML', 'http://Papyrus/RobotML/1')]
+
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+
+[**
+ * The documentation of the template generateCameraSystem.
+ * @param aClass
+ * @param aModel
+ */]
+
+[template public generateCameraSystem(aClass : Class, aModel : Model)]
+[file (aClass.name+'.py', false, 'UTF-8')]
+from morse.builder import *
+
+class [aClass.name/]:
+	def __init(self, myRobot)__:
+		self.sensor = VideoCamera()
+
+		[comment Generate translation command for this sensor /]
+		self.sensor.translate([getAttributeValue(aClass, 'localPosition', 'CameraSystem', 'x=0, y=0, z=0')/])
+
+		[comment Generate rotation command for this sensor /]
+		self.sensor.rotate([getAttributeValue(aClass, 'localOrientation', 'CameraSystem', 'x=0')/])
+ 
+		[comment Used formula here: http://www.openrobots.org/morse/doc/stable/user/sensors/video_camera.html#camera-calibration-matrix /]
+		height = [getAttributeValue(aClass, 'u0', 'CameraSystem', '0')/]*2
+		width = [getAttributeValue(aClass, 'v0', 'CameraSystem', '0')/]*2
+		alpha_u = [getAttributeValue(aClass, 'alpha_u', 'CameraSystem', '0')/]
+		alpha_v = [getAttributeValue(aClass, 'alpha_v', 'CameraSystem', '0')/]
+
+		if (width>height):
+			focal = (alpha_u+alpha_v)/2*32/width
+		else:
+			focal = (alpha_u+alpha_v)/2*32/height
+
+		self.sensor.properties(cam_width = width, cam_height = height, cam_focal = focal)
+
+		self.sensor.frequency([getAttributeValue(aClass, 'frequency', 'CameraSystem', '25.')/])
+
+		self.sensor.add_stream('ros')
+		myRobot.append(self.sensor)
+[/file]
+[/template]

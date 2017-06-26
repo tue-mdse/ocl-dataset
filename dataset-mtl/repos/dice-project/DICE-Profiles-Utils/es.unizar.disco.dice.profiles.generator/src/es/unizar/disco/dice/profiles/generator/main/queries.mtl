@@ -1,0 +1,163 @@
+[module queries(
+'http://www.eclipse.org/emf/2002/Ecore',
+'http://com.masdes.dam/profiles/DAM/1.0'
+)]
+
+[query public hyphenate(string : String) : String = string.replaceAll('([ABCDEFGHIJKLMNOPQRSTUVWXYZ])', '\\\\-$1') /]
+
+[query public toCamelCase(string : String) : String = string.toLowerFirst() /]
+
+[query public toValidLaTeX(string : String) : String = string.replaceAll('_','\\\\_') /]
+
+[query public toUmlTypeName(eClassifier : EClassifier) : String =
+if eClassifier <> null then
+	if eClassifier.instanceTypeName = null then
+		eClassifier.name
+	else
+		eClassifier.instanceTypeName.tokenize('.')->last()
+	endif
+else
+	null
+endif 
+/]
+
+[query public getAnnotationEntry(eModelElement : EModelElement, key : String) : EStringToStringMapEntry =
+let eAnnotation : EAnnotation = eModelElement.getEAnnotation('http://es.unizar.disco/dice/profiles/generator') in
+if (eAnnotation <> null) then
+	let details : OrderedSet(EStringToStringMapEntry) = eAnnotation.details->select(e | e.key = key) in
+	if (details->notEmpty()) then
+		details->first()
+	else
+		null
+	endif
+else
+	null
+endif
+/]
+
+[query public getAnnotatedName(eNamedElement : ENamedElement) : String =
+let entry : EStringToStringMapEntry = getAnnotationEntry(eNamedElement, 'name') in
+if (entry <> null) then
+	entry.value
+else
+	null
+endif
+/]
+
+[query public getAnnotatedProfileName(eNamedElement : ENamedElement) : String =
+let entry : EStringToStringMapEntry = getAnnotationEntry(eNamedElement, 'profileName') in
+if (entry <> null) then
+	entry.value
+else
+	null
+endif
+/]
+
+[query public getExtendsName(eNamedElement : ENamedElement) : String =
+let entry : EStringToStringMapEntry = getAnnotationEntry(eNamedElement, 'extends') in
+if (entry <> null) then
+	entry.value
+else
+	null
+endif
+/]
+
+[query public getExtendsProfileName(eNamedElement : ENamedElement) : String =
+let entry : EStringToStringMapEntry = getAnnotationEntry(eNamedElement, 'extendsProfile') in
+if (entry <> null) then
+	entry.value
+else
+	null
+endif
+/]
+
+[query public getName(eNamedElement : ENamedElement) : String =
+let annotatedName : String = getAnnotatedName(eNamedElement) in
+if (annotatedName <> null) then
+	annotatedName
+else
+	eNamedElement.name
+endif.replaceAll('\\.', '::')
+/]
+
+[query public getProfileName(eNamedElement : ENamedElement) : String = 
+let annotatedName : String = getAnnotatedProfileName(eNamedElement) in
+if (annotatedName <> null) then
+	annotatedName
+else
+	('Dice' + eNamedElement.name)
+endif.replaceAll('\\.', '::')
+/]
+
+
+[query public getFQN(eClassifier : EClassifier) : String = getEPackageFQN(eClassifier.ePackage) + '::' + getName(eClassifier) /]
+
+[query public getProfileFQN(eClassifier : EClassifier) : String = getProfileEPackageFQN(eClassifier.ePackage) + '::' + getProfileName(eClassifier) /]
+
+[query public getEPackageFQN(ePackage : EPackage) : String =
+if (ePackage.eSuperPackage <> null) then
+	getEPackageFQN(ePackage.eSuperPackage) + '::' + getName(ePackage)
+else
+	getName(ePackage)
+endif 
+/]
+
+[query public getProfileEPackageFQN(ePackage : EPackage) : String =
+if (ePackage.eSuperPackage <> null) then
+	getProfileEPackageFQN(ePackage.eSuperPackage) + '::' + getProfileName(ePackage)
+else
+	getProfileName(ePackage)
+endif 
+/]
+
+
+[query public notExcluded(collection : Collection(EModelElement)) : Collection(EModelElement) = 
+collection->select(type | not(isExcluded(type))) 
+/]
+
+[query public isExcluded(eModelElement : EModelElement) : Boolean =
+let entry : EStringToStringMapEntry = getAnnotationEntry(eModelElement, 'exclude') in entry <> null
+/]
+
+[query public getComment(eModelElement : EModelElement) : String =
+let entry : EStringToStringMapEntry = getAnnotationEntry(eModelElement, 'comment') in 
+if (entry <> null) then
+	entry.value
+else
+	null
+endif
+/]
+
+[query public getDescription(eModelElement : EModelElement) : String =
+let entry : EStringToStringMapEntry = getAnnotationEntry(eModelElement, 'description') in 
+if (entry <> null) then
+	entry.value
+else
+	null
+endif
+/]
+
+[query public buildEClassifierComment(eClassifier : EClassifier) : String =
+if (eClassifier.oclIsTypeOf(EClass)) then 
+	buildEClassComment(eClassifier.oclAsType(EClass)) 
+else 
+	getComment(eClassifier)
+endif
+/]
+
+
+[query public buildEClassComment(eClass : EClass) : String =
+if (eClass.abstract or eClass.interface) then 
+	'This is an abstract class, and should not be mapped into a Profile element. ' 
+else 
+	null
+endif
++
+if (notExcluded(eClass.eAttributes)->isEmpty() and notExcluded(eClass.eReferences)->isEmpty()) then 
+	'This class does not provide any tags, and should not be mapped into a Profile element. ' 
+else 
+	null
+endif
++
+getComment(eClass)  
+/]

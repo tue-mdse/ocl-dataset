@@ -1,0 +1,342 @@
+[comment encoding = UTF-8
+ *******************************************************************************
+ * Copyright (c) 2008-2009 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module SubPropertiesEditionComponent('http://www.eclipse.org/emf/eef/components/1.0.0','http://www.eclipse.org/emf/eef/views/1.0.0','http://www.eclipse.org/emf/eef/mapping/1.0.0','http://www.eclipse.org/emf/2002/Ecore','http://www.eclipse.org/emf/eef/mapping/filters/1.0.0', 'http://www.eclipse.org/emf/eef/generation/1.0.0')/]
+
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::services::viewCommon /]
+[import org::eclipse::emf::eef::codegen::widgets::api::widgetControl /]
+[import org::eclipse::emf::eef::codegen::services::typeUtils /]
+[import org::eclipse::emf::eef::codegen::services::filters /]
+[import org::eclipse::emf::eef::codegen::services::imports/]
+
+[template public SubPropertiesEditionComponent(peContext : PropertiesEditionContext, basePackage : String)]
+[for (pec : PropertiesEditionComponent | peContext.eAllContents(PropertiesEditionComponent))]
+[if (pec.mustBeGenerated())]
+	[for (view : View | pec.views) ? (not view.isDynamicView())]
+[peContext.initializeImportManager(pec.componentsPackage(), pec.subPECClass(view))/]
+[file (pec.fullFilePath(view, basePackage), false)]
+[peContext.associatedGenModel().licenceText().trim()/]
+package [pec.componentsPackage()/];[addImports(Sequence{
+	'org.eclipse.emf.common.util.WrappedException',
+	'org.eclipse.emf.common.notify.Notification',
+	'org.eclipse.emf.common.util.BasicDiagnostic',
+	'org.eclipse.emf.common.util.Diagnostic',	
+	'org.eclipse.emf.eef.runtime.api.notify.EStructuralFeatureNotificationFilter',
+	'org.eclipse.emf.eef.runtime.api.notify.NotificationFilter',
+	'org.eclipse.emf.eef.runtime.api.notify.IPropertiesEditionEvent',
+	'org.eclipse.emf.eef.runtime.context.PropertiesEditingContext',
+	'org.eclipse.emf.eef.runtime.impl.utils.EEFConverterUtil',
+	'org.eclipse.emf.ecore.resource.ResourceSet',
+	'org.eclipse.emf.ecore.util.EcoreUtil',
+	'org.eclipse.emf.ecore.EObject',
+	'org.eclipse.emf.ecore.EStructuralFeature'})/]
+
+[let content : String = peContext.fileContent(pec, view, basePackage)]
+[if (peContext.associatedGenModel().useJMergeForUserCode)]
+[peContext.genSortedImports()/]
+[peContext.additionalImports(pec, view, basePackage)/]
+[else]
+// [protected ('for imports')]
+[peContext.genSortedImports()/]
+[peContext.additionalImports(pec, view, basePackage)/]
+
+// [/protected]
+[/if]
+
+[content/]
+[/let]
+[/file]
+	[/for]
+[/if]
+[/for]
+[/template]
+
+[template private fileContent(peContext : PropertiesEditionContext, pec : PropertiesEditionComponent, view : View, basePackage : String) ]
+/**
+ * [peContext.associatedGenModel().authorText().trim()/]
+ * [peContext.associatedGenModel().generationMark().trim()/]
+ */
+public class [pec.subPECClass(view)/] extends [include(pec.pecQualifiedComponentSuperClass())/] {
+
+	[peContext.associatedGenModel().generationComment()/]
+	public static String [view.viewPartConstant(pec)/] = "[view.viewKey(pec).toASCII()/]"; //$NON-NLS-1$
+
+	[for (editionElement : PropertiesEditionElement | pec.involvedEditionElementsInView(view))][editionElement.additionalComponentField(view, pec)/][/for]
+	[for (editionElement : PropertiesEditionElement | pec.involvedEditionElementsInView(view) -> select(pee : PropertiesEditionElement | pee.canGeneratemodelNavigation()))][addImports(Sequence{'org.eclipse.emf.eef.runtime.ui.widgets.settings.EEFInitializer', 'org.eclipse.emf.eef.runtime.ui.widgets.settings.EEFFilter'})/][editionElement.additionalComponentFieldForModelNavigation(view, pec)/][/for]
+	/**
+	 * Default constructor
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public [pec.subPECClass(view)/](PropertiesEditingContext editingContext, EObject [pec.pecModelClass().toJavaIdentifier()/], String editing_mode) {
+		super(editingContext, [pec.pecModelClass().toJavaIdentifier()/], editing_mode);
+		parts = new String['['/][']'/] { [view.viewPartConstant(pec)/] };
+		repositoryKey = [include(view.owningViewsRepository().vrQualifiedClass())/].class;
+		partKey = [view.editorID()/].class;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.api.component.IPropertiesEditionComponent#initPart(java.lang.Object, int, org.eclipse.emf.ecore.EObject, 
+	 *      org.eclipse.emf.ecore.resource.ResourceSet)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public void initPart(Object key, int kind, EObject elt, ResourceSet allResource) {
+		setInitializing(true);
+		if (editingPart != null && key == partKey) {
+			editingPart.setContext(elt, allResource);
+			[initEditorSettings(pec, view)/]
+			final [include(pec.pecModelQualifiedClass())/] [pec.pecModelClass().toJavaIdentifier()/] = ([pec.pecModelClass()/])elt;
+			final [include(view.pepQualifiedInterface())/] [view.viewIdentifier(pec)/] = ([view.pepInterface()/])editingPart;
+			// init values
+			[if (view.oclIsKindOf(views::CustomView) and not peContext.associatedGenModel().useJMergeForUserCode)]
+			// [protected ('for'.concat(view.name).concat(' custom view initialization'))]
+			
+			// [/protected]
+			[else]
+				[for (pee : PropertiesEditionElement | pec.involvedEditionElementsInView(view))]
+			[pee.updater(view, pec)/]
+				[/for]
+			[/if]
+			// init filters
+[for (pee : PropertiesEditionElement | pec.involvedEditionElementsInView(view))]
+			[pee.filterUpdater(view, pec)/]
+[/for]
+			// init values for referenced views
+			[view.updaterForReferencedViews(pec)/]
+			// init filters for referenced views
+			[view.filterUpdaterForReferencedViews(pec)/]
+		}
+		setInitializing(false);
+	}
+
+[for (pee : PropertiesEditionElement | pec.involvedEditionElementsInView(view))]
+[pee.javaDeclarationFilter()/]
+[/for]
+[view.javaDeclarationFilterForReferencedViews(pec)/]
+[if (pec.involvedEditionElementsInView(view)->select(pee : PropertiesEditionElement | pee.hasModelNavigation())->notEmpty())]
+	
+	/**
+	 * {@inheritDoc}
+	 * @see org.eclipse.emf.eef.runtime.impl.components.SinglePartPropertiesEditingComponent#shouldProcess(org.eclipse.emf.eef.runtime.api.notify.IPropertiesEditionEvent)
+	 */
+	protected boolean shouldProcess(IPropertiesEditionEvent event) {
+			[for (pee : PropertiesEditionElement | pec.involvedEditionElementsInView(view)->select(pee : PropertiesEditionElement | pee.hasModelNavigation()))]
+		if (event.getAffectedEditor() == [pee.views->first().editorID()/]) {
+			return ([pee.name.toJavaIdentifier()/]Settings.getValue() == null) ? (event.getNewValue() != null) : (![pee.name.toJavaIdentifier()/]Settings.getValue().equals(event.getNewValue()));
+		}
+			[/for]
+		return super.shouldProcess(event);
+	}	
+[/if]
+
+	/**
+	 * {@inheritDoc}
+	 * @see org.eclipse.emf.eef.runtime.impl.components.StandardPropertiesEditionComponent#associatedFeature(java.lang.Object)
+	 */
+	public EStructuralFeature associatedFeature(Object editorKey) {
+		[for (pee : PropertiesEditionElement | pec.involvedEditionElementsInView(view)->select(pee : PropertiesEditionElement | not pee.hasModelNavigation()))]
+		if (editorKey == [pee.views->first().editorID()/]) {
+			return [pee.metamodelGetter()/];
+		}
+		[/for]
+		return super.associatedFeature(editorKey);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @see org.eclipse.emf.eef.runtime.impl.components.StandardPropertiesEditionComponent#updateSemanticModel(org.eclipse.emf.eef.runtime.api.notify.IPropertiesEditionEvent)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public void updateSemanticModel(final IPropertiesEditionEvent event) {
+		[if (view.oclIsTypeOf(views::CustomView) and not peContext.associatedGenModel().useJMergeForUserCode)]
+		// [protected ('for updateSemanticModel body')]
+		
+		// [/protected]
+		[else]
+		[pec.pecModelClass()/] [pec.pecModelClass().toJavaIdentifier().disambiguation('event')/] = ([pec.pecModelClass()/])semanticObject;
+		[for (editionElement : PropertiesEditionElement | pec.involvedEditionElementsInView(view)->select(pee : PropertiesEditionElement | pee.model.changeable and not pee.views->first().readOnly))]
+		if ([editionElement.views->first().editorID()/] == event.getAffectedEditor()) {
+			[editionElement.declareEObjectUpdater(view, pec)/]
+		}
+		[/for]
+		[/if]
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @see org.eclipse.emf.eef.runtime.impl.components.StandardPropertiesEditionComponent#updatePart(org.eclipse.emf.common.notify.Notification)
+	 */
+	public void updatePart(Notification msg) {
+		super.updatePart(msg);
+		if (editingPart.isVisible()) {
+			[if (view.oclIsTypeOf(views::CustomView) and not peContext.associatedGenModel().useJMergeForUserCode)]
+			// [protected ('for updatePart body')]
+			
+			// [/protected]
+			[else]
+			[view.pepInterface()/] [view.viewIdentifier(pec)/] = ([view.pepInterface()/])editingPart;
+			[for (editionElement : PropertiesEditionElement | pec.involvedEditionElementsInView(view))]
+			[editionElement.liveUpdater(view, pec)/]
+			[/for]
+			[comment add ViewReference support/]
+			[view.liveUpdaterForReferencedViews(pec)/]
+			[/if]
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.impl.components.StandardPropertiesEditionComponent#getNotificationFilters()
+	 */
+	@Override
+	protected NotificationFilter['['/][']'/] getNotificationFilters() {
+[let allPee : Sequence(PropertiesEditionElement) = view.referencedViews() -> including(view) -> collect(tmp | pec.involvedEditionElementsInView(tmp.oclAsType(View))) -> flatten() ]
+		NotificationFilter filter = new EStructuralFeatureNotificationFilter(
+		[for (pee : PropertiesEditionElement | allPee) separator (',\n')]
+			[pee.metamodelGetter()/][if (pee.canGeneratemodelNavigation())][if (pee.navigation.oclIsKindOf(SmartModelNavigation))],[/if]
+			[pee.navigation.navigationMetamodelGetter()/][/if][/for]
+		);
+[/let]
+		return new NotificationFilter['['/][']'/] {filter,};
+	}
+
+[if (not pec.properties.oclAsType(PropertiesEditionElement).views->includesAll(view.eAllContents(ElementEditor)))]
+	/**
+	 * {@inheritDoc}
+	 * @see org.eclipse.emf.eef.runtime.impl.components.StandardPropertiesEditionComponent#mustBeComposed(java.lang.Object, int)
+	 */
+	public boolean mustBeComposed(Object key, int kind) {
+	[let containers : OrderedSet(views::Container) = view.eAllContents(ElementEditor)->reject(e : ElementEditor | not pec.properties.views->includes(e)).ancestors()->select(e | e.oclIsTypeOf(views::Container))->asOrderedSet()]
+		return [if (pec.properties.oclAsType(PropertiesEditionElement)->select(pee : PropertiesEditionElement | view.eAllContents(ElementEditor)->includes(pee.views->first()))->size() = 0)]true[else][for (pee : PropertiesEditionElement | pec.properties.oclAsType(PropertiesEditionElement)->select(pee : PropertiesEditionElement | view.eAllContents(ElementEditor)->includes(pee.views->first()))) separator (' || ')]key == [pee.views->first().editorID()/][/for][if (containers->notEmpty())] || [for (cont : views::Container | containers) separator (' || ')]key == [cont.editorID()/].class[/for][/if][/if];
+	[/let]
+	}
+[/if][if (pec.properties.oclAsType(PropertiesEditionElement)->select(localPee : PropertiesEditionElement | localPee.model.required)->notEmpty())]
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.impl.components.StandardPropertiesEditionComponent#isRequired(java.lang.Object, int)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public boolean isRequired(Object key, int kind) {
+		return [for (pee : PropertiesEditionElement | pec.properties.oclAsType(PropertiesEditionElement)->select(f : PropertiesEditionElement | f.model.required)) separator (' || ')]key == [pee.views->first().editorID()/][/for];
+	}
+[/if]
+[if (pec.properties.oclAsType(PropertiesEditionElement)->select(localPee : PropertiesEditionElement | not localPee.helpText().oclIsUndefined() and not (localPee.helpText().trim() = 'null'))->notEmpty())]
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.impl.components.StandardPropertiesEditionComponent#getHelpContent(java.lang.Object, int)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public String getHelpContent(Object key, int kind) {
+		[for (pee : PropertiesEditionElement | pec.properties.oclAsType(PropertiesEditionElement)->select(f : PropertiesEditionElement | not f.helpText().oclIsUndefined() and not (f.helpText().trim() = 'null')))]
+		if (key == [pee.views->first().editorID()/])
+			return [pee.helpText().trim()/]; //$NON-NLS-1$
+		[/for]
+		return super.getHelpContent(key, kind);
+	}
+[/if]
+
+[pec.validateValue(peContext, view)/]
+
+	[for (editionElement : PropertiesEditionElement | pec.involvedEditionElementsInView(view) -> select(pee : PropertiesEditionElement | pee.canGeneratemodelNavigation()))][editionElement.additionalComponentGetterForModelNavigation(view, pec)/][/for]
+
+	[for (editionElement : PropertiesEditionElement | pec.involvedEditionElementsInView(view) -> select(pee : PropertiesEditionElement | pee.canGenerateEditorSettings()))][editionElement.additionalComponentGetterForEditorSettings(view, pec)/][/for]
+
+}
+[/template]
+
+[template public initEditorSettings (pec : PropertiesEditionComponent, view : View) ]
+[let pees : OrderedSet(PropertiesEditionElement) = pec.involvedEditionElementsInView(view)->select(pee : PropertiesEditionElement | pee.hasModelNavigation())]
+[if (not pees->isEmpty())]
+if (editingPart instanceof CompositePropertiesEditionPart) {
+[/if]
+[for (pee : PropertiesEditionElement | pees)]
+	[addImports(Sequence{'org.eclipse.emf.eef.runtime.impl.parts.CompositePropertiesEditionPart'})/]((CompositePropertiesEditionPart) editingPart).getSettings().add([pee.name.toJavaIdentifier()/]Settings);
+[/for]
+[if (not pees->isEmpty())]
+}[/if][/let]
+[/template]
+
+[template public validateValue (pec : PropertiesEditionComponent, peContext : PropertiesEditionContext, view : View) ]
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.api.component.IPropertiesEditionComponent#validateValue(org.eclipse.emf.eef.runtime.api.notify.IPropertiesEditionEvent)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public Diagnostic validateValue(IPropertiesEditionEvent event) {
+		Diagnostic ret = Diagnostic.OK_INSTANCE;
+		if (event.getNewValue() != null) {
+			try {
+[for (editionElement : PropertiesEditionElement | pec.involvedEditionElementsInView(view)) ? (editionElement.model.oclIsTypeOf(EAttribute))]
+				if ([editionElement.views->first().editorID()/] == event.getAffectedEditor()) {
+				[if (editionElement.model.many)]
+					BasicDiagnostic chain = new BasicDiagnostic();
+					for ([include('java.util.Iterator')/] iterator = (([include('java.util.List')/])event.getNewValue()).iterator(); iterator.hasNext();) {
+						chain.add([include('org.eclipse.emf.ecore.util.Diagnostician')/].INSTANCE.validate([editionElement.metamodelGetter()/].getEAttributeType(), iterator.next()));
+					}
+					ret = chain;
+				[else]
+					Object newValue = event.getNewValue();
+					[if (editionElement.model.eType.instanceClassName <> 'String')]
+					if (newValue instanceof String) {
+						newValue = EEFConverterUtil.createFromString([editionElement.metamodelGetter()/].getEAttributeType(), (String)newValue);
+					}
+					[/if]
+					ret = [include('org.eclipse.emf.ecore.util.Diagnostician')/].INSTANCE.validate([editionElement.metamodelGetter()/].getEAttributeType(), newValue);
+				[/if]
+				}
+[/for]
+[comment add ViewReference support/]
+[for ( v : View | view.referencedViews())]
+	[for (editionElement : PropertiesEditionElement | pec.involvedEditionElementsInView(v)) ? (editionElement.model.oclIsTypeOf(EAttribute))]
+				if ([editionElement.views->first().editorID()/] == event.getAffectedEditor()) {
+				[if (editionElement.model.many)]
+					BasicDiagnostic chain = new BasicDiagnostic();
+					for ([include('java.util.Iterator')/] iterator = (([include('java.util.List')/])event.getNewValue()).iterator(); iterator.hasNext();) {
+						chain.add([include('org.eclipse.emf.ecore.util.Diagnostician')/].INSTANCE.validate([editionElement.metamodelGetter()/].getEAttributeType(), iter.next()));
+					}
+					ret = chain;
+				[else]
+					Object newValue = event.getNewValue();
+					if (newValue instanceof String) {
+						newValue = EEFConverterUtil.createFromString([editionElement.metamodelGetter()/].getEAttributeType(), (String)newValue);
+					}
+					ret = [include('org.eclipse.emf.ecore.util.Diagnostician')/].INSTANCE.validate([editionElement.metamodelGetter()/].getEAttributeType(), newValue);
+				[/if]
+				}
+	[/for]
+[/for] 
+			} catch (IllegalArgumentException iae) {
+				ret = BasicDiagnostic.toDiagnostic(iae);
+			} catch (WrappedException we) {
+				ret = BasicDiagnostic.toDiagnostic(we);
+			}
+		}
+		return ret;
+	}
+
+[/template]
+
+[template public fullFilePath(pec : PropertiesEditionComponent, view : View, basePackage : String)]
+[pec.subPECQualifiedClass(view).toPath()/].java
+[/template]
+
+[comment overrides this template if additional imports are needed/]
+[template public additionalImports (peContext : PropertiesEditionContext, pec : PropertiesEditionComponent, view : View, basePackage : String)/]

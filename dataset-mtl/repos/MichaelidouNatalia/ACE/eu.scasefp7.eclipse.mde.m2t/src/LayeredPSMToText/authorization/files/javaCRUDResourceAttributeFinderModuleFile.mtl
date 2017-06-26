@@ -1,0 +1,340 @@
+[comment encoding = UTF-8 /]
+[module javaCRUDResourceAttributeFinderModuleFile('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthorizationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+[template public javaCRUDResourceAttributeFinderModuleFile(anAnnotationStack : AnnotationStack , aJavaResourceModel : JavaResourceModel)]
+
+[file (anAnnotationStack.hasCorePSM.name  + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/utilities/authorization/finders/'+aJavaResourceModel.parentName.toUpperFirst()+'FinderModule.java', false, 'UTF-8')]
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.finders;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Iterator;
+
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.attr.* ;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.AbstractEvaluationContext;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.AzRequest;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.Action;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.ResourceAccessAttribute;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.AttributeCategory;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.operators.EvaluationResult;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[aJavaResourceModel.parentName/].[aJavaResourceModel.name/];
+[if ( not (anAnnotationStack.getAuthorizationSubject().annotatesJavaResourceModel = aJavaResourceModel))]
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[anAnnotationStack.getAuthorizationSubject().annotatesJavaResourceModel.parentName/].[anAnnotationStack.getAuthorizationSubject().annotatesJavaResourceModel.name/];
+[/if]
+[for(childResource : JavaResourceModel | anAnnotationStack.getResourceModelChildren(aJavaResourceModel))]
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[childResource.parentName/].[childResource.name/];
+[/for]
+[for(parentResource : JavaResourceModel | anAnnotationStack.getResourceModelParents(aJavaResourceModel))]
+[if( not (parentResource = anAnnotationStack.getAuthorizationSubject().annotatesJavaResourceModel))]
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[parentResource.parentName/].[parentResource.name/];
+[/if]
+[/for]		
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.HibernateController;
+
+public class [aJavaResourceModel.parentName.toUpperFirst()/]FinderModule extends AttributeFinderModule{
+	
+	@Override
+	public Set<String> getSupportedType() {
+		Set<String> types = new HashSet<String>();
+		types.add("[aJavaResourceModel.parentName/]");
+		return types;
+	}
+
+	@Override
+	public Set<AttributeCategory> getSupportedCategory() {
+		Set<AttributeCategory> categories = new HashSet<AttributeCategory>();
+		categories.add(AttributeCategory.ACCESSED_RESOURCE);
+		categories.add(AttributeCategory.INCLUDED_RESOURCE);
+		[if (anAnnotationStack.getAuthorizationSubject().annotatesJavaResourceModel = aJavaResourceModel)]
+		categories.add(AttributeCategory.ACCESS_SUBJECT);
+		[/if]
+		[if(anAnnotationStack.getResourceModelChildren(aJavaResourceModel)->size()>0)]
+		categories.add(AttributeCategory.PARENT_RESOURCE);
+		[/if]
+		[if(anAnnotationStack.getResourceModelParents(aJavaResourceModel)->size()>0)]
+		categories.add(AttributeCategory.CHILD_RESOURCE);
+		[/if]	
+		return categories;
+	}
+	
+	@Override
+	public EvaluationResult findAttribute(ResourceAccessAttribute attribute, AbstractEvaluationContext evaluationContext) {
+
+		AzRequest<[anAnnotationStack.getAuthorizationSubject().annotatesJavaResourceModel.name/]> request = (AzRequest<[anAnnotationStack.getAuthorizationSubject().annotatesJavaResourceModel.name/]>) evaluationContext.getRequest();
+		[aJavaResourceModel.name/] o[aJavaResourceModel.name/] = null;
+
+		[if(anAnnotationStack.getResourceModelChildren(aJavaResourceModel)->size()>0)]
+		if(attribute.getAttributeCategory().equals(AttributeCategory.PARENT_RESOURCE)){
+			String parentResourceType;
+
+			parentResourceType = request.getAction().equals(Action.POST) ? request.getPostedResourceParentType() : request.getAccessedResourceType();
+			if (parentResourceType == null){
+				return new EvaluationResult("No parent type found.");
+			}
+
+			if (parentResourceType.equalsIgnoreCase("[aJavaResourceModel.parentName/]")){
+				try{
+					o[aJavaResourceModel.name/] = get[aJavaResourceModel.parentName.toUpperFirst()/](new Integer(request.getResourceId()));
+				}catch(NumberFormatException e){
+					return new EvaluationResult("Syntax error : Not valid id parameter");
+				}
+			}
+
+		[for(childResource : JavaResourceModel | anAnnotationStack.getResourceModelChildren(aJavaResourceModel))]
+			if(parentResourceType.equalsIgnoreCase("[childResource.parentName/]")){
+				try{
+					o[aJavaResourceModel.name/] =  get[childResource.parentName.toUpperFirst()/]Parent[aJavaResourceModel.parentName.toUpperFirst()/](new Integer(request.getResourceId()));
+				}catch(NumberFormatException e){
+					return new EvaluationResult("Syntax error : Not valid id parameter");
+				}
+			}
+		[/for]
+
+			if (o[aJavaResourceModel.name/] == null){
+				return new EvaluationResult("Parent resource not found");
+			}
+		}
+		[/if]
+
+		[if(anAnnotationStack.getResourceModelParents(aJavaResourceModel)->size()>0)]
+		if(attribute.getAttributeCategory().equals(AttributeCategory.CHILD_RESOURCE)){
+			Set<[aJavaResourceModel.name/]> setOf[aJavaResourceModel.name/] = null;
+			[for(parentResource : JavaResourceModel | anAnnotationStack.getResourceModelParents(aJavaResourceModel))]
+			if (request.getAccessedResourceType().equalsIgnoreCase("[parentResource.parentName/]")){
+				setOf[aJavaResourceModel.name/] = get[parentResource.parentName.toUpperFirst()/]Children[aJavaResourceModel.parentName.toUpperFirst()/](new Integer(request.getResourceId()));
+			}
+			[/for]
+			if (setOf[aJavaResourceModel.name/] == null){
+				return new EvaluationResult("Could not get the children resources");
+			}
+			Iterator<[aJavaResourceModel.name/]> i = setOf[aJavaResourceModel.name/].iterator();
+			Set<AttributeValue> oSetOfAttributes = new HashSet<AttributeValue>();
+			while (i.hasNext()){
+				AttributeValue oAttributeValue = getProperty(attribute, i.next());
+				if (oAttributeValue == null){
+					return new EvaluationResult("Syntax error : Property name is not a valid string");
+				}
+				oSetOfAttributes.add(oAttributeValue);
+			}
+			return new EvaluationResult(new SetOfAttributes(oSetOfAttributes));	
+		}		
+		[/if]
+
+		if(attribute.getAttributeCategory().equals(AttributeCategory.ACCESSED_RESOURCE)){
+			if (!(request.getResourceId() == null)){
+				try{
+					o[aJavaResourceModel.name/] = get[aJavaResourceModel.parentName.toUpperFirst()/]([aJavaResourceModel.getIdentifier()/]));
+				}catch(NumberFormatException e){
+					return new EvaluationResult("Syntax error : Not valid id parameter");
+				}
+				if (o[aJavaResourceModel.name/] == null){
+					return new EvaluationResult("Accessed resource not found");
+				}
+			}
+		}
+		if(attribute.getAttributeCategory().equals(AttributeCategory.INCLUDED_RESOURCE)){
+			o[aJavaResourceModel.name/] = ([aJavaResourceModel.name.toUpperFirst()/])request.getIncludedResource();
+			if (o[aJavaResourceModel.name/]  == null){
+				return new EvaluationResult("Included resource not included in request");
+			}
+		}
+		[if (anAnnotationStack.getAuthorizationSubject().annotatesJavaResourceModel = aJavaResourceModel)]
+		if(attribute.getAttributeCategory().equals(AttributeCategory.ACCESS_SUBJECT)){
+			o[aJavaResourceModel.name/] = request.getAccessSubject();
+			if (o[aJavaResourceModel.name/] == null){
+				return new EvaluationResult("Access subject not included in request");
+			}
+		}
+		[/if]
+		if (o[aJavaResourceModel.name/] == null){
+			return new EvaluationResult("Unsupported Category");
+		}
+
+		AttributeValue resultValue = getProperty(attribute, o[aJavaResourceModel.name/]);
+		if(resultValue != null){
+			if (resultValue.getValue() != null){
+				return new EvaluationResult(resultValue);
+			}else{
+				return new EvaluationResult("Property is null.");	
+			}
+		}else{
+			return new EvaluationResult("Syntax error : Property name is not a valid string");
+		}
+
+	}
+
+	private AttributeValue getProperty(ResourceAccessAttribute attribute, [aJavaResourceModel.name/] o[aJavaResourceModel.name/]){
+		[for (p : PSMComponentProperty | aJavaResourceModel.JavaRModelHasProperty -> select(p | not p.name.equalsIgnoreCase('linklist') and p.typeIsSimple()))]
+		if(attribute.getPropertyName().equalsIgnoreCase("[p.name/]")){
+			[if (p.bIsUnique)]
+			return new [p.getTypeString()/]Attribute(o[aJavaResourceModel.name/].[aJavaResourceModel.getPropertyGetter(p).name/]());
+			[else]
+			Set<[if (p.type.equalsIgnoreCase('int'))]Integer[elseif(p.type.equalsIgnoreCase('double'))]Double[else][p.type/][/if]> [p.name/] = o[aJavaResourceModel.name/].[aJavaResourceModel.getPropertyGetter(p).name/]();
+			Set<AttributeValue> oSetOfAttributes = new HashSet<AttributeValue>();
+			Iterator<[p.getTypeString()/]> i = [p.name/].iterator();
+			while (i.hasNext()){
+				oSetOfAttributes.add(new [p.getTypeString()/]Attribute(i.next()));
+			}
+			return new SetOfAttributes(oSetOfAttributes);
+			[/if]		
+		}
+		[/for]
+		[for (p : NewProperty| anAnnotationStack.getNewProperties(aJavaResourceModel))]
+		if(attribute.getPropertyName().equalsIgnoreCase("[p.name/]")){
+			[if (p.bIsUnique)]
+			return new [p.getTypeString()/]Attribute(o[aJavaResourceModel.name/].get[p.name/]());
+			[else]
+			Set<[if (p.type.equalsIgnoreCase('int'))]Integer[elseif(p.type.equalsIgnoreCase('double'))]Double[else][p.type/][/if]> [p.name/] = o[aJavaResourceModel.name/].get[p.name/]();
+			Set<AttributeValue> oSetOfAttributes = new HashSet<AttributeValue>();
+			Iterator<[p.getTypeString()/]> i = [p.name/].iterator();
+			while (i.hasNext()){
+				oSetOfAttributes.add(new [p.getTypeString()/]Attribute(i.next()));
+			}
+			return new SetOfAttributes(oSetOfAttributes);
+			[/if]		
+		}
+		[/for]
+		return null;
+	}
+
+	private [aJavaResourceModel.name/] get[aJavaResourceModel.parentName.toUpperFirst()/](Integer id) {
+		HibernateController oHibernateController = HibernateController.getHibernateControllerHandle();
+		[aJavaResourceModel.name/] o[aJavaResourceModel.name/] = new [aJavaResourceModel.name/]();
+		o[aJavaResourceModel.name/].[aJavaResourceModel.getIdSetter().name/](id);
+		return oHibernateController.get[aJavaResourceModel.parentName/](o[aJavaResourceModel.name/]);	
+	}
+
+[for(childResource : JavaResourceModel | anAnnotationStack.getResourceModelChildren(aJavaResourceModel))]
+	private [aJavaResourceModel.name/] get[childResource.parentName.toUpperFirst()/]Parent[aJavaResourceModel.parentName.toUpperFirst()/](Integer id) {
+		HibernateController oHibernateController = HibernateController.getHibernateControllerHandle();
+		[childResource.name/] o[childResource.name/] = new [childResource.name/]();
+		o[childResource.name/].[childResource.getIdSetter().name/](id);
+		o[childResource.name/] = oHibernateController.get[childResource.parentName/](o[childResource.name/]);
+		return o[childResource.name/].get[aJavaResourceModel.parentName/]();	
+	}
+
+[/for]
+[for(parentResource : JavaResourceModel | anAnnotationStack.getResourceModelParents(aJavaResourceModel))]
+	private Set<[aJavaResourceModel.name/]> get[parentResource.parentName.toUpperFirst()/]Children[aJavaResourceModel.parentName.toUpperFirst()/](Integer id) {
+		HibernateController oHibernateController = HibernateController.getHibernateControllerHandle();
+		[parentResource.name/] o[parentResource.name/] = new [parentResource.name/]();
+		o[parentResource.name/].[parentResource.getIdSetter().name/](id);
+		o[parentResource.name/] = oHibernateController.get[parentResource.parentName/](o[parentResource.name/]);
+		return o[parentResource.name/].getSetOf[aJavaResourceModel.name/]();	
+	}
+
+[/for]		
+}
+
+[/file]
+[/template]
+
+[query private getParentName(anAuthorizableResource : AuthorizableResource) : String  =
+	if (not anAuthorizableResource.isAuthorizableResourceModel.oclIsUndefined())
+	then anAuthorizableResource.isAuthorizableResourceModel.annotatesJavaResourceModel.parentName
+	else anAuthorizableResource.isAuthorizableAlgoModel.annotatesJavaLagoResourceModel.parentName
+	endif
+/]
+
+[query private getAuthorizationSubject(anAnnotationStack : AnnotationStack) : AnnJavaResourceModel =
+	anAnnotationStack.hasAuthorizationLayer.hasAnnotation->selectByType(AuthorizationSubject)->asOrderedSet()
+	->first().isAuthorizationSubject
+/]
+
+[query private getIdentifier(aJavaResourceModel : JavaResourceModel) : String =
+	let id : PSMComponentProperty = aJavaResourceModel.JavaRModelHasProperty -> select (p | p.bIsPrimaryIdentifier) -> first()
+	in  if id.type.equalsIgnoreCase('int')
+		then 'new Integer(request.getResourceId()'
+		else if  id.type.equalsIgnoreCase('double')
+			 then 'new Double(request.getResourceId())'
+			 else 'request.getResourceId()'
+			 endif
+		endif
+/]
+
+[query private getPropertyGetter(aJavaResourceModel : JavaResourceModel , p : PSMComponentProperty) : JavaGetterFunction  =
+	aJavaResourceModel.JavaRModelHasGetter -> select (getter | getter.getsProperty = p) -> first()
+/]
+
+[query private getIdSetter(aJavaResourceModel : JavaResourceModel) : JavaGetterFunction  =
+let id : PSMComponentProperty = aJavaResourceModel.JavaRModelHasProperty -> select (p | p.bIsPrimaryIdentifier) -> first()
+	in	
+	aJavaResourceModel.JavaRModelHasSetter -> select (setter | setter.setsProperty = id) -> first()
+/]
+
+[query private getTypeString(p : PSMComponentProperty) : String =
+  if p.type.equalsIgnoreCase('int')
+	then 'Integer'
+	else if  p.type.equalsIgnoreCase('double')
+		 then 'Double'
+		 else 'String'
+		 endif
+	endif
+/]
+[query private getTypeString(p : NewProperty) : String =
+  if p.type.equalsIgnoreCase('int')
+	then 'Integer'
+	else if  p.type.equalsIgnoreCase('double')
+		 then 'Double'
+		 else 'String'
+		 endif
+	endif
+/]
+[query private typeIsSimple(p : PSMComponentProperty) : Boolean = 
+	p.type.equalsIgnoreCase('int') or p.type.equalsIgnoreCase('double') or p.type.equalsIgnoreCase('string')
+/]
+
+[query private getResourceModelParents(anAnnotationStack : AnnotationStack, aJavaResourceModel : JavaResourceModel) : Set(JavaResourceModel) =
+	anAnnotationStack.hasCorePSM.hasJavaRModel
+	->select(r | r.hasRelatedJavaRMManager
+				->collect(rm | rm.hasRelatedJavaRModel)->exists(r2 | r2 = aJavaResourceModel))
+/]
+
+[query private getResourceModelChildren(anAnnotationStack : AnnotationStack, aJavaResourceModel : JavaResourceModel) : Set(JavaResourceModel) =
+	anAnnotationStack.hasCorePSM.hasJavaRModel
+	->select(r | aJavaResourceModel.hasRelatedJavaRMManager
+			->collect(rm | rm.hasRelatedJavaRModel)->exists(r2 | r2=r) 
+					or(anAnnotationStack.getAuthorizationSubject().annotatesJavaResourceModel = aJavaResourceModel 
+						and  (not (aJavaResourceModel = r)) and rTracksOwnership(r)))
+/]
+
+[query private rTracksOwnership(anAnnotationStack : AnnotationStack,jRModel : JavaResourceModel) : Boolean =
+if anAnnotationStack.isAuthtorizableResource(jRModel) then 
+anAnnotationStack.getAuthorizableResourceModel(jRModel).bTrackOwnership
+else 
+isDescendant(jRModel, jRModel.oclAsSet()->asOrderedSet())
+endif
+/]
+
+[query private isDescendant(anAnnotationStack : AnnotationStack, r : JavaResourceModel, visited : OrderedSet(JavaResourceModel)) : Boolean = 
+if visited->size() = 1 then
+	visited -> first() = getAuthorizationSubject().annotatesJavaResourceModel else
+	if r = getAuthorizationSubject().annotatesJavaResourceModel then
+		true
+	else
+		if (visited -> exists(rm | rm = r)) then
+			false
+		else
+			let newVisited : OrderedSet(JavaResourceModel) = visited -> append(r) in
+			getResourceModelParents(r) -> exists (rm | isDescendant(rm,newVisited))
+		endif
+	endif
+endif
+/]
+[query private isAuthtorizableResource(anAnnotationStack : AnnotationStack, jRM : JavaResourceModel) : Boolean =
+if anAnnotationStack.bHasAuthorizationLayer
+then	
+	anAnnotationStack.hasAuthorizationLayer.hasAnnotation->selectByType(AuthorizableResource)
+	->select(authResource | not authResource.isAuthorizableResourceModel.oclIsUndefined())
+	->one(authResource | authResource.isAuthorizableResourceModel.annotatesJavaResourceModel = jRM)
+else
+	false
+endif	
+/]
+[query private getNewProperties(anAnnotationStack : AnnotationStack, jRM : JavaResourceModel) : Set(NewProperty) =
+	anAnnotationStack.hasAuthorizationLayer.hasAnnotation->selectByType(NewProperty)->select(newProperty | newProperty.belongsToResource.annotatesJavaResourceModel = jRM)
+/]
+
+[query private getAuthorizableResourceModel(anAnnotationStack : AnnotationStack, jRM : JavaResourceModel) : AuthorizableResource =	
+	anAnnotationStack.hasAuthorizationLayer.hasAnnotation->selectByType(AuthorizableResource)->select(authResource | not authResource.isAuthorizableResourceModel.oclIsUndefined())->select(authResource | authResource.isAuthorizableResourceModel.annotatesJavaResourceModel = jRM)->first()
+/]

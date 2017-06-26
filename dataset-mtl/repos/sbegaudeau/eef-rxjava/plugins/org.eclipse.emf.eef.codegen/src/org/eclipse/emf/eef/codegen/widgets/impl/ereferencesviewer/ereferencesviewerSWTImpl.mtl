@@ -1,0 +1,150 @@
+[comment encoding = UTF-8
+ *******************************************************************************
+ * Copyright (c) 2008-2009 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module ereferencesviewerSWTImpl('http://www.eclipse.org/emf/eef/views/1.0.0', 'http://www.eclipse.org/emf/eef/components/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/eef/generation/1.0.0') extends org::eclipse::emf::eef::codegen::widgets::api::widgetSWTImpl/]
+
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::services::viewCommon /]
+[import org::eclipse::emf::eef::codegen::services::imports/]
+
+[comment ===== Case Widget = EReferencesViewer ===== /]
+[template public manageImports(widget : Widget, pec : PropertiesEditionComponent, view : View, basePackage : String) overrides manageImports ? (widget.name = 'EReferencesViewer')]
+[pec.addImports(Sequence{
+	'org.eclipse.swt.widgets.Composite',
+	'java.util.Iterator',
+	'org.eclipse.emf.ecore.EObject',
+	'org.eclipse.emf.eef.runtime.impl.notify.PropertiesEditionEvent',
+	'org.eclipse.jface.viewers.IStructuredSelection',
+	'org.eclipse.swt.layout.GridData',
+	'org.eclipse.swt.events.SelectionEvent',
+	'org.eclipse.swt.events.SelectionAdapter',
+	'org.eclipse.emf.eef.runtime.context.impl.EObjectPropertiesEditionContext',
+	'org.eclipse.emf.eef.runtime.providers.PropertiesEditingProvider',
+	'org.eclipse.emf.eef.runtime.policies.PropertiesEditingPolicy',
+	'org.eclipse.emf.eef.runtime.ui.widgets.ElementSelectionDialog',
+	'org.eclipse.emf.eef.runtime.ui.widgets.ReferencesTable.ReferencesTableListener'})/]
+[/template]
+
+[template public widgetDeclaration(editor : ElementEditor) overrides widgetDeclaration ? (editor.representation.name = 'EReferencesViewer')]
+	protected [include('org.eclipse.emf.eef.runtime.ui.widgets.ReferencesTable')/] [editor.elementEditorName()/];
+	protected [include('java.util.List')/]<[include('org.eclipse.jface.viewers.ViewerFilter')/]> [editor.elementEditorName()/]BusinessFilters = new [include('java.util.ArrayList')/]<ViewerFilter>();
+	protected List<ViewerFilter> [editor.elementEditorName()/]Filters = new ArrayList<ViewerFilter>();
+[/template]
+
+[template public implementation(editor : ElementEditor) overrides implementation ? (editor.representation.name = 'EReferencesViewer')]
+return create[editor.name.toJavaClassifier()/]AdvancedReferencesTable(parent);
+[/template]
+
+[template public additionalImplementation(editor : ElementEditor, pec : PropertiesEditionComponent, inputPEC: PropertiesEditionComponent) overrides additionalImplementation ? (editor.representation.name = 'EReferencesViewer')]
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected Composite create[editor.name.toJavaClassifier()/]AdvancedReferencesTable(Composite parent) {
+		[if (editor.nameAsLabel)]
+		String label = [include(editor.owningViewsRepository().qualifiedMessagesProvider())/].[editor.editorKey(editor.owningView())/]
+		[else]
+		String label = getDescription([editor.editorID()/], [include(editor.owningViewsRepository().qualifiedMessagesProvider())/].[editor.editorKey(editor.owningView())/]);		 
+		[/if]
+		this.[editor.elementEditorName()/] = new ReferencesTable(label, new ReferencesTableListener() {
+			public void handleAdd() { add[editor.name.toJavaClassifier()/](); }
+			public void handleEdit(EObject element) { edit[editor.name.toJavaClassifier()/](element); }
+			public void handleMove(EObject element, int oldIndex, int newIndex) { move[editor.name.toJavaClassifier()/](element, oldIndex, newIndex); }
+			public void handleRemove(EObject element) { removeFrom[editor.name.toJavaClassifier()/](element); }
+			public void navigateTo(EObject element) { }
+		});
+		this.[editor.elementEditorName()/].setHelpText(propertiesEditionComponent.getHelpContent([editor.editorID()/], [editor.owningViewsRepository().vrClass()/].SWT_KIND));
+		this.[editor.elementEditorName()/].createControls(parent);
+		this.[editor.elementEditorName()/].addSelectionListener(new SelectionAdapter() {
+			
+			public void widgetSelected(SelectionEvent e) {
+				if (e.item != null && e.item.getData() instanceof EObject) {
+					propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/], PropertiesEditionEvent.CHANGE, PropertiesEditionEvent.SELECTION_CHANGED, null, e.item.getData()));
+				}
+			}
+			
+		});
+		GridData [editor.elementEditorName()/]Data = new GridData(GridData.FILL_HORIZONTAL);
+		[editor.elementEditorName()/]Data.horizontalSpan = 3;
+		this.[editor.elementEditorName()/].setLayoutData([editor.elementEditorName()/]Data);
+		this.[editor.elementEditorName()/].disableMove();
+		[editor.elementEditorName()/].setID([editor.editorID()/]);
+		[editor.elementEditorName()/].setEEFType("eef::[editor.representation.name/]"); //$NON-NLS-1$
+		return parent;
+	}
+
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected void add[editor.name.toJavaClassifier()/]() {
+		[editor.defaultAddOperation()/]
+	}
+
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected void move[editor.name.toJavaClassifier()/](EObject element, int oldIndex, int newIndex) {
+		[editor.defaultMoveOperation()/]
+	}
+
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected void removeFrom[editor.name.toJavaClassifier()/](EObject element) {
+		[editor.defaultRemoveOperation()/]
+	}
+
+	/**
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected void edit[editor.name.toJavaClassifier()/](EObject element) {
+		[editor.defaultEditOperation()/]
+	}
+[/template]
+
+[template public defaultAddOperation (editor : ElementEditor) ]
+ElementSelectionDialog dialog = new ElementSelectionDialog([editor.elementEditorName()/].getInput(), [editor.elementEditorName()/]Filters, [editor.elementEditorName()/]BusinessFilters,
+"[editor.name/]", propertiesEditionComponent.getEditingContext().getAdapterFactory()) {
+	@Override
+	public void process(IStructuredSelection selection) {
+		for (Iterator<?> iter = selection.iterator(); iter.hasNext();) {
+			EObject elem = (EObject) iter.next();
+			propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/],
+				PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.ADD, null, elem));
+		}
+		[editor.elementEditorName()/].refresh();
+	}
+};
+dialog.open();
+[/template]
+
+[template public defaultMoveOperation (editor : ElementEditor) ]
+propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/], PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.MOVE, element, newIndex));
+[editor.elementEditorName()/].refresh();
+[/template]
+
+[template public defaultEditOperation (editor : ElementEditor) ]
+EObjectPropertiesEditionContext context = new EObjectPropertiesEditionContext(propertiesEditionComponent.getEditingContext(), propertiesEditionComponent, element, adapterFactory);
+PropertiesEditingProvider provider = (PropertiesEditingProvider)adapterFactory.adapt(element, PropertiesEditingProvider.class);
+if (provider != null) {
+	PropertiesEditingPolicy policy = provider.getPolicy(context);
+	if (policy != null) {
+		policy.execute();
+		[editor.elementEditorName()/].refresh();
+	}
+}
+[/template]
+
+[template public defaultRemoveOperation(editor : ElementEditor) ]
+propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/], PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.REMOVE, null, element));
+[editor.elementEditorName()/].refresh();
+[/template]

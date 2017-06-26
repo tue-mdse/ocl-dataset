@@ -1,0 +1,34 @@
+[comment encoding = UTF-8 /]
+[module uML2Android('http://www.eclipse.org/uml2/3.0.0/UML') /]
+
+[import androidmanifestXML /]
+[import activity /]
+[import javaclass /]
+[import folder /]
+
+[template public uML2Android(p : Package)]
+	[comment @main /]
+	[for (c : Class | p.ownedElement -> select(e:Element | e.oclIsKindOf(Class)))]
+
+		[comment TODO: Bessere Methode zum Abfragen einer Activity finden. SuperStereotype? query in androidmanifest? /]
+		[if c.getAppliedStereotype('profile::Activity') <> null or
+			c.getAppliedStereotype('profile::ListActivity') <> null or
+			c.getAppliedStereotype('profile::PreferenceActivity') <> null or
+			c.getAppliedStereotype('profile::MapActivity') <> null]
+			[activity(c)/]
+			[layoutfile(c) /]
+
+		[comment   AndroidManifest.xml /]
+		[elseif c.getAppliedStereotype('profile::AndroidManifestXML') <> null]
+			[androidmanifestXML(c)/]
+
+		[comment   Standard Java class /]
+		[elseif c.getAppliedStereotypes()->size() = 0]
+			[javaclass(c)/]
+		[/if]
+
+	[/for]
+
+	[stringsfile(p) /]
+	[copyImageFile() /]
+[/template]

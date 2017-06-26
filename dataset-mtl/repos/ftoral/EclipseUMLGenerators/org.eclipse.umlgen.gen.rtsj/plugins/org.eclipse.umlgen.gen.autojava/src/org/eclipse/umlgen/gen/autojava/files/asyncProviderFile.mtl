@@ -1,0 +1,101 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2012, 2014 CNES and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Cedric Notot (Obeo) - initial API and implementation
+[/comment]
+
+[module asyncProviderFile('http://www.eclipse.org/uml2/4.0.0/UML','http://www.eclipse.org/umlgen/dsl/asl','http://www.eclipse.org/umlgen/dsl/eth')]
+
+[import org::eclipse::umlgen::gen::autojava::specific::port /]
+[import org::eclipse::umlgen::gen::autojava::specific::lib::type /]
+[import org::eclipse::umlgen::gen::autojava::requests::common /]
+[import org::eclipse::umlgen::gen::autojava::services::rtsjServices /]
+[import org::eclipse::umlgen::gen::autojava::services::utilServices /]
+[import org::eclipse::umlgen::gen::autojava::common::parameters /]
+[import org::eclipse::umlgen::gen::autojava::common::common /]
+
+[template public genAsyncProviderFileBody(anInterface : Interface, aPort : Port)]
+[aPort.genFilePath().genPackageDeclaration()/]
+
+import [anInterface.genPackagePath()/].[anInterface.name/];
+import org.eclipse.umlgen.rtsj.framework.*;
+import org.eclipse.umlgen.rtsj.framework.types.*;
+import org.eclipse.umlgen.rtsj.framework.async.PortProviderAsync;
+[if (anInterface.getReceptionsWithParameters()->notEmpty())]
+import [anInterface.genPackagePath()/].params.*;
+[/if]
+[for (aType : Type | minimize(getAllReceptions().get('ownedElement')->filter(Property)->select(aProp : Property | aProp.type <> null and not aProp.type.isJavaPrimitive() and not aProp.type.oclIsKindOf(Enumeration)).type)->filter(Type))]
+import [aType.genDecoratorPackagePath() + '.' +  aType.genName()/];
+[/for]
+
+public class [aPort.genClassPortName(anInterface, 'Provider','Async')/] implements PortProviderAsync {
+
+	[anInterface.name/] provider;
+	String ident;
+	Object thread;
+	PortBuffer pbuff;
+	MBuffer mbuffer;
+	ArgsBuffer argsBuffer;
+	int max_size_parameter_set = [aPort.getPortSize()/];
+[for (anOperation : Reception | anInterface.getReceptionsWithParameters())]
+	[anOperation.genParametersClassInstantiation(true)/]
+[/for]
+	CommunicationLayer communicationLayer;
+
+	public [aPort.genClassPortName(anInterface, 'Provider','Async')/]([anInterface.name/] provider, String ident, int size, Object thread, PortBuffer pbuff, CommunicationLayer communicationLayer) {
+		this.provider = provider;
+		this.ident = ident;
+		communicationLayer.registerAsynchronousProviderPort(ident, this);
+		mbuffer = new MBuffer(size);
+		argsBuffer = new ArgsBuffer(max_size_parameter_set * size);
+		this.thread = thread;
+		this.pbuff = pbuff;
+		this.communicationLayer = communicationLayer;
+	}
+
+	public boolean empty() { 
+		return mbuffer.empty(); 
+	}
+	
+	public boolean full() { 
+		return mbuffer.full(); 
+	}
+
+	public void invokeNextOperation() throws ServiceNotFoundException {
+		if (mbuffer.empty()) return;
+		String op = mbuffer.get();
+[if (anInterface.getAllReceptions()->size() > 0)]
+	[for (anOperation : Reception | anInterface.getAllReceptions()->select(aReception : Reception | aReception.signal <> null))]
+		[if (i > 1)]} else [/if]if (op.equals("[anOperation.name/][anOperation.getParams().genTypeName()->sep('_')/]")) {
+			[if (anOperation.signal.get('ownedAttribute')->filter(Property)->notEmpty())][anOperation.name/]Params.readObject(argsBuffer);[/if]
+			provider.[anOperation.signal.name/]([anOperation.genProviderCallParameters()/]);
+	[/for]	
+		} else {
+			throw new ServiceNotFoundException();
+		}
+[else]
+		throw new ServiceNotFoundException();
+[/if]
+	}
+
+	public void store(String service, ArgsBuffer params, int priority) {
+		synchronized (thread) {
+			if (mbuffer.full() || !argsBuffer.check(params.getUsed())) {
+				System.out.println("!! Configuration Error for port [aPort.genClassPortName(anInterface, 'Provider','Async')/] : mBuffer full=" + full() + "; argsBuffer size=" + argsBuffer.getSize() + "; message size=" + params.getUsed() + " !!");
+			}
+			if (pbuff.empty()) {
+				thread.notify();
+			}
+			pbuff.put(this, priority);
+			int offset = mbuffer.put(service, priority, params.getUsed());
+			argsBuffer.copy(params, offset);
+		}
+	}
+}
+[/template]

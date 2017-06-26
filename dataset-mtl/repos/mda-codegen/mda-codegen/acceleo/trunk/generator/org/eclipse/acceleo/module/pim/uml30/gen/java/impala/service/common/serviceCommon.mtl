@@ -1,0 +1,93 @@
+[comment encoding = UTF-8 /]
+[module serviceCommon('http://www.eclipse.org/uml2/3.0.0/UML')]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::compositeUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainCommon /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::build::common::entityUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[comment][import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoCommon /][/comment]
+[query public getRelatedDaos(aService : Class) : Set(Class) = 
+if(aService.clientDependency->notEmpty()) then
+	aService.clientDependency.supplier->filter(Class)->select(aService : Class|aService.isEntity())->asSet()
+else
+	Set{}
+endif
+/]
+
+[comment][template public generateServiceManagerFunctionParam (anEntity : Class) post (trim()) ]
+[anEntity.generateDaoManagerFunctionParam()/]
+[/template][/comment]
+[query public getOtherPKProperties(aService : Class) : Set(Property) =
+if(aService.interfaceRealization->notEmpty()and 
+	aService.interfaceRealization.target->notEmpty() and
+	aService.interfaceRealization.target->filter(Interface)->notEmpty() and
+	aService.interfaceRealization.target->filter(Interface)->select(isEntity())->notEmpty() and
+	aService.interfaceRealization.target->filter(Interface)->select(isEntity())
+		->asSequence()->first().attribute->notEmpty()) then   
+	aService.interfaceRealization.target->filter(Interface)->select(isEntity())
+		->asSequence()->first().attribute->select(isPK())
+else
+	Set{}
+endif
+/]
+
+[template public generateSampleParameterValue(aProperty : Property, indexName : String) post (trim())]
+[aProperty.type.generateSampleParameterValue(aProperty.name, indexName)/]
+[/template]
+
+[template public generateSampleParameterValue(aType : Type, prefix : String, indexName : String) post (trim())]
+[aType.generateSampleParameterValue(prefix, indexName, false)/]
+[/template]
+
+[template public generateSampleParameterValue(aType : Type, prefix : String, indexName : String, isWrapped : Boolean) post (trim())]
+	[if (aType.oclIsTypeOf(Enumeration))]
+ServiceTestUtil.create[aType.name.toUpperFirst()/]Value("[prefix/]", [indexName/])
+	[elseif (getProperty('java.typeconversion.' + aType.name) = 'Date')]
+ServiceTestUtil.createDateFieldValue("[prefix/]", [indexName/])
+	[comment][elseif (getProperty('java.typeconversion.' + aType.name).toLower() = 'boolean')]
+ServiceTestUtil.createBooleanFieldValue("[prefix/]", [indexName/])[/comment]
+	[elseif (getProperty('java.typeconversion.' + aType.name) = 'String')]
+ServiceTestUtil.createStringFieldValue("[prefix/]", [indexName/])
+	[elseif (aType.oclIsTypeOf(Enumeration))]
+ServiceTestUtil.create[aType.oclAsType(Enumeration).name.toUpperFirst()/]Value("[prefix/]", [indexName/])
+	[elseif (getProperty('java.typeconversion.' + aType.name).toLower() = 'long')]
+ServiceTestUtil.createLongFieldValue("[prefix/]", [indexName/])[if ((getProperty('java.typeconversion.' + aType.name) = 'long') and not isWrapped)].longValue()[/if]
+	[elseif (getProperty('java.typeconversion.' + aType.name) = 'int' or getProperty('java.typeconversion.' + aType.name) = 'Integer')]
+ServiceTestUtil.createIntegerFieldValue("[prefix/]", [indexName/])[if (getProperty('java.typeconversion.' + aType.name) = 'int' and not isWrapped)].intValue()[/if]
+	[elseif (getProperty('java.typeconversion.' + aType.name).toLower() = 'short')]
+ServiceTestUtil.createShortFieldValue("[prefix/]", [indexName/])[if (getProperty('java.typeconversion.' + aType.name) = 'short' and not isWrapped)].shortValue()[/if]
+	[elseif (getProperty('java.typeconversion.' + aType.name).toLower() = 'double')]
+ServiceTestUtil.createDoubleFieldValue("[prefix/]", [indexName/])[if (getProperty('java.typeconversion.' + aType.name) = 'double' and not isWrapped)].doubleValue()[/if]
+	[elseif (getProperty('java.typeconversion.' + aType.name).toLower() = 'float')]
+ServiceTestUtil.createByteFieldValue("[prefix/]", [indexName/])[if (getProperty('java.typeconversion.' + aType.name) = 'byte' and not isWrapped)].byteValue()[/if]
+	[elseif (getProperty('java.typeconversion.' + aType.name).toLower() = 'float')]
+ServiceTestUtil.createFloatFieldValue("[prefix/]", [indexName/])[if (getProperty('java.typeconversion.' + aType.name) = 'float' and not isWrapped)].floatValue()[/if]
+	[elseif (getProperty('java.typeconversion.' + aType.name).toLower() = 'boolean')]
+ServiceTestUtil.createBooleanFieldValue("[prefix/]", [indexName/])[if (getProperty('java.typeconversion.' + aType.name) = 'boolean' and not isWrapped)].booleanValue()[/if]
+	[else]
+null				
+	[/if]
+[/template]
+
+
+[template public generateSamplePKValue(anEntity : Class, indexName : String, isWrapped : Boolean) post (trim())]
+	[if (anEntity.getPKAttribute()->size()=0)]
+[anEntity.getModel().eAllContents(Type)->select(aType:Type|aType.convertToJavaType()=anEntity.getPrimaryTypeName()).generateSampleParameterValue(anEntity.name, indexName, isWrapped)/]
+	[elseif (anEntity.getPKAttribute()->size()=1)]
+[anEntity.getPKAttribute()->asSequence()->first().type.generateSampleParameterValue(anEntity.getPKAttribute()->asSequence()->first().name, indexName, isWrapped)/]
+	[else]
+new [anEntity.getPrimaryTypeName()/]([for (aPK : Property | anEntity.getPKAttribute()->asSequence()) separator (', ')][aPK.type.generateSampleParameterValue(aPK.name, indexName)/][/for])				
+	[/if]
+[/template]
+
+[query public getEntityDaoManagerProperties (anEntity : Class) : Sequence(Property)  = 
+	anEntity.getAllEntityParents()->including(anEntity).ownedAttribute->select(aProp: Property|not aProp.isPK() and (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration)))->union(
+		(anEntity.getAllEntityParents()->including(anEntity)).ownedAttribute->select(aProp: Property|not aProp.isPK() and not (aProp.type.isSimpleType() or aProp.type.oclIsTypeOf(Enumeration)))
+	)->union(
+		(anEntity.getAllEntityParents()->including(anEntity)).getOppositeAttributes(false)->select(aField:Property | (aField.lower=1 or aField.lower=0) and ((aField.oppositeAttribute().upper<0 or aField.oppositeAttribute().upper>1) or aField.isNavigable()))
+	)
+/]
+
+

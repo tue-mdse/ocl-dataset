@@ -1,0 +1,74 @@
+[comment encoding = UTF-8 /]
+[module generateControllerJavaClass('http://www.eclipse.org/uml2/3.0.0/UML') extends generateJavaClass]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::webPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::requests/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::java::javaclass /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common /]
+[template public generateControllerJavaClass(aClass : Class) ? (aClass.owner.oclIsTypeOf(StateMachine))]
+[aClass.generateJavaClass()/]
+[/template]
+[comment]
+	@TODO You should probably add the extension 'org.eclipse.acceleo.engine.dynamic.templates' in your 'plugin.xml' file if you wish to enable the 'dynamic overrides' mechanism
+[/comment]
+[comment @Override generateJavaClass.generateJavaClass /]
+[template public generateJavaClass(aClass : Class) overrides generateJavaClass ]
+[comment This template is called by the main module file /]
+	[file (aClass.getModel().generateProjectFolder().concat(aClass.getModel().pathToMainJava()).concat('/').concat(aClass.generateJavaPackagePath()).concat('/').concat(aClass.name).concat('.java'), false, 'ISO-8859-1')]
+package [aClass.generateJavaPackage()/];
+
+// [protected ('imports')] 
+import org.springframework.stereotype.Controller;
+
+[aClass.generateImports()/]
+[comment][for (classifier:Classifier|aClass.operationsParametersTypes())]
+import [classifier.getCompleteName()/];	
+[/for][/comment]
+[comment][aClass.genCollectionImports()/][/comment]
+
+// [/protected]
+
+[aClass.generateJavadoc()/]
+@Controller
+[aClass.genModifiers()/] class [aClass.name/][aClass.extensions()/] {
+
+[comment  Generate attributes /]
+[for (prop:Property|aClass.attribute)]
+	[prop.visibility/] [prop.type.convertToJavaType()/] [prop.name/];
+[/for]
+
+	/**
+	 * Default constructor 
+	 */
+	public [aClass.name/]() {
+		super();
+	}
+
+[if (aClass.attribute->notEmpty())]
+	/**
+	 * Constructor with all parameters initialized
+	[for (prop:Property|aClass.attribute)]
+	 * @param [prop.name/] [prop.ownedComment._body/]
+	[/for]
+	 */	
+	public [aClass.name/]([aClass.attribute.asParameter()->sep(', ')/]) {
+
+	[for (prop:Property|aClass.attribute)]
+		this.[prop.name/] = [prop.name/];
+	[/for]
+	}	
+[/if]
+
+[comment  Generate operations /]
+[for (oper:Operation|aClass.ownedOperation)]
+	[oper.generateJavadoc()/]
+	[oper.genModifiers()/] [oper.generateReturn()/] [oper.name/]([oper.generateRawParameters()/]) [if (oper.raisedException->notEmpty())]throws [oper.raisedException.name->sep(', ')/][/if][oper.genOperationBody()/]
+[/for]
+}
+	[/file]
+
+[/template]
+

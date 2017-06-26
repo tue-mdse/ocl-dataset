@@ -1,0 +1,76 @@
+[comment encoding = UTF-8 /]
+[module demultiplexor_h('/PML/model/pml.ecore')]
+
+[import PMLGen::generator::pmlutil /]
+
+[template public generateElement(c : Demultiplexor)]
+	[file (c.name.concat('_untimed.h'), false, 'UTF-8')]
+	#ifndef [c.name.concat('_h')/]
+	#define  [c.name.concat('_h')/]
+	#include "systemc.h"
+	
+	SC_MODULE([c.name/]){
+		 sc_port<read_in> in;
+	    sc_port<write_in> out;
+
+	 	[for (p : Input | c.indemux)]
+	    	[forIn(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+        [for (p : Output | c.outdemux)]
+	    	[forIn(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+		[for (p : Seletor | c.seletordemux)]
+	    	[forIn(p.name, p.type.toString(), p.bit) /]	    
+	    [/for]
+        [for (o : Behavior | c.behaviorsDemux)]
+        	[o.typeBehavior.toString().toLower()/] [o.name.toLower()/](); 
+        [/for]
+		SC_CTOR([c.name/]) {
+			[for (o : Behavior | c.behaviorsDemux)]
+	        	SC_METHOD([o.name.toLower()/]); 
+	        [/for]
+			[for (p : Input | c.indemux)]
+	        	[if(p.sensitive) ]
+				    [forSensitive(p.name, p.length.abs())/]
+				[/if]
+	   		[/for]
+        }       
+	};
+	#endif
+	
+	[/file]
+
+[file (c.name.concat('_timed.h'), false, 'UTF-8')]
+	#ifndef [c.name.concat('_h')/]
+	#define  [c.name.concat('_h')/]
+	#include "systemc.h"
+	
+	SC_MODULE([c.name/]){
+		[for (p : Input | c.indemux)]
+	    	[forIn(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+        [for (p : Output | c.outdemux)]
+	    	[forOut(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+		[for (p : Seletor | c.seletordemux)]
+	    	[forSel(p.name, p.type.toString(), p.bit) /]	    
+	    [/for]
+        [for (o : Behavior | c.behaviorsDemux)]
+        	[o.typeBehavior.toString().toLower()/] [o.name.toLower()/](); 
+        [/for]
+ 		SC_CTOR([c.name/]) {
+ 			[for (o : Behavior | c.behaviorsDemux)]
+	        	SC_THREAD([o.name.toLower()/]); 
+	        [/for]
+			[for (p : Input | c.indemux)]
+	        	[if(p.sensitive) ]
+				    [forSensitive(p.name, p.length.abs())/]
+				[/if]
+	   		[/for]
+        }       
+	};
+	#endif
+	[/file]
+
+
+[/template]

@@ -1,0 +1,183 @@
+[comment encoding = UTF-8 /]
+
+[module entities('http://www.example.org/sml', 'http://www.example.org/ctx')]
+
+[import br::ufes::inf::sml::generate::main::resources /]
+
+[comment template that generates all java code/]
+[template public javaEntities(aSMLModel : SMLModel)]
+[for (n : EntityClass  | superclasses(eAllContents(EntityParticipant).isOfType->asSet()))]
+[javaEntitie(n)/]
+[/for]
+[for (r : RelatorClass  | eAllContents(RelatorParticipant).isOfType->asSet())]
+[javaRelator(r)/]
+[/for]
+[for (s : SituationType | elements.oclAsType(SituationType))]
+[javaSituation(s)/]
+[/for]
+[builtin(aSMLModel)/]
+[/template]
+
+[comment datatype representation in java code/]
+[template public datatype(d : DataType) post (trim())]
+	[d.name.clean()/]
+[/template]
+
+[comment generate the builtin package folder structure/]
+[template public builtin(arg : SMLModel)]
+[file (getProperty('genDir')+'/'+getProperty('javaDir')+'/'+getProperty('builtinsPackage').replaceAll('\\.', '/')+'/builtin.txt', false, 'UTF-8')]
+Builtin classes package
+[/file]
+[/template]
+
+[comment generate a java class based on a EntityClass/]
+[template public javaEntitie(n : EntityClass)]
+[file (getProperty('genDir')+'/'+getProperty('javaDir')+'/'+getProperty('javaPackage').replaceAll('\\.', '/')+'/model/'+n.name.toUpperFirst()+'.java', false, 'UTF-8')]
+package [getProperty('javaPackage')/].model;
+
+import [getProperty('builtinsPackage')/].*;
+
+// [protected ('for imports')]
+// 
+// import java.lang.*
+//
+// [/protected]
+
+public[if isAbstract] abstract[/if] class [n.name.toUpperFirst().clean()/][if (not superclass.oclIsUndefined())] extends [superclass.name.toUpperFirst().clean()/][/if] {
+
+	// [protected ('for constructors and methods')]
+	/* 
+	public [n.name.toUpperFirst().clean()/]() {
+		[for (a : Attribute | attribute)]
+		this.set[name.toUpperFirst().clean()/];
+		[/for]
+	}
+	*/
+	// [/protected]
+	
+	[for (a : Attribute | attribute)]
+	private [datatype(a.datatype)/] [name.clean()/];
+	[/for]
+
+	[for (a : Attribute | attribute)]
+	public void set[name.toUpperFirst().clean()/]([datatype(a.datatype)/] [name.clean()/]) {
+		this.[name.clean()/] = [name.clean()/];
+	}
+
+	public [datatype(a.datatype)/] get[name.toUpperFirst().clean()/]() {
+		return [name.clean()/];
+	}
+	
+	[/for]	
+}
+[/file]
+[/template]
+
+[comment generate a java class based on a EntityClass/]
+[template public javaRelator(n : RelatorClass)]
+[file (getProperty('genDir')+'/'+getProperty('javaDir')+'/'+getProperty('javaPackage').replaceAll('\\.', '/')+'/model/'+n.name.toUpperFirst()+'.java', false, 'UTF-8')]
+package [getProperty('javaPackage')/].model;
+import [getProperty('builtinsPackage')/].*;
+
+// [protected ('for imports')]
+// 
+// import java.lang.*
+//
+// [/protected]
+
+public class [n.name.toUpperFirst().clean()/] {
+	
+	// [protected ('for constructors and methods')]
+	/* 
+	public [n.name.toUpperFirst().clean()/]() {
+		[for (a : Attribute | attribute)]
+		this.set[name.toUpperFirst().clean()/];
+		[/for]
+	}
+	*/
+	// [/protected]
+
+	[for (a : Attribute | attribute)]
+	private [datatype(a.datatype)/] [name.clean()/];
+	[/for]
+	[for (a: Association | self.associations())]
+	private [a.target.name.toUpperFirst().clean()/] [name.clean()/];
+	[/for]
+
+	[for (a : Attribute | attribute)]
+	public [datatype(a.datatype)/] get[name.toUpperFirst().clean()/]() {
+		return [name.clean()/];
+	}
+
+	public void set[name.toUpperFirst().clean()/]([datatype(a.datatype)/] [name.clean()/]) {
+		this.[name.clean()/] = [name.clean()/];
+	}
+	
+	[/for]
+	[for (a: Association | self.associations())]
+	public [a.target.name.toUpperFirst().clean()/] get[name.toUpperFirst().clean()/]() {
+		return [name.clean()/];
+	}
+
+	public void set[name.toUpperFirst()/]([a.target.name.toUpperFirst().clean()/] [name.clean()/]) {
+		this.[name.clean()/] = [name.clean()/];
+	}
+	
+	[/for]
+}
+[/file]
+
+[/template]
+
+[template public javaSituation(s : SituationType)]
+[file (getProperty('genDir')+'/'+getProperty('javaDir')+'/'+getProperty('javaPackage').replaceAll('\\.', '/')+'/situation/'+s.name()+'.java', false, 'UTF-8')]
+package [getProperty('javaPackage')/].situation;
+
+import org.drools.situation.base.*;
+
+import [getProperty('javaPackage')/].model.*;
+import [getProperty('javaPackage')/].situation.*;
+import [getProperty('builtinsPackage')/].*;
+
+// [protected ('for imports')]
+// 
+// import java.lang.*
+//
+// [/protected]
+
+public class [s.name()/] extends SituationType {
+	
+	[for (p : SituationTypeParameter | parameter)]
+	@SituationRole
+	private [p.nodeReference.name()/] [p.name.clean()/];
+	[/for]
+
+	[for (p : SituationTypeParameter | parameter)]
+	public void set[p.name.toUpperFirst()/]([p.nodeReference.name()/] [p.name.clean()/]) {
+		this.[p.name.clean()/] = [p.name.clean()/];
+	}
+
+	public [p.nodeReference.name()/] get[p.name.toUpperFirst().clean()/]() {
+		return [p.name.clean()/];
+	}
+	[/for]
+
+	// [protected ('for class '+name.toUpperFirst()+'Situation')]
+	/*
+	@Override
+	public void setActive() {
+		super.setActive();
+		System.out.println("[s.name()/] activated at " + this.getActivation().getTimestamp());		
+	}
+	
+	public void setInactive() {
+		super.setInactive();
+		System.out.println("[s.name()/] deactivated at " + this.getDeactivation().getTimestamp() + ". It lasts: " + (this.getDeactivation().getTimestamp() - this.getActivation().getTimestamp()) );		
+	}
+	*/	
+	// [/protected]
+
+}
+
+[/file]
+[/template]

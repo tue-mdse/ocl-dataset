@@ -1,0 +1,44 @@
+[comment encoding = UTF-8 /]
+[module partnerLinkJavaFile('http:///org/eclipse/bpel/model/bpel.ecore')/]
+[import org::eclipse::acceleo::module::bpel2java::reqRes::common::createSetGet /]
+[import org::eclipse::acceleo::module::bpel2java::reqRes::common::genericTemplates /]
+
+[template public genPartnerLinkJavaFile(aProcess : Process, aPartnerLink : PartnerLink, varTypeList : Sequence(String), varNameList : Sequence(Variable))]
+	[file ('PL'+aPartnerLink.name.toUpperFirst()+'.java', false, 'UTF-8')]
+// Client PartnerLink, Role: [aPartnerLink.partnerRole.name/]
+package bpel2java.uni;
+public class ['PL'+aPartnerLink.name.toUpperFirst()/] {
+
+[comment Add the variables needed for the communication /]
+[createPrivateAttributes(varTypeList, varNameList)/]
+
+[comment Add the Constructor /]
+[createConstructor(aPartnerLink, varTypeList, varNameList)/]
+
+     /**
+     * Operations    
+     */
+[comment Add the operations (found in the INVOKEs constructs in the BPEL file) this PL can perform/]
+[for (anInvoke : Invoke | getOperationsFromInvoke(aProcess,aPartnerLink) )]
+public [varTypeList->at(varNameList->indexOf(anInvoke.outputVariable))/] [anInvoke.operation.name.toLowerFirst()/]Stub() {
+     
+     //CUSTOM SPECIFIC CODE TO CALL THE REAL SERVICE    
+[anInvoke.portType.qName.toString().substring(anInvoke.portType.qName.toString().index('}')+1,anInvoke.portType.qName.toString().size())/] service = new [anInvoke.portType.qName.toString().substring(anInvoke.portType.qName.toString().index('}')+1,anInvoke.portType.qName.toString().size())/]();
+String result = service.[anInvoke.operation.name/](authorWSParterLinkRequest.getACognome()); 
+authorWSParterLinkResponse.setGetAutographByCognomeEasyReturn(result);
+	//END OF CUSTOM SPECIFIC CODE TO CALL THE REAL SERVICE
+
+	return [anInvoke.outputVariable.name.toLowerFirst()/];
+}	
+[/for]
+
+
+[comment Add setter and getter /]
+[createSetGet(varTypeList, varNameList)/]	
+	}
+	[/file]
+[/template]
+
+
+[query getOperationsFromInvoke(aProcess : Process, aPL : PartnerLink) : Sequence(Invoke) =  
+aProcess.eAllContents(Invoke)->select( anInvoke : Invoke | anInvoke.partnerLink=aPL )/]

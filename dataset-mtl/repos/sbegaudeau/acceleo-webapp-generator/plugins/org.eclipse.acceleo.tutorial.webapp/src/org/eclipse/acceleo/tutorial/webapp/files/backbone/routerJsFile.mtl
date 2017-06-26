@@ -1,0 +1,47 @@
+[comment encoding = UTF-8 /]
+[module routerJsFile('http://www.eclipse.org/acceleo/tutorial/webapp')]
+
+[import org::eclipse::acceleo::tutorial::webapp::common::fileUtils /]
+
+[template private routerJsFile(aRouter : Router)]
+[aRouter.genJsDirectoryPath()/]/[aRouter.genVarName()/].js
+[/template]
+
+[template public genRouterJsFile(aRouter : Router)]
+[file (aRouter.routerJsFile(), false, 'UTF-8')]
+[aRouter.genJsCopyrightHeader()/]
+
+var [aRouter.application.genTypeName()/] = [aRouter.application.genTypeName()/] || {};
+[aRouter.application.genTypeName()/].[aRouter.genTypeName()/] = Backbone.Router.extend({
+	routes: {
+		'!/home': 'showHome',
+		[for (aRouterMapping : RouterMapping | aRouter.mappings)]
+		'[aRouterMapping.path/]': 'show[aRouterMapping.view.genTypeName()/]',
+		[/for]
+		'*pageId': 'defaultAction'
+	},
+	showHome: function(){
+		var home = new [aRouter.application.genTypeName()/].Home();
+		home.render();
+	},
+	[for (aRouterMapping : RouterMapping | aRouter.mappings)]
+	show[aRouterMapping.view.genTypeName()/]: function(){
+		var [aRouterMapping.view.genVarName()/] = new [aRouter.application.genTypeName()/].[aRouterMapping.view.genTypeName()/]();
+		[aRouterMapping.view.genVarName()/].render();
+	},
+	[/for]
+	/* [protected ('additional routes */')]
+	/* [/protected] */
+	defaultAction: function(pageId){
+		if (pageId.length === 0) {
+			var home = new [aRouter.application.genTypeName()/].Home();
+			home.render();
+		}
+	}
+});
+
+[aRouter.application.genTypeName()/].[aRouter.genVarName()/] = new [aRouter.application.genTypeName()/].[aRouter.genTypeName()/]();
+Backbone.history.start();
+
+[/file]
+[/template]

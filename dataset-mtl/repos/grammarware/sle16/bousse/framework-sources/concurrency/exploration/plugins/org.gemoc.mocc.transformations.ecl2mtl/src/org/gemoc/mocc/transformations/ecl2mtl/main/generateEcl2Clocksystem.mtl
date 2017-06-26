@@ -1,0 +1,50 @@
+[comment encoding = UTF-8 /]
+[module generateEcl2Clocksystem( 
+	'http://fr.inria.aoste.timesquare.ecl',
+	'http://org.gemoc.moccml/1.0',
+	'http://www.eclipse.org/ocl/3.1.0/CompleteOCLCST',
+	'http://www.eclipse.org/ocl/3.1.0/BaseCST',
+	'http://www.eclipse.org/ocl/3.1.0/Pivot',
+	'http://www.eclipse.org/ocl/3.1.0/EssentialOCLCST')]
+
+[import org::gemoc::mocc::transformations::ecl2mtl::libLoader::loadLibrary /] 
+[import org::gemoc::mocc::transformations::ecl2mtl::main::generateCCSLLibraries /] 
+[import org::gemoc::mocc::transformations::ecl2mtl::main::generateMoCMLLibraries /]
+[import org::gemoc::mocc::transformations::ecl2mtl::main::xtendmodule /] 
+[import org::gemoc::mocc::transformations::ecl2mtl::services::eclQueries /]
+[import org::gemoc::mocc::transformations::ecl2mtl::services::stringQueries /]
+[import org::gemoc::mocc::transformations::ecl2mtl::services::fiacreQueries /]  
+ 
+[template public ecl2clocksystem(anECLDocument : ECLDocument, resFileNames : String, rootElementName:String)] 
+[comment @main/]
+[file (resFileNames.toString()+'.clocksystem', false, 'UTF-8')] 
+
+"Some global constants"
+|system moccmllibs ccsllibs|
+[if (anECLDocument.imports.importURI.endsWith('.moccml')->size()<>0)]
+"MoCCML librairies specifications" 
+[for (importS : ImportStatement | anECLDocument.imports)]
+[if (importS.importURI.endsWith('.moccml'))]
+[importS.loadMoCMLLibrary().generateMoCMLLibraries2Clocksystem() /]
+[/if]
+[/for]
+[/if]
+
+[ if (anECLDocument.imports.importURI.endsWith('.ccslLib')->size()<>0)]
+	"CCSL librairies specifications"
+	[ for (importS : ImportStatement | anECLDocument.imports)]
+		[ if (importS.importURI.endsWith('.ccslLib'))]
+			[ let aLibrary : Library = importS.loadCCSLLibrary()]
+				[aLibrary.name/]
+				[ comment aLibrary.generateCCSLLibraries()/]
+			[ /let]
+		[/if]
+	[ /for]
+[ /if]
+
+system := ClockSystem named: 'a[rootElementName.deleteSpecialCharacters()/]_withMoC-[anECLDocument.getMoCIDFromFirstLib()/]'.
+system addLibrary:moccmllibs asDictionary.
+
+[/file]
+
+[/template]

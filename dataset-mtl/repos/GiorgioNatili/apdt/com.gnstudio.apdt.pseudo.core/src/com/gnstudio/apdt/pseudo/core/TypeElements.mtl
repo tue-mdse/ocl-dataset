@@ -1,0 +1,58 @@
+[comment encoding = UTF-8 /]
+[module TypeElements('http:///org/gnstudio/apdt/model.ecore')/]
+[import MethodElements /]
+[import KeywordsUtils /]
+
+[template public genClassElement(aClass : ClassElement)]
+[getKeyword('class')/] [aClass.name/]
+[if (aClass.extendsElements->notEmpty())]
+        [getKeyword('extends')/] [genClassExtendsElement(aClass)/]
+[/if]
+[if (aClass.implementsElements->notEmpty())]
+        [getKeyword('implements')/] [genClassImplementsElement(aClass)/]
+[/if]
+
+[for (aMember : ClassMember | aClass.members)]
+        [genMemberElement(aMember)/]
+[/for]
+[for (aMethod : Method | aClass.methods)]
+        [genMethodElements(aMethod, true)/]
+[/for]
+[getKeyword('endclass')/]
+[/template]
+
+[template public genInterfaceElement(aInterface : InterfaceElement)]
+[getKeyword('interface')/] [aInterface.name/]
+[if (aInterface.extendsElements->notEmpty())]
+        [getKeyword('extends')/] [genInterfaceExtendsElement(aInterface)/]
+[/if]
+
+[for (aMethod : Method | aInterface.methods)]
+        [genMethodElements(aMethod, false)/]
+[/for]
+[getKeyword('endinterface')/]
+[/template]
+
+[template public genClassExtendsElement(aClass : ClassElement)]
+[for (_extends : TypeReference | aClass.extendsElements) separator (', ')] [_extends.name/][/for]
+[/template]
+
+
+[template public genClassImplementsElement(aClass : ClassElement)]
+[for (_implements : TypeReference | aClass.implementsElements) separator (', ')][_implements.name/][/for]
+[/template]
+
+[template public genInterfaceExtendsElement(aInterface : InterfaceElement)]
+[for (_extends : TypeReference | aInterface.extendsElements) separator (', ')] [_extends.name/][/for]
+[/template]
+
+[template public genMemberElement(aMember : ClassMember)]
+[getKeyword('var')/] [if (not aMember.name.oclIsUndefined())][aMember.name/][elseif(not aMember.note.oclIsUndefined())][aMember.note/][/if] [genType(aMember.type)/]
+ [if ((not aMember.name.oclIsUndefined()) and aMember.name.trim().size()>0 and (not aMember.note.oclIsUndefined()) and aMember.note.trim().size()>0)]
+    [aMember.note/]
+ [/if]
+[/template]
+
+[template public genType(aType : TypeReference)]
+[if ((not aType.oclIsUndefined()) and (not aType.name.oclIsUndefined()) and aType.name.trim().size()>0)] [aType.name/][/if]
+[/template]

@@ -1,0 +1,45 @@
+[comment encoding = UTF-8 /]
+[module structureUtil('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+
+[query public extensions(class:Class) : String = 
+class.inheritances().concat(class.implementedInterfaces()) 
+/]
+
+
+[query public inheritances(class:Class) : String = 
+if(class.superClass->notEmpty())then
+' extends '.concat(class.superClass->asSequence()->first().name)
+else
+' '
+endif 
+/]
+
+[query public implementedInterfaces(class:Class) : String = 
+if( class.interfaceRealization->notEmpty())then
+' implements '.concat(class.interfaceRealization.target->filter(Interface).name->sep(', ')->toString())
+else
+' '
+endif 
+/]
+
+[template public generateFinderParamArray(aFinderOperation : Operation) post (trim())]
+new Object['['/][']'/]{[aFinderOperation.ownedParameter.name->sep(', ')/]}
+[/template]
+
+[template public generateQLSampleTemplate(aParameter : Parameter, prefix : String) post (trim())]
+[prefix/].aParameter = ?
+[/template]
+
+[template public generateFinderQLSample(aFinderOperation : Operation)]
+from [aFinderOperation.owner.oclAsType(Class).name/] [aFinderOperation.owner.oclAsType(Class).name.toLowerFirst()/] where [aFinderOperation.ownedParameter.generateQLSampleTemplate(aFinderOperation.owner.oclAsType(Class).name.toLowerFirst())->sep(' and ')/]
+[/template]
+
+
+[query public getFinderMethodeName(aFinderOperation : Operation) : String = 
+if(aFinderOperation.name.toLowerFirst().startsWith('find')) then
+aFinderOperation.name.toLowerFirst()
+else
+'find'.concat(aFinderOperation.name.toUpperFirst())
+endif 
+/]

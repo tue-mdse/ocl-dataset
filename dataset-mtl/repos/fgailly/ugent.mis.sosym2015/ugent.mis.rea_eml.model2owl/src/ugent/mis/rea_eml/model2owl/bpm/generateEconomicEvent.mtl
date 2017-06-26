@@ -1,0 +1,39 @@
+[comment encoding = UTF-8 /]
+[module generateEconomicEvent('http://www.mis.ugent.be/rea_eml')]
+[template public generateElement(anEconomicEvent : REA_EML_BPM::EconomicEvent, aBusinessProcessModel : BusinessProcessModel)]
+
+[if (anEconomicEvent.oclIsTypeOf(IncrementEconomicEvent))]
+<owl:NamedIndividual rdf:about="&[aBusinessProcessModel.ontologyNS/];[anEconomicEvent.name/]">
+	<rdf:type rdf:resource="&REA-EMO;IncrementEconomicEvent"/>
+[if (anEconomicEvent.type = REA_EML_BPM::EconomicEventType::transfer)]
+	<rdf:type rdf:resource="&REA-EMO;Transfer"/>
+[/if]
+[if (anEconomicEvent.type = REA_EML_BPM::EconomicEventType::transformation)]
+	<rdf:type rdf:resource="&REA-EMO;Transformation"/>
+[/if]
+	<REA-EMO:view_OrganisationalUnit rdf:resource="&[aBusinessProcessModel.ontologyNS/];[aBusinessProcessModel.organisationalUnit/]"/>
+[for (aDuality : REA_EML_BPM::duality | aBusinessProcessModel.dualities)]
+	[if (aDuality.incrementEconomicEvent = anEconomicEvent)]
+	<REA-EMO:duality_DecrementEconomicEvent rdf:resource="&[aBusinessProcessModel.ontologyNS/];[aDuality.decrementEconomicEvent.name/]"/>
+	[/if]
+[/for]
+</owl:NamedIndividual>
+[/if]
+[if (anEconomicEvent.oclIsTypeOf(DecrementEconomicEvent))]
+<owl:NamedIndividual rdf:about="&[aBusinessProcessModel.ontologyNS/];[anEconomicEvent.name/]">
+[if (anEconomicEvent.type = REA_EML_BPM::EconomicEventType::transfer)]
+	<rdf:type rdf:resource="&REA-EMO;Transfer"/>
+[/if]
+[if (anEconomicEvent.type = REA_EML_BPM::EconomicEventType::transformation)]
+	<rdf:type rdf:resource="&REA-EMO;Transformation"/>
+[/if]
+	<rdf:type rdf:resource="&REA-EMO;DecrementEconomicEvent"/>
+	<REA-EMO:view_OrganisationalUnit rdf:resource="&[aBusinessProcessModel.ontologyNS/];[aBusinessProcessModel.organisationalUnit/]"/>
+[for (aDuality : REA_EML_BPM::duality | aBusinessProcessModel.dualities)]
+	[if (aDuality.decrementEconomicEvent = anEconomicEvent)]
+	<REA-EMO:duality_IncrementEconomicEvent rdf:resource="&[aBusinessProcessModel.ontologyNS/];[aDuality.incrementEconomicEvent.name/]"/>
+	[/if]
+[/for]
+</owl:NamedIndividual>
+[/if]
+[/template]

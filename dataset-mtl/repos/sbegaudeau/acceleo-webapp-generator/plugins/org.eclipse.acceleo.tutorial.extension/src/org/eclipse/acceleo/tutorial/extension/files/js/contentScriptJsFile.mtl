@@ -1,0 +1,43 @@
+[comment encoding = Cp1252 /]
+[module contentScriptJsFile('http://www.eclipse.org/acceleo/tutorial/webapp')/]
+
+[import org::eclipse::acceleo::tutorial::webapp::common::fileUtils /]
+
+[template private contentScriptJsFile(anApplication : Application)]
+[anApplication.genJsDirectoryPath()/]/contentScript.js
+[/template]
+
+[template public genContentScriptJsFile(anApplication : Application)]
+[file (anApplication.contentScriptJsFile(), false, 'UTF-8')]
+[anApplication.genJsCopyrightHeader()/]
+
+debugger;
+var [anApplication.genTypeName()/] = [anApplication.genTypeName()/] || {};
+
+String.prototype.endsWith = function(suffix) {
+    return this.indexOf(suffix, this.length - suffix.length) !== -1;
+};
+
+chrome.extension.onRequest.addListener(function(request, sender, sendResponse) {
+	[for (aCollection : Collection | anApplication.collections)]
+	[anApplication.genTypeName()/].[aCollection.genVarName()/] = new [anApplication.genTypeName()/].[aCollection.genTypeName()/]();
+	[/for]
+
+	[for (aCollection : Collection | anApplication.collections)]
+	[anApplication.genTypeName()/].[aCollection.genVarName()/].fetch();
+	[/for]
+	
+	console.log(sender.tab ? "from a content script:" + sender.tab.url : "from the extension");
+	[for (aCollection : Collection | anApplication.collections)]
+	[if (i=1)]if[else]else if[/if] (request.greeting === "[aCollection.genVarName()/]") {
+		sendResponse({
+			"[aCollection.genVarName()/]": _.toArray([anApplication.genTypeName()/].[aCollection.genVarName()/])
+		});
+	}
+	[/for]
+	else {
+		sendResponse({}); // snub them.
+	}
+});
+	[/file]
+[/template]

@@ -1,0 +1,83 @@
+[comment encoding = UTF-8 /]
+[module form(
+	'http://cs.manchester.ac.uk/mdsd/ObjectRelationalMapping',
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::orm::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::files/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::names/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::expression::javascript/]
+
+
+[template public javascriptForm(model : WafModel)]
+[file(model.webDirectory().concat('/').concat(model.javascriptFormFilename()), false)]
+$( function() {
+[for (entity : EntityOrView | model.persistence.entitiesAndViews->select(e | e.inputJQueryFeatures(model)->notEmpty())->sortedBy(e | e.name))]
+    [entity.javascript(model)/]
+
+[/for]
+} );
+[/file]
+[/template]
+
+[template private javascript(entityOrView : EntityOrView, model : WafModel) post(trim())]
+[for (feature : Feature | entityOrView.inputJQueryFeatures(model)->sortedBy(f | f.name))]
+[feature.javascript()/]
+[/for]
+[/template]
+
+[query private id(feature : Feature) : String
+	= 'app_'.concat(feature.partOf.name.asId()).concat('_').concat(feature.modelPropertyName())
+/]
+
+[template private javascript(feature : Feature)
+	? ((feature.isDataType() and not feature.isBooleanDataType() and not feature.isEnumerationType())) post(trim())]
+[let dataType : Classifier = feature.dataType()]
+[if (dataType.name = 'Integer')]
+$("#[feature.id()/]").spinner();
+[/if]
+[/let]
+[/template]
+
+[template private javascript(feature : Feature)
+	? (feature.isBooleanDataType()) post(trim())]
+$("#[feature.id()/]").checkboxradio();
+[/template]
+
+[template private javascript(feature : Feature)
+	? (feature.isEnumerationType()) post(trim())]
+$("#[feature.id()/]").selectmenu();
+[/template]
+
+[template private javascript(feature : Feature)
+	? (feature.isDate()) post(trim())]
+[if (feature.dateDetails() <> DateDetails::TimeOnly)]
+$("#[feature.id()/][if (feature.dateDetails() = DateDetails::DateAndTime)]_date[/if]").datepicker({
+    dateFormat: $.datepicker.ISO_8601
+});
+[/if]
+[if (feature.dateDetails() <> DateDetails::DateOnly)]
+$("#[feature.id()/][if (feature.dateDetails() = DateDetails::DateAndTime)]_time[/if]").wickedpicker([if (feature.dateDetails() = DateDetails::TimeOnly or feature.hasDefaultValue())]{
+[if (feature.hasDefaultValue())]
+    now: [feature.defaultValue().controllerExpression()/],
+[/if]
+[if (feature.dateDetails() = DateDetails::TimeOnly)]
+    twentyFour: true,
+[/if]
+}[/if]);
+[/if]
+[/template]
+
+[template private javascript(feature : Feature)
+	? (feature.oclIsKindOf(Association) and feature.isSingleton()) post(trim())]
+if ($("#[feature.id()/] option").length < 15) {
+	$("#[feature.id()/]").selectmenu();
+} else {
+    $("#[feature.id()/]").select2();
+}
+[/template]
+
+[template private javascript(feature : Feature)
+	? (feature.oclIsKindOf(Association) and not feature.isSingleton()) post(trim())]
+$("#[feature.id()/]").select2();
+[/template]

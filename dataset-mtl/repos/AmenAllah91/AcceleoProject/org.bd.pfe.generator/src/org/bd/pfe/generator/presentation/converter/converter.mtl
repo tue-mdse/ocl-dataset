@@ -1,0 +1,87 @@
+[comment encoding = UTF-8 /]
+[module converter('http://www.businessdecision.fr/Generator')/]
+[import org::bd::pfe::generator::persistance::packagePath /]
+[template public generateConverter(converter : PersistanceObject){packageName : String = converter.eContainer(Application)._package;}]
+
+
+[file(converter.eContainer(Application).name.concat('-web/src/main/java/').concat(packageName.convertPackageToPath().concat('/converters/')).concat(converter.name.toUpperFirst()).concat('Converter.java'),false,'UTF-8')]
+
+package [packageName.concat('.converters')/];
+
+import javax.faces.bean.*;
+import javax.faces.component.UIComponent;
+import javax.faces.context.FacesContext;
+import javax.faces.convert.Converter;
+
+import  [packageName.concat('.exception')/].BDException;
+import  [converter.eContainer(PersistanceModel).eContainer(Application)._package.concat('.persistance.').concat(converter.name.toUpperFirst())/];
+import  [converter.eContainer(PersistanceModel).eContainer(Application)._package.concat('.service.').concat(converter.name.toUpperFirst()).concat('Service')/];
+
+import java.util.logging.*;
+
+@ManagedBean
+@RequestScoped
+public class  [converter.name.concat('Converter')/] implements Converter {
+	
+	@ManagedProperty("#{[converter.name.toLowerFirst().concat('ServiceImplement')/]}")
+        [converter.name.toUpperFirst().concat('Service')/] [converter.name.toLowerFirst().concat('Service')/] ;
+
+
+	 
+
+	public Object getAsObject(final FacesContext context, final UIComponent component,
+			final String value) {
+          [converter.name.toUpperFirst()/] admin = new [converter.name.toUpperFirst()/]();             
+	               
+		if (value == null || value.length() == 0 )
+		{
+			return null;
+		}
+        else {
+        try {
+         
+		admin =  this.[converter.name.toLowerFirst().concat('Service')/].find[converter.name.toUpperFirst()/]ById(getKey(value));
+		return admin;
+		} catch (BDException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+            return admin;
+		}
+	}
+
+	Long getKey(final String value)
+	{
+		Long key;
+		key = Long.valueOf(value);
+		return key;
+	}
+
+	String getStringKey(final Long value)
+	{
+		final StringBuilder sb = new StringBuilder();
+		sb.append(value);
+		return sb.toString();
+	}
+	public String getAsString(final FacesContext facesContext, final UIComponent component, final Object object) {
+		if (object == null || (object instanceof String && ((String) object).length() == 0))
+		{
+			return null;
+		}
+		if (object instanceof [converter.name.toUpperFirst()/])
+		{
+			final [converter.name.toUpperFirst()/] [converter.name.toLowerFirst()/] = ([converter.name.toUpperFirst()/]) object;
+			return getStringKey([converter.name.toLowerFirst()/].getId());
+		}
+		else
+		{
+			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "object {0} is of type {1}; expected type: {2}",
+					new Object['[]'/]
+					{ object, object.getClass().getName(),[converter.name.toUpperFirst()/].class.getName() });
+			return null;
+		}
+	 
+}
+}
+[/file]
+[/template]

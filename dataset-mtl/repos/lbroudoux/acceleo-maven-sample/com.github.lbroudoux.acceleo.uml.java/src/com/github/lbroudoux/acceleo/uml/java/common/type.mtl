@@ -1,0 +1,98 @@
+[comment encoding = UTF-8 /]
+[module type('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import com::github::lbroudoux::acceleo::uml::java::common::common /]
+[import com::github::lbroudoux::acceleo::uml::java::common::properties /]
+
+
+[template public genReturn(anOperation : Operation) post(trim())]
+[if (anOperation.ownedParameter->select(param : Parameter | param.direction = ParameterDirectionKind::return)-> size() > 0)]
+[anOperation.ownedParameter->select(param : Parameter | param.direction = ParameterDirectionKind::return)->first().genType()/]
+[else]
+void
+[/if]
+[/template]
+
+[template public genType(aProperty : Property) post(trim())]
+[if (aProperty.upper = 1)]
+[aProperty.genTypeName()/]
+[elseif (aProperty.isArray())]
+[aProperty.genTypeName()/]['['/][']'/] 
+[else]
+[aProperty.genCollectionType()/]<[aProperty.genTypeName()/]>
+[/if]
+[/template]
+
+[template public genType(aParameter : Parameter) post(trim())]
+[if (aParameter.upper = 1)]
+    [aParameter.genTypeName()/]
+[elseif (aParameter.isArray())]
+    [aParameter.genTypeName()/]['['/][']'/]
+[else]
+    [aParameter.genCollectionType()/]<[aParameter.genTypeName()/]>
+[/if]
+[/template]
+
+[template protected genTypeName(aTypedElement : TypedElement) post(trim())]
+[if (aTypedElement.type = null)]
+Object
+[elseif (not getProperty('java.typeconversion.' + aTypedElement.type.name).oclIsUndefined() and (getProperty('java.typeconversion.' + aTypedElement.type.name).size() > 0))]
+[getProperty('java.typeconversion.' + aTypedElement.type.name).tokenize('.')->last()/]
+[elseif (type.name = 'UnlimitedNatural')]
+Integer
+[else]
+[aTypedElement.type.genName().tokenize('.')->last()/]
+[/if]
+[/template]
+
+[template public genInitValue(aProperty : Property)]
+[if ((aProperty.upper <> 1 and not aProperty.isArray()))]
+ = new [aProperty.genCollectionImplType()/]<[aProperty.genTypeName()/]>()[/if]
+[/template]
+
+[template protected genCollectionType(aMultiplicityElement : MultiplicityElement) post(trim())]
+[if (not aMultiplicityElement.isOrdered.oclIsUndefined() and aMultiplicityElement.isOrdered)]
+    [if (aMultiplicityElement.isUnique)]
+        [aMultiplicityElement.getOrderedUniqueCollectionClass()/]
+    [else]
+        [aMultiplicityElement.getOrderedNotUniqueCollectionClass()/]
+    [/if]
+[else]
+    [if (aMultiplicityElement.isUnique)]
+        [aMultiplicityElement.getNotOrderedUniqueCollectionClass()/]
+    [else]
+        [aMultiplicityElement.getNotOrderedNotUniqueCollectionClass()/]
+    [/if]
+[/if]
+[/template]
+
+[template protected genCollectionImplType(aMultiplicityElement : MultiplicityElement) post(trim())]
+[if (not aMultiplicityElement.isOrdered.oclIsUndefined() and aMultiplicityElement.isOrdered)]
+    [if (aMultiplicityElement.isUnique)]
+        [aMultiplicityElement.getOrderedUniqueCollectionImplClass()/]
+    [else]
+        [aMultiplicityElement.getOrderedNotUniqueCollectionImplClass()/]
+    [/if]
+[else]
+    [if (aMultiplicityElement.isUnique)]
+        [aMultiplicityElement.getNotOrderedUniqueCollectionImplClass()/]
+    [else]
+        [aMultiplicityElement.getNotOrderedNotUniqueCollectionImplClass()/]
+    [/if]
+[/if]
+[/template]
+
+[query protected isJavaPrimitive(aType : Type) : Boolean = 
+   aType.name.equalsIgnoreCase('int')
+   or aType.name.equalsIgnoreCase('Integer')
+   or aType.name.equalsIgnoreCase('float')
+   or aType.name.equalsIgnoreCase('boolean')
+   or aType.name.equalsIgnoreCase('byte')
+   or aType.name.equalsIgnoreCase('long')
+   or aType.name.equalsIgnoreCase('short')
+   or aType.name.equalsIgnoreCase('char')
+   or aType.name.equalsIgnoreCase('Character')
+   or aType.name.equalsIgnoreCase('void')
+   or aType.name.equalsIgnoreCase('String')
+   or aType.name.equalsIgnoreCase('double')
+ /]

@@ -1,0 +1,216 @@
+[comment encoding = UTF-8 /]
+[module javaResourceAccessConditionFile('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthorizationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+
+[template public javaResourceAccessConditionFile(anAnnotationStack : AnnotationStack)]
+
+[file (anAnnotationStack.hasCorePSM.name  + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/utilities/authorization/core/ResourceAccessCondition.java', false, 'UTF-8')]
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.persistence.AttributeOverride;
+import javax.persistence.AttributeOverrides;
+import javax.persistence.Column;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.Table;
+import javax.persistence.Transient;
+
+import org.hibernate.annotations.ForeignKey;
+
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.attr.AttributeValue;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.OperatorEnum;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.operators.EvaluationResult;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.operators.Operator;
+
+@Entity
+@Table(name="abaccondition")
+public class ResourceAccessCondition {
+
+	@Id
+	@GeneratedValue
+	@Column(name = "conditionId")
+	private int conditionId;
+	
+	@Enumerated(EnumType.STRING)
+	private OperatorEnum operatorId;
+	
+	@Transient
+	private Operator operator;
+	
+	@AttributeOverrides({
+		  @AttributeOverride(name="attributeCategory", column= @Column(name="leftttributeCategory",nullable = false)),
+		  @AttributeOverride(name="resourceType", column= @Column(name="leftResourceType",nullable = false)),
+		  @AttributeOverride(name="propertyName", column= @Column(name="leftPropertyName"))
+	  })
+	@Embedded
+	private ResourceAccessAttribute leftAttribute;
+	
+	@AttributeOverrides({
+		  @AttributeOverride(name="attributeCategory", column= @Column(name="rightttributeCategory",nullable = false)),
+		  @AttributeOverride(name="resourceType", column= @Column(name="rightResourceType",nullable = false)),
+		  @AttributeOverride(name="propertyName", column= @Column(name="rightPropertyName"))
+	  })
+	@Embedded
+	private ResourceAccessAttribute rightAttribute;
+	
+	@ManyToOne(fetch = FetchType.EAGER)
+	@JoinColumn(name="parentpolicyId")
+	@ForeignKey(name = "fk_condition_policy")
+	private ResourceAccessPolicy resourceAccessPolicy;
+	
+	@ManyToOne(fetch = FetchType.EAGER)
+	@JoinColumn(name="parentruleId")
+	@ForeignKey(name = "fk_condition_rule")
+	private ResourceAccessRule resourceAccessRule;
+	
+	public ResourceAccessCondition(){
+		
+	}
+	
+	public ResourceAccessCondition(OperatorEnum operatorId, ResourceAccessRule resourceAccessRule,ResourceAccessAttribute leftAttribute , ResourceAccessAttribute rightAttribute){
+		this(operatorId, resourceAccessRule, null, leftAttribute, rightAttribute);
+	}
+	
+	public ResourceAccessCondition(OperatorEnum operatorId, ResourceAccessPolicy resourceAccessPolicy,ResourceAccessAttribute leftAttribute , ResourceAccessAttribute rightAttribute){
+		this(operatorId, null, resourceAccessPolicy, leftAttribute, rightAttribute);
+	}
+	
+	private ResourceAccessCondition(OperatorEnum operatorId, ResourceAccessRule resourceAccessRule, ResourceAccessPolicy resourceAccessPolicy,
+									ResourceAccessAttribute leftAttribute , ResourceAccessAttribute rightAttribute){		
+	
+		this.setOperatorId(operatorId);
+		this.setResourceAccessRule(resourceAccessRule);
+		this.setResourceAccessPolicy(resourceAccessPolicy);
+		this.leftAttribute = leftAttribute;
+		this.rightAttribute = rightAttribute;
+	}
+
+	
+	public EvaluationResult evaluate(AbstractEvaluationContext evaluationContext) {
+		//System.out.println("Evaluating Condition : " + this.getConditionId());
+		if (leftAttribute == null || rightAttribute == null || operatorId == null){
+			return new EvaluationResult("Syntax error, arguments are missing from the condition.");
+		}
+		List<AttributeValue> inputs = new ArrayList<AttributeValue>();
+		EvaluationResult result = getLeftAttribute().resolve(evaluationContext);
+		if(result.getAttributeValue() == null){
+			return new EvaluationResult(result.getErrorStatus());
+		}
+		inputs.add(result.getAttributeValue());
+		result = getRightAttribute().resolve(evaluationContext);
+		if(result.getAttributeValue() == null){
+			return new EvaluationResult(result.getErrorStatus());
+		}
+		inputs.add(result.getAttributeValue());
+		result = this.getOperator().evaluate(inputs);
+
+		return result;
+	}
+
+	/**
+	 * @return the operator
+	 */
+	public Operator getOperator() {
+		if(operator == null) {
+			operator = Operator.getInstance(getOperatorId());
+		}
+		return operator;
+	}
+
+	/**
+	 * @return the operatorId
+	 */
+	public OperatorEnum getOperatorId() {
+		return operatorId;
+	}
+
+	/**
+	 * @param operatorId the operatorId to set
+	 */
+	public void setOperatorId(OperatorEnum operatorId) {
+		this.operatorId = operatorId;
+	}
+
+	/**
+	 * @return the leftAttribute
+	 */
+	public ResourceAccessAttribute getLeftAttribute() {
+		return leftAttribute;
+	}
+
+	/**
+	 * @param leftAttribute the leftAttribute to set
+	 */
+	public void setLeftAttribute(ResourceAccessAttribute leftAttribute) {
+		this.leftAttribute = leftAttribute;
+	}
+
+	/**
+	 * @return the rightAttribute
+	 */
+	public ResourceAccessAttribute getRightAttribute() {
+		return rightAttribute;
+	}
+
+	/**
+	 * @param rightAttribute the rightAttribute to set
+	 */
+	public void setRightAttribute(ResourceAccessAttribute rightAttribute) {
+		this.rightAttribute = rightAttribute;
+	}
+
+	/**
+	 * @return the resourceAccessPolicy
+	 */
+	public ResourceAccessPolicy getResourceAccessPolicy() {
+		return resourceAccessPolicy;
+	}
+
+	/**
+	 * @param resourceAccessPolicy the resourceAccessPolicy to set
+	 */
+	public void setResourceAccessPolicy(ResourceAccessPolicy resourceAccessPolicy) {
+		this.resourceAccessPolicy = resourceAccessPolicy;
+	}
+
+	/**
+	 * @return the resourceAccessRule
+	 */
+	public ResourceAccessRule getResourceAccessRule() {
+		return resourceAccessRule;
+	}
+
+	/**
+	 * @param resourceAccessRule the resourceAccessRule to set
+	 */
+	public void setResourceAccessRule(ResourceAccessRule resourceAccessRule) {
+		this.resourceAccessRule = resourceAccessRule;
+	}
+
+	/**
+	 * @return the conditionId
+	 */
+	public int getConditionId() {
+		return conditionId;
+	}
+
+	/**
+	 * @param conditionId the conditionId to set
+	 */
+	public void setConditionId(int conditionId) {
+		this.conditionId = conditionId;
+	}
+	
+}
+[/file]
+[/template]

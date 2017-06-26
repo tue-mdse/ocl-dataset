@@ -1,0 +1,554 @@
+[comment encoding = UTF-8 /]
+[module jpa('http://www.businessdecision.fr/Generator')]
+[import org::bd::pfe::generator::persistance::typeAttributes /]
+[import org::bd::pfe::generator::persistance::packagePath /]
+[import org::bd::pfe::generator::persistance::heritageAtt /]
+[template public generateEntity(persistance :PersistanceObject){packageName : String = persistance.eContainer(Application)._package;}]
+
+[file(persistance.eContainer(Application).name.concat('-domaine/src/main/java/').concat(packageName.convertPackageToPath() .concat('/persistance/')).concat(persistance.name.toUpperFirst()).concat('.java'),false,'UTF-8')]
+package [packageName.concat('.persistance')/];
+
+
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
+
+
+import javax.persistence.*;
+
+[if (persistance.isAuthentification)]
+import java.util.ArrayList;
+import java.util.Collection;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+[/if]
+
+[for (att : Attributes | persistance.attributes)]
+	[if (type.toString().equalsIgnoreCase('Date')) ]
+import java.util.Date;
+
+[/if]
+[/for]
+/**
+ * The Class [persistance.name.toUpperFirst()/].
+ *
+ * @author Business & Decision
+ *
+ */
+
+@Entity
+
+[comment][if (persistance.table)]
+@Table(name = "(t_[persistance.name.toString()/]")
+[/if][/comment]
+[for (persistance : PersistanceObject| persistance.superType)]
+[if (persistance.superType.name.equalsIgnoreCase(persistance.name))]
+	@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)	
+[/if]
+		
+[/for]
+
+[if ((persistance.superType <> null))]
+	public class [persistance.name.toUpperFirst()/] extends  [superType.name.toUpperFirst()/] implements Serializable {
+
+
+[elseif(persistance.isAuthentification)]
+
+
+public class [persistance.name.toUpperFirst()/] implements Serializable , UserDetails {
+
+[else]
+public class [persistance.name.toUpperFirst()/] implements Serializable {
+	
+
+[/if]
+/** The Constant serialVersionUID. */
+private static final long serialVersionUID = 1L;
+
+
+/**
+	 * Instantiates a new [persistance.name.toLowerFirst()/].
+**/
+[comment] Generate constructor [/comment]
+public [persistance.name.toUpperFirst()/]() {
+		super();
+	}   
+
+[comment] Generate the attributes [/comment]
+[for (att : Attributes | persistance.attributes)]
+
+private [type.toString().convertToAttributes()/] [name.toLowerFirst()/];
+
+[/for]
+[if (persistance.isAuthentification)]
+
+    private String pwd;
+	private String login;
+    private Boolean firstLogin;
+	private Boolean acountActivated;
+	private Boolean acountBloqued;
+    private Role role;
+	private List<Permission> permissions;
+	
+[/if]
+[for (assicationCalss : AssociationClass | persistance.eContainer(PersistanceModel).associationClass)]
+
+	[for (association : Association | persistance.eContainer(PersistanceModel).associations)]
+[if (assicationCalss.assoctiation.name.equalsIgnoreCase(association.name))]
+
+	[if (assicationCalss.assoctiation.source.name.equalsIgnoreCase(persistance.name) or assicationCalss.assoctiation.target.name.equalsIgnoreCase(persistance.name)) ]
+		private List<[assicationCalss.name.toUpperFirst()/]> [assicationCalss.name.toLowerFirst()/]s;
+	[/if]
+
+
+	[elseif (source.name.equalsIgnoreCase(current(PersistanceObject).name))]
+		[if (cardinalityTarget.toString().equalsIgnoreCase('One'))]
+		private [target.name.toUpperFirst()/]  [target.name.toLowerFirst()/];
+			[else]
+	
+	private List<[target.name.toUpperFirst()/]>  [target.name.toLowerFirst()/]s;
+	
+		[/if]
+[elseif (target.name.equalsIgnoreCase(current(PersistanceObject).name))]
+	[if (associationType.toString().equalsIgnoreCase('bidirectional'))]
+		[if (cardinalitySource.toString().equalsIgnoreCase('One'))]
+	private [source.name.toUpperFirst()/]  [source.name.toLowerFirst()/];
+			[else]
+	
+	private List<[source.name.toUpperFirst()/]>  [source.name.toLowerFirst()/]s;
+	[/if]
+	[/if]
+[/if]
+
+[/for]
+[/for]
+
+[comment **************************** /]
+
+
+
+[comment] Generate getter and setter [/comment]
+[for (att : Attributes | attributes)]
+/**
+	 * Sets the [name.toLowerFirst()/].
+	 *
+	 * @param [name.toLowerFirst()/]
+	 *            the new [name.toLowerFirst()/]
+	 */
+public void set[name.toUpperFirst()/]([type.toString().convertToAttributes()/] [name.toLowerFirst()/]){
+    this.[name.toLowerFirst()/]= [name.toLowerFirst()/] ;
+   }
+[if (att.id)]
+/**
+	 * Gets the  [name.toLowerFirst()/].
+	 *
+	 * @return the  [name.toLowerFirst()/]
+	 */
+	@Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+public  [type.toString().convertToAttributes()/] get[name.toUpperFirst()/](){
+  return [att.name.toLowerFirst()/];
+}
+[elseif (att.unique)]
+/**
+	 * Gets the  [name.toLowerFirst()/].
+	 *
+	 * @return the  [name.toLowerFirst()/]
+	 */
+ @Column(unique=true) 
+public  [type.toString().convertToAttributes()/] get[name.toUpperFirst()/](){
+  return [att.name.toLowerFirst()/];
+}
+[else]
+/**
+	 * Gets the  [name.toLowerFirst()/].
+	 *
+	 * @return the  [name.toLowerFirst()/]
+	 */
+public  [type.toString().convertToAttributes()/] get[name.toUpperFirst()/](){
+  return [att.name.toLowerFirst()/];
+}
+[/if]
+[/for]
+[if (persistance.isAuthentification)]
+
+/**
+	 * Gets the  role.
+	 *
+	 * @return the  role
+	 */
+	@ManyToOne(cascade={ CascadeType.MERGE})
+    public Role getRole() {
+		return role;
+	}
+/**
+	 * Sets the role.
+	 *
+	 * @param role
+	 *            the new role
+	 */
+
+	public void setRole(Role role) {
+		this.role = role;
+	}
+
+
+ /**
+	 * Gets the  password.
+	 *
+	 * @return the  password
+	 */
+ public String getPwd() {
+		return pwd;
+	}
+/**
+	 * Sets the password.
+	 *
+	 * @param password
+	 *            the new password
+	 */
+	public void setPwd(String pwd) {
+		this.pwd = pwd;
+	}
+/**
+	 * Gets the  Login.
+	 *
+	 * @return the  login
+	 */
+	public String getLogin() {
+		return login;
+	}
+
+	public void setLogin(String login) {
+		this.login = login;
+	}
+/**
+	 * Gets the  first login.
+	 *
+	 * @return the  first login
+	 */
+   public Boolean getFirstLogin() {
+		return firstLogin;
+	}
+/**
+	 * Sets the first login.
+	 *
+	 * @param first login
+	 *            the new password
+	 */
+
+	public void setFirstLogin(Boolean firstLogin) {
+		this.firstLogin = firstLogin;
+	}
+
+/**
+	 * Gets the  acount activated.
+	 *
+	 * @return the  Acount activated
+	 */
+	public Boolean getAcountActivated() {
+		return acountActivated;
+	}
+/**
+	 * Sets the  acount activated.
+	 *
+	 * @param  acount activated
+	 *            the new  acount activated
+	 */
+
+	public void setAcountActivated(Boolean acountActivated) {
+		this.acountActivated = acountActivated;
+	}
+
+ /**
+	 * Gets the  Acount bloqued.
+	 *
+	 * @return the  Acount bloqued
+	 */
+	public Boolean getAcountBloqued() {
+		return  acountBloqued;
+	}
+
+/**
+	 * Sets the  acount bloqued.
+	 *
+	 * @param  acount bloqued
+	 *            the new  acount bloqued
+	 */
+	public void setAcountBloqued(Boolean acountBloqued) {
+		this.acountBloqued = acountBloqued;
+	}
+/**
+	 * Gets the  permissions.
+	 *
+	 * @return the  permissions
+	 */
+   @OneToMany(mappedBy="user" ,  fetch=FetchType.LAZY)
+	public List<Permission> getPermissions() {
+		return permissions;
+	}
+/**
+	 * Sets the permissions.
+	 *
+	 * @param permissions
+	 *            the new permissions
+	 */
+
+	public void setPermissions(List<Permission> permissions) {
+		this.permissions = permissions;
+	}
+
+ 
+[/if]
+[comment **************************** /]
+
+[comment] Generate Association[/comment]
+[for (assicationCalss : AssociationClass | persistance.eContainer(PersistanceModel).associationClass)]
+
+	[for (association : Association | persistance.eContainer(PersistanceModel).associations)]
+[if (assicationCalss.assoctiation=association)]
+
+	[if (assicationCalss.assoctiation.source=persistance or assicationCalss.assoctiation.target=persistance ) ]
+
+/**
+	 * Gets the  [assicationCalss.name.toLowerFirst()/].
+	 *
+	 * @return the  [assicationCalss.name.toLowerFirst()/]
+	 */
+
+@OneToMany(mappedBy="[target.name.toLowerFirst()/]")
+		public List<[assicationCalss.name.toUpperFirst()/]> get[assicationCalss.name.toUpperFirst()/]s(){
+return [assicationCalss.name.toLowerFirst()/]s;
+	}
+/**
+	 * Sets the [assicationCalss.name.toLowerFirst()/].
+	 *
+	 * @param [assicationCalss.name.toLowerFirst()/]
+	 *            the new [assicationCalss.name.toLowerFirst()/]
+	 */
+		public void set[assicationCalss.name.toUpperFirst()/]s(List<[assicationCalss.name.toUpperFirst()/]> [assicationCalss.name.toLowerFirst()/]s){
+this.[assicationCalss.name.toLowerFirst()/]s=[assicationCalss.name.toLowerFirst()/]s;
+	}
+	
+[/if]
+
+	[elseif (source.name.equalsIgnoreCase(current(PersistanceObject).name))]
+		[if (cardinalityTarget.toString().equalsIgnoreCase('One'))]
+[if (cardinalitySource.toString().equalsIgnoreCase('One'))]
+/**
+	 * Gets the  [target.name.toLowerFirst()/].
+	 *
+	 * @return the  [target.name.toLowerFirst()/]
+	 */
+	@OneToOne
+[else]
+/**
+	 * Gets the  [target.name.toLowerFirst()/].
+	 *
+	 * @return the  [target.name.toLowerFirst()/]
+	 */
+	@ManyToOne
+[/if]
+public [target.name.toUpperFirst()/]  get[target.name.toUpperFirst()/] (){
+return [target.name.toLowerFirst()/];
+	}
+/**
+	 * Sets the [target.name.toLowerFirst()/].
+	 *
+	 * @param [target.name.toLowerFirst()/]
+	 *            the new [name.toLowerFirst()/]
+	 */
+		public void set[target.name.toUpperFirst()/]([target.name.toUpperFirst()/] [target.name.toLowerFirst()/]){
+this.[target.name.toLowerFirst()/]=[target.name.toLowerFirst()/];
+	}
+		
+			[else]
+[if (cardinalitySource.toString().equalsIgnoreCase('One'))]
+/**
+	 * Gets the  [target.name.toLowerFirst()/].
+	 *
+	 * @return the  [target.name.toLowerFirst()/]
+	 */
+
+	@OneToMany
+public List<[target.name.toUpperFirst()/]> get[target.name.toUpperFirst()/]s(){
+return [target.name.toLowerFirst()/]s;
+	}
+/**
+	 * Sets the [target.name.toLowerFirst()/].
+	 *
+	 * @param [target.name.toLowerFirst()/]
+	 *            the new [name.toLowerFirst()/]
+	 */
+public void set[target.name.toUpperFirst()/]s(List<[target.name.toUpperFirst()/]> [target.name.toLowerFirst()/]s){
+this.[target.name.toLowerFirst()/]s=[target.name.toLowerFirst()/]s;
+	}
+
+[else]
+/**
+	 * Gets the  [target.name.toLowerFirst()/].
+	 *
+	 * @return the  [target.name.toLowerFirst()/]
+	 */
+	@ManyToMany
+
+			public List<[target.name.toUpperFirst()/]> get[target.name.toUpperFirst()/]s(){
+return [target.name.toLowerFirst()/]s;
+	}
+/**
+	 * Sets the [target.name.toLowerFirst()/].
+	 *
+	 * @param [target.name.toLowerFirst()/]
+	 *            the new [name.toLowerFirst()/]
+	 */
+		public void set[target.name.toUpperFirst()/]s(List<[target.name.toUpperFirst()/]> [target.name.toLowerFirst()/]s){
+this.[target.name.toLowerFirst()/]s=[target.name.toLowerFirst()/]s;
+	}
+	[/if]
+		[/if]
+[elseif (target.name.equalsIgnoreCase(current(PersistanceObject).name))]
+	[if (associationType.toString().equalsIgnoreCase('bidirectional'))]
+		[if (cardinalitySource.toString().equalsIgnoreCase('One'))]
+            [if (cardinalityTarget.toString().equalsIgnoreCase('One'))]
+
+@OneToOne(mappedBy="[target.name.toLowerFirst()/]")
+[else]
+/**
+	 * Gets the  [source.name.toLowerFirst()/].
+	 *
+	 * @return the  [source.name.toLowerFirst()/]
+	 */
+@ManyToOne
+[/if]
+	public [source.name.toUpperFirst()/]  get[source.name.toUpperFirst()/] (){
+return [source.name.toLowerFirst()/];
+	}
+/**
+     * Sets the [source.name.toLowerFirst()/].
+	 *
+	 * @param [source.name.toLowerFirst()/]
+	 *            the new [name.toLowerFirst()/]
+	 */
+		public void set[source.name.toUpperFirst()/]([source.name.toUpperFirst()/] [source.name.toLowerFirst()/]){
+this.[source.name.toLowerFirst()/]=[source.name.toLowerFirst()/];
+	}
+			[else]
+	[if (cardinalityTarget.toString().equalsIgnoreCase('One'))]
+/**
+	 * Gets the  [source.name.toLowerFirst()/].
+	 *
+	 * @return the  [source.name.toLowerFirst()/]
+	 */
+
+@OneToMany(mappedBy="[target.name.toLowerFirst()/]")
+[else]
+	@ManyToMany(mappedBy="[target.name.toLowerFirst()/]s")
+[/if]
+	public List<[source.name.toUpperFirst()/]> get[source.name.toUpperFirst()/]s(){
+return [source.name.toLowerFirst()/]s;
+	}
+
+/**
+     * Sets the [source.name.toLowerFirst()/].
+	 *
+	 * @param [source.name.toLowerFirst()/]
+	 *            the new [name.toLowerFirst()/]
+	 */
+		public void set[source.name.toUpperFirst()/]s(List<[source.name.toUpperFirst()/]> [source.name.toLowerFirst()/]s){
+this.[source.name.toLowerFirst()/]s=[source.name.toLowerFirst()/]s;
+	}
+	[/if]
+	[/if]
+[/if]
+
+[/for]
+
+[/for]
+[comment] Generate AuthentificationClass[/comment]
+[if (persistance.isAuthentification)]
+/**
+   *
+   * This method  return the user permissions
+   *
+   */
+@Transient 
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+		Collection<GrantedAuthority> authorities = new ArrayList<GrantedAuthority>();
+		Role userRole = this.getRole();
+		if (userRole != null) {
+			SimpleGrantedAuthority authority = new SimpleGrantedAuthority(userRole.getRole());
+			authorities.add(authority);
+		}
+		return authorities;
+	}
+
+
+/**
+   *
+   * This method  return the user password.
+   *
+   */
+	@Transient 
+	public String getPassword() {
+		return pwd ;
+	}
+/**
+   *
+   * This method  return the login.
+   *
+   */
+
+	@Transient 
+	public String getUsername() {
+	return login ;
+	}
+
+/**
+   *
+   * This method used to check if the account is expired or not.
+   *
+   */
+	@Transient 
+	public boolean isAccountNonExpired() {
+		return true;
+	}
+/**
+   *
+   * This method used to check if the account is locked or not.
+   *
+   */
+   @Transient 
+	public boolean isAccountNonLocked() {
+	 return acountActivated ;
+	}
+/**
+   *
+   * This method used to check if the credential is expired or not.
+   *
+   */
+
+	@Transient 
+	public boolean isCredentialsNonExpired() {
+		return true;
+	}
+/**
+   *
+   * This method used to check if the account is activated  or not.
+   *
+   */
+
+	@Transient 
+	public boolean isEnabled() {
+	 return acountActivated ;
+	}
+
+[/if]
+         //[protected (' : you can write your own code')]
+			
+		//[/protected]
+ } 
+[/file]
+[/template]
+

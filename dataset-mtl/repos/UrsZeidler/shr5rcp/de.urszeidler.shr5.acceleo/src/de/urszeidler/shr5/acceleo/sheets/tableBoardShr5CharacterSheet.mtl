@@ -1,0 +1,274 @@
+[comment encoding = UTF-8 /]
+[module tableBoardShr5CharacterSheet('http://urszeidler.de/shr5/1.0', 'http://urszeidler.de/shr5mngt/1.0', 'http://www.eclipse.org/emf/2002/Ecore')/]
+
+[import de::urszeidler::shr5::acceleo::common::ShadowrunTools  /]
+[import de::urszeidler::shr5::acceleo::common::ShadowrunManagmentTools  /]
+[import de::urszeidler::shr5::acceleo::common::ShadowrunSheetTools  /]
+[import de::urszeidler::shr5::acceleo::common::ShadowrunBBSheetTools  /]
+[import de::urszeidler::shr5::acceleo::common::shr5EEnumhelper  /]
+[import de::urszeidler::shr5::acceleo::common::shr5ManagementEEnumhelper  /]
+[import de::urszeidler::shr5::acceleo::util::shadowrunTextTools  /]
+
+
+[template public tableBoardShr5CharacterSheet(aManagedCharacter : ManagedCharacter)]
+	
+[comment @main /]
+[file ('table-'+aManagedCharacter.persona.name+'-BB.txt', false, 'UTF-8')]
+[printBoardCharacterReport(aManagedCharacter)/]
+[/file]
+	
+[/template]
+
+[template public printBoardCharacterReport (aManagedCharacter : ManagedCharacter) ]
+[printBasicCharacterData(aManagedCharacter)/]
+
+[printPersonaBasic(aManagedCharacter)/]
+
+[printSkillGroup(aManagedCharacter.persona.fertigkeitsGruppen)/]
+
+[printActiveSkills(aManagedCharacter.persona.fertigkeiten)/]
+
+[printKnowledgeSkills(aManagedCharacter.persona.fertigkeiten)/]
+
+[printConnections(aManagedCharacter.connections)/]
+
+[printGear(aManagedCharacter.inventar->asSequence())/]
+
+[printContracts(aManagedCharacter.contracts->asSequence())/]
+
+[if (aManagedCharacter.persona.oclIsKindOf(KoerperPersona))]
+[let kp : KoerperPersona = aManagedCharacter.persona.oclAsType(KoerperPersona)]
+[printQualities(kp.eigenschaften)/]
+
+[printAugmentations(kp.koerperMods)/]
+
+[/let]
+[/if]
+[printVehicles(aManagedCharacter.vehicels)/]
+
+[if (aManagedCharacter.persona.oclIsKindOf(Zauberer))]
+[let z : Zauberer = aManagedCharacter.persona.oclAsType(Zauberer)]
+[printSpells(z)/]
+
+[/let]
+[/if]
+[if (aManagedCharacter.persona.oclIsKindOf(KiAdept))]
+[printKiPowers( aManagedCharacter.persona.oclAsType(KiAdept).kikraft)/]
+
+[/if]
+[if (aManagedCharacter.persona.oclIsKindOf(Technomancer))]
+[printComplexForms( aManagedCharacter.persona.oclAsType(Technomancer).complexForms )/]
+
+[/if]
+[printAdvacements(aManagedCharacter.changes)/]
+[/template]
+
+
+[**
+ * Print the Advacements
+*/]
+[template public printAdvacements(gears : OrderedSet(Changes)) ? (not gears->isEmpty())]
+['_UI_ManagedCharacter_changes_feature'.localizedString().titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString().italicText(),'date'.italicText(),'Karma Cost'.localizedString().italicText()})/]
+[for (ag : Changes | gears)]
+[printRow(Sequence{ag.getText(),ag.date.getText(),ag.karmaCost.toString()})/]
+[/for]
+['table'.endTag()/]
+[/template]
+
+
+[template public printConnections(c : OrderedSet(Connection))? (not c->isEmpty())]
+['_UI_ManagedCharacter_connections_feature'.localizedString().titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString(),'inf'.localizedString(),'loy'.localizedString()})/]
+[for (connection : Connection | c)]
+[printRow(Sequence{connection.getText(),connection.influence.toString(), connection.loyality.toString()}) /]
+[/for]
+['table'.endTag()/]
+[/template]
+
+
+[template public printComplexForms (pcf : OrderedSet(PersonaKomplexForm)) ? (not pcf->isEmpty()) ]
+['_UI_Technomancer_complexForms_feature'.localizedString().titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString(),''.localizedString()})/]
+[for (it : PersonaKomplexForm | pcf)]
+[printRow(Sequence{it.form.getText(),''})/]
+[/for]
+['table'.endTag()/]
+[/template]
+
+[**
+ * Print the kipowers
+*/]
+[template public printKiPowers(gears : OrderedSet(KiKraft)) ? (not gears->isEmpty())]
+['_UI_KiAdept_kikraft_feature'.localizedString().titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString(),''.localizedString()})/]
+[for (ag : KiKraft | gears)]
+[printRow(Sequence{ag.getText(),''})/]
+[/for]
+['table'.endTag()/]
+[/template]
+
+
+[template public printSpells(z : Zauberer) ? (not z.zauber->isEmpty())]
+['_UI_Zauberer_zauber_feature'.localizedString().titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString(),''.localizedString()})/]
+[for (pz : PersonaZauber | z.zauber)]
+[printRow(Sequence{pz.formel.getText(), '' } )/]
+[/for]
+['table'.endTag()/]
+[/template]
+
+
+[template public printVehicles(sg : OrderedSet(Fahrzeug))? (not sg->isEmpty())]
+['_UI_ManagedCharacter_vehicels_feature'.localizedString().titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString(),'_UI_SpezielleAttribute_essenz_feature'.localizedString()})/]
+[for (pfg : Fahrzeug | sg)]
+[printRow(Sequence{pfg.getText(), pfg.wert+'' } )/]
+[/for]
+[printRow(Sequence{'sum'.localizedString(),'',calcListenWertToString(sg->asSequence())})/]
+['table'.endTag()/]
+[/template]
+
+
+[template public printAugmentations(gears : OrderedSet(Koerpermods)) ? (not gears->isEmpty())
+]
+['_UI_KoerperPersona_koerperMods_feature'.localizedString().titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString(),
+'_UI_SpezielleAttribute_essenz_feature'.localizedString(),'_UI_GeldWert_wert_feature'.localizedString()})/]
+[for (ag : Koerpermods | gears)]
+[printRow(Sequence{ag.getText(),(ag.getEssencesValue()/100)+'', ag.oclAsType(GeldWert).wert+'' } )/]
+[/for]
+[printRow(Sequence{'sum'.localizedString(),'',calcListenWertToString(gears->asSequence())})/]
+['table'.endTag()/]
+[/template]
+
+
+[**
+ * Print the qualities
+*/]
+[template public printQualities(gears : OrderedSet(PersonaEigenschaft)) ? (not gears->isEmpty())]
+['_UI_KoerperPersona_eigenschaften_feature'.localizedString().titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString(),'_UI_PersonaEigenschaft_karmaKosten_feature'.localizedString()})/]
+[for (ag : PersonaEigenschaft | gears)]
+[printRow(Sequence{ag.getText(),ag.karmaKosten+''} )/]
+[/for]
+[printRow(Sequence{'sum'.localizedString(),'',sumQuallitiyKarma(gears)+''})/]
+['table'.endTag()/]
+[/template]
+
+[template public printPersonaBasic (aManagedCharacter : ManagedCharacter)
+{persona : AbstraktPersona = aManagedCharacter.persona ; } ]
+['Attributes'.titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'Attribute'.localizedString(),'value'.localizedString()})/]
+[for (ea : EAttribute | getOrderedAttibutesForPersona(persona))]
+[let attributeName : String = getText(base2Calced(ea))]
+[printRow(Sequence{attributeName,persona.attributeValue(ea)+''} )/]
+[/let]
+[/for]
+[printRow(Sequence{'_UI_SpezielleAttribute_essenz_feature'.localizedString(), ((persona.essenz)/100).toString()})/]
+[printRow(Sequence{'_UI_SpezielleAttribute_initative_feature'.localizedString(), persona.toLocalizedInitative()})/]
+[if(persona.oclIsKindOf(AstraleProjektion))]
+[let ap : AstraleProjektion = persona.oclAsType(AstraleProjektion)]
+[printRow(Sequence{'_UI_AstraleProjektion_astraleInitative_feature'.localizedString(), ap.toLocalizedAstralInitative()})/]
+[/let][/if]
+[if (aManagedCharacter.hasMatrixInitative())]
+[printRow(Sequence{'Matrix Ini cold', aManagedCharacter.getMatrixInitative()+'+3d6'})/] 
+[printRow(Sequence{'Matrix Ini hot', aManagedCharacter.getMatrixInitative()+'4d6'})/]
+[/if]
+[printRow(Sequence{'Condition', persona.oclAsType(KoerperPersona).zustandKoerperlichMax+'/'+persona.oclAsType(KoerperPersona).zustandGeistigMax})/]
+[printRow(Sequence{'_UI_Panzerung_panzer_feature'.localizedString(), persona.oclAsType(KoerperPersona).panzer.toString()})/]
+[printRow(Sequence{'_UI_BerechneteAttribute_selbstbeherrschung_feature'.localizedString(), persona.oclAsType(KoerperPersona).selbstbeherrschung.toString()})/]
+[printRow(Sequence{'_UI_BerechneteAttribute_menschenkenntnis_feature'.localizedString(), persona.oclAsType(KoerperPersona).menschenkenntnis.toString()})/]
+[printRow(Sequence{'_UI_BerechneteAttribute_errinerungsvermoegen_feature'.localizedString(), (persona.oclAsType(KoerperPersona).errinerungsvermoegen).toString()})/]
+[printRow(Sequence{'Lifting/Carrying', persona.liftCarry()})/]
+[printRow(Sequence{'Movement', persona.movement()})/]
+[printRow(Sequence{'_UI_ChrakterLimits_koerperlich_feature'.localizedString(),
+persona.koerperlich.toString()} )/]
+[printRow(Sequence{'_UI_ChrakterLimits_geistig_feature'.localizedString(),
+persona.geistig.toString()})/]
+[printRow(Sequence{'_UI_ChrakterLimits_sozial_feature'.localizedString(),
+ persona.sozial.toString()})/]
+['table'.endTag()/]
+
+
+[/template]
+
+[template public printActiveSkills(sg : OrderedSet(PersonaFertigkeit)) ? (not sg->isEmpty())]
+['_UI_AbstractPersona_fertigkeiten_feature'.localizedString().titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString(),'_UI_PersonaFertigkeit_stufe_feature'.localizedString()})/]
+[for (pfg : PersonaFertigkeit | sg)]
+[if (not(pfg.fertigkeit.oclIsKindOf(Wissensfertigkeit) ))]
+[printRow(Sequence{pfg.fertigkeit.getText(), pfg.stufe.toString()})/]
+[/if]
+[/for]
+['table'.endTag()/]
+[/template]
+
+[template public printKnowledgeSkills(sg : OrderedSet(PersonaFertigkeit)) ? (not sg->isEmpty())]
+['_UI_Wissensfertigkeit_type'.titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString(),'_UI_PersonaFertigkeit_stufe_feature'.localizedString()})/]
+[for (pfg : PersonaFertigkeit | sg)]
+[if ((pfg.fertigkeit.oclIsKindOf(Wissensfertigkeit) ))]
+[printRow(Sequence{pfg.fertigkeit.getText(), pfg.stufe.toString()})/]
+[/if]
+[/for]
+['table'.endTag()/]
+[/template]
+
+[template public printSkillGroup(sg : OrderedSet(PersonaFertigkeitsGruppe)) ? (not sg->isEmpty())]
+['_UI_AbstractPersona_fertigkeitsGruppen_feature'.localizedString().titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString(),'_UI_PersonaFertigkeitsGruppe_stufe_feature'.localizedString()})/]
+[for (pfg : PersonaFertigkeitsGruppe | sg)]
+[printRow(Sequence{pfg.gruppe.getText(), pfg.stufe.toString()})/]
+[/for]
+['table'.endTag()/]
+[/template]
+
+[template public printGear(gears : Sequence(AbstraktGegenstand))? (not gears->isEmpty())]
+['_UI_ManagedCharacter_inventar_feature'.localizedString().titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString(),
+'_UI_GeldWert_verfuegbarkeit_feature'.localizedString(),
+'_UI_GeldWert_wert_feature'.localizedString()})/]
+[for (ag : AbstraktGegenstand | gears)]
+[printRow(Sequence{ag.getText(), ag.verfuegbarkeit,ag.wertValue.toString()})/]
+[/for]
+[printRow(Sequence{'sum'.localizedString(),'',calcListenWertToString(gears)})/]
+['table'.endTag()/]
+[/template]
+
+
+[template public printContracts(gears : Sequence(Vertrag))? (not gears->isEmpty())]
+['_UI_ManagedCharacter_contracts_feature'.localizedString().titelText()/]
+['table'.startTag()/]
+[printRow(Sequence{'_UI_Beschreibbar_name_feature'.localizedString(),'_UI_GeldWert_wert_feature'.localizedString()})/]
+[for (ag : Vertrag | gears)]
+[printRow(Sequence{ag.getText(), ag.wertValue.toString()})/]
+[/for]
+[printRow(Sequence{'sum'.localizedString(),calcListenWertToString(gears)})/]
+['table'.endTag()/]
+[/template]
+
+[template public printBasicCharacterData(aManagedCharacter : ManagedCharacter)]
+['Basic Data'.titelText()/]
+[let persona : AbstraktPersona = aManagedCharacter.persona]
+['_UI_Beschreibbar_name_feature'.localizedString()/] 		: [persona.name /]  ['_UI_ManagedCharacter_sex_feature'.localizedString()/] : [aManagedCharacter.sex.sexToName()/]
+['_UI_AbstractPersona_spezies_feature'.localizedString()/] 	: [persona.spezies.name/] Type : [getText(  persona.eClass())/]
+
+[if (not (persona.beschreibung.size()=0 ) )]
+[persona.beschreibung.tagText('quote')/]
+[/if]
+[/let]
+[/template]

@@ -1,0 +1,107 @@
+[comment encoding = UTF-8 /]
+[module generateAttributes('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries/]
+[import com::thales::momoko2::pim::uml2::gen::common::comments::attributeComments/]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries/]
+[import com::thales::momoko2::pim::uml2::gen::files::model::features::generateJPAAnnotations /]
+[import com::thales::momoko2::pim::uml2::gen::files::model::features::generateJAXBAnnotations/]
+[import com::thales::momoko2::pim::uml2::gen::common::textprocessing::textProcessing/]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::attributes::declarationAttributes/]
+[import com::thales::momoko2::pim::uml2::gen::request::associationClassQueries/]
+[import com::thales::momoko2::pim::uml2::gen::files::model::features::generateBeanValidationAnnotations/]
+[import com::thales::momoko2::pim::uml2::gen::common::comments::operationComments/]
+[ **
+ * This template generates the attributes of the features. 
+ * @param aClass
+*/]
+[template public generateAttributes(aClass : Class)]
+[for (aProperty : Property | aClass.attribute->asSequence()->sortedBy(name)) ? (aProperty.name.equalsIgnoreCase('')._not())]
+[generateAssociationAttribute(aClass, aProperty)/]
+[generateDatatypeAttributeDeclaration(aProperty)/]
+[generateFPAttributes(aClass, aProperty)/]
+[/for][generateAttributeForAssociationClass(aClass)/]
+[/template]
+
+
+[ **
+ * This template generates the attributes of the feature_part tables. 
+ * @param aClass
+*/]
+[template public generateFPAttributes(aClass : Class, aProperty : Property) ? (aProperty.isAssociationAttribute())post (generateTextProcessingBlock()) ]
+[if getDestinationClass(aProperty, aProperty.getAssociation()).isFeature_partClass()]
+[for (bProperty:Property | (getDestinationClass(aProperty, aProperty.getAssociation()).attribute->asSequence()->sortedBy(name)))]
+[generateSecondaryTableColumnAnnotation(aProperty)/]
+[generateBasicAnnotation(bProperty)/]
+[generateTemporalAnnotation(getDatatypeByProperty(bProperty))/]
+[generateLobAnnotation(getDatatypeByProperty(bProperty))/]
+[generateEnumeratedAnnotation(getDatatypeByProperty(bProperty))/]
+[generateBeanValidationAnnotations(getDatatypeByProperty(bProperty))/]
+[generateXmlElementAnnotation(bProperty)/]
+[generatePrivateDeclarationAttribute(bProperty)/]
+[/for]
+[/if]
+[/template]
+
+
+[**
+ * This template generates the association attributes
+ * @param aClass
+ * @param aProperty
+*/]
+[template private generateAssociationAttribute(aClass : Class, aProperty : Property) ? (aProperty.isAssociationAttribute())]       
+[if getDestinationClass(aProperty, aProperty.getAssociation()).isFeature_partClass()._not()]
+[generateAttributeComment(aProperty)/]
+[generateAssocationAnnotations(aClass, aProperty.getAssociation(), aProperty, aProperty.getMemberEndAssociation())/]
+[generateEnumeratedAnnotation(getDatatypeByProperty(aProperty))/]
+[if isListProperty(aProperty)]
+[if isAssociationBidirectionnel(aProperty, aProperty.getMemberEndAssociation())]
+[if isManyToMany(aClass, aProperty.getMemberEndAssociation(), aProperty) or isOneToMany(aClass, aProperty.getMemberEndAssociation(), aProperty)]
+[generateXmlInverseManyAnnotation(aProperty, aProperty.getAssociation())/]
+[else]
+[generateCollectionAnnotations(aProperty.getAssociation(), aProperty.getMemberEndAssociation().class.name)/]
+[/if]
+[else]
+[generateCollectionAnnotations(aProperty.getAssociation(), aProperty.getMemberEndAssociation().class.name)/]
+[/if]
+[else]
+[if isAssociationBidirectionnel(aProperty, aProperty.getMemberEndAssociation())]
+[generateXmlInverseAnnotation(aProperty, aProperty.getAssociation())/]
+[else]
+[generateXmlElementAnnotation(aProperty)/]
+[/if]
+[/if]
+[generatePrivateDeclarationAttribute(aProperty)/]
+[/if]
+[/template]
+
+
+[**
+ * This template generates the datatypes attributes
+ * @param aProperty
+*/]
+[template private generateDatatypeAttributeDeclaration (aProperty : Property) ? (isAssociationAttribute()._not()) post(generateTextProcessingBlock())]
+[generateAttributeComment(aProperty)/]
+[generateColumnAnnotation(aProperty)/]
+[generateBasicAnnotation(aProperty)/]
+[generateTemporalAnnotation(getDatatypeByProperty(aProperty))/]
+[generateLobAnnotation(getDatatypeByProperty(aProperty))/]
+[generateEnumeratedAnnotation(getDatatypeByProperty(aProperty))/]
+[generateBeanValidationAnnotations(getDatatypeByProperty(aProperty))/]
+[generateXmlElementAnnotation(aProperty)/]
+[generatePrivateDeclarationAttribute(aProperty)/]
+[/template]
+
+
+[**
+ * This template generates the specific assocation class attribute
+ * @param aClass
+*/]
+[template private generateAttributeForAssociationClass(aClass : Class) ? (isAssociationClass())]
+[for (aProperty : Property | aClass.oclAsType(AssociationClass).memberEnd->select(name.equalsIgnoreCase('')._not())->asSequence()->sortedBy(name))]
+[generateAssociationClassManyToOneAnnotations(aClass, aProperty.getAssociation(), aProperty, aProperty.getMemberEndAssociation())/]
+[generateXmlElementAnnotation(aProperty)/]
+[generatePrivateDeclarationAttribute(aProperty.name, aProperty.type.name)/]
+[/for]
+[/template]
+

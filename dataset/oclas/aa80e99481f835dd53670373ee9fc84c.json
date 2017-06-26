@@ -1,0 +1,377 @@
+[
+  {
+    "name": "Key",
+    "expressions": [],
+    "properties": [
+      "Entity",
+      "Entity",
+      "keyAttributes"
+    ]
+  },
+  {
+    "name": "Categories",
+    "expressions": [],
+    "properties": [
+      "entities",
+      "Categorisation",
+      "min",
+      "max"
+    ]
+  },
+  {
+    "name": "Entity",
+    "expressions": [
+      {
+        "operations": {
+          "includesAll": 1,
+          "and": 1,
+          "intersection": 1,
+          "isEmpty": 1,
+          "implies": 1,
+          "=": 1,
+          "symmetricDifference": 1
+        },
+        "name": "existedKey",
+        "body": "Tuple {\n\tmessage : String = 'The key with attribute set already exists',\n\tstatus : Boolean = \n\t\t\tkeySet->forAll(k1:Key, k2:Key | k1.keyAttributes->intersection(k2.keyAttributes)->includesAll(k1.keyAttributes) and k1.keyAttributes->symmetricDifference(k2.keyAttributes)->isEmpty() implies k1=k2)\n}.status",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 7,
+          "VariableExpImpl": 8,
+          "TupleLiteralExpImpl": 1,
+          "StringLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 7
+        },
+        "properties": [
+          "er::Key::keyAttributes",
+          "$$::Tuple::status",
+          "er::Entity::keySet"
+        ]
+      },
+      {
+        "operations": {
+          "not": 2,
+          "oclIsUndefined": 2,
+          "oclAsSet": 2,
+          "isEmpty": 1,
+          "includes": 1,
+          "notEmpty": 1
+        },
+        "name": "invalidPrimaryKey",
+        "body": "\n\t\t\tif(keySet->notEmpty()) then\n\t\t\t\tif(not primaryKey->oclIsUndefined()) then\n\t\t\t\t\tkeySet->includes(primaryKey)\n\t\t\t\telse\n\t\t\t\t\tnot primaryKey->oclIsUndefined()\n\t\t\t\tendif\n\t\t\telse\n\t\t\t\tkeySet->isEmpty()\n\t\t\tendif",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 6,
+          "OperationCallExpImpl": 9,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 6
+        },
+        "properties": [
+          "er::Entity::primaryKey",
+          "er::Entity::keySet"
+        ]
+      },
+      {
+        "operations": {
+          "includesAll": 1,
+          "not": 1,
+          "isEmpty": 2,
+          "notEmpty": 2
+        },
+        "name": "invalidAttributInKey",
+        "body": "\n\t\t\t\tif(not keySet.keyAttributes->isEmpty()) then\n\t\t\t\t\tif(entityAttributes->notEmpty()) then\n\t\t\t\t\t\tentityAttributes->includesAll(keySet.keyAttributes)\n\t\t\t\t\telse\n\t\t\t\t\t\tentityAttributes->notEmpty()\n\t\t\t\t\tendif\n\t\t\t\telse\n\t\t\t\t\tkeySet.keyAttributes->isEmpty()\n\t\t\t\tendif",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 3,
+          "VariableExpImpl": 9,
+          "OperationCallExpImpl": 6,
+          "IfExpImpl": 2,
+          "PropertyCallExpImpl": 9
+        },
+        "properties": [
+          "er::Key::keyAttributes",
+          "er::Entity::keySet",
+          "er::Entity::entityAttributes"
+        ]
+      }
+    ],
+    "properties": [
+      "primaryKey",
+      "IdentificationDependency",
+      "ERModel",
+      "keySet",
+      "entityAttributes",
+      "ISA"
+    ]
+  },
+  {
+    "name": "Gerund",
+    "expressions": [],
+    "properties": [
+      "relationship",
+      "ERModel"
+    ]
+  },
+  {
+    "name": "MinCardinality",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "ISA",
+    "expressions": [
+      {
+        "operations": {
+          "not": 1,
+          "excludes": 1,
+          "oclIsTypeOf": 2,
+          "oclAsType": 1
+        },
+        "name": "SubTypeExistsAsSuperType",
+        "body": "\n\t\tif(supertype.entity.oclIsTypeOf(Entity)) then \n\t\t\tsubtypes->excludes(supertype.entity.oclAsType(Entity))\n\t\telse\n\t\t\tnot supertype.entity.oclIsTypeOf(Entity)\n\t\tendif",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 5,
+          "VariableExpImpl": 4,
+          "TypeExpImpl": 3,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 7
+        },
+        "properties": [
+          "er::ISA::supertype",
+          "er::ISA::subtypes",
+          "er::RegularEntity::entity"
+        ]
+      },
+      {
+        "operations": {
+          "oclIsTypeOf": 1,
+          "includes": 2,
+          "oclAsType": 2
+        },
+        "name": "invalidClassificationAtrtibute",
+        "body": "\n\t\tif supertype.entity.oclIsTypeOf(Entity) then\n\t\t\tsupertype.entity.oclAsType(Entity).entityAttributes->includes(classificationAttribute) \n\t\telse \n\t\t\tsupertype.entity.oclAsType(Gerund).relationship.relationshipAttributes->includes(classificationAttribute) \t\n\t\tendif",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 5,
+          "VariableExpImpl": 5,
+          "TypeExpImpl": 3,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 11
+        },
+        "properties": [
+          "er::ISA::classificationAttribute",
+          "er::ISA::supertype",
+          "er::RegularEntity::entity",
+          "er::Relationship::relationshipAttributes",
+          "er::Gerund::relationship",
+          "er::Entity::entityAttributes"
+        ]
+      },
+      {
+        "operations": {
+          "size": 1,
+          "allInstances": 2,
+          "<": 1,
+          "=": 1
+        },
+        "name": "duplicateSybtype",
+        "body": "\n\t\t\tISA.allInstances().subtypes->forAll(e1:Entity | ISA.allInstances().subtypes->select(e2 | e1.name=e2.name)->size()<2)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 4,
+          "OperationCallExpImpl": 5,
+          "VariableExpImpl": 4,
+          "IntegerLiteralExpImpl": 1,
+          "TypeExpImpl": 2,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "er::ModellingConcept::name",
+          "er::ISA::subtypes"
+        ]
+      }
+    ],
+    "properties": [
+      "classificationAttribute",
+      "supertype",
+      "subtypes"
+    ]
+  },
+  {
+    "name": "Domain",
+    "expressions": [],
+    "properties": [
+      "ERModel",
+      "AttributeDomain",
+      "primitiveDomain"
+    ]
+  },
+  {
+    "name": "RegularEntity",
+    "expressions": [],
+    "properties": [
+      "role",
+      "IdentificationDependency",
+      "min",
+      "entity",
+      "Relationship",
+      "max",
+      "ISA"
+    ]
+  },
+  {
+    "name": "Relationship",
+    "expressions": [],
+    "properties": [
+      "Gerund",
+      "entities",
+      "relationshipAttributes"
+    ]
+  },
+  {
+    "name": "ModellingConcept",
+    "expressions": [{
+      "operations": {
+        "allInstances": 2,
+        "implies": 1,
+        "=": 2,
+        "symmetricDifference": 1
+      },
+      "name": "existedName",
+      "body": "\n\t\t\tModellingConcept.allInstances()->symmetricDifference(Gerund.allInstances())->forAll(m1:ModellingConcept, m2:ModellingConcept | m1.name = m2.name implies m1=m2)",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "IteratorExpImpl": 1,
+        "VariableExpImpl": 4,
+        "OperationCallExpImpl": 6,
+        "TypeExpImpl": 2,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": ["er::ModellingConcept::name"]
+    }],
+    "properties": ["name"]
+  },
+  {
+    "name": "ERModel",
+    "expressions": [],
+    "properties": [
+      "relationships",
+      "gerunds",
+      "domains",
+      "entities"
+    ]
+  },
+  {
+    "name": "Attribute",
+    "expressions": [],
+    "properties": [
+      "Relationship",
+      "Key",
+      "attributeDomain",
+      "Entity",
+      "ISA"
+    ]
+  },
+  {
+    "name": "Categorisation",
+    "expressions": [{
+      "operations": {
+        "excludes": 1,
+        "oclIsTypeOf": 4,
+        "and": 3,
+        "implies": 2,
+        "=": 4,
+        "oclAsType": 4
+      },
+      "name": "invalidCategory",
+      "body": "\n\t\t\tcategorisationEntities.entities->excludes(categorisedEntity) and categorisationEntities.entities->\n\t\t\tforAll(e1:EntityConcept, e2:EntityConcept | \n\t\t\t\t\t\tif(e1.oclIsTypeOf(Entity) and  e2.oclIsTypeOf(Entity)) then\n\t\t\t\t\t\t\te1.oclAsType(Entity).name = e2.oclAsType(Entity).name implies e1 = e2\n\t\t\t\t\t\telse if(e1.oclIsTypeOf(Gerund) and  e2.oclIsTypeOf(Gerund)) then\n\t\t\t\t\t\t\t\te1.oclAsType(Gerund).relationship.name = e2.oclAsType(Gerund).relationship.name implies e1 = e2\n\t\t\t\t\t\t\t else\n\t\t\t\t\t\t\t \ttrue\n\t\t\t\t\t\t\t endif\n\t\t\t\t\t\tendif\n\t\t\t\t\t)",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "IteratorExpImpl": 1,
+        "OperationCallExpImpl": 18,
+        "VariableExpImpl": 15,
+        "TypeExpImpl": 8,
+        "IfExpImpl": 2,
+        "PropertyCallExpImpl": 11,
+        "BooleanLiteralExpImpl": 1
+      },
+      "properties": [
+        "er::ModellingConcept::name",
+        "er::Categories::entities",
+        "er::Categorisation::categorisedEntity",
+        "er::Categorisation::categorisationEntities",
+        "er::Gerund::relationship"
+      ]
+    }],
+    "properties": [
+      "categorisationEntities",
+      "categorisedEntity",
+      "isPartial"
+    ]
+  },
+  {
+    "name": "EntityConcept",
+    "expressions": [],
+    "properties": [
+      "Categorisation",
+      "Categories",
+      "RegularEntity"
+    ]
+  },
+  {
+    "name": "RelationshipConcept",
+    "expressions": [],
+    "properties": ["ERModel"]
+  },
+  {
+    "name": "IdentificationDependency",
+    "expressions": [{
+      "operations": {
+        "not": 1,
+        "<>": 1,
+        "oclIsTypeOf": 2,
+        "oclAsType": 1
+      },
+      "name": "invalidWeakEntity",
+      "body": "\n\t\tif(regularEntity.entity.oclIsTypeOf(Entity)) then\n\t\t\tregularEntity.entity.oclAsType(Entity) <> weakEntity\n\t\telse\n\t\t\tnot regularEntity.entity.oclIsTypeOf(Entity)\n\t\tendif",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "OperationCallExpImpl": 5,
+        "VariableExpImpl": 4,
+        "TypeExpImpl": 3,
+        "IfExpImpl": 1,
+        "PropertyCallExpImpl": 7
+      },
+      "properties": [
+        "er::IdentificationDependency::weakEntity",
+        "er::IdentificationDependency::regularEntity",
+        "er::RegularEntity::entity"
+      ]
+    }],
+    "properties": [
+      "weakEntity",
+      "regularEntity"
+    ]
+  },
+  {
+    "name": "AttributeDomain",
+    "expressions": [],
+    "properties": [
+      "Attribute",
+      "domain",
+      "default",
+      "length"
+    ]
+  },
+  {
+    "name": "MaxCardinality",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "PrimitiveDomain",
+    "expressions": [],
+    "properties": []
+  }
+]

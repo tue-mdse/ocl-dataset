@@ -1,0 +1,269 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_Artifact('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Element/]
+[import mdd::codeGenerator::csharp::generate_Package/]
+[import mdd::codeGenerator::csharp::generate_ConfigFile/]
+
+
+[template public generate(a : Artifact)]
+[comment @main /]
+[for (a : Artifact | Artifact.allInstances())]
+	[generateOne(a,'./', a.name) /]
+[/for]
+[/template]
+
+[template public generate(a : Artifact, artifactName : String)]
+[comment @main /]
+[''.log('pom.generate = '+getProperty('pom.generate')) /]
+[if artifactName.oclIsUndefined() ]
+	[generateOne(a,a.name+'/./', a.name) /]
+[else]
+	[generateOne(a,a.name+'/./', artifactName) /]
+[/if]
+[/template]
+
+[template public generateOne(a : Artifact, srcDir : String, artifactName : String) ? (artifactName = a.name) ]
+[if 'true'=getProperty('pom.generate') ][a.generatePom(srcDir)/][/if]
+[comment [a.generateAssemblyInfo(srcDir)/]
+[if 'true'=getProperty('project.generate') ][a.generateProjectFile(srcDir)/][/if]
+[a.generateCode(srcDir)/]
+[/template]
+
+[template public generateCode(a : Artifact, srcDir : String)]
+[for (m : Manifestation | a.manifestation)]
+	[m.utilizedElement.generate(srcDir)/]
+[/for]
+
+[if a.hasStereotype('MddProfile::Executable') ]
+[a.generateMain(srcDir) /]
+  [if 'true'=getProperty('config.generate') ]
+[a.generateConfigXml('',srcDir+getProperty('artifact.codeResourceFolder')+'/'+a.qualifiedName('/')+'.config.xml') /]
+  [/if]
+[/if]
+[/template]
+
+[template public generateMain(a : Artifact, srcDir : String)]
+[file (srcDir+getProperty('artifact.codeFolder')+'/'+a.qualifiedName('/')+'.cs', false, 'UTF-8')]
+  class [a.name.replaceAll('[.]', '_')/] {
+	static void Main(string['[]'/] args) {
+        framework.os.OsImpl os = new framework.os.OsImpl();
+        framework.io.fileSystem.FileSystem fs = new framework.io.fileSystem.ActualFileSystem();
+        framework.logging.log4Net.LoggerImpl logger = new framework.logging.log4Net.LoggerImpl("[a.name/].logger.config.xml");
+		framework.persistence.xml.XmlPersistence ps = new framework.persistence.xml.XmlPersistence(new framework.persistence.PersistenceStoreIdentity("configuration"), "[a.name/].config.xml"); 
+		try {
+
+		  [for (pr : Property | a.ownedAttribute)]
+			[pr.typeName()/] [pr.name/] = new [pr.typeName()/]("[pr.name/]");
+			global::framework.os.threading.Thread [pr.name/]_Thread = os.createThread("[pr.name/]");
+		  [/for]
+
+		  [for (pr : Property | a.ownedAttribute)]
+			[pr.name/]_Thread.start([pr.name/]);
+		  [/for]
+
+		  [for (pr : Property | a.ownedAttribute)]
+			[pr.name/]_Thread.join();
+		  [/for]
+		} catch (System.Exception ex) {
+			logger.error( new framework.logging.Location("Main"),new framework.logging.Message(""+ex));
+		}
+
+	}
+  }
+[/file]
+[/template]
+
+[template public generateAssemblyInfo(a : Artifact, srcDir : String)]
+[self.generateAssemblyInfo1(a.name, srcDir+getProperty('artifact.codeFolder')+'/Properties/AssemblyInfo.cs') /]
+[self.generateAssemblyInfo1(a.name+'-test', srcDir+getProperty('artifact.testFolder')+'/Properties/AssemblyInfo.cs') /]
+[/template]
+
+[template public generateAssemblyInfo1(a : Artifact, name : String, fileName : String)]
+[file (fileName, false, 'UTF-8')]
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+// General Information about an assembly is controlled through the following 
+// set of attributes. Change these attribute values to modify the information
+// associated with an assembly.
+['['/]assembly: AssemblyTitle("[name/]")]
+['['/]assembly: AssemblyDescription("")]
+['['/]assembly: AssemblyConfiguration("")]
+['['/]assembly: AssemblyCompany("")]
+['['/]assembly: AssemblyProduct("[name/]")]
+['['/]assembly: AssemblyCopyright("Copyright (c) ?? ??")]
+['['/]assembly: AssemblyTrademark("")]
+['['/]assembly: AssemblyCulture("")]
+
+// Setting ComVisible to false makes the types in this assembly not visible 
+// to COM components.  If you need to access a type in this assembly from 
+// COM, set the ComVisible attribute to true on that type.
+//['['/]assembly: ComVisible(false)]
+
+// The following GUID is for the ID of the typelib if this project is exposed to COM
+//['['/]assembly: Guid("?????????????")]
+
+// Version information for an assembly consists of the following four values:
+//
+//      Major Version
+//      Minor Version 
+//      Build Number
+//      Revision
+//
+// You can specify all the values or you can default the Build and Revision Numbers 
+// by using the '*' as shown below:
+// ['['/]assembly: AssemblyVersion("1.0.*")]
+['['/]assembly: AssemblyVersion("1.0.0.0")]
+['['/]assembly: AssemblyFileVersion("1.0.0.0")]
+[/file]
+[/template]
+
+[template public generatePom(a : Artifact, srcDir : String)]
+[file (srcDir+'pom.xml', false, 'UTF-8')]
+<project
+	xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd"
+>
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>[getProperty('pom.groupId')/]</groupId>
+	<artifactId>[a.name /]</artifactId>
+	<packaging>[getProperty('pom.packaging')/]</packaging>
+	<version>[a.version() /]</version>
+	
+	<dependencies>
+  [for (art : Artifact | a.clientDependency.supplier->filter(Artifact)->asSet())]
+		<dependency>
+		  <groupId>net.akehurst</groupId>
+		  <artifactId>[art.name/]</artifactId>
+		  <version>[art.version()/]</version>
+		  <type>dotnet-library</type>
+		</dependency>
+  [/for]	
+		<dependency>
+		  <groupId>net.akehurst.mdd</groupId>
+		  <artifactId>mdd.framework</artifactId>
+		  <version>0.3.0</version>
+		  <type>dotnet-library</type>
+		</dependency>
+	
+		<dependency>
+		  <groupId>NUnit</groupId>
+		  <artifactId>NUnit.Framework</artifactId>
+		  <version>2.5.9</version>
+		  <type>library</type>
+		</dependency>
+		
+	</dependencies>
+
+    <build>
+		<sourceDirectory>${basedir}/code</sourceDirectory>
+		<testSourceDirectory>${basedir}/test</testSourceDirectory>
+		
+		<plugins>
+			<!-- compiler -->
+			<plugin> 
+				<groupId>org.apache.npanday.plugins</groupId>
+				<artifactId>maven-compile-plugin</artifactId>  
+				<version>1.4.0-incubating</version>
+				<extensions>true</extensions> 
+				<configuration>
+				  <frameworkVersion>4.0</frameworkVersion>
+				  <testFrameworkVersion>4.0</testFrameworkVersion>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
+[/file]
+[/template]
+
+[template public generateProjectFile(a : Artifact, srcDir:String)]
+[a.generateProjectFile1(a.name, srcDir+getProperty('artifact.codeFolder')+'/'+a.name+'.csproj')/]
+[a.generateProjectFile1(a.name+'-test', srcDir+getProperty('artifact.testFolder')+'/'+a.name+'.csproj')/]
+[/template]
+
+[template public generateProjectFile1(a : Artifact, name : String, fileName : String)]
+[file (fileName, false, 'UTF-8')]
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>unknown</RootNamespace>
+    <AssemblyName>[name/]</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+[for (pkg : Package | a.manifestedPackages())]
+    <Compile Include="..\target\generated-sources\[pkg.qualifiedName('/')/]\*.*">
+      <Link>generated-sources\[pkg.qualifiedName('/')/]</Link>
+    </Compile>
+[/for]
+    <Compile Include="..\target\generated-sources\Properties\*.*">
+      <Link>generated-sources\Properties</Link>
+    </Compile>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
+[/file]
+[/template]
+
+[query public manifestedPackages(arg : Artifact) : Set(Package) =
+  self.manifestation->filter(Package).allPackages()->asSet()
+/]
+
+[query public allPackages(arg : Package) : Set(Package) =
+  self.nestedPackage->including(self)
+/]

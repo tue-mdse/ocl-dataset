@@ -1,0 +1,78 @@
+[comment encoding = UTF-8 /]
+[module AbstractFunctionHelper('http://www.eclipse.org/sirius/1.1.0',
+'http://www.eclipse.org/sirius/diagram/1.1.0',
+'http://www.polarsys.org/capella/core/modeller/0.8.0', 
+'http://www.polarsys.org/capella/core/core/0.8.0', 
+'http://www.polarsys.org/capella/core/oa/0.8.0', 
+'http://www.polarsys.org/capella/core/ctx/0.8.0', 
+'http://www.polarsys.org/capella/core/la/0.8.0', 
+'http://www.polarsys.org/capella/core/pa/0.8.0', 
+'http://www.polarsys.org/capella/core/epbs/0.8.0', 
+'http://www.polarsys.org/capella/core/sharedmodel/0.8.0', 
+'http://www.polarsys.org/capella/core/requirement/0.8.0', 
+'http://www.polarsys.org/capella/core/information/0.8.0', 
+'http://www.polarsys.org/capella/core/cs/0.8.0', 
+'http://www.polarsys.org/capella/core/fa/0.8.0', 
+'http://www.polarsys.org/capella/core/common/0.8.0', 
+'http://www.polarsys.org/capella/core/interaction/0.8.0',
+'http://www.polarsys.org/capella/common/core/0.8.0',
+'http://www.eclipse.org/emf/2002/Ecore')]
+[**
+ * Generetas a functional Exchange table.
+ * @param f  an AbstractFunction
+ * @param functionalExchanges a collection of ActivityEdge to put in the table
+ */]
+
+
+[query public getFuncExItems(input : FunctionalExchange) : Sequence(ExchangeItem)
+	= invoke('fr.obeo.dsl.designer.documentation.generator.capella.templates.helpers.DocumentationHelperService', 'getEisFromFex(org.eclipse.emf.ecore.EObject)', Sequence{input}) /]
+
+[template public generateFunctionalExchangesTable(f : fa::AbstractFunction, functionalExchanges : OrderedSet(activity::ActivityEdge))]
+    <table>
+        <thead>
+            <tr>
+                <th>Exchange Name</th>
+                <th>Source</th>
+                <th>Destination</th>
+				 <th>Exchange Item</th>
+            </tr>
+        </thead>
+        <tbody>
+           [for (fe : fa::FunctionalExchange | functionalExchanges->filter(fa::FunctionalExchange))]
+			  <tr>
+			    <td>[fe.oclAsType(modellingcore::AbstractNamedElement).name/]</td>
+			    <td>[fe.sourceFunctionOutputPort.eContainer(fa::AbstractFunction).oclAsType(modellingcore::AbstractTypedElement).name/]</td> 
+			    <td>[fe.targetFunctionInputPort.eContainer(fa::AbstractFunction).oclAsType(modellingcore::AbstractTypedElement).name/]</td>
+				<td>[fe.generateExchangeItems()/]</td>
+			 </tr>
+			[/for]
+        </tbody>
+    </table>
+[/template]
+[template public generateExchangeItems(fe : FunctionalExchange)]
+<ul>
+
+[for (ei :ExchangeItem | fe.exchangedItems)]
+<li>[ei.oclAsType(modellingcore::AbstractNamedElement).name/]</li> 
+[/for]
+
+
+</ul>
+[/template]
+[template public generateAvailableModeAndState(f :AbstractFunction)]
+<ul>
+[for ( s : State| f.availableInStates)]
+<li>
+[s.oclAsType(modellingcore::AbstractTypedElement).name/]
+</li>
+[/for]
+</ul>
+[/template]
+[template public generateChildFunctions(f :AbstractFunction)]
+	<h4>Child Functions</h4>
+		[for (child : AbstractFunction | f.ownedFunctions)]
+<li>
+ [child.oclAsType(modellingcore::AbstractTypedElement).name/]
+</li>
+        [/for]
+[/template]

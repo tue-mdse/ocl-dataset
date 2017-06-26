@@ -1,0 +1,254 @@
+[comment encoding = UTF-8 /]
+[module pojo('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::android::common::xisMobileUtils /]
+[import xismobile::pim::uml2::gen::android::common::utils /]
+[import xismobile::pim::uml2::gen::android::services::services /]
+
+[template public generatePOJO(c : Class)]
+[let persistent : Boolean = c.isPersistent()]
+
+[file ('src/' + c.getPackageDirectoryPath() + '/domain/'.concat(c.name.toUpperFirst()).concat('.java'), false, 'UTF-8')]
+package [c.getPackagePath()/].domain;
+
+import java.util.*;
+[if (persistent)]
+
+import com.j256.ormlite.field.DatabaseField;
+import com.j256.ormlite.table.DatabaseTable;
+[/if]
+
+[if (persistent)]
+@DatabaseTable(tableName = "[c.name.toUpperFirst()/]")
+[/if]
+public class [c.name.toUpperFirst()/][c.getExtensionAndImplementations()/] {
+
+[if (persistent)]
+	@DatabaseField(generatedId = true)
+	private int id;
+[else]
+	private String id;
+[/if]
+
+[if (c.hasXisEntityAttributes())]
+	[c.generateAttributes()/]
+	[if (persistent)]
+	[c.generateForeingKeyAttributes()/]
+	[else]
+	[c.generateAssociationAttrs()/]
+	[/if]
+	[c.generateNonArgConstructor()/]
+	[c.generateConstructorWithArgs()/]
+	[c.generateGettersAndSetters()/]
+	[if (not c.isPersistent())]
+
+	[c.generateEqualsMethods()/]
+	[/if]
+[else]
+	[c.generateNonArgConstructor()/]
+	[writeTODO()/]
+[/if]
+}
+[/file]
+[/let]
+[/template]
+
+[template private generateNonArgConstructor(c : Class)]
+public [c.name.toUpperFirst()/]() {
+	[if (c.isPersistent())]
+	// Non-Arg constructor needed by OrmLite
+	[else]
+	this.id = UUID.randomUUID().toString();
+	[/if]
+}
+
+[/template]
+
+[template private generateConstructorWithArgs(c : Class)]
+public [c.name.toUpperFirst()/]([c.getXisAttributesForConstructor()/]) {
+	[if (not c.isPersistent())]
+	this.id = UUID.randomUUID().toString();
+	[/if]
+	[for (p : Property | c.getXisEntityAttributes())]
+	this.[p.getXisEntityAttributeName().toLowerFirst()/] = [p.getXisEntityAttributeName().toLowerFirst()/];
+	[/for]
+}
+
+[/template]
+
+[template private getXisAttributesForConstructor(c : Class) post(trim())]
+[c.getXisEntityAttributes().getXisAttributeTypeAndName()->sep(', ')/]
+[/template]
+
+[template private getXisAttributeTypeAndName(p : Property)]
+[p.type.name/] [p.getXisEntityAttributeName().toLowerFirst()/]
+[/template]
+
+[template private generateAttributes(c : Class) post (trim())]
+[for (p : Property | c.getXisEntityAttributes())]
+[if (c.isPersistent())]
+@DatabaseField[p.addKeyAndNullableTags()/]
+[/if]
+private [p.getXisAttributeTypeAndName()/];
+[/for]
+[/template]
+
+[template private addKeyAndNullableTags(p : Property) post (trim())]
+[if (p.isKey())]
+(index = true)
+[elseif (not p.isNullable())]
+(canBeNull = false)
+[/if]
+[/template]
+
+[template private generateGettersAndSetters(c : Class) post(trim())]
+public [if (c.isPersistent())]int[else]String[/if] getId() {
+	return id;
+}
+
+[for (p : Property | c.getXisEntityAttributes()) separator('\n')]
+public [p.type.name/] get[p.getXisEntityAttributeName().toUpperFirst()/]() {
+	return this.[p.getXisEntityAttributeName().toLowerFirst()/];
+}
+
+public void set[p.getXisEntityAttributeName().toUpperFirst()/]([p.type.name/] [p.getXisEntityAttributeName().toLowerFirst()/]) {
+	this.[p.getXisEntityAttributeName().toLowerFirst()/] = [p.getXisEntityAttributeName().toLowerFirst()/];
+}
+[/for]
+[/template]
+
+[template private generateEqualsMethods(c : Class)]
+[let attrs : Set(Property) = c.getXisEntityAttributes()]
+@Override
+public boolean equals(Object obj) {
+	if (obj == null)
+		return false;
+	if (obj == this)
+		return true;
+	if (!(obj instanceof [c.name.toUpperFirst()/]))
+		return false;
+	
+	[c.name.toUpperFirst()/] c = ([c.name.toUpperFirst()/]) obj;	
+	return this.id.equals(c.id);[comment][attrs->getEqualsCondition()/];[/comment]
+}
+	
+@Override
+public int hashCode() {
+	StringBuilder sbCode = new StringBuilder();
+	[for (p : Property | attrs)]
+	sbCode.append([p.getXisEntityAttributeName().toLowerFirst()/]);
+	[/for]
+	[comment]String code = [attrs->getHashCodeCondition()/];[/comment]
+	return sbCode.toString().hashCode();
+}
+[/let]
+[/template]
+
+[template private getEqualsCondition(ps : Set(Property)) post (trim())]
+[for (p : Property | ps) separator ('\t&& ')]
+this.[p.getXisEntityAttributeName()/] == c.[p.getXisEntityAttributeName()/]
+[/for]
+[/template]
+
+[template private getHashCodeCondition(ps : Set(Property)) post (trim())]
+[if (ps->size() > 1)]
+[ps.getXisEntityAttributeName().toLowerFirst()->sep(' + ')/]
+[elseif (ps.type.name <> 'String')]
+[ps.getXisEntityAttributeName().toLowerFirst().concat('.toString()')/]
+[/if]
+[/template]
+
+[template private getExtension(c : Class)]
+[if (c.generalization->size() = 1)]
+ extends [c.generalization.target.oclAsType(Class).name/]
+[/if]
+[/template]
+
+[template private getImplementations(c : Class)]
+[if (c.interfaceRealization->size() > 0)]
+ implements [c.interfaceRealization.target.oclAsType(Interface).name->sep(', ')/]
+[/if]
+[/template]
+
+[template private generateForeingKeyAttributes(c : Class)]
+[for (a : Association | c.getXisEntityAssociations())]
+[let first : Property = a.memberEnd->at(1)]
+[let second : Property = a.memberEnd->at(2)]
+[if (first.upperBound() = 1 and second.upperBound() = 1)]
+	[if (not first.isNavigable() and not second.isNavigable() or
+		first.isNavigable() and second.isNavigable())]
+		[if (a.endType->at(2).name = c.name)]
+[a.processForeignKeyAttr(1)/]
+		[/if]
+	[elseif (first.isNavigable())]
+		[if (a.endType->at(1).name = c.name)]
+[a.processForeignKeyAttr(2)/]
+		[/if]	
+	[elseif (second.isNavigable())]
+		[if (a.endType->at(2).name = c.name)]
+[a.processForeignKeyAttr(1)/]
+		[/if]
+	[/if]
+[elseif (first.upperBound() = 1 and second.upperBound() = -1)]
+	[if (a.endType->at(2).name = c.name)]
+[a.processForeignKeyAttr(1)/]
+	[/if]
+[elseif (first.upperBound() = -1 and second.upperBound() = 1)]
+	[if (a.endType->at(1).name = c.name)]
+[a.processForeignKeyAttr(2)/]
+	[/if]
+[/if]
+[/let]
+[/let]
+[/for]
+[/template]
+
+[template private generateAssociationAttrs(c : Class)]
+[for (a : Association | c.getXisEntityAssociations())]
+[let first : Property = a.memberEnd->at(1)]
+[let second : Property = a.memberEnd->at(2)]
+[if (not first.isNavigable() and not second.isNavigable() or
+first.isNavigable() and second.isNavigable())]
+	[if (a.endType->at(1).name = c.name)]
+[a.processAttr(2)/]
+	[else]
+[a.processAttr(1)/]
+	[/if]
+[elseif (first.isNavigable())]
+	[if (a.endType->at(1).name <> c.name)]
+[a.processAttr(1)/]
+	[/if]	
+[elseif (second.isNavigable())]
+	[if (a.endType->at(2).name <> c.name)]
+[a.processAttr(2)/]
+	[/if]
+[/if]
+[/let]
+[/let]
+[/for]
+[/template]
+
+[template private processForeignKeyAttr(a : Association, idx : Integer) post (trim())]
+[let p : Property = a.memberEnd->at(idx)]
+@DatabaseField(foreign = true, foreignAutoRefresh = true)
+public [a.endType->at(idx).name.toUpperFirst()/] [p.getAssociationAttrName(a.endType->at(idx))/];
+[/let]
+[/template]
+
+[template private processAttr(a : Association, idx : Integer) post (trim())]
+[let p : Property = a.memberEnd->at(idx)]
+	[if (p.upperBound() = 1)]
+public [a.endType->at(idx).name.toUpperFirst()/] [p.getAssociationAttrName(a.endType->at(idx))/];
+	[elseif (p.upperBound() = -1)]
+public List<[a.endType->at(idx).name.toUpperFirst()/]> [p.getAssociationAttrName(a.endType->at(idx))/];
+	[/if]
+[/let]
+[/template]
+
+[template private getAssociationAttrName(p : Property, t : Type) post (trim())]
+[if (not p.name.oclIsUndefined())]
+[p.name.toLowerFirst()/]
+[else]
+[t.name.toLowerFirst()/]
+[/if]
+[/template]

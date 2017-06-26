@@ -1,0 +1,72 @@
+[comment encoding = UTF-8 /]
+[module generateCreate('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::name::fileNameQueries /]
+[import com::thales::momoko2::pim::uml2::gen::files::webpages::generateFormBody /]
+[import com::thales::momoko2::pim::uml2::gen::files::webpages::generateDialogs /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries/]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::datatypeQueries /]
+[import com::thales::momoko2::pim::uml2::gen::services::uml2Queries /]
+[**
+ * This template generates the create web pages.
+ * @param aClass
+ */]
+[template public generateCreate(aClass : Class) ? (isFeatureClass(aClass))]
+[file (getWebPagesFileName(aClass, 'Create'), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:p="http://primefaces.org/ui">
+
+    <ui:composition>
+
+        <p:dialog id="[aClass.name/]CreateDlg" widgetVar="[aClass.name/]CreateDialog" modal="true" resizable="true" appendTo="@(body)" header="#{bundle.Create[aClass.name/]Title}">
+            <h:form id="[aClass.name/]CreateForm">
+                <h:panelGroup id="display">
+                    <p:panelGrid columns="2" rendered="#{[aClass.name.toLowerFirst()/]Controller.selected != null}" >
+                        <h:form>  
+							<p:growl id="growl" sticky="true" showDetail="true"/>  
+							<p:wizard>  
+							[generateFormBody(aClass, 'Create')/]
+                    		
+							<p:tab id="confirm" title="Confirmation">  
+                        		<p:panel header="Confirmation">  
+									<h:panelGrid id="confirmation" columns="6"> 
+										[for (aProperty: Property | aClass.getAllProperties())]
+										[if (isFeature_partClass(aProperty.getDatatypeByProperty())._not())]
+										<h:outputText value="[aProperty.name/]: " />  
+                                		<h:outputText styleClass="outputLabel"  
+                                              		value="#{[aClass.name.toLowerFirst()/]Controller.selected.[aProperty.name.toLowerFirst()/]}"/>  
+										[else]
+										[for (p : Property | getDatatypeByProperty(aProperty).getAllDatatypeAttributes())]
+										<h:outputText value="[p.name/]: " />  
+                                		<h:outputText styleClass="outputLabel"  
+                                              		value="#{[aClass.name.toLowerFirst()/]Controller.selected.[p.name.toLowerFirst()/]}"/>  
+										[/for]
+										[/if]
+										[/for]
+										<h:outputText />  
+                                		<h:outputText />  
+                            		</h:panelGrid>  
+								</p:panel>  
+                    		</p:tab>  
+							</p:wizard>  
+						</h:form>
+                    </p:panelGrid>
+                    <p:commandButton actionListener="#{[aClass.name.toLowerFirst()/]Controller.create}" value="#{bundle.Save}" update="display,:[aClass.name/]ListForm:datalist,:growl" oncomplete="handleSubmit(args,'[aClass.name/]CreateDialog');"/>
+                    <p:commandButton value="#{bundle.Cancel}" onclick="[aClass.name/]CreateDialog.hide()"/>
+                </h:panelGroup>
+            </h:form>
+        </p:dialog>
+    </ui:composition>
+</html>
+
+
+
+
+[/file]
+[/template]

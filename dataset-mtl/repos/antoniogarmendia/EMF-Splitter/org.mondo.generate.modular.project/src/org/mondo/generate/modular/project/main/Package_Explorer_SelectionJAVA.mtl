@@ -1,0 +1,109 @@
+[comment encoding = UTF-8 /]
+[module Package_Explorer_SelectionJAVA('http://www.eclipse.org/emf/2002/Ecore','http://mondo.org/runtimePatterns')]
+[import org::mondo::generate::modular::project::main::requests::global_queriesModularProject /]
+
+[template public Package_Explorer_SelectionJAVA(anProjectName : String, anPatternInstance : PatternInstance)]
+
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name') + '.' + anPatternInstance.Get_ProjectClassRoleInstance().element.name).replaceAll('\\.','/').concat('/Package_Explorer_Selection.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/];
+
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.jface.viewers.TreeSelection;
+import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerFilter;
+import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.ISelectionListener;
+import org.eclipse.ui.IViewPart;
+import org.eclipse.ui.IWorkbenchPart;
+import org.eclipse.ui.views.properties.PropertySheet;
+import org.eclipse.ui.views.properties.PropertySheetPage;
+
+import [anProjectName.toLower()/].[getProperty('prefix_name')/].[anPatternInstance.Get_ProjectClassRoleInstance().element.name.toLowerCase()/].propertysource.*;
+
+
+public class Package_Explorer_Selection extends ViewerFilter {
+	
+	public Package_Explorer_Selection() {
+		
+		IViewPart view_proper = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().findView("org.eclipse.jdt.ui.PackageExplorer");
+		
+		view_proper.getViewSite().getWorkbenchWindow().getSelectionService().addSelectionListener(new ISelectionListener() {
+			
+			@Override
+			public void selectionChanged(IWorkbenchPart part, ISelection selection) {	
+
+				if(selection instanceof TreeSelection){
+					
+					TreeSelection element = (TreeSelection)selection;
+					Object object = element.getFirstElement();
+					
+					if(object instanceof IResource){
+						
+						IProject project = ((IResource) object).getProject();
+						if(AllElementsPropertySource.isProject(project))
+							addElementsPropertySource();							
+					}	
+				}		
+				
+			}
+		});	
+		
+	}
+
+	private void addElementsPropertySource() {
+	
+		IViewPart view_proper = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().findView("org.eclipse.ui.views.PropertySheet");
+		if(view_proper == null){
+			try {
+				view_proper = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().showView("org.eclipse.ui.views.PropertySheet");
+
+			} catch (PartInitException e) {
+				
+				e.printStackTrace();
+			}
+						
+		}
+
+		try	{
+			PropertySheet sheet_proper = (PropertySheet)view_proper;
+			PropertySheetPage curr = (PropertySheetPage)sheet_proper.getCurrentPage();
+			
+			curr.setPropertySourceProvider(new AllElementsPropertySource());
+			curr.refresh();
+
+		} catch(Exception e) {}		
+	}
+
+	@Override
+	public boolean select(Viewer viewer, Object parentElement, Object element) {
+		
+		if(element instanceof IFile){
+			IFile file = (IFile)element;
+			if(AllElementsPropertySource.isProject(file.getProject())) {
+								
+				return Parent_Filter_XMI(file);
+			}
+			else
+				return true;
+		}		
+		return true;
+	}	
+	
+	public boolean Parent_Filter_XMI(IFile fil){
+		
+		IResource res_parent = fil.getParent();
+		if(fil.getName().equals(res_parent.getName()+".xmi")){
+			return false;				
+		}
+		return true;
+	}
+
+}
+
+[/file]
+
+[/template]

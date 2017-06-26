@@ -1,0 +1,60 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generate.
+ */]
+[module generate('uri:rok/model')]
+
+[import rok::generator::service::texttools/]
+[import rok::generator::java::template::domain /]
+[import rok::generator::java::template::entity /]
+[import rok::generator::java::template::ref/]
+[import rok::generator::java::template::mClass /]
+[import rok::generator::java::template::common /]
+
+
+[template public filename_service_domain(root: RootDomain) post (clearSpace())]
+resources/META-INF/services/rok.api.DomainLoader
+[/template]
+
+[**
+ * The documentation of the template generateElement.
+ * @param aDomain
+ */]
+[template public processMClass(e : MClass)]
+[log('Process ' + e.name)/]
+[entity_writeFile(e)/]
+[comment]
+[ref_writeFilef(e)/]
+[mClass_writeFile(e)/]
+[/comment]
+[e.properties->filter(NestedEntityProperty).type.processMClass()/]
+[/template]
+
+[**
+ * The documentation of the template generateElement.
+ * @param aDomain
+ */]
+[template public processDomain(d : Domain)]
+[for (e : MClass | d.resources)]
+[processMClass(e)/]
+[/for]
+[for (subD : Domain | d.subDomains)]
+[processDomain(subD)/]
+[/for]
+
+[file (filename_service_domain(d.eContainer(RootDomain)), true, 'UTF-8')][d.parentDomains()/].[d.className_entity()/]Domain$Loader[/file]
+[d.domain_writeFile()/]
+[/template]
+
+[**
+ * The documentation of the template generateElement.
+ * @param aDomain
+ */]
+[template public processRootDomain(root : RootDomain)]
+[comment @main/]
+[clearLog()/]
+[file (filename_service_domain(root), false, 'UTF-8')][/file]
+[for (d : Domain | root.subDomains)]
+[processDomain(d)/]
+[/for]
+[/template]

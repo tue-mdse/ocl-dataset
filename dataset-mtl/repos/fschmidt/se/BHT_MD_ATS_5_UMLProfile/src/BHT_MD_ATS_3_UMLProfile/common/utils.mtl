@@ -1,0 +1,102 @@
+[comment encoding = UTF-8 /]
+[module utils('http://www.eclipse.org/uml2/3.0.0/UML')/]
+
+[query public getAssocClassName(string : String) : String = 
+   string.concat('Assoc')/]
+
+[query public allPackages(p : Package) : Set (Package) =
+  p->union( p.nestedPackage->iterate(pkg : Package; ps : Set(Package) = Set{} | ps->union(allPackages(pkg))
+  )
+)/]
+ 
+[query public getJavaFileName(string : String, assoc : Boolean) : String = 
+   if (assoc) then getAssocClassName(string).concat('.java') else string.concat('.java') endif/]
+
+[query public getJavaFileName(class : Class, assoc : Boolean) : String = 
+   getJavaFileName(class.name, assoc)/]
+
+[query public getVisibility(vis : VisibilityKind) : String =
+   if (not vis.oclIsUndefined()) then 
+      vis.toString()
+   else 
+      'private // default visibility' 
+   endif/]
+
+
+[query public isUpperGTOne(prop : Property) : Boolean =
+      if (prop.upperValue.stringValue().strcmp('*')=0 or prop.upperValue.integerValue() > 1) then
+          true
+       else
+          false
+       endif/] 
+ 
+[query public getAsJavaType(type : Type) : String =
+      if (type.name.strcmp('Date') = 0) then
+          'java.util.Date'
+      else
+         if (type.name.strcmp('List') = 0) then
+            'java.util.List'
+          else
+             if (type.name.strcmp('Currency') = 0) then
+               'java.util.Currency'
+             else
+               if (type.name.strcmp('Percent') = 0) then
+                   'Float'
+               else
+                 if (type.name.strcmp('PositiveInteger') = 0) then
+                    'Integer'
+                 else
+                    if type.oclIsUndefined() then
+                      'String'
+                    else
+                      type.name
+                    endif
+                 endif
+               endif
+             endif
+          endif
+       endif/]
+
+[template public ParameterList(op : Operation, delimiter : String) ]
+[for (param : Parameter | op.ownedParameter->select(name.strcmp('return')<>0))separator(delimiter)]
+	[SingleParameter(param)/] 
+[/for] 
+[/template]
+
+[template public ParameterListAsComment(op : Operation) ]
+[for (param : Parameter | op.ownedParameter)]
+  [if(param.name.strcmp('return')<>0)]
+ * @param [SingleParameter(param)/]
+  [else]
+ * @return [SingleParameter(param)/]
+  [/if]
+[/for]
+[/template]
+
+[template public SingleParameter(param : Parameter)]
+[param.type.name/] [param.name/] 
+[/template]
+
+[template public JavaClassDefHeader(vis : VisibilityKind, class : String, superClass : String)] 
+/**
+ * Class [class/]
+ * 
+ * @author Roland Petrasch
+ *
+ * @version 1.0
+ *
+ * @generated
+ */
+[vis/] class [class/]
+[if (superClass->notEmpty())]
+   extends [superClass/] 
+[/if]
+{ 
+[/template]
+
+[template public getST(class: Class)]
+  [class.getAppliedStereotypes()/]
+[/template]
+
+
+	

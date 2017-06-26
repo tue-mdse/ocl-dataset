@@ -1,0 +1,86 @@
+[module servicexfireclientfactory('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template public fullFilePath(model : Model)]
+[if (model.webservices()->notEmpty())]
+[model.pathToMainJava()/]/[model.baseImports().toPath()/]/ws/WSClientFactory.java
+[/if]
+
+[/template][/comment]
+
+
+[template public generateXfireWSClientFactory(model : Model)? (model.webservices()->notEmpty())]
+[comment This template is called by the main module file /]
+[file (model.fullFilePath(model.pathToMainJava(), model.baseImports().toPath(), '/ws/WSClientFactory.java'), false))]
+package [model.baseImports()/].ws;
+
+// [protected ('imports')] 
+// for import 
+import java.net.MalformedURLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import org.codehaus.xfire.aegis.AegisBindingProvider;
+import org.codehaus.xfire.client.XFireProxyFactory;
+import org.codehaus.xfire.service.Service;
+import org.codehaus.xfire.service.binding.ObjectServiceFactory;
+
+[for (model.webservices())]
+import [model.servicePackage()/].I[model.name.toUpperFirst()/]WebService;
+[/for]
+ 
+// [/protected] for import
+
+public class WSClientFactory {
+
+	private static WSClientFactory instance = new WSClientFactory();
+	
+	private WSClientFactory(){}
+	
+	public static WSClientFactory getInstance(){
+		return instance;
+	}
+	
+[for (class:Class|model.webservices())]
+	public I[class.name.toUpperFirst()/]WebService create[class.name.toUpperFirst()/]WebService(String address) throws MalformedURLException{
+		
+		// Create a properties hashmap
+		HashMap<String, Object> props = new HashMap<String, Object>();
+		props.put(AegisBindingProvider.WRITE_XSI_TYPE_KEY, Boolean.TRUE);		
+		ArrayList<String> classes = new ArrayList<String>();			
+[comment  inheritance bindings support /]
+	[for (type:Type|class.getReturnParameterSubClasses())]
+			classes.add([type.getCompleteName()/].class.getName());
+	[/for]
+		// [protected ('WebService bindings')] 
+		// [class.name.toUpperFirst()/]WebService bindings		 
+		// [/protected] 	 	
+		props.put(AegisBindingProvider.OVERRIDE_TYPES_KEY, classes);
+				
+		//Create stub factory
+		ObjectServiceFactory serviceFactory = new ObjectServiceFactory();
+    	Service serviceModel = serviceFactory.create(I[class.name.toUpperFirst()/]WebService.class, props);
+    	//Create a client proxy
+    	XFireProxyFactory proxyFactory = new XFireProxyFactory();
+    	I[class.name.toUpperFirst()/]WebService ws = (I[class.name.toUpperFirst()/]WebService) proxyFactory.create(serviceModel, address);    	
+    	return ws;		
+	}
+[/for]
+	
+}
+[/file]
+[/template]

@@ -1,0 +1,182 @@
+[comment encoding = UTF-8 /]
+[module associationQueries('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::associationClassQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+
+
+[************************************************************* 
+* Many Associations Queries 
+**************************************************************/]
+[**
+ *  Check if this class has OneToMany or ManyToMany associations 
+*/]
+[query public hasManyAssociations(aClass : Class) : Boolean
+	= getManyAssociationsProperties()->notEmpty()/]
+
+[**
+ *  Get all the OneToMany or ManyToMany associations of this class (
+*/]
+[query public getManyAssociationsProperties(aClass : Class) : OrderedSet(Property)
+	= aClass.getAllAttributes()
+		->select(aProperty : Property |  aProperty.name.equalsIgnoreCase('')._not() and isAssociationAttribute(aProperty) and isListProperty(aProperty))	
+		->asOrderedSet()->sortedBy(name)
+/]
+
+[**
+ *  Get the association associated to this property 
+*/]
+[query public getAssociation(aDestinationProperty : Property) : Association
+	= if isAssociationAttribute() then aDestinationProperty.association->asSequence()->first() else null endif/]
+
+[**
+ *  Get the property which defines the end of the association 
+*/]
+[query public getMemberEndAssociation(p : Property) : Property
+	=p.association.memberEnd->select(name.toString().equalsIgnoreCase(p.name)._not())->first()/]
+
+[**
+ *  Get all the OneToMany or ManyToMany associations of this class 
+*/]
+[query public getManyAssociationObjectProperties(aClass : Class) : OrderedSet(Property)
+	= aClass.getAllAttributes()
+		->select(aProperty : Property |  aProperty.name.equalsIgnoreCase('')._not() 
+											and isAssociationAttribute(aProperty) 
+											and isListProperty(aProperty) 
+											and getDatatypeByProperty(aProperty).isObjectClass()
+											and getDatatypeByProperty(aProperty).isAbstract._not())	
+		->asOrderedSet()->sortedBy(name)
+/]
+
+[**
+ *  Get all the OneToOne or ManyToOne associations of this class 
+*/]
+[query public getOneAssociationObjectProperties(aClass : Class) : OrderedSet(Property)
+	= aClass.getAllAttributes()
+		->select(aProperty : Property |  aProperty.name.equalsIgnoreCase('')._not() 
+											and isAssociationAttribute(aProperty) 
+											and isListProperty(aProperty)._not() 
+											and getDatatypeByProperty(aProperty).isObjectClass()
+											and getDatatypeByProperty(aProperty).isAbstract._not())	
+		->asOrderedSet()->sortedBy(name)
+/]
+
+
+
+[************************************************************* 
+* Multiplicity Queries 
+**************************************************************/]
+
+[**
+ *  Check if this is a OneToMany association
+*/]
+[query public isAssociationClassOneToMany(aClass : Class, aDestinationProperty : Property, aSourceProperty : Property) : Boolean
+	 = isAssociationClass(aDestinationProperty.association)/]
+
+[**
+ *  Check if this is a ManyToOne association 
+*/]
+[query public isAssociationClassManyToOne(aClass : Class, aDestinationProperty : Property, aSourceProperty : Property) : Boolean
+	 = isAssociationClass(aClass) /]
+
+[** 
+ * Check if this is a OneToOne association 
+*/]
+[query public isOneToOne(aClass : Class, aDestinationProperty : Property, aSourceProperty : Property) : Boolean
+	 = (isAssociationClass(aDestinationProperty.association)._not() and isAssociationClass(aClass)._not()) 
+		and (aDestinationProperty.upper=1 and aSourceProperty.upper=1)/]
+
+[**
+ *  Check if this is a OneToMany association
+*/]
+[query public isOneToMany(aClass : Class, aDestinationProperty : Property, aSourceProperty : Property) : Boolean
+	 = (isAssociationClass(aDestinationProperty.association)._not() and isAssociationClass(aClass)._not())
+		and aDestinationProperty.upper=-1 and aSourceProperty.upper=1 /]
+
+[**
+ *  Check if this is a ManyToOne association 
+*/]
+[query public isManyToOne(aClass : Class, aDestinationProperty : Property, aSourceProperty : Property) : Boolean
+	 = (isAssociationClass(aDestinationProperty.association)._not() and isAssociationClass(aClass)._not())
+		and aDestinationProperty.upper=1 and aSourceProperty.upper=-1 /]
+
+[**
+ *  Check if this is a ManyToMany association
+*/]
+[query public isManyToMany(aClass : Class, aDestinationProperty : Property, aSourceProperty : Property) : Boolean
+	 = (isAssociationClass(aDestinationProperty.association)._not() and isAssociationClass(aClass)._not())
+		and aDestinationProperty.upper=-1 and aSourceProperty.upper=-1 /]
+
+
+[************************************************************* 
+* End Element Queries 
+*************************************************************/]
+
+[**
+ *  Get the destination class of an association 
+*/]
+[query public getDestinationClass (aDestinationProperty : Property, anAssociation : Association) : Class 
+	=if anAssociation.isAssociationClass() 
+		then getAssociationClassByProperty(aDestinationProperty)
+		else getDatatypeByProperty(aDestinationProperty) endif  
+/]
+
+[************************************************************* 
+* Cascades Queries
+*************************************************************/]
+
+[**
+ *  Check if this association has 'Cascade All' as cascade type 
+*/]
+[query public isCascadeAllAssociation( aDestinationProperty: Property, anAssociation : Association) : Boolean
+	=  getDestinationClass(aDestinationProperty, anAssociation).isAssociationClass()
+/]
+
+[************************************************************* 
+* Association Type Queries 
+*************************************************************/]
+
+[**
+ * Check if this is an association to a feature class 
+*/]
+[query public isObjectEndAssociation (aDestinationProperty : Property) : Boolean 
+	= isAssociationClass(aDestinationProperty.association) or getDatatypeByProperty(aDestinationProperty).isObjectClass()/]
+
+[**
+ *  Check if this is an association to an abstract class 
+*/]
+[query public isAbstractEndAssociation(aDestinationProperty : Property) : Boolean 
+	= getDatatypeByProperty(aDestinationProperty).isAbstract/]
+
+[**
+ * Check if this is an association to a feature class 
+*/]
+[query public isFeatureEndAssociation (aDestinationProperty : Property) : Boolean 
+	= isAssociationClass(aDestinationProperty.association)._not() and getDatatypeByProperty(aDestinationProperty).isFeatureClass()/]
+
+[************************************************************* 
+* Association Property Queries 
+*************************************************************/]
+
+[**
+ *  Check if this is a association attribute 
+ *  @param aProperty
+*/]
+[query public isAssociationAttribute(aProperty : Property) : Boolean
+	= aProperty.association->size()<>0/]
+
+[**
+ *  Check if this attribute is a list 
+ *  @param aProperty
+*/]
+[query public isListProperty(aProperty : Property) : Boolean
+	= if (isAssociationAttribute(aProperty)._not())
+		then aProperty.upper<>1 
+		else  (isAssociationClass(aProperty.association)._not() or isAssociationClass(aProperty.class)._not()) 
+				and aProperty.upper<>1
+		endif/]
+
+[**
+ *  Check if this is a OneToMany association
+*/]
+[query public isAssociationBidirectionnel(aDestinationProperty : Property, aSourceProperty : Property) : Boolean
+	 = aDestinationProperty.isNavigable() and aSourceProperty.isNavigable()/]

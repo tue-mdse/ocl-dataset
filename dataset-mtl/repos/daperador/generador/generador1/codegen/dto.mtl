@@ -1,0 +1,126 @@
+[module dto('http://www.eclipse.org/uml2/4.0.0/UML')/]
+
+[template public generate(c : Class)]
+[comment @main/]
+[file ('/src/main/java/' + c._package.qualifiedName.replaceAll('::', '/') +'/dto/'+ c.name + 'DTO.java', false, 'UTF-8')]
+package [c._package.getQualifiedName().replaceAll('::', '.')/].dto;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+[if (c.attribute->exists(a : Property | a.isMany()))]
+import java.util.List;
+import java.util.ArrayList;
+[/if]
+import java.util.List;
+import java.util.ArrayList;
+[if (c.attribute->exists(a : Property | a.type.name='Date'))]
+import java.util.Date;
+[/if]
+
+/**
+  * @generated
+  *  @author [c._package.eAnnotations.details->select(a: ecore::EStringToStringMapEntry|a.key='author').value/]
+  */
+@JsonIgnoreProperties(ignoreUnknown = true)
+[c.classHeader()/] {
+
+    public [c.name/]DTO(){
+        //constructor base
+    }
+    
+    public [c.name/]DTO(Long id){
+        this.id=id;
+    }
+
+	private Long id;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+	
+    [c.attribute.generate()/]
+    [c.getAssociations().navigableOwnedEnd->select(type <> c).generate() /]
+    [c.attribute.accessors()/]
+	[c.getAssociations().navigableOwnedEnd->select(type <> c).accessors() /]
+}
+[/file]
+[/template]
+
+[comment Collections /]
+
+[template public generate(a : Property) ? (a.isMany())]
+
+
+
+/**
+* @generated
+*/
+/*private List<[a.type.name/]DTO> [a.name/];
+
+public List<[a.type.name/]DTO> get[a.name.toUpperFirst()/](){
+	if(this.[a.name/]==null){
+		[a.name/]=new ArrayList<[a.type.name/]DTO>();
+	}
+	return [a.name/];
+}
+
+public void set[a.name.toUpperFirst()/](List<[a.type.name/]DTO> [a.name/]){
+	this.[a.name/]=[a.name/];
+}
+*/
+
+[/template]
+
+[comment Single properties /]
+
+[template public generate(a : Property) ? (not a.isMany())]
+
+/**
+* @generated
+*/
+private [a.tipoDTO()/] [a.name/];
+
+[/template]
+
+[comment Accessors for single element /]
+
+[template public accessors(a : Property) ? (not a.isMany())]
+/**
+* @generated
+*/
+public [a.tipoDTO()/] get[a.name.toUpperFirst()/]() {
+    return this.[a.name/];
+}
+
+/**
+* @generated
+*/
+public void set[a.name.toUpperFirst()/]([a.tipoDTO()/] [a.name/]) {
+    this.[a.name/] = [a.name/];
+}
+
+[/template]
+
+[template public tipoDTO(a:Property)]
+[if(a.isAttribute())][if(a.type.name='Date')]String[else][a.type.name/][/if][else][a.type.name/]DTO[/if]
+[/template]
+
+
+[template public classHeader(c : Class)]
+[c.visibility/] class [c.name/]DTO[c.extendsHeader()/][c.implementsHeader()/]
+[/template]
+
+[template public extendsHeader(c : Class) ? (c.superClass->notEmpty())]
+ extends [c.superClass.name/]DTO
+[/template]
+
+[template public implementsHeader(c : Class) ? (c.interfaceRealization->notEmpty())]
+ implements [c.interfaceRealization.supplier.name->sep(', ')/]
+[/template]
+
+[query public isMany(s : MultiplicityElement) : Boolean =
+	s.lower > 1 or s.upper = -1 or s.upper > 1 
+/]

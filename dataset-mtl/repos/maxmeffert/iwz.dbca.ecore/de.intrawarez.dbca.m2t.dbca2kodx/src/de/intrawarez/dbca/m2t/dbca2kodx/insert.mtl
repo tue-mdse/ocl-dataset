@@ -1,0 +1,79 @@
+[comment encoding = UTF-8 /]
+[module insert('http://www.intrawarez.de/dbca')]
+
+[import de::intrawarez::dbca::m2t::common::attributes/]
+[import de::intrawarez::dbca::m2t::common::entities/]
+[import de::intrawarez::dbca::m2t::common::relationships/]
+[import de::intrawarez::dbca::m2t::common::accessors/]
+[import de::intrawarez::dbca::m2t::common::client/]
+
+[import de::intrawarez::dbca::m2t::dbca2kodx::dxgrid/]
+
+[template public generateInsertView(ev : EntityForm)]
+[file ('/client/devextreme/'+ev.getClientName().toLower()+'/html/view.'+ev.entity.name.toLower()+'.'+ev.type.toString().toLower()+'.html', false, 'UTF-8')]
+<div data-options="dxView : { name: '[ev.name/]'} ">
+	<div data-options="dxContent: { targetPlaceholder: 'content' }">
+		<div class="content-body">
+			<div class="form">
+				<div class="dx-fieldset">
+					<div class="dx-fieldset-header">
+						<h1>Neuer Eintrag: [ev.entity.name/]</h1>
+					</div>
+					[for (p : Property | ev.entity.properties->select(type.toString()<>'GUID'))]
+					<div class="dx-field">
+						<div class="dx-field-label" data-bind="text: [ev.getClientName()/].labels.[ev.name/].[p.name/]"></div>
+						<div class="dx-field-value">
+							<div data-bind="dxTextBox: [p.name/]DxTextBoxOptions"></div>
+						</div>
+					</div>
+					[/for]
+					<div data-bind="dxButton: { text: 'Anlegen', icon: 'save', onClick: insert }"></div>
+				</div>
+        	</div>
+		</div>
+	</div>
+</div>
+[/file]
+[file ('/client/devextreme/'+ev.getClientName().toLower()+'/js/view.'+ev.entity.name.toLower()+'.'+ev.type.toString().toLower()+'.js', false, 'UTF-8')]
+(function thornms_routes ($, DX, ko, [ev.ancestors(Client)->first().name/], undefined){
+
+	[ev.ancestors(Client)->first().name/].views = [ev.ancestors(Client)->first().name/].views || {};
+
+	[ev.ancestors(Client)->first().name/].views['["'+ev.name+'"]'/] = function () {
+		
+		var viewModel = {};
+		viewModel.[ev.entity.name/] = {};
+		[for (p : Property | ev.entity.properties->select(type.toString()<>'GUID'))]
+		viewModel.[ev.entity.name/].[p.name/] = ko.observable("");
+		viewModel.[p.name/]DxTextBoxOptions = {};
+		viewModel.[p.name/]DxTextBoxOptions.value = viewModel.[ev.entity.name/].[p.name/];
+		[/for]
+
+		viewModel.insert = function () {
+			
+			var entry = ko.toJS(viewModel.[ev.entity.name/]);
+
+			[ev.getClientName()/].stores.[ev.entity.name/].insert(entry).done(function(data,x){
+				console.log(x);
+				return console.log(data);
+				// [ev.selectRelatedEntityViews()->select(isSelectView()).name/]
+				[if (ev.selectRelatedEntityViews()->select(isSelectView())->notEmpty())]
+				[ev.getClientName()/].app.navigate({ view: "[ev.selectRelatedEntityViews()->select(isSelectView()).name/]" });
+				[/if]
+
+			}).fail(function(error){
+				console.log(error);
+			});
+
+		};
+
+		return viewModel;
+
+		// [protected('viewmodel:'+ev.name)]
+		// [/protected]
+		
+	};
+
+}(jQuery, DevExpress, ko, (window.[ev.ancestors(Client)->first().name/] = window.[ev.ancestors(Client)->first().name/] || {}) ));
+[/file]
+[/template]

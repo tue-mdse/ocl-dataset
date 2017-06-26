@@ -1,0 +1,49 @@
+[comment encoding = UTF-8 /]
+[module ImportUtils('http:///org/gnstudio/apdt/model.ecore')/]
+[query public getImports(i : InterfaceElement) : String =  
+                    i.eAllContents(TypeReference)->
+                       select(r|isFullQulPath(r))->collect(name)->asSet()/]
+
+[query public getImports(c : ClassElement) : String =  
+                    c.eAllContents(TypeReference)->
+                   select(r|isFullQulPath(r))->collect(name)->asSet()/]
+
+[query private isFullQulPath(t : TypeReference) : Boolean = t.name.index('.')>-1/]
+
+[template public getBaseType(t : TypeReference) ?
+ ((not t.oclIsUndefined()) and (not t.name.oclIsUndefined()) and isFullQulPath(t))
+ { typename : String = name.trim();
+   baseIndex :Integer = typename.lastIndex('.')+1;
+   typeLength :Integer = typename.size();
+ }]
+[typename.substring(baseIndex, typeLength)/]
+[/template]
+
+[template public getBaseType(t : TypeReference) ?
+ ((not t.oclIsUndefined()) and (not t.name.oclIsUndefined()) and t.name.trim().size()>0 and not isFullQulPath(t))
+ { typename : String = name.trim();}]
+[typename/]
+[/template]
+
+[template public getBaseType(t : TypeReference) ?
+ (t.oclIsUndefined() or t.name.oclIsUndefined() or t.name.trim().size()=0)]
+/*type*/
+[/template]
+
+[template public getImportBlock(c : ClassElement)]
+[let imports :Set(String) = getImports(c)]
+[if ( imports->notEmpty())]
+
+[for (atype : String | imports)]import [atype/];
+[/for][/if][/let]
+[/template]
+
+[template public getImportBlock(c : InterfaceElement)]
+[let imports :Set(String) = getImports(c)]
+[if ( imports->notEmpty())]
+
+[for (atype : String | imports)]import [atype/];
+[/for][/if][/let]
+[/template]
+
+

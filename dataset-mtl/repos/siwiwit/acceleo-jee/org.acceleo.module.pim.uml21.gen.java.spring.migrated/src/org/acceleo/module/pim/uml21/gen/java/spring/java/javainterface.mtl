@@ -1,0 +1,61 @@
+[module javainterface('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[template private fullFilePath(interface : Interface)]
+[if (interface.isJavaClassifier())]
+[interface.pathToMainJava()/]/[interface.interfacePackage().toPath()/]/[interface.name/].java
+[/if]
+
+[/template]
+
+
+[template public generateJavaInterface(interface : Interface) ? (interface.isJavaClassifier())]
+[comment This template is called by the main module file /]
+[file (interface.fullFilePath(interface.pathToMainJava(), interface.interfacePackage().toPath(), interface.name.concat('.java')), false))]
+package [interface.interfacePackage()/];
+
+// [protected ('imports')] 
+// for import
+// [/protected] for import
+
+[interface.generateJavadoc()/]
+public interface [interface.name/][interface.extensions()/] {
+
+[comment  Generate attributes /]
+[for (prop:Property|interface.attribute)]
+	[if (prop.isReadOnly)] final [/if][if (prop.isStatic)] static [/if][prop.type.convertToJavaType()/] [prop.name/][if (prop.default <> null)] = [prop.default/][/if];
+[/for]
+
+[comment  Generate operations /]
+[for (oper:Operation|interface.ownedOperation)]
+	[oper.generateJavadoc()/]
+	public [oper.generateReturn()/] [oper.name/]([oper.generateRawParameters()/]);
+[/for]
+
+}
+[/file]
+[/template]
+
+
+[template public extensions(interface : Interface)]
+[if (interface.general->notEmpty())] extends [general.name/][/if]
+[/template]
+
+
+[template public asParameter(property : Property)]
+[property.type.convertToJavaType()/] [property.name/]
+[/template]

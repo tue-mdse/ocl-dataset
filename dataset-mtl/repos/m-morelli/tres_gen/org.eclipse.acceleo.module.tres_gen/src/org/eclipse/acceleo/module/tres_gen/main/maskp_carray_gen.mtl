@@ -1,0 +1,76 @@
+[comment encoding = UTF-8 /]
+[module maskp_carray_gen('http://www.eclipse.org/uml2/4.0.0/UML',
+						 'http:///schemas/Functional/_dozfwFO0EeSLefC5vJP4yw/4',
+						 'http://Mapping/schemas/Allocation/_Px3IoFO1EeSj9tgZpcmhcg/3')]
+
+[import org::eclipse::acceleo::module::tres_gen::requests::util_general /]
+[import org::eclipse::acceleo::module::tres_gen::requests::util_sr /]
+[import org::eclipse::acceleo::module::tres_gen::requests::util_marte /]
+
+[**
+ * 
+ */]
+[template public generate_mask_carray(mdl : Model) post(trim())]
+[comment Preliminary variables /]
+[let mapp : Package = mdl.eContents(Package)->selectSinglePackageByName('Mapping')]
+[let f2t_set : Set(Abstraction) = mapp.getFunctionToTaskMapsFromPack()]
+[let t2c_set : OrderedSet(Abstraction) = mapp.getTaskToCpuMapsFromPack()->sortTaskToCpuMapsByTaskSetIdx()]
+
+[comment ========================= /]
+[comment Generate the file content /]
+[comment ========================= /]
+[file ('definitions_of_masks_cellarrays.m', false, 'UTF-8')]
+%
+%%%%% Sequences of pseudo instructions (task codes)
+%
+[generateTaskCodes(t2c_set, f2t_set)/]
+%
+%%%%% Description of timing properties of task set
+%
+[generateTimingDescrOfTaskSet(mdl, t2c_set)/]
+[/file]
+
+[comment Closing the preliminary var. declaration section /]
+[/let]
+[/let]
+[/let]
+[/template]
+
+[**
+ * 
+ */]
+[template public generateTaskCodes(t2c_set : OrderedSet(Abstraction), f2t_set : Set(Abstraction))]
+[for (task : Class | t2c_set.getClient())]
+[let f2task_set : OrderedSet(Abstraction) = f2t_set->selectAbstractionsByClient(task)->sortFunctionToTaskMapsByMapOrder()]
+[task.lowerCaseName()/]_instrs = { ...
+[for (f : Abstraction | f2task_set)]
+    '[f.getValueOfStereotypeProperty('Mapping::Allocation::FunctionToThreadMap', 'execTime')/]'; ...
+[/for]
+};
+[/let]
+[/for]
+[/template]
+
+[**
+ * 
+ */]
+[template public generateTimingDescrOfTaskSet(mdl : Model, t2c_set : OrderedSet(Abstraction))]
+%                 % type           %iat     %rdl     %ph     %prio
+task_set_descr = { ...
+[for (task : Class | t2c_set.getClient())]
+[if (task.hasStereotypeApplied('Mapping::Concurrency::PeriodicThread'))]
+[let task_period_descr : String = task.getTaskPeriodString()]
+[let task_period_value : String = task_period_descr.strtok(' ', 0)]
+[let task_period_unit  : String = task_period_descr.strtok(' ', 1)]
+[let task_period_expr  : String = task_period_value + '*' + mdl.getUnitConvFactorOfNFProperty('NFP_Duration', task_period_unit)]
+                  'PeriodicTask', [' ' + task_period_expr + '    ' + task_period_expr + '    ' + '0' + '    ' + task.getTaskPriorityString()/]; ...
+[/let]
+[/let]
+[/let]
+[/let]
+[else]
+                  % FIXME!
+[/if]
+[/for]
+};
+[/template]

@@ -1,0 +1,1174 @@
+[comment encoding = UTF-8 /]
+[module _arg_wsdlName_wsdl('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import org::ijis::gra::uml::m2t::commonQuery/]
+
+
+[template public _arg_wsdlName_wsdl(wsdlDefinition : InstanceSpecification){
+	_arg_wsdlName_:String=wsdlDefinition.instanceStringValue('wsdlName');
+	_arg_wsdlPrefix_:String=wsdlDefinition.instanceStringValue('wsdlPrefix');
+	_arg_wsdlNamespace_:String=wsdlDefinition.instanceStringValue('wsdlNamespace');
+	imports:Sequence(InstanceSpecification)=wsdlDefinition.instanceInstanceValues('import');
+	types:Sequence(InstanceSpecification)=wsdlDefinition.instanceInstanceValues('types');
+	messages:Sequence(InstanceSpecification)=wsdlDefinition.instanceInstanceValues('message');
+	porttypes:Sequence(InstanceSpecification)=wsdlDefinition.instanceInstanceValues('porttype');
+	bindings:Sequence(InstanceSpecification)=wsdlDefinition.instanceInstanceValues('binding');
+	services:Sequence(InstanceSpecification)=wsdlDefinition.instanceInstanceValues('service');
+	wsdlFile:String='schemas/SIP_RSWS_1.2/'+_arg_wsdlName_+'.wsdl';
+}]
+[file(wsdlFile,false,'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions 	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+					xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" 
+					xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+					xmlns:[_arg_wsdlPrefix_/]="[_arg_wsdlNamespace_/]"  
+					targetNamespace="[_arg_wsdlNamespace_/]"> 
+[for(wsdlimport:InstanceSpecification|imports)][wsdlimport._part_wsdlimport()/][/for]
+[for(type:InstanceSpecification|types)][type._part_types()/][/for]
+[for(message:InstanceSpecification|messages)][message._part_message()/][/for]
+[for(porttype:InstanceSpecification|porttypes)][porttype._part_porttype()/][/for]
+[for(binding:InstanceSpecification|bindings)][binding._part_binding()/][/for]
+[for(service:InstanceSpecification|services)][service._part_service()/][/for]
+</wsdl:definitions>
+[/file]
+[/template]
+[template public _part_wsdlimport(wsdlimport : InstanceSpecification){
+	_arg_WsdlNamespace_:String=wsdlimport.instanceStringValue('WsdlNamespace');
+	_arg_location_:String=wsdlimport.instanceStringValue('location');
+}]
+	<wsdl:import namespace="[_arg_WsdlNamespace_/]"
+		location="[_arg_location_/]" />
+[/template]
+
+
+[template public _part_types(types : InstanceSpecification){
+	schemas:Sequence(InstanceSpecification)=types.instanceInstanceValues('schema');
+}]
+<wsdl:types>
+[for(schema:InstanceSpecification|schemas)][schema._part_typesSchema()/][/for]
+</wsdl:types>
+[/template]
+
+[template public _part_typesSchema(schema : InstanceSpecification){
+	_arg_SchemaNamespace_:String=schema.instanceStringValue('SchemaNamespace');
+	imports:Sequence(InstanceSpecification)=schema.instanceInstanceValues('import');
+}]
+<xsd:schema xmlns:schemaPrefix="[_arg_SchemaNamespace_/]">
+[for(schemaImport:InstanceSpecification|imports)][schemaImport._part_import()/][/for]
+</xsd:schema>
+[/template]
+
+[template public _part_import(schemaimport : InstanceSpecification){
+	_arg_SchemaNamespace_:String=schemaimport.instanceStringValue('SchemaNamespace');
+	_arg_SchemaFileWithPath_:String=schemaimport.instanceStringValue('SchemaFileWithPath');
+}]
+<xsd:import namespace="[_arg_SchemaNamespace_/]" schemaLocation="[_arg_SchemaFileWithPath_/].xsd"/>
+[/template]
+
+[template public _part_message(message : InstanceSpecification){
+	_arg_messagename_:String=message.instanceStringValue('messagename');
+	parts:Sequence(InstanceSpecification)=message.instanceInstanceValues('part');
+}]
+<wsdl:message name="[_arg_messagename_/]">
+[message.message()/]
+[for(part:InstanceSpecification|parts)][part._part_messagePart()/][/for]
+</wsdl:message>
+[/template]
+
+[template public _part_messagePart(part : InstanceSpecification){
+	_arg_messagePartName:String=part.instanceStringValue('messagePartName');
+	_arg_schemaPrefix_:String=part.instanceStringValue('schemaPrefix');
+}]
+<wsdl:part name="body" element="[_arg_schemaPrefix_/]:[_arg_messagePartName/]"/>
+[/template]
+
+[template public _part_porttype(portType : InstanceSpecification){
+	operations:Sequence(InstanceSpecification)=portType.instanceInstanceValues('operation');
+}]
+<wsdl:portType name="PortType">
+[for(operation:InstanceSpecification|operations)][operation._part_porttypeOperation()/][/for]
+</wsdl:portType>
+[/template]
+
+[template public _part_porttypeOperation(operation : InstanceSpecification){
+	_arg_operation:String=operation.instanceStringValue('operation');
+	_arg_soapAction_:String=operation.instanceStringValue('soapAction');
+	input:InstanceSpecification=operation.instanceInstanceValue('input');
+	output:InstanceSpecification=operation.instanceInstanceValue('output');
+}]
+<wsdl:operation name="[_arg_operation/]">
+	<soap:operation soapAction="[_arg_soapAction_/]" style="document"/>
+[input._part_porttypeOperationInput()/]
+[output._part_porttypeOperationOutput()/]
+</wsdl:operation>
+[/template]
+
+[template public _part_porttypeOperationInput(input : InstanceSpecification){
+	_arg_wsdlPrefix_:String=input.instanceStringValue('wsdlPrefix');
+}]
+<wsdl:input message="[_arg_wsdlPrefix_/]:Input"/>
+[/template]
+
+[template public _part_porttypeOperationOutput(output : InstanceSpecification){
+	_arg_wsdlPrefix_:String=output.instanceStringValue('wsdlPrefix');
+}]
+<wsdl:output message="[_arg_wsdlPrefix_/]:Output"/>
+[/template]
+
+
+[template public _part_binding(binding : InstanceSpecification){
+	_arg_bindingName_:String=binding.instanceStringValue('bindingName');
+	_arg_wsdlPrefix_:String=binding.instanceStringValue('wsdlPrefix');
+	operations:Sequence(InstanceSpecification)=binding.instanceInstanceValues('operation');
+}]
+<wsdl:binding name="[_arg_bindingName_/]" type="[_arg_wsdlPrefix_/]:PortType">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+
+[binding.transport_security()/]
+[binding.wsa_rm()/]
+[binding.wsa_wss_no_client_credential_sc()/]
+[binding.wsa_wss_no_client_credential()/]
+[binding.wsa_wss_saml_token_sc()/]
+[binding.wsa_wss_saml_token()/]
+[binding.wsa_wss_spnego_token_sc()/]
+[binding.wsa_wss_spnego_token()/]
+[binding.wsa_wss_username_token_sc()/]
+[binding.wsa_wss_username_token()/]
+[binding.wsa_wss_x509_token_sc()/]
+[binding.wsa_wss_x509_token()/]
+[binding.wsa()/]
+
+[for(operation:InstanceSpecification|operations)][operation._part_bindingOperation()/][/for]
+
+</wsdl:binding>
+[/template]
+
+
+[template public _part_bindingOperation(operation : InstanceSpecification){
+	_arg_operation:String=operation.instanceStringValue('operation');
+	_arg_soapAction_:String=operation.instanceStringValue('soapAction');
+	input:InstanceSpecification=operation.instanceInstanceValue('input');
+	output:InstanceSpecification=operation.instanceInstanceValue('output');
+}]
+<wsdl:operation name="[_arg_operation/]">
+	<soap:operation soapAction="[_arg_soapAction_/]" style="document"/>
+[input._part_bindingOperationInput()/]
+[output._part_bindingOperationOutput()/]
+</wsdl:operation>
+[/template]
+
+
+[template public _part_bindingOperationInput(input : InstanceSpecification)]
+<wsdl:input>
+	<soap:body use="literal"/>
+</wsdl:input>
+[/template]
+
+[template public _part_bindingOperationOutput(output : InstanceSpecification)]
+<wsdl:output>
+	<soap:body use="literal"/>
+</wsdl:output>
+[/template]
+
+[template public _part_service(service : InstanceSpecification){
+	ports:Sequence(InstanceSpecification)=service.instanceInstanceValues('servicePort');
+}]
+	<wsdl:service name="SIRS-Notification">
+[for(port:InstanceSpecification|ports)][port._part_servicePort()/][/for]
+	</wsdl:service>
+[/template]
+
+[template public _part_servicePort(servicePort : InstanceSpecification){
+soapAddress:InstanceSpecification=servicePort.instanceInstanceValue('soapAddress');
+}]
+		<wsdl:port name="SIRS-RelocationNotificationPort" binding="sirs-n:RelocationNoticeSOAPBinding">
+[soapAddress._part_soapAddress()/]
+		</wsdl:port>
+[/template]
+
+[template public _part_soapAddress(wsdlDefinitions : InstanceSpecification)]
+			<soap:address location="No Target Adress" />
+[/template]
+
+[comment]
+In-line policies
+[/comment]
+[template public message(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="message_policy"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+		<wsp:ExactlyOne>
+			<wsp:All>
+				<sp:SignedParts xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+					<sp:Body/>
+					<sp:Header Name="To" Namespace="http://www.w3.org/2005/08/addressing"/>
+					<sp:Header Name="From" Namespace="http://www.w3.org/2005/08/addressing"/>
+					<sp:Header Name="FaultTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+					<sp:Header Name="ReplyTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+					<sp:Header Name="MessageID" Namespace="http://www.w3.org/2005/08/addressing"/>
+					<sp:Header Name="RelatesTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+					<sp:Header Name="Action" Namespace="http://www.w3.org/2005/08/addressing"/>
+				</sp:SignedParts>
+				<sp:EncryptedParts xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+					<sp:Body/>
+				</sp:EncryptedParts>
+			</wsp:All>
+		</wsp:ExactlyOne>
+	</wsp:Policy>
+[/template]
+
+
+[template public transport_security(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa_wss_policy"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	xsi:schemaLocation="http://schemas.xmlsoap.org/ws/2004/09/policy http://schemas.xmlsoap.org/ws/2004/09/policy/ws-policy.xsd">
+	<wsp:ExactlyOne>
+		<wsp:All>
+			<sp:TransportBinding xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:TransportToken>
+						<wsp:Policy>
+							<sp:HttpsToken/>
+						</wsp:Policy>
+					</sp:TransportToken>
+					<sp:AlgorithmSuite>
+						<wsp:Policy>
+							<sp:Basic256/>
+						</wsp:Policy>
+					</sp:AlgorithmSuite>
+					<sp:Layout>
+						<wsp:Policy>
+							<sp:Strict/>
+						</wsp:Policy>
+					</sp:Layout>
+				</wsp:Policy>
+			</sp:TransportBinding>
+			<wsaw:UsingAddressing/>
+		</wsp:All>
+	</wsp:ExactlyOne>
+</wsp:Policy>
+[/template]
+
+[template public wsa_rm(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa-rm_policy"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+    xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+    xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+      xsi:schemaLocation="http://schemas.xmlsoap.org/ws/2004/09/policy http://schemas.xmlsoap.org/ws/2004/09/policy/ws-policy.xsd">
+    <wsp:ExactlyOne>
+        <wsp:All>
+            <wsrmp:RMAssertion xmlns:wsrmp="http://docs.oasis-open.org/ws-rx/wsrmp/200702">
+                <wsp:Policy>
+                    <wsrmp:DeliveryAssurance>
+                        <wsp:Policy>
+                            <wsrmp:ExactlyOnce/>
+                            <wsrmp:InOrder/>
+                        </wsp:Policy>
+                    </wsrmp:DeliveryAssurance>
+                </wsp:Policy>
+                <netrmp:InactivityTimeout
+                    xmlns:netrmp="http://schemas.microsoft.com/ws-rx/wsrmp/200702"
+                    Milliseconds="600000"/>
+                <netrmp:AcknowledgementInterval
+                    xmlns:netrmp="http://schemas.microsoft.com/ws-rx/wsrmp/200702"
+                    Milliseconds="200"/>
+            </wsrmp:RMAssertion>
+            <wsaw:UsingAddressing/>
+        </wsp:All>
+    </wsp:ExactlyOne>
+</wsp:Policy>
+[/template]
+
+[template public wsa_wss_no_client_credential_sc(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa_wss_policy"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	xsi:schemaLocation="http://schemas.xmlsoap.org/ws/2004/09/policy http://schemas.xmlsoap.org/ws/2004/09/policy/ws-policy.xsd">
+	<wsp:ExactlyOne>
+		<wsp:All>
+			<sp:SymmetricBinding xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:ProtectionToken>
+						<wsp:Policy>
+							<sp:SecureConversationToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+								<wsp:Policy>
+									<sp:RequireDerivedKeys/>
+									<sp:BootstrapPolicy>
+										<wsp:Policy>
+											<sp:SignedParts>
+												<sp:Body/>
+												<sp:Header Name="To" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="From" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="FaultTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="ReplyTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="MessageID" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="RelatesTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="Action" Namespace="http://www.w3.org/2005/08/addressing"/>
+											</sp:SignedParts>
+											<sp:EncryptedParts>
+												<sp:Body/>
+											</sp:EncryptedParts>
+											<sp:SymmetricBinding>
+												<wsp:Policy>
+													<sp:ProtectionToken>
+														<wsp:Policy>
+															<mssp:SslContextToken xmlns:mssp="http://schemas.microsoft.com/ws/2005/07/securitypolicy" sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+																<wsp:Policy>
+																	<sp:RequireDerivedKeys/>
+																	<sp:MustNotSendCancel/>
+																	<sp:MustNotSendAmend/>
+																	<sp:MustNotSendRenew/>
+																</wsp:Policy>
+															</mssp:SslContextToken>
+														</wsp:Policy>
+													</sp:ProtectionToken>
+													<sp:AlgorithmSuite>
+														<wsp:Policy>
+															<sp:Basic256/>
+														</wsp:Policy>
+													</sp:AlgorithmSuite>
+													<sp:Layout>
+														<wsp:Policy>
+															<sp:Strict/>
+														</wsp:Policy>
+													</sp:Layout>
+													<sp:IncludeTimestamp/>
+													<sp:EncryptSignature/>
+													<sp:OnlySignEntireHeadersAndBody/>
+												</wsp:Policy>
+											</sp:SymmetricBinding>
+											<sp:Wss11>
+												<wsp:Policy/>
+											</sp:Wss11>
+											<sp:Trust13>
+												<wsp:Policy>
+													<sp:MustSupportIssuedTokens/>
+													<sp:RequireClientEntropy/>
+													<sp:RequireServerEntropy/>
+												</wsp:Policy>
+											</sp:Trust13>
+										</wsp:Policy>
+									</sp:BootstrapPolicy>
+									<sp:MustNotSendAmend/>
+								</wsp:Policy>
+							</sp:SecureConversationToken>
+						</wsp:Policy>
+					</sp:ProtectionToken>
+					<sp:AlgorithmSuite>
+						<wsp:Policy>
+							<sp:Basic256/>
+						</wsp:Policy>
+					</sp:AlgorithmSuite>
+					<sp:Layout>
+						<wsp:Policy>
+							<sp:Strict/>
+						</wsp:Policy>
+					</sp:Layout>
+					<sp:IncludeTimestamp/>
+					<sp:EncryptSignature/>
+					<sp:OnlySignEntireHeadersAndBody/>
+				</wsp:Policy>
+			</sp:SymmetricBinding>
+			<sp:Wss11 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy/>
+			</sp:Wss11>
+			<sp:Trust13 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:MustSupportIssuedTokens/>
+					<sp:RequireClientEntropy/>
+					<sp:RequireServerEntropy/>
+				</wsp:Policy>
+			</sp:Trust13>
+			<wsaw:UsingAddressing/>
+		</wsp:All>
+	</wsp:ExactlyOne>
+</wsp:Policy>
+[/template]
+
+[template public wsa_wss_no_client_credential(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa_wss_policy"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	xsi:schemaLocation="http://schemas.xmlsoap.org/ws/2004/09/policy http://schemas.xmlsoap.org/ws/2004/09/policy/ws-policy.xsd">
+	<wsp:ExactlyOne>
+		<wsp:All>
+			<sp:SymmetricBinding xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:ProtectionToken>
+						<wsp:Policy>
+							<mssp:SslContextToken xmlns:mssp="http://schemas.microsoft.com/ws/2005/07/securitypolicy" sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+								<wsp:Policy>
+									<sp:RequireDerivedKeys/>
+									<sp:MustNotSendCancel/>
+									<sp:MustNotSendAmend/>
+									<sp:MustNotSendRenew/>
+								</wsp:Policy>
+							</mssp:SslContextToken>
+						</wsp:Policy>
+					</sp:ProtectionToken>
+					<sp:AlgorithmSuite>
+						<wsp:Policy>
+							<sp:Basic256/>
+						</wsp:Policy>
+					</sp:AlgorithmSuite>
+					<sp:Layout>
+						<wsp:Policy>
+							<sp:Strict/>
+						</wsp:Policy>
+					</sp:Layout>
+					<sp:IncludeTimestamp/>
+					<sp:EncryptSignature/>
+					<sp:OnlySignEntireHeadersAndBody/>
+				</wsp:Policy>
+			</sp:SymmetricBinding>
+			<sp:Wss11 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy/>
+			</sp:Wss11>
+			<sp:Trust13 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:MustSupportIssuedTokens/>
+					<sp:RequireClientEntropy/>
+					<sp:RequireServerEntropy/>
+				</wsp:Policy>
+			</sp:Trust13>
+			<wsaw:UsingAddressing/>
+		</wsp:All>
+	</wsp:ExactlyOne>
+</wsp:Policy>
+[/template]
+[template public wsa_wss_saml_token_sc(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa_wss_policy"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	xsi:schemaLocation="http://schemas.xmlsoap.org/ws/2004/09/policy http://schemas.xmlsoap.org/ws/2004/09/policy/ws-policy.xsd">
+	<wsp:ExactlyOne>
+		<wsp:All>
+			<sp:SymmetricBinding xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:ProtectionToken>
+						<wsp:Policy>
+							<sp:SecureConversationToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+								<wsp:Policy>
+									<sp:RequireDerivedKeys/>
+									<sp:BootstrapPolicy>
+										<wsp:Policy>
+											<sp:SignedParts>
+												<sp:Body/>
+												<sp:Header Name="To" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="From" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="FaultTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="ReplyTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="MessageID" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="RelatesTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="Action" Namespace="http://www.w3.org/2005/08/addressing"/>
+											</sp:SignedParts>
+											<sp:EncryptedParts>
+												<sp:Body/>
+											</sp:EncryptedParts>
+											<sp:SymmetricBinding>
+												<wsp:Policy>
+													<sp:ProtectionToken>
+														<wsp:Policy>
+															<mssp:SslContextToken xmlns:mssp="http://schemas.microsoft.com/ws/2005/07/securitypolicy" sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+																<wsp:Policy>
+																	<sp:RequireDerivedKeys/>
+																	<sp:MustNotSendCancel/>
+																	<sp:MustNotSendAmend/>
+																	<sp:MustNotSendRenew/>
+																</wsp:Policy>
+															</mssp:SslContextToken>
+														</wsp:Policy>
+													</sp:ProtectionToken>
+													<sp:AlgorithmSuite>
+														<wsp:Policy>
+															<sp:Basic256/>
+														</wsp:Policy>
+													</sp:AlgorithmSuite>
+													<sp:Layout>
+														<wsp:Policy>
+															<sp:Strict/>
+														</wsp:Policy>
+													</sp:Layout>
+													<sp:IncludeTimestamp/>
+													<sp:EncryptSignature/>
+													<sp:OnlySignEntireHeadersAndBody/>
+												</wsp:Policy>
+											</sp:SymmetricBinding>
+											<sp:EndorsingSupportingTokens>
+												<wsp:Policy>
+													<sp:IssuedToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+														<sp:RequestSecurityTokenTemplate>
+															<trust:TokenType xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">
+																http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLV1.1
+															</trust:TokenType>
+															<trust:KeyType xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">
+																http://docs.oasis-open.org/ws-sx/ws-trust/200512/PublicKey
+															</trust:KeyType>
+															<trust:Claims xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512" Dialect="http://schemas.xmlsoap.org/ws/2005/05/identity">
+																<wsid:ClaimType xmlns:wsid="http://schemas.xmlsoap.org/ws/2005/05/identity" Uri="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/privatepersonalidentifier"/>
+															</trust:Claims>
+															<trust:EncryptWith xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p</trust:EncryptWith>
+															<trust:SignWith xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">http://www.w3.org/2000/09/xmldsig#rsa-sha1</trust:SignWith>
+															<trust:CanonicalizationAlgorithm xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">http://www.w3.org/2001/10/xml-exc-c14n#</trust:CanonicalizationAlgorithm>
+															<trust:EncryptionAlgorithm xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">http://www.w3.org/2001/04/xmlenc#aes256-cbc</trust:EncryptionAlgorithm>
+														</sp:RequestSecurityTokenTemplate>
+														<wsp:Policy>
+															<sp:RequireDerivedKeys/>
+															<sp:RequireInternalReference/>
+														</wsp:Policy>
+													</sp:IssuedToken>
+												</wsp:Policy>
+											</sp:EndorsingSupportingTokens>
+											<sp:Wss11>
+												<wsp:Policy>
+													<sp:RequireSignatureConfirmation/>
+												</wsp:Policy>
+											</sp:Wss11>
+											<sp:Trust13>
+												<wsp:Policy>
+													<sp:MustSupportIssuedTokens/>
+													<sp:RequireClientEntropy/>
+													<sp:RequireServerEntropy/>
+												</wsp:Policy>
+											</sp:Trust13>
+										</wsp:Policy>
+									</sp:BootstrapPolicy>
+									<sp:MustNotSendAmend/>
+								</wsp:Policy>
+							</sp:SecureConversationToken>
+						</wsp:Policy>
+					</sp:ProtectionToken>
+					<sp:AlgorithmSuite>
+						<wsp:Policy>
+							<sp:Basic256/>
+						</wsp:Policy>
+					</sp:AlgorithmSuite>
+					<sp:Layout>
+						<wsp:Policy>
+							<sp:Strict/>
+						</wsp:Policy>
+					</sp:Layout>
+					<sp:IncludeTimestamp/>
+					<sp:EncryptSignature/>
+					<sp:OnlySignEntireHeadersAndBody/>
+				</wsp:Policy>
+			</sp:SymmetricBinding>
+			<sp:Wss11 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy/>
+			</sp:Wss11>
+			<sp:Trust13 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:MustSupportIssuedTokens/>
+					<sp:RequireClientEntropy/>
+					<sp:RequireServerEntropy/>
+				</wsp:Policy>
+			</sp:Trust13>
+			<wsaw:UsingAddressing/>
+		</wsp:All>
+	</wsp:ExactlyOne>
+</wsp:Policy>
+[/template]
+[template public wsa_wss_saml_token(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa_wss_policy"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	xsi:schemaLocation="http://schemas.xmlsoap.org/ws/2004/09/policy http://schemas.xmlsoap.org/ws/2004/09/policy/ws-policy.xsd">
+	<wsp:ExactlyOne>
+		<wsp:All>
+			<sp:SymmetricBinding xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:ProtectionToken>
+						<wsp:Policy>
+							<mssp:SslContextToken xmlns:mssp="http://schemas.microsoft.com/ws/2005/07/securitypolicy" sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+								<wsp:Policy>
+									<sp:RequireDerivedKeys/>
+									<sp:MustNotSendCancel/>
+									<sp:MustNotSendAmend/>
+									<sp:MustNotSendRenew/>
+								</wsp:Policy>
+							</mssp:SslContextToken>
+						</wsp:Policy>
+					</sp:ProtectionToken>
+					<sp:AlgorithmSuite>
+						<wsp:Policy>
+							<sp:Basic256/>
+						</wsp:Policy>
+					</sp:AlgorithmSuite>
+					<sp:Layout>
+						<wsp:Policy>
+							<sp:Strict/>
+						</wsp:Policy>
+					</sp:Layout>
+					<sp:IncludeTimestamp/>
+					<sp:EncryptSignature/>
+					<sp:OnlySignEntireHeadersAndBody/>
+				</wsp:Policy>
+			</sp:SymmetricBinding>
+			<sp:EndorsingSupportingTokens xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:IssuedToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+						<sp:RequestSecurityTokenTemplate>
+							<trust:TokenType xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">
+								http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.1#SAMLV1.1
+							</trust:TokenType>
+							<trust:KeyType xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">
+								http://docs.oasis-open.org/ws-sx/ws-trust/200512/PublicKey
+							</trust:KeyType>
+							<trust:Claims xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512" Dialect="http://schemas.xmlsoap.org/ws/2005/05/identity">
+								<wsid:ClaimType xmlns:wsid="http://schemas.xmlsoap.org/ws/2005/05/identity" Uri="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/privatepersonalidentifier"/>
+							</trust:Claims>
+							<trust:EncryptWith xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p</trust:EncryptWith>
+							<trust:SignWith xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">http://www.w3.org/2000/09/xmldsig#rsa-sha1</trust:SignWith>
+							<trust:CanonicalizationAlgorithm xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">http://www.w3.org/2001/10/xml-exc-c14n#</trust:CanonicalizationAlgorithm>
+							<trust:EncryptionAlgorithm xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">http://www.w3.org/2001/04/xmlenc#aes256-cbc</trust:EncryptionAlgorithm>
+						</sp:RequestSecurityTokenTemplate>
+						<wsp:Policy>
+							<sp:RequireDerivedKeys/>
+							<sp:RequireInternalReference/>
+						</wsp:Policy>
+					</sp:IssuedToken>
+				</wsp:Policy>
+			</sp:EndorsingSupportingTokens>
+			<sp:Wss11 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:RequireSignatureConfirmation/>
+				</wsp:Policy>
+			</sp:Wss11>
+			<sp:Trust13 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:MustSupportIssuedTokens/>
+					<sp:RequireClientEntropy/>
+					<sp:RequireServerEntropy/>
+				</wsp:Policy>
+			</sp:Trust13>
+			<wsaw:UsingAddressing/>
+		</wsp:All>
+	</wsp:ExactlyOne>
+</wsp:Policy>
+[/template]
+[template public wsa_wss_spnego_token_sc(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa_policy"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	xsi:schemaLocation="http://schemas.xmlsoap.org/ws/2004/09/policy http://schemas.xmlsoap.org/ws/2004/09/policy/ws-policy.xsd">
+		<wsp:ExactlyOne>
+			<wsp:All>
+				<sp:SymmetricBinding xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+					<wsp:Policy>
+						<sp:ProtectionToken>
+							<wsp:Policy>
+								<sp:SecureConversationToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+									<wsp:Policy>
+										<sp:RequireDerivedKeys/>
+										<sp:BootstrapPolicy>
+											<wsp:Policy>
+												<sp:SignedParts>
+													<sp:Body/>
+													<sp:Header Name="To" Namespace="http://www.w3.org/2005/08/addressing"/>
+													<sp:Header Name="From" Namespace="http://www.w3.org/2005/08/addressing"/>
+													<sp:Header Name="FaultTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+													<sp:Header Name="ReplyTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+													<sp:Header Name="MessageID" Namespace="http://www.w3.org/2005/08/addressing"/>
+													<sp:Header Name="RelatesTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+													<sp:Header Name="Action" Namespace="http://www.w3.org/2005/08/addressing"/>
+												</sp:SignedParts>
+												<sp:EncryptedParts>
+													<sp:Body/>
+												</sp:EncryptedParts>
+												<sp:SymmetricBinding>
+													<wsp:Policy>
+														<sp:ProtectionToken>
+															<wsp:Policy>
+																<sp:SpnegoContextToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+																	<wsp:Policy>
+																		<sp:RequireDerivedKeys/>
+																		<sp:MustNotSendCancel/>
+																		<sp:MustNotSendAmend/>
+																		<sp:MustNotSendRenew/>
+																	</wsp:Policy>
+																</sp:SpnegoContextToken>
+															</wsp:Policy>
+														</sp:ProtectionToken>
+														<sp:AlgorithmSuite>
+															<wsp:Policy>
+																<sp:Basic256/>
+															</wsp:Policy>
+														</sp:AlgorithmSuite>
+														<sp:Layout>
+															<wsp:Policy>
+																<sp:Strict/>
+															</wsp:Policy>
+														</sp:Layout>
+														<sp:IncludeTimestamp/>
+														<sp:EncryptSignature/>
+														<sp:OnlySignEntireHeadersAndBody/>
+													</wsp:Policy>
+												</sp:SymmetricBinding>
+												<sp:Wss11>
+													<wsp:Policy/>
+												</sp:Wss11>
+												<sp:Trust13>
+													<wsp:Policy>
+														<sp:MustSupportIssuedTokens/>
+														<sp:RequireClientEntropy/>
+														<sp:RequireServerEntropy/>
+													</wsp:Policy>
+												</sp:Trust13>
+											</wsp:Policy>
+										</sp:BootstrapPolicy>
+										<sp:MustNotSendAmend/>
+									</wsp:Policy>
+								</sp:SecureConversationToken>
+							</wsp:Policy>
+						</sp:ProtectionToken>
+						<sp:AlgorithmSuite>
+							<wsp:Policy>
+								<sp:Basic256/>
+							</wsp:Policy>
+						</sp:AlgorithmSuite>
+						<sp:Layout>
+							<wsp:Policy>
+								<sp:Strict/>
+							</wsp:Policy>
+						</sp:Layout>
+						<sp:IncludeTimestamp/>
+						<sp:EncryptSignature/>
+						<sp:OnlySignEntireHeadersAndBody/>
+					</wsp:Policy>
+				</sp:SymmetricBinding>
+				<sp:Wss11 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+					<wsp:Policy/>
+				</sp:Wss11>
+				<sp:Trust13 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+					<wsp:Policy>
+						<sp:MustSupportIssuedTokens/>
+						<sp:RequireClientEntropy/>
+						<sp:RequireServerEntropy/>
+					</wsp:Policy>
+				</sp:Trust13>
+				<wsaw:UsingAddressing/>
+			</wsp:All>
+		</wsp:ExactlyOne>
+	</wsp:Policy>
+[/template]
+[template public wsa_wss_spnego_token(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa_wss_policy"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	xsi:schemaLocation="http://schemas.xmlsoap.org/ws/2004/09/policy http://schemas.xmlsoap.org/ws/2004/09/policy/ws-policy.xsd">
+	<wsp:ExactlyOne>
+		<wsp:All>
+			<sp:SymmetricBinding
+				xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:ProtectionToken>
+						<wsp:Policy>
+							<sp:SpnegoContextToken
+								sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+								<wsp:Policy>
+									<sp:RequireDerivedKeys/>
+									<sp:MustNotSendCancel/>
+									<sp:MustNotSendAmend/>
+									<sp:MustNotSendRenew/>
+								</wsp:Policy>
+							</sp:SpnegoContextToken>
+						</wsp:Policy>
+					</sp:ProtectionToken>
+					<sp:AlgorithmSuite>
+						<wsp:Policy>
+							<sp:Basic256/>
+						</wsp:Policy>
+					</sp:AlgorithmSuite>
+					<sp:Layout>
+						<wsp:Policy>
+							<sp:Strict/>
+						</wsp:Policy>
+					</sp:Layout>
+					<sp:IncludeTimestamp/>
+					<sp:EncryptSignature/>
+					<sp:OnlySignEntireHeadersAndBody/>
+				</wsp:Policy>
+			</sp:SymmetricBinding>
+			<sp:Wss11 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy/>
+			</sp:Wss11>
+			<sp:Trust13 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:MustSupportIssuedTokens/>
+					<sp:RequireClientEntropy/>
+					<sp:RequireServerEntropy/>
+				</wsp:Policy>
+			</sp:Trust13>
+			<wsaw:UsingAddressing/>
+		</wsp:All>
+	</wsp:ExactlyOne>
+</wsp:Policy>
+[/template]
+[template public wsa_wss_username_token_sc(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa_wss_policy"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	xsi:schemaLocation="http://schemas.xmlsoap.org/ws/2004/09/policy http://schemas.xmlsoap.org/ws/2004/09/policy/ws-policy.xsd">
+	<wsp:ExactlyOne>
+		<wsp:All>
+			<sp:SymmetricBinding xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:ProtectionToken>
+						<wsp:Policy>
+							<sp:SecureConversationToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+								<wsp:Policy>
+									<sp:RequireDerivedKeys/>
+									<sp:BootstrapPolicy>
+										<wsp:Policy>
+											<sp:SignedParts>
+												<sp:Body/>
+												<sp:Header Name="To" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="From" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="FaultTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="ReplyTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="MessageID" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="RelatesTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="Action" Namespace="http://www.w3.org/2005/08/addressing"/>
+											</sp:SignedParts>
+											<sp:EncryptedParts>
+												<sp:Body/>
+											</sp:EncryptedParts>
+											<sp:SymmetricBinding>
+												<wsp:Policy>
+													<sp:ProtectionToken>
+														<wsp:Policy>
+															<mssp:SslContextToken xmlns:mssp="http://schemas.microsoft.com/ws/2005/07/securitypolicy" sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+																<wsp:Policy>
+																	<sp:RequireDerivedKeys/>
+																	<sp:MustNotSendCancel/>
+																	<sp:MustNotSendAmend/>
+																	<sp:MustNotSendRenew/>
+																</wsp:Policy>
+															</mssp:SslContextToken>
+														</wsp:Policy>
+													</sp:ProtectionToken>
+													<sp:AlgorithmSuite>
+														<wsp:Policy>
+															<sp:Basic256/>
+														</wsp:Policy>
+													</sp:AlgorithmSuite>
+													<sp:Layout>
+														<wsp:Policy>
+															<sp:Strict/>
+														</wsp:Policy>
+													</sp:Layout>
+													<sp:IncludeTimestamp/>
+													<sp:EncryptSignature/>
+													<sp:OnlySignEntireHeadersAndBody/>
+												</wsp:Policy>
+											</sp:SymmetricBinding>
+											<sp:SignedEncryptedSupportingTokens>
+												<wsp:Policy>
+													<sp:UsernameToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+														<wsp:Policy>
+															<sp:WssUsernameToken10/>
+														</wsp:Policy>
+													</sp:UsernameToken>
+												</wsp:Policy>
+											</sp:SignedEncryptedSupportingTokens>
+											<sp:Wss11>
+												<wsp:Policy/>
+											</sp:Wss11>
+											<sp:Trust13>
+												<wsp:Policy>
+													<sp:MustSupportIssuedTokens/>
+													<sp:RequireClientEntropy/>
+													<sp:RequireServerEntropy/>
+												</wsp:Policy>
+											</sp:Trust13>
+										</wsp:Policy>
+									</sp:BootstrapPolicy>
+									<sp:MustNotSendAmend/>
+								</wsp:Policy>
+							</sp:SecureConversationToken>
+						</wsp:Policy>
+					</sp:ProtectionToken>
+					<sp:AlgorithmSuite>
+						<wsp:Policy>
+							<sp:Basic256/>
+						</wsp:Policy>
+					</sp:AlgorithmSuite>
+					<sp:Layout>
+						<wsp:Policy>
+							<sp:Strict/>
+						</wsp:Policy>
+					</sp:Layout>
+					<sp:IncludeTimestamp/>
+					<sp:EncryptSignature/>
+					<sp:OnlySignEntireHeadersAndBody/>
+				</wsp:Policy>
+			</sp:SymmetricBinding>
+			<sp:Wss11 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy/>
+			</sp:Wss11>
+			<sp:Trust13 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:MustSupportIssuedTokens/>
+					<sp:RequireClientEntropy/>
+					<sp:RequireServerEntropy/>
+				</wsp:Policy>
+			</sp:Trust13>
+			<wsaw:UsingAddressing/>
+		</wsp:All>
+	</wsp:ExactlyOne>
+</wsp:Policy>
+[/template]
+[template public wsa_wss_username_token(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa_wss_policy"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	xsi:schemaLocation="http://schemas.xmlsoap.org/ws/2004/09/policy http://schemas.xmlsoap.org/ws/2004/09/policy/ws-policy.xsd">
+	<wsp:ExactlyOne>
+		<wsp:All>
+			<sp:SymmetricBinding xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:ProtectionToken>
+						<wsp:Policy>
+							<mssp:SslContextToken xmlns:mssp="http://schemas.microsoft.com/ws/2005/07/securitypolicy" sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+								<wsp:Policy>
+									<sp:RequireDerivedKeys/>
+									<sp:MustNotSendCancel/>
+									<sp:MustNotSendAmend/>
+									<sp:MustNotSendRenew/>
+								</wsp:Policy>
+							</mssp:SslContextToken>
+						</wsp:Policy>
+					</sp:ProtectionToken>
+					<sp:AlgorithmSuite>
+						<wsp:Policy>
+							<sp:Basic256/>
+						</wsp:Policy>
+					</sp:AlgorithmSuite>
+					<sp:Layout>
+						<wsp:Policy>
+							<sp:Strict/>
+						</wsp:Policy>
+					</sp:Layout>
+					<sp:IncludeTimestamp/>
+					<sp:EncryptSignature/>
+					<sp:OnlySignEntireHeadersAndBody/>
+				</wsp:Policy>
+			</sp:SymmetricBinding>
+			<sp:SignedEncryptedSupportingTokens xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:UsernameToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+						<wsp:Policy>
+							<sp:WssUsernameToken10/>
+						</wsp:Policy>
+					</sp:UsernameToken>
+				</wsp:Policy>
+			</sp:SignedEncryptedSupportingTokens>
+			<sp:Wss11 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy/>
+			</sp:Wss11>
+			<sp:Trust13 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:MustSupportIssuedTokens/>
+					<sp:RequireClientEntropy/>
+					<sp:RequireServerEntropy/>
+				</wsp:Policy>
+			</sp:Trust13>
+			<wsaw:UsingAddressing/>
+		</wsp:All>
+	</wsp:ExactlyOne>
+</wsp:Policy>
+[/template]
+[template public wsa_wss_x509_token_sc(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa_wss_policy"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	xsi:schemaLocation="http://schemas.xmlsoap.org/ws/2004/09/policy http://schemas.xmlsoap.org/ws/2004/09/policy/ws-policy.xsd">
+	<wsp:ExactlyOne>
+		<wsp:All>
+			<sp:SymmetricBinding xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:ProtectionToken>
+						<wsp:Policy>
+							<sp:SecureConversationToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+								<wsp:Policy>
+									<sp:RequireDerivedKeys/>
+									<sp:BootstrapPolicy>
+										<wsp:Policy>
+											<sp:SignedParts>
+												<sp:Body/>
+												<sp:Header Name="To" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="From" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="FaultTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="ReplyTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="MessageID" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="RelatesTo" Namespace="http://www.w3.org/2005/08/addressing"/>
+												<sp:Header Name="Action" Namespace="http://www.w3.org/2005/08/addressing"/>
+											</sp:SignedParts>
+											<sp:EncryptedParts>
+												<sp:Body/>
+											</sp:EncryptedParts>
+											<sp:SymmetricBinding>
+												<wsp:Policy>
+													<sp:ProtectionToken>
+														<wsp:Policy>
+															<mssp:SslContextToken xmlns:mssp="http://schemas.microsoft.com/ws/2005/07/securitypolicy" sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+																<wsp:Policy>
+																	<sp:RequireDerivedKeys/>
+																	<sp:MustNotSendCancel/>
+																	<mssp:RequireClientCertificate/>
+																	<sp:MustNotSendAmend/>
+																	<sp:MustNotSendRenew/>
+																</wsp:Policy>
+															</mssp:SslContextToken>
+														</wsp:Policy>
+													</sp:ProtectionToken>
+													<sp:AlgorithmSuite>
+														<wsp:Policy>
+															<sp:Basic256/>
+														</wsp:Policy>
+													</sp:AlgorithmSuite>
+													<sp:Layout>
+														<wsp:Policy>
+															<sp:Strict/>
+														</wsp:Policy>
+													</sp:Layout>
+													<sp:IncludeTimestamp/>
+													<sp:EncryptSignature/>
+													<sp:OnlySignEntireHeadersAndBody/>
+												</wsp:Policy>
+											</sp:SymmetricBinding>
+											<sp:Wss11>
+												<wsp:Policy/>
+											</sp:Wss11>
+											<sp:Trust13>
+												<wsp:Policy>
+													<sp:MustSupportIssuedTokens/>
+													<sp:RequireClientEntropy/>
+													<sp:RequireServerEntropy/>
+												</wsp:Policy>
+											</sp:Trust13>
+										</wsp:Policy>
+									</sp:BootstrapPolicy>
+									<sp:MustNotSendAmend/>
+								</wsp:Policy>
+							</sp:SecureConversationToken>
+						</wsp:Policy>
+					</sp:ProtectionToken>
+					<sp:AlgorithmSuite>
+						<wsp:Policy>
+							<sp:Basic256/>
+						</wsp:Policy>
+					</sp:AlgorithmSuite>
+					<sp:Layout>
+						<wsp:Policy>
+							<sp:Strict/>
+						</wsp:Policy>
+					</sp:Layout>
+					<sp:IncludeTimestamp/>
+					<sp:EncryptSignature/>
+					<sp:OnlySignEntireHeadersAndBody/>
+				</wsp:Policy>
+			</sp:SymmetricBinding>
+			<sp:Wss11 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy/>
+			</sp:Wss11>
+			<sp:Trust13 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:MustSupportIssuedTokens/>
+					<sp:RequireClientEntropy/>
+					<sp:RequireServerEntropy/>
+				</wsp:Policy>
+			</sp:Trust13>
+			<wsaw:UsingAddressing/>
+		</wsp:All>
+	</wsp:ExactlyOne>
+</wsp:Policy>
+[/template]
+[template public wsa_wss_x509_token(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa_wss_policy"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	xsi:schemaLocation="http://schemas.xmlsoap.org/ws/2004/09/policy http://schemas.xmlsoap.org/ws/2004/09/policy/ws-policy.xsd">
+	<wsp:ExactlyOne>
+		<wsp:All>
+			<sp:SymmetricBinding xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:ProtectionToken>
+						<wsp:Policy>
+							<mssp:SslContextToken xmlns:mssp="http://schemas.microsoft.com/ws/2005/07/securitypolicy" sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+								<wsp:Policy>
+									<sp:RequireDerivedKeys/>
+									<sp:MustNotSendCancel/>
+									<mssp:RequireClientCertificate/>
+									<sp:MustNotSendAmend/>
+									<sp:MustNotSendRenew/>
+								</wsp:Policy>
+							</mssp:SslContextToken>
+						</wsp:Policy>
+					</sp:ProtectionToken>
+					<sp:AlgorithmSuite>
+						<wsp:Policy>
+							<sp:Basic256/>
+						</wsp:Policy>
+					</sp:AlgorithmSuite>
+					<sp:Layout>
+						<wsp:Policy>
+							<sp:Strict/>
+						</wsp:Policy>
+					</sp:Layout>
+					<sp:IncludeTimestamp/>
+					<sp:EncryptSignature/>
+					<sp:OnlySignEntireHeadersAndBody/>
+				</wsp:Policy>
+			</sp:SymmetricBinding>
+			<sp:Wss11 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy/>
+			</sp:Wss11>
+			<sp:Trust13 xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+				<wsp:Policy>
+					<sp:MustSupportIssuedTokens/>
+					<sp:RequireClientEntropy/>
+					<sp:RequireServerEntropy/>
+				</wsp:Policy>
+			</sp:Trust13>
+			<wsaw:UsingAddressing/>
+		</wsp:All>
+	</wsp:ExactlyOne>
+</wsp:Policy>
+[/template]
+[template public wsa(wsdlDefinitions : InstanceSpecification)]
+<wsp:Policy wsu:Id="wsa_policy"
+	xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl"
+	xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy"
+	xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+	<wsp:ExactlyOne>
+		<wsp:All>
+			<wsaw:UsingAddressing/>	
+		</wsp:All>
+	</wsp:ExactlyOne>
+</wsp:Policy>
+[/template]

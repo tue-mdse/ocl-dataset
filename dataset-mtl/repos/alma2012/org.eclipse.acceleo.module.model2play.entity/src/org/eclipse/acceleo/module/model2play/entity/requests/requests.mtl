@@ -1,0 +1,100 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module requests.
+ */]
+
+[module requests('http://www.obeonetwork.org/dsl/entity/2.0.0','http://www.obeonetwork.org/dsl/environment/2.0.0')]
+
+[comment : Variables "globales"/]
+[query public g_package_name( nothing : OclAny) : String = 'models' /]
+[query public g_name_suffix( nothing : OclAny)  : String = '' /]
+
+
+[comment : Pour tout ce qui est conventions de nommage /]
+[query public get_type_name(anAttribute : Attribute) : String = 
+anAttribute.type.name + g_name_suffix()
+/]
+[query public get_type_name(aReference : Reference) : String = 
+aReference.type.name + g_name_suffix()
+/]
+[query public get_ref_name(aReference : Reference) : String = 
+aReference.type.name.toLower()
+/]
+[comment end conventions de nommage /]
+
+[**
+ * The documentation of the query isFile.
+ * @param aWidget
+ */]
+
+[query public is_one_to_many(aReference : Reference) : Boolean = 
+aReference.multiplicity.toString().contains('..*')
+/]
+
+
+[query public getCriterionTypename( aCriterion : Criterion ) : String =
+if aCriterion.oclIsTypeOf(InternalCriterion) then
+aCriterion.oclAsType(InternalCriterion).target.type.name
+else
+aCriterion.oclAsType(ExternalCriterion).type.name
+endif
+/]
+
+[query public getCriterionName( aCriterion : Criterion ) : String =
+if aCriterion.oclIsTypeOf(InternalCriterion) then
+aCriterion.oclAsType(InternalCriterion).target.name
+else
+aCriterion.oclAsType(ExternalCriterion).name
+endif
+/]
+
+[query public hasMetadata( object : ObeoDSMObject ) : Boolean =
+not object.metadatas->isEmpty()
+/]
+
+[query public containsAnnotations( object : ObeoDSMObject ) : Boolean =
+hasMetadata() and getMetadata()->filter(Annotation)->notEmpty()
+/]
+
+[query public getMetadata( object : ObeoDSMObject ) : Set(MetaData) =
+if hasMetadata() then 
+object.metadatas.metadatas
+else
+null
+endif
+/]
+
+[query public getAnnotations( object : ObeoDSMObject ) : OrderedSet(Annotation) =
+if hasMetadata() then
+object.metadatas.metadatas->filter(Annotation)->asOrderedSet()
+else
+null
+endif
+/]
+
+
+
+[query public hasAnnotation(object : ObeoDSMObject, key : String ) : Boolean =
+if hasMetadata() and getAnnotations()->select(title = key)->notEmpty() then
+true
+else
+false
+endif
+/]
+
+[query public getAnnotation(object : ObeoDSMObject, key : String) : Annotation =
+if hasAnnotation(key) then
+getAnnotations()->select(title = key)->first()
+else
+null
+endif
+/]
+
+[query public hasAnnotationWithValue(object : ObeoDSMObject, key : String, value : String) : Boolean =
+if hasAnnotation(key) then
+getAnnotation(key)._body.equalsIgnoreCase(value)
+else
+false
+endif
+
+/]

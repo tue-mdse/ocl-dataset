@@ -1,0 +1,160 @@
+[comment encoding = UTF-8 /]
+[**
+ * Documentation of the module comparaison
+ * Le module qui, a partir d'une contrainte de comparaison ocl ecrit la contraine minizinc correspondante.
+ * Il depend d'un fichier uml -cette dependance est exprimee en parametre du module- comme tous 
+ * les autres modules du projet.
+ * Il definit au total cinq (5) templates dont le plus important porte le meme nom que lui.
+*/]
+[module comparaison('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[**
+ * Documentation of the template comparaison
+ * Contient le code permettant la generation du minizinc correspodant a la premiere contrainte (ou
+ * VEValide) ocl de la classe Tournee.
+ * @param facteurs : correspond aux differentes valeurs a comparer en plus des operandes dans une 
+ * contrainte ocl.
+ * @param operateurs : correspond aux differents operateurs arithmetiques dans une contrainte ocl
+ * @param comparateur : correspond au signe de comparaison dans une contrainte ocl si elle en comporte
+ * Pour ce template nous partons du principe que dans une contrainte ocl comportant un signe de comparaison,
+ * alors la partie doite de ce dernier est simple (c'est a dire ne comporte pas d'operateur logique, donc
+ * c'est au modelisateur de s'arranger a ce que ses contraintes respectent cette regle s'il veut utiliser
+ * ce template pour generer le code minizinc correspondant a ses contraintes ocl).
+ * En fonction de la taille du parametre @param facteurs nous appellons le template approprie.
+ * L'expression " ? (facteurs->size() > 1) " dans l'entete du template implique que la taille du @param 
+ * facteurs doit etre au moins deux (2) car il faut au moins deux (2) nombres pour parler de comparaison.
+*/]
+[template public comparaison(
+	facteurs : Sequence(String), 
+	operateurs : Sequence(String), 
+	comparateur : String) ? 
+	(facteurs->size() > 1)
+]
+[comment]Si la taille de facteurs vaut deux (2)[/comment]
+	[if (facteurs->size() = 2) ]
+[comparaison1_1(facteurs->at(1), comparateur, facteurs->at(2)) /]
+[comment]
+Si la taille de facteurs vaut trois (3), c'est a dire deux (2) a gauche du comparateur et un (1) 
+a sa droite
+[/comment]
+	[elseif (facteurs->size() = 3)]	
+[comparaison2_1(facteurs->at(1), facteurs->at(2), operateurs->at(1), comparateur, facteurs->at(3)) /]
+[comment]
+Si la taille de facteurs vaut quatre (4), c'est a dire trois (3) a gauche du comparateur et un (1) 
+a sa droite
+[/comment]
+	[elseif (facteurs->size() = 4) ]
+[comparaison3_1(facteurs->at(1), facteurs->at(2), facteurs->at(3), operateurs->at(1), operateurs->at(2), 
+	comparateur, facteurs->at(4)) 
+/]
+[comment]
+Si la taille de facteurs vaut cinq (5), c'est a dire quatre (4) a gauche du comparateur et un (1) 
+a sa droite
+[/comment]
+	[elseif (facteurs->size() = 5) ]
+[comparaison4_1(facteurs->at(1), facteurs->at(2), facteurs->at(3), facteurs->at(4), operateurs->at(1), 
+operateurs->at(2), operateurs->at(3), comparateur, facteurs->at(5)) /]
+	[else]
+	[/if]
+[/template]
+
+[**
+ * Documentation of the template comparaison1_1
+ * @param facteur1 : correspond a la partie gauche du comparateur dans la contrainte ocl.
+ * @param facteur2 : correspond a la partie droite du comparateur dans la contrainte ocl.
+ * @param comparateur : correspond au signe de comparaison dans la contrainte ocl.
+ * L'expression " ? (comparateur <> oclIsUndefined()) " dans l'entete du template implique que le @param 
+ * comparateur doit exister pour parler de comparaison.
+ * Il suffit donc de placer ces parametres en respectant leurs places
+*/]
+[template public comparaison1_1(
+	facteur1 : String, 
+	comparateur : String, 
+	facteur2 : String) ? 
+	(comparateur <> oclIsUndefined())
+]
+	[facteur1 /] [comparateur /] [facteur2 /]
+[/template]
+
+[**
+ * Documentation of the template comparaison2_1
+ * En lisant l'expression de la contrainte ocl de gauche a droite :
+ * @param facteur1 : est le premier operande.
+ * @param facteur2 : est le deuxieme operande.
+ * @param operateur : est l'operateur arithmetique entre les deux (2) premiers operandes
+ * @param comparateur : correspond au signe de comparaison dans la contrainte ocl.
+ * @param facteur3 : est le troisieme operande.
+ * L'expression " ? (operateur <> oclIsUndefined() and comparateur <> oclIsUndefined()) " dans l'entete du
+ * template implique que le @param operateur doit exister pour parler d'operation entre @param facteur1 et
+ * @param facteur2 ; et que le 
+ * @param comparateur doit exister pour parler de comparaison.
+*/]
+[template public comparaison2_1(
+	facteur1 : String, 
+	facteur2 : String, 
+	operateur : String, 
+	comparateur : String, 
+	facteur3 : String) ? 
+	(operateur <> oclIsUndefined() and comparateur <> oclIsUndefined())
+]
+	[facteur1 /] [operateur /] [facteur2 /] [comparateur /] [facteur3 /]
+[/template]
+
+[**
+ * Documentation of the template comparaison3_1
+ * En lisant l'expression de la contrainte ocl de gauche � droite :
+ * @param facteur1 : est le premier operande.
+ * @param facteur2 : est le deuxieme operande.
+ * @param facteur3 : est le troisieme operande.
+ * @param operateur1 et @param operateur2 : sont respectivement le premier et le deuxieme operateur 
+ * arithmetiques entre les trois (3) premiers operandes
+ * @param comparateur : correspond au signe de comparaison dans la contrainte ocl.
+ * @param facteur4 : est le quatrieme operande.
+ * L'expression " ? (operateur1 <> oclIsUndefined() and operateur2 <> oclIsUndefined() and 
+ * comparateur <> oclIsUndefined()) " dans l'entete du template implique que ces @param doivent etre 
+ * definis
+*/]
+[template public comparaison3_1(
+	facteur1 : String, 
+	facteur2 : String, 
+	facteur3 : String, 
+	operateur1 : String, 
+	operateur2 : String, 
+	comparateur : String, 
+	facteur4 : String) ? 
+	(operateur1 <> oclIsUndefined() and operateur2 <> oclIsUndefined() and comparateur <> oclIsUndefined())
+]
+	[facteur1 /] [operateur1 /] [facteur2 /] [operateur2 /] [facteur3 /] [comparateur /] [facteur4 /]
+[/template]
+
+[**
+ * Documentation of the template comparaison4_1
+ * En lisant l'expression de la contrainte ocl de gauche a droite :
+ * @param facteur1 : est le premier operande.
+ * @param facteur2 : est le deuxieme operande.
+ * @param facteur3 : est le troisieme operande.
+ * @param facteur4 : est le quatrieme operande.
+ * @param operateur1, @param operateur2 et @param operateur3 : sont respectivement le premier,le deuxieme et
+ * le troisieme operateur arithmetiques entre les quatre (4) premiers operandes
+ * @param comparateur : correspond au signe de comparaison dans la contrainte ocl.
+ * @param facteur5 : est le cinqieme operande.
+ * L'expression " ? (operateur1 <> oclIsUndefined() and operateur2 <> oclIsUndefined() and 
+ * operateur3 <> oclIsUndefined() and comparateur <> oclIsUndefined()) " dans l'entete du template implique
+ * que ces @param doivent etre definis
+*/]
+[template public comparaison4_1(
+	facteur1 : String, 
+	facteur2 : String, 
+	facteur3 : String, 
+	facteur4 : String, 
+	operateur1 : String, 
+	operateur2 : String, 
+	operateur3 : String, 
+	comparateur : String, 
+	facteur5 : String) ? 
+	(operateur1 <> oclIsUndefined() and operateur2 <> oclIsUndefined() and operateur3 <> oclIsUndefined() 
+	and comparateur <> oclIsUndefined())
+]
+	[facteur1 /] [operateur1 /] [facteur2 /] [operateur2 /] [facteur3 /] [operateur3 /] [facteur4 
+	/][comparateur /] [facteur5 /]
+[/template]

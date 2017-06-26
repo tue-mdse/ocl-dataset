@@ -1,0 +1,126 @@
+
+[comment encoding = UTF-8 /]
+[comment]--------------------------------------------------------------
+--                           Marte2Mast                              --
+--      Converter of Schedulability analysis models made with UML2   --
+--   and The UML Profile for MARTE to MAST, the Analysis Suite for   --
+--                      Real-Time Applications                       --
+--                                                                   --
+--                     Copyright (C) 2010-2011                       --
+--                 Universidad de Cantabria, SPAIN                   --
+--                                                                   --
+--                                                                   --
+--           URL: http://mast.unican.es/umlmast/marte2mast           --
+--                                                                   --
+--  Authors: Alvaro Garcia Cuesta   alvaro@binarynonsense.com        --
+--           Julio Medina           julio.medina@unican.es           --
+--                                                                   --
+-- This program is free software; you can redistribute it and/or     --
+-- modify it under the terms of the GNU General Public               --
+-- License as published by the Free Software Foundation; either      --
+-- version 2 of the License, or (at your option) any later version.  --
+--                                                                   --
+-- This program is distributed in the hope that it will be useful,   --
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of    --
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU --
+-- General Public License for more details.                          --
+--                                                                   --
+-- You should have received a copy of the GNU General Public         --
+-- License along with this program; if not, write to the             --
+-- Free Software Foundation, Inc., 59 Temple Place - Suite 330,      --
+-- Boston, MA 02111-1307, USA.                                       --
+--                                                                   --
+-------------------------------------------------------------[/comment]
+[module scheduling_server('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import helperfunctions /]
+[import log/]
+
+[template public scheduling_server(e : Element)]
+
+[if self.hasStereotype('SchedulableResource')]
+Scheduling_Server ([self.logElement('SchedulableResource')/]
+    Type                       => Regular
+,   Name                       => [self.getElementShortName()/]
+,   Server_Sched_Parameters    => (
+    [comment start Server_Sched_Parameters /]
+    [if self.getStereotypeProperty('SchedulableResource', 'host') <> null]
+    	[if self.getStereotypeReferenceProperty('SchedulableResource', 'host', 'SaExecHost', 'schedPolicy').toString() = 'FixedPriority']
+    		[if self.getStereotypeReferenceProperty('SchedulableResource', 'host', 'SaExecHost', 'isPreemptible').toString() = 'true']
+     		   Type		       => Fixed_Priority_Policy 
+				[if self.getStereotypeProperty('SchedulableResource', 'schedParams') <> null]
+      		  ,The_Priority    => [parseNFP_Integer(parseSchedParams(self.getStereotypeProperty('SchedulableResource', 'schedParams').toString(), 'fp','priority'),'value')/]
+				[/if] 
+				[if parseNFP_Integer(parseSchedParams(self.getStereotypeProperty('SchedulableResource', 'schedParams').toString(), 'fp','priority'),'source') = 'req']
+	      	  ,Preassigned     => No
+	      		[/if]
+	      	[else][comment not preemtible /]  	
+      		   Type		    => Non_Preemptible_FP_Policy,
+      		   [if self.getStereotypeProperty('SchedulableResource', 'schedParams') <> null]
+      		  ,The_Priority    => [parseNFP_Integer(parseSchedParams(self.getStereotypeProperty('SchedulableResource', 'schedParams').toString(), 'fp','priority'),'value')/]
+				[/if] 
+				[if parseNFP_Integer(parseSchedParams(self.getStereotypeProperty('SchedulableResource', 'schedParams').toString(), 'fp','priority'),'source') = 'req']
+	      	  ,Preassigned     => No
+	      		[/if]	      			
+    		[/if]
+    	[elseif self.getStereotypeReferenceProperty('SchedulableResource', 'host', 'SaExecHost', 'schedPolicy').toString() = 'EarliestDeadlineFirst'][comment end if fixedprio /]
+               Type		       => EDF_Policy
+              ,Deadline        => [parseNFP_Integer(parseSchedParams(self.getStereotypeProperty('SchedulableResource', 'schedParams').toString(), 'edf','deadline'),'value')/]
+				[if parseNFP_Integer(parseSchedParams(self.getStereotypeProperty('SchedulableResource', 'schedParams').toString(), 'edf','deadline'),'source') = 'req']
+	      	  ,Preassigned     => No
+				[/if]
+    	[/if][comment end if earliestdeadline /]    
+    [comment end Server_Sched_Parameters /]
+    )
+,   Scheduler                  => [self.getStereotypeReferenceName('SchedulableResource', 'host').toString()/]_Scheduler    	
+    [/if][comment end host not null /]  
+    [comment]<%-- -- [TODO] many cases left to do:Interrupt_FP_Policy, Polling Policy, Sporadic Server Policy, Overrriden fixed prio, overriden permannet fp           
+    Synchronization_Parameters => ( -- [TODO] NOT FOUND MARTE
+				Type             => SRP_Parameters,
+				Preemption_Level => Preemption_Level,
+				Preassigned      => Yes | No), --%>[/comment]	    
+);  
+[/if][comment end if SchedulableResource/]
+[if self.hasStereotype('GaCommChannel')]
+Scheduling_Server ([self.logElement('GaCommChannel')/]
+    Type                       => Regular
+,   Name                       => [self.getElementShortName()/]
+,   Server_Sched_Parameters    => (
+    [comment start Server_Sched_Parameters /]
+    [if self.getStereotypeProperty('GaCommChannel', 'host') <> null]
+    	[if self.getStereotypeReferenceProperty('GaCommChannel', 'host', 'SaCommHost', 'schedPolicy').toString() = 'FixedPriority']
+    		[if self.getStereotypeReferenceProperty('GaCommChannel', 'host', 'SaCommHost', 'isPreemptible').toString() = 'true']
+     		   Type		       => Fixed_Priority_Policy 
+				[if self.getStereotypeProperty('GaCommChannel', 'schedParams') <> null]
+      		  ,The_Priority    => [parseNFP_Integer(parseSchedParams(self.getStereotypeProperty('GaCommChannel', 'schedParams').toString(), 'fp','priority'),'value')/]
+				[/if] 
+				[if parseNFP_Integer(parseSchedParams(self.getStereotypeProperty('GaCommChannel', 'schedParams').toString(), 'fp','priority'),'source') = 'req']
+	      	  ,Preassigned     => No
+	      		[/if]
+	      	[else][comment not preemtible /]  	
+      		   Type		    => Non_Preemptible_FP_Policy,
+      		   [if self.getStereotypeProperty('GaCommChannel', 'schedParams') <> null]
+      		  ,The_Priority    => [parseNFP_Integer(parseSchedParams(self.getStereotypeProperty('GaCommChannel', 'schedParams').toString(), 'fp','priority'),'value')/]
+				[/if] 
+				[if parseNFP_Integer(parseSchedParams(self.getStereotypeProperty('GaCommChannel', 'schedParams').toString(), 'fp','priority'),'source') = 'req']
+	      	  ,Preassigned     => No
+	      		[/if]	      			
+    		[/if]
+    	[elseif self.getStereotypeReferenceProperty('GaCommChannel', 'host', 'SaCommHost', 'schedPolicy').toString() = 'EarliestDeadlineFirst'][comment end if fixedprio /]
+               Type		       => EDF_Policy
+              ,Deadline        => [parseNFP_Integer(parseSchedParams(self.getStereotypeProperty('GaCommChannel', 'schedParams').toString(), 'edf','deadline'),'value')/]
+				[if parseNFP_Integer(parseSchedParams(self.getStereotypeProperty('GaCommChannel', 'schedParams').toString(), 'edf','deadline'),'source') = 'req']
+	      	  ,Preassigned     => No
+				[/if]
+    	[/if][comment end if earliestdeadline /]    
+    [comment end Server_Sched_Parameters /]
+    )
+,   Scheduler                  => [self.getStereotypeReferenceName('GaCommChannel', 'host').toString()/]_Scheduler    	
+    [/if][comment end host not null /]  
+    [comment]<%-- -- [TODO] many cases left to do:Interrupt_FP_Policy, Polling Policy, Sporadic Server Policy, Overrriden fixed prio, overriden permannet fp           
+    Synchronization_Parameters => ( -- [TODO] NOT FOUND MARTE
+				Type             => SRP_Parameters,
+				Preemption_Level => Preemption_Level,
+				Preassigned      => Yes | No), --%>[/comment]	    
+);  
+[/if][comment end if GaCommChannel/]
+[/template]

@@ -1,0 +1,60 @@
+[comment encoding = UTF-8 /]
+[module importQueries('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::beanValidationQueries /]
+[************************************************************* 
+ * Util Imports queries
+ *************************************************************/]
+[**
+ *  Check if this class has some date elements which need the util librairy 
+ *  @param aClass
+*/]
+[query public hasUtilElements (aClass : Class) : Boolean
+	= (aClass.attribute
+		->select(aProperty : Property | isAssociationAttribute(aProperty)._not() 
+										and aProperty.type.name.endsWith('Date'))
+		->notEmpty())
+	 or hasManyAssociations(aClass)
+/]
+
+
+[************************************************************* 
+ *Feature Imports queries
+ *************************************************************/]
+[**
+ *  Get all the class to import for a feature
+ *  @param aClass
+*/]
+[query public getFeaturesToImport (aClass : Class) : OrderedSet(Class)
+	= aClass.attribute
+		->select(isAssociationAttribute())
+		->collect(e : Property | getDatatypeByProperty(e))
+		->select(_package.qualifiedName.equalsIgnoreCase(aClass._package.qualifiedName)._not())
+		->asOrderedSet()
+		->sortedBy(name) /]
+
+
+[**
+ *  Check if this class has been already import by the query getFeatureModelTypesToImport
+ *  @param aClass
+*/]
+[query public isClassToImport (aClass : Class, anImportedClass : Class) : Boolean
+	=  getFeaturesToImport(aClass)->excludes(anImportedClass)
+/]
+
+
+[*************************************************************
+ * Validation Imports queries 
+*************************************************************/]
+[**
+ * Check if this class has some attributes using bean validation
+ * @param aClass
+*/]
+[query public hasBeanValidationElements (aClass : Class) : Boolean
+	= aClass.attribute->select(isAssociationAttribute()._not())
+				->collect(getDatatypeByProperty())
+				->select(hasPattern() or hasMax() or hasMin() or hasMinLength() or hasMaxLength() or hasTemporal())
+				->notEmpty()
+/]

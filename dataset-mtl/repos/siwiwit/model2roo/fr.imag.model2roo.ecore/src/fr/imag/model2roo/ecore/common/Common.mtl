@@ -1,0 +1,252 @@
+[comment encoding = UTF-8 /]
+[**
+ * Copyright 2012 jccastrejon
+ * 
+ * This file is part of Model2Roo.
+ * Model2Roo is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ * 
+ * Model2Roo is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Model2Roo.  If not, see <http://www.gnu.org/licenses/>.
+ */]
+[module Common('http://www.eclipse.org/emf/2002/Ecore')]
+
+[**
+ * Ouputs the value of an annotation's property, associated to the specified element.
+ * @param property Property name.
+ * @param prefix Prefix to output before the property's value.
+ * @param annotationName Name of the annotation to which the property is associated.
+ * @param element Element to which the stereotype has been applied.
+ */]
+[template public getPropertyValue(property : String, prefix : String, annotationName : String, element : EModelElement) post(trim())]
+  [if element.getEAnnotation(annotationName)->notEmpty()]
+    [let annotation : EAnnotation = element.getEAnnotation(annotationName)]
+        [if annotation.containsDetail(property) = 'true']
+          [annotation.getDetailValue(property, prefix)/]
+          [else] [property.getDefaultValue().getValidValue(prefix)/]
+        [/if]
+    [/let]
+  [else]
+    [property.getDefaultValue().getValidValue(prefix)/]
+  [/if]
+[/template]
+
+[**
+ * Verifies if the specified annotation contains a detail entry with the specified property key.
+ * @param annotation EAnnotation.
+ * @param property Property key.
+*/]
+[template public containsDetail(annotation : EAnnotation, property : String) post(trim())]
+  [for (detail : EStringToStringMapEntry | annotation.details)]
+    [if detail.key = property] [if detail.value.size() > 0] true [/if] [/if]
+  [/for]
+[/template]
+
+[**
+ * Get the value associated to the property key.
+ * @param annotation EAnnotation
+ * @param property Property key.
+ * @param prefix Prefix to output before the property's value.
+*/]
+[template public getDetailValue(annotation : EAnnotation, property : String, prefix : String) post(trim())]
+  [for (detail : EStringToStringMapEntry | annotation.details)]
+    [if detail.key = property] [if detail.value.size() > 0] [detail.value.getValidValue(prefix)/] [/if] [/if]
+  [/for]
+[/template]
+
+[**
+ * Output a property value (only if it's not empty).
+ * @param value Property's value.
+ * @param prefix Prefix to output before the property's value.
+ */]
+[template public getValidValue(value : String, prefix : String) post(trim())]
+  [if(value.size() > 0)]
+    [prefix/][value/] [/if]
+[/template]
+
+[**
+ * Get the default value associated to the particular key.
+ * @param key Key.
+ */]
+[template public getDefaultValue(key : String) post(trim())]
+    [if key = 'topLevelPackage'] com.model2roo
+    [else] [if key = 'persistenceProvider'] HIBERNATE
+    [else] [if key = 'persistenceDatabase'] HYPERSONIC_IN_MEMORY
+    [else] [if key = 'controllersAll'] --package ~.web
+    [/if] [/if] [/if] [/if]
+[/template]
+
+[**
+ * Output the Spring Roo details associated to the specified Ecore element.
+ * @param element Ecore element.
+ */]
+[template public getRooDetails(element : EModelElement) post(trim())]
+[for (annotation : EAnnotation | element.eAnnotations)]
+  [if annotation.source.startsWith('roo')]
+  [annotation.details.getRooDetail(annotation.source, element)/]
+  [/if]
+[/for]
+[/template]
+
+[**
+ * Output the Spring Roo details associated to the specified UML element and stereotype.
+ * @param properties Stereotype properties.
+ * @param stereotype UML stereotype.
+ * @param element UML element.
+ */]
+[template public getRooDetail(properties : EStringToStringMapEntry, stereotype : String, element : EModelElement)]
+    [for (detail : EStringToStringMapEntry | properties)]
+      [if not detail.key.contains('_')]
+      [let hasMapping : String = detail.key.hasMapping()]
+        [comment] If the property has a mapping, it probably requires another command (Entities commands)[/comment]
+        [if hasMapping <> 'true'] 
+          [let value : String = detail.key.getPropertyValue('', stereotype, element)]
+            [if not value.trim().startsWith('_')]
+              [detail.key.getPropertyValue('--' + detail.key + ' ', stereotype, element)/] [/if]
+          [/let]
+        [/if]
+      [/let]
+      [/if]
+    [/for]
+[/template]
+
+[**
+ * Generates commands associated to the specified element, annotation and entity.
+ * @param element Ecore element.
+ * @param annotation Ecore annotation.
+ * @param entity Ecore entity name.
+ */]
+[template public generateModelCommands(element : EModelElement, annotation : EAnnotation, entity : String) post(trim())]
+[let groups : Set(String) = Set{'logging', 'webLanguages', 'finders', 'controller', 'selenium', 'dod', 'testMock', 'testIntegration'}]
+  [for (group : String | groups)]
+    [element.generateModelCommand(annotation, group, entity)/]
+  [/for]
+[/let]
+[/template]
+
+[**
+ * Generates commands associated to the specified element, annotation and entity, that begin with the specified prefix.
+ * @param element Ecore element.
+ * @param annotation Ecore annotation.
+ * @param prefix Prefix of the commands to be generated.
+ * @param entity Ecore entity name.
+ */]
+[template public generateModelCommand(element : EModelElement, annotation : EAnnotation, prefix : String, entity : String) post(trim())]
+[for (detail : EStringToStringMapEntry | annotation.details)]
+  [if detail.key.startsWith(prefix)]
+    [let value : String = detail.key.getPropertyValue('', annotation.source, element)]
+    [let requiresDefault : String = detail.key.requiresDefaultValue()]
+    [let requiresNoValue : String = detail.key.requiresNoValue()]
+    [let contextMapping : String = detail.key.getContextMapping(entity)]
+    [let hasMapping : String = detail.key.hasMapping()]
+
+    [if hasMapping = 'true']
+      [comment] Property without value [/comment]
+      [if value.oclIsUndefined() or value.size() = 0] 
+        [if requiresDefault = 'true'] [detail.key.getMapping()/] [detail.key.getDefaultValue()/] [contextMapping/] [/if]
+
+      [comment] Property with multiple values [/comment]
+      [else] [if value.contains(',')] 
+        [for (singleValue : String | value.tokenize(','))]
+          [detail.key.getMapping()/] [singleValue.trim()/] [contextMapping/]
+        [/for]
+
+      [comment] Special commands that doesn't output its property value [/comment]
+      [else] [if requiresNoValue = 'true']
+             [detail.key.getMapping()/] [contextMapping/]
+
+      [comment] Special commands that can output a default value [/comment]
+      [else] [if requiresDefault = 'true'] 
+             [if value = 'true'] [detail.key.getMapping()/] [detail.key.getDefaultValue()/] [contextMapping/] [/if]
+
+      [comment] Property with single value [/comment]
+      [else] [detail.key.getMapping()/] [value/] [contextMapping/]
+      [/if] [/if] [/if] [/if]
+    [/if]
+    [/let] [/let] [/let] [/let] [/let]
+  [/if]
+[/for]
+[/template]
+
+[**
+ * Decide whether the specified key requires a default value or not.
+ * @param key Key.
+ */]
+[template public requiresDefaultValue(key : String) post(trim())]
+[if key.getDefaultValue().size() = 0] false [else] true [/if]
+[/template]
+
+[**
+ * Decide whether the specified key doesn't require to output a value.
+ * @param key Key.
+ */]
+[template public requiresNoValue(key : String) post(trim())]
+[if key.getPropertiesWithoutValue().size() = 0] false [else] true [/if]
+[/template]
+
+[**
+ * Get the properties for which no value should be output.
+ * @param key Key.
+ */]
+[template public getPropertiesWithoutValue(key : String) post(trim())]
+  [if key = 'seleniumTest'] true [/if]
+[/template]
+
+[**
+ * Get the Spring Roo context mapping associated to the specified key.
+ * @param element key Key.
+ * @param entity UML entity name.
+ */]
+[template public getContextMapping(key : String, entity : String) post(trim())]
+[if not key.getContext().oclIsUndefined()]
+  [key.getContext().replaceAll('<entity>', entity)/]
+[/if]
+[/template]
+
+[**
+ * Get the Spring Roo context associated to the specified key.
+ * @param element key Key.
+ */]
+[template public getContext(key : String) post(trim())]
+[if key = 'seleniumTest'] ~.web.<entity>Controller
+[else] [if key = 'finders'] --class ~.domain.<entity>
+[/if] [/if]
+[/template]
+
+[**
+ * Decide whether the specified key has a Spring Roo command mapping or not.
+ * @param element key Key.
+ */]
+[template public hasMapping(key : String) post(trim())]
+[if key.getMapping().size() = 0] false [else] true [/if]
+[/template]
+
+[**
+ * Get the Spring Roo command mapping associated to the specified key.
+ * @param element key Key.
+ */]
+[template public getMapping(key : String) post(trim())]
+[if key = 'controllersAll'] web mvc all
+[else] [if key = 'persistenceProvider'] --provider
+[else] [if key = 'persistenceDatabase'] --database
+[else] [if key = 'persistenceApplicationId'] --applicationId
+[else] [if key = 'persistenceJndiDataSource'] --jndiDataSource
+[else] [if key = 'persistenceDatabaseName'] --databaseName
+[else] [if key = 'persistenceUserName'] --userName
+[else] [if key = 'persistencePassword'] --password
+[else] [if key = 'seleniumTest'] selenium test --controller
+[else] [if key = 'seleniumName'] --name
+[else] [if key = 'seleniumServerUrl'] --serverUrl
+[else] [if key = 'finders'] finder add --finderName
+[else] [if key = 'loggingLevel'] logging setup --level
+[else] [if key = 'webLanguages'] web mvc language --code
+[/if] [/if] [/if] [/if] [/if] [/if] [/if]
+[/if] [/if] [/if] [/if] [/if] [/if] [/if]
+[/template]

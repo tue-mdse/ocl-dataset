@@ -1,0 +1,40 @@
+[comment encoding = UTF-8 /]
+[module generate('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import floribot_acceleo::files::generate_cmakelists /]
+[import floribot_acceleo::files::generate_gitignores /]
+[import floribot_acceleo::files::generate_nodes /]
+[import floribot_acceleo::files::generate_nodes_h /]
+[import floribot_acceleo::files::generate_nodes_cpp /]
+[import floribot_acceleo::files::generate_launches /]
+[import floribot_acceleo::files::generate_manifests /]
+[import floribot_acceleo::files::generate_create_packages_script /]
+
+
+[template public generate(aModel : Model)]
+[comment @main/]
+[generateCreatePackageScript(aModel)/]
+
+[for (aPackage : Package | aModel.getNestedPackages())]
+	[generatePackage(aPackage)/]
+[/for]
+[/template]
+
+
+[template public generatePackage(aPackage : Package) ? (not aPackage.isStereotypeApplied(getAppliedStereotype('ros_profile::existing_package')))]
+
+[generateManifest(aPackage)/]
+
+[for (aNamedElement : NamedElement | aPackage.ownedMember)]
+	[if (aNamedElement.isStereotypeApplied(getAppliedStereotype('ros_profile::node')))]
+		[generateNode(aNamedElement.oclAsType(Class))/]
+		[generateNode_h(aNamedElement.oclAsType(Class))/]
+		[generateNode_cpp(aNamedElement.oclAsType(Class))/]
+	[elseif (aNamedElement.isStereotypeApplied(getAppliedStereotype('ros_profile::launch')) and not aNamedElement.isStereotypeApplied(getAppliedStereotype('ros_profile::dont_generate')))]
+		[generateLaunch(aNamedElement.oclAsType(Class)) /]
+	[/if]
+[/for]
+
+[generateCMakeList(aPackage)/]
+[generateGitignore(aPackage)/]
+
+[/template]

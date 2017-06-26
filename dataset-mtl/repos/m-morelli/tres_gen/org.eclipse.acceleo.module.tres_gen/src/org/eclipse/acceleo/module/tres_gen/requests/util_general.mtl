@@ -1,0 +1,127 @@
+[comment encoding = UTF-8 /]
+[module util_general('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[**
+ * Convert a UML::Class name to lower case
+ * @param elem Class instance whose name is converted to lower case
+ */]
+[query public
+lowerCaseName(elem: Class) : String = elem.name.toLowerCase()/]
+
+[**
+ *  
+ */]
+[query public
+hasStereotypeApplied(elem: Element, stereotype_name : String) : Boolean = elem.getAppliedStereotype(stereotype_name)->notEmpty()/]
+
+[**
+ * Check whether an UML::Class has a given stereotype applied
+ * @param elem Class instance to be checked for stereotype application
+ * @param stereotype_name String value representing the name of the stereotype to be checked for application 
+ */]
+[query public
+hasStereotypeApplied(elem: Class, stereotype_name : String) : Boolean = elem.getAppliedStereotype(stereotype_name)->notEmpty()/]
+
+[**
+ * Check whether an UML::Abstraction has a given stereotype applied
+ * @param abst Abstraction instance to be checked for stereotype application
+ * @param stereotype_name String value representing the name of the stereotype to be checked for application 
+ */]
+[query public
+hasStereotypeApplied(abst: Abstraction, stereotype_name : String) : Boolean = abst.getAppliedStereotype(stereotype_name)->notEmpty()/]
+
+[**
+ * Get the value of a given property of a (given) stereotype
+ * @param elem Class instance which the stereotype is applied onto
+ * @param stereotype_name String value representing the name of the stereotype
+ * @param property_name String value representing the name of the stereotype property to be read
+ */]
+[query public
+getValueOfStereotypeProperty(elem: Element, stereotype_name : String, property_name : String) : OclAny = elem.getValue(elem.getAppliedStereotype(stereotype_name), property_name)/]
+
+[**
+ * Get the value of a given property of a (given) stereotype
+ * @param elem Class instance which the stereotype is applied onto
+ * @param stereotype_name String value representing the name of the stereotype
+ * @param property_name String value representing the name of the stereotype property to be read
+ */]
+[query public
+getValueOfStereotypePropertyInteger(elem: Element, stereotype_name : String, property_name : String) : Integer = elem.getValue(elem.getAppliedStereotype(stereotype_name), property_name)/]
+
+[**
+ * 
+ */]
+[query public
+getValueOfStereotypePropertyEnumLit(elem: Element, stereotype_name : String, property_name : String) : String = elem.getValue(elem.getAppliedStereotype(stereotype_name), property_name).oclAsType(EnumerationLiteral).name/]
+
+[**
+ * From a set of connections, select the subset having a given class as source
+ * @param source_class Class instance representing the source of wanted connections
+ * @param conn_set Set of Connectors
+ */]
+[query public
+selectConnectorsAsSource(source_class: Class, conn_set : Set(Connector)) : Set(Connector) = conn_set->select(c | c.end->first().role.oclAsType(Property).class=source_class)/]
+
+[**
+ * Extract an Abstraction from a collection whether the (type of the) supplier matches a given class instance
+ * @param abst Set(Abstraction) instance
+ * @param elem Class instance for which the (type of the) abstaction supplier must match
+ */]
+[query public
+selectSingleAbstractionBySupplier(abst : Set(Abstraction), elem: Element) : Abstraction = abst->select(a|a.oclAsType(Abstraction).supplier->asSequence()->first().oclAsType(Property).type.oclAsType(Class)=elem)->asSequence()->first()/]
+
+[**
+ * Extract a subset of  Abstractions from a collection whether the (type of the) client matches a given class instance
+ * @param abst Set(Abstraction) instance
+ * @param elem Class instance for which the (type of the) abstaction client must match
+ */]
+[query public
+selectAbstractionsByClient(abst : Set(Abstraction), elem: Element) : Set(Abstraction) = abst->select(a|a.oclAsType(Abstraction).client->asSequence()->first().oclAsType(Property).type.oclAsType(Class)=elem)/]
+
+[**
+ * Select a package by a given name from a sequence
+ * @param pkgs The sequence of packages
+ * @param pack_name The package name
+ */]
+[query public
+selectSinglePackageByName(pkgs : Sequence(Package), pack_name: String) : Package = pkgs->select(p | p.name = pack_name)->first()/]
+
+[**
+ * Select a package by a given name from a sequence
+ * @param pkgs The sequence of packages
+ * @param pack_name The package name
+ */]
+[query public
+selectSinglePackageByName(pkgs : Sequence(PackageImport), pack_name: String) : Package = pkgs.importedPackage->select(p | p.name = pack_name)->first()/]
+
+[**
+ * Select a class by a given name from a sequence
+ * @param classes The sequence of classes
+ * @param class_name The class name
+ */]
+[query public
+selectSingleClassByName(classes : Sequence(Class), class_name: String) : Class = classes->select(c | c.name = class_name)->first()/]
+
+[**
+ * 
+ */]
+[query public
+getSource(conn: Connector) : Class = conn.end->first().partWithPort.type.oclAsType(Class)/]
+
+[**
+ * 
+ */]
+[query public
+getDestination(conn: Connector) : Class = conn.end->last().partWithPort.type.oclAsType(Class)/]
+
+[**
+ * 
+ */]
+[query public
+getClient(abst: Abstraction) : Class = abst.client.oclAsType(Property)->asSequence()->first().type.oclAsType(Class)/]
+
+[**
+ * 
+ */]
+[query public
+getSupplier(abst: Abstraction) : Class = abst.supplier.oclAsType(Property)->asSequence()->first().type.oclAsType(Class)/]

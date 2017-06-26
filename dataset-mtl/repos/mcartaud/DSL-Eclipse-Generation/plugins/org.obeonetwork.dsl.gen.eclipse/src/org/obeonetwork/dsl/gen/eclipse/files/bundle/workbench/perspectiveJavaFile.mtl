@@ -1,0 +1,86 @@
+[comment encoding = UTF-8 
+
+Copyright (c) 2012 Obeo
+All rights reserved.  This program and the accompanying materials
+are made available under the terms of the Eclipse Public License 1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+You can apply any license to the files generated with this module and Acceleo.
+
+Contributors :
+	Mathieu Cartaud (Obeo) - initial API and implementation
+/]
+[module perspectiveJavaFile('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel', 'http://www.obeonetwork.org/dsl/eclipse')]
+
+[import org::obeonetwork::dsl::gen::eclipse::common::normalizeName /]
+
+[template private perspectiveJavaFile(aPerspective : Perspective)]
+[aPerspective.eContainer(Bundle).genBundleJavaPath()/]/perspectives/[aPerspective.name.replaceAll(' ', '_').toUpperFirst()/].java
+[/template]
+
+[template public genPerspectiveJavaFile(aPerspective : Perspective)]
+[file (perspectiveJavaFile(), false, 'UTF-8')]
+package [aPerspective.eContainer(Bundle).genBundleID()/].perspectives;
+
+import org.eclipse.ui.IFolderLayout;
+import org.eclipse.ui.IPageLayout;
+import org.eclipse.ui.IPerspectiveFactory;
+
+//[protected (': add perspective imports for ' + aPerspective.name)]
+//[/protected]
+
+
+/**
+ * implementation class for the perspective.
+[aPerspective.eContainer(Bundle).genMail()/]
+ * @generated 
+ */
+public class [aPerspective.name.replaceAll(' ', '_').toUpperFirst()/] implements IPerspectiveFactory {
+
+	//[protected (': add perspective attributes for ' + aPerspective.name)]
+	//[/protected]
+
+
+	/**
+	 * Constructor.
+	 * @generated
+	 */
+	public [aPerspective.name.replaceAll(' ', '_').toUpperFirst()/]() {
+		super();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * @generated
+	 * @see org.eclipse.ui.IPerspectiveFactory#createInitialLayout(org.eclipse.ui.IPageLayout)
+	 */
+	public void createInitialLayout(IPageLayout layout) {
+		final float oneQuarter = 0.25f;
+		final float threeQuarter = 0.75f;
+
+		String editorArea = layout.getEditorArea();
+
+		IFolderLayout leftFolder = layout.createFolder("left", IPageLayout.LEFT, oneQuarter, editorArea); //$NON-NLS-1$
+
+		IFolderLayout bottomFolder = layout.createFolder(
+				"bottom", IPageLayout.BOTTOM, threeQuarter, editorArea); //$NON-NLS-1$
+		bottomFolder.addView("org.eclipse.ui.views.ProblemView"); //$NON-NLS-1$
+[for (aView : View | aPerspective.views)][if (aView.eContainer(Bundle)=aPerspective.eContainer(Bundle) and aView.isVisible)]
+		bottomFolder.addView("[aView.genViewID()/]"); //$NON-NLS-1$
+[/if][/for]
+[for (aView : View | aPerspective.views)][if (aView.eContainer(Bundle)=aPerspective.eContainer(Bundle) and not(aView.isVisible))]
+		bottomFolder.addPlaceholder("[aView.genViewID()/]"); //$NON-NLS-1$
+[/if][/for]
+
+		IFolderLayout rightFolder = layout.createFolder(
+				"right", IPageLayout.RIGHT, threeQuarter, editorArea); //$NON-NLS-1$
+
+	}
+
+	//[protected (': add perspective methods for ' + aPerspective.name)]
+	//[/protected]
+
+}
+[/file]
+[/template]

@@ -1,0 +1,142 @@
+[comment encoding = UTF-8 
+
+Copyright (c) 2012 Obeo
+All rights reserved.  This program and the accompanying materials
+are made available under the terms of the Eclipse Public License 1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+You can apply any license to the files generated with this module and Acceleo.
+
+Contributors :
+	Mathieu Cartaud (Obeo) - initial API and implementation
+/]
+[module extensionRegistryListenerJavaFile('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel', 'http://www.obeonetwork.org/dsl/eclipse')]
+
+[import org::obeonetwork::dsl::gen::eclipse::common::normalizeName /]
+
+[template private registryListenerJavaFile(anExtensionPoint : ExtensionPointProvider)]
+[anExtensionPoint.eContainer(Bundle).genBundleJavaPath()/]/extension/[anExtensionPoint.genExtensionName().toLowerFirst()/]/[anExtensionPoint.genExtensionName()/]RegistryListener.java
+[/template]
+
+[template public genRegistryListenerJavaFile(anExtensionPoint : ExtensionPointProvider)]
+[file (registryListenerJavaFile(), false, 'UTF-8')]
+package [anExtensionPoint.ancestors(Bundle).genBundleID()/].extension.[anExtensionPoint.genExtensionName().toLowerFirst()/];
+
+import org.eclipse.core.runtime.IConfigurationElement;
+import org.eclipse.core.runtime.IExtension;
+import org.eclipse.core.runtime.IExtensionPoint;
+import org.eclipse.core.runtime.IExtensionRegistry;
+import org.eclipse.core.runtime.IRegistryEventListener;
+import org.eclipse.core.runtime.Platform;
+
+//[protected (': add imports for ' + anExtensionPoint.genExtensionName() + 'RegistryListener')]
+//[/protected]
+
+/**
+ * This listener will allow us to be aware of contribution changes against the [anExtensionPoint.name/]
+ * extension point.
+[anExtensionPoint.eContainer(Bundle).genMail()/]
+ * @generated
+ */
+public class [anExtensionPoint.genExtensionName()/]RegistryListener implements IRegistryEventListener {
+	/**
+	 * Name of the extension point to parse for extensions.
+	 * @generated
+	 */
+	public static final String [anExtensionPoint.staticExtensionName()/]_EXTENSION_POINT = "[anExtensionPoint.ancestors(Bundle).genBundleID()/].[anExtensionPoint.genExtensionName()/]"; //$NON-NLS-1$
+	
+	/** 
+	 * Name of the extension point's "[anExtensionPoint.genExtensionName()/]" tag.
+	 * @generated
+	 */
+	private static final String [anExtensionPoint.staticExtensionName()/]_TAG_EXTENSION = "[anExtensionPoint.genExtensionName()/]"; //$NON-NLS-1$
+	
+//[protected (': add attributes for ' + anExtensionPoint.genExtensionName() + 'RegistryListener')]
+//[/protected]
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.core.runtime.IRegistryEventListener#added(org.eclipse.core.runtime.IExtension['['/]])
+	 * @generated
+	 */
+	public void added(IExtension['['/]] extensions) {
+		for (IExtension extension : extensions) {
+			parseExtension(extension);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.core.runtime.IRegistryEventListener#added(org.eclipse.core.runtime.IExtensionPoint['['/]])
+	 * @generated
+	 */
+	public void added(IExtensionPoint['['/]] extensionPoints) {
+		// no need to listen to this event
+	}
+
+	/**
+	 * Though this listener reacts to the extension point changes, there could have been contributions before
+	 * it's been registered. This will parse these initial contributions.
+	 * @generated
+	 */
+	public void parseInitialContributions() {
+		final IExtensionRegistry registry = Platform.getExtensionRegistry();
+
+		for (IExtension extension : registry.getExtensionPoint([anExtensionPoint.staticExtensionName()/]_EXTENSION_POINT).getExtensions()) {
+			parseExtension(extension);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.core.runtime.IRegistryEventListener#removed(org.eclipse.core.runtime.IExtension['['/]])
+	 * @generated
+	 */
+	public void removed(IExtension['['/]] extensions) {
+		for (IExtension extension : extensions) {
+			final IConfigurationElement['['/]] configElements = extension.getConfigurationElements();
+			for (IConfigurationElement elem : configElements) {
+				if ([anExtensionPoint.staticExtensionName()/]_TAG_EXTENSION.equals(elem.getName())) {
+					final String extensionClassName = elem
+							.getAttribute([anExtensionPoint.genExtensionName()/]Descriptor.[anExtensionPoint.staticExtensionName()/]_ATTRIBUTE_[anExtensionPoint.className.toUpper().substituteAll(' ', '_')/]);
+					[anExtensionPoint.genExtensionName()/]Registry.removeExtension(extensionClassName);
+				}
+			}
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.core.runtime.IRegistryEventListener#removed(org.eclipse.core.runtime.IExtensionPoint['['/]])
+	 * @generated
+	 */
+	public void removed(IExtensionPoint['['/]] extensionPoints) {
+		// no need to listen to this event
+	}
+
+	/**
+	 * Parses a single extension contribution.
+	 * 
+	 * @param extension
+	 *            Parses the given extension and adds its contribution to the registry.
+	 * @generated
+	 */
+	private void parseExtension(IExtension extension) {
+		final IConfigurationElement['['/]] configElements = extension.getConfigurationElements();
+		for (IConfigurationElement elem : configElements) {
+			if ([anExtensionPoint.staticExtensionName()/]_TAG_EXTENSION.equals(elem.getName())) {
+				[anExtensionPoint.genExtensionName()/]Registry.addExtension(new [anExtensionPoint.genExtensionName()/]Descriptor(elem));
+			}
+		}
+	}
+
+//[protected (': add methods for ' + anExtensionPoint.genExtensionName() + 'RegistryListener')]
+//[/protected]
+}
+[/file]
+[/template]

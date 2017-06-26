@@ -1,0 +1,111 @@
+[comment encoding = UTF-8 /]
+[module generateLayouts('http:///uiandroid.ecore', 'http:///uiandroid/DataTypes.ecore')]
+
+
+[comment ========================================================
+traitement de la racine UIAndroid
+(génère un fichier séparé pour chaque Layout)
+/]
+[template public generateLayouts(ui : UIAndroid)]
+[for(aff : Affichage | ui.affichages)]
+[file(aff.id.concat('.xml'), false, 'UTF-8')]
+		[treatAffichage(aff)/]
+[/file]
+[/for]
+[/template]
+
+[comment traitement d'un affichage =================================/]
+[template public treatAffichage(aff : Affichage)]
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+	
+	android:layout_widht =[aff.root.layoutParams.width.toString()/]
+	android:layout_heigth=[aff.root.layoutParams.height.toString()/]
+	[ comment android:orientation=[aff.root.contenu.layoutParams..toString()/ ]
+
+    android:orientation="vertical"
+	[generateLayoutParam(aff.root.layoutParams)/]
+
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+[if ((aff.eContainer(UIAndroid).main.id).toString().trim()= aff.id.toString().trim())]
+	tools:context=".MainActivity" 
+[else]
+	[comment com.example.myfirstapp.DisplayMessageActivity /]
+	[comment il faut recuperer le nom du package depuis la chaine constante package /]
+	[for (val : ValeurConstanteChaine | aff.eContainer(UIAndroid).eAllContents(ValeurConstanteChaine)) ]
+		[if (val.nom = 'package')]
+	tools:context="[val.valeur/][aff.id.toString()/]"
+		[/if]	
+ 	[/for]
+[/if]
+>
+[comment generation des element de l'affichage /]
+[for (ele : Elément | aff.root.contenu) ]
+	[treatElement(ele)/]
+[/for]     
+[/template]
+
+
+[comment traitement des parametres d'un affichage =================================/]
+[template public generateLayoutParam(layparam : Afficheur_LayoutParams)]
+parametres de layout
+
+[layparam.eAllContents()/]
+[/template]
+
+[comment traitement d'un affichage =================================/]
+[template public treatElement(element : Elément)]
+Erreur, non traité
+[/template]
+
+[comment traitement d'un layout d'un element =================================/]
+[template public generateEleLayout(ele : Elément)]
+!!!!!!!!!!!! Attention, layout de l element [ele.id/] non géré !!!!!!!!!!!!!!!!! 
+[/template]
+
+[template public generateEleLayout(btnlay : Afficheur_LayoutParams)]
+layout btn
+[btnlay.height/]
+[btnlay.width/]
+[/template]
+
+[comment traitement d'un element =================================/]
+[template public treatElement(btn : Bouton)]
+[generateEleLayout(btn.layoutParams)/]
+       <Button
+            android:id="@+id/ButtonCheck"
+            android:layout_width="wrap_content"
+            android:layout_height="fill_parent"
+            android:layout_alignParentEnd="true"
+            android:layout_below="@id/edit_message"
+            android:onClick="[btn.actions.id/]"
+            android:text="@string/button_send" />
+
+[/template]
+
+[template public treatElement(bds : BoiteDeSaisie)]
+[generateEleLayout(bds.layoutParams)/]
+<EditText
+            android:id="@+id/[bds.id/]_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentTop="true"
+            android:hint="@string/[bds.id/]_message"
+            android:maxLines="1" >
+        </EditText>
+[/template]
+
+[template public treatElement(txts : Texte)]
+[generateEleLayout(txts.layoutParams)/]
+        <TextView
+            android:id="@+id/desc_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/palynd_desc" />
+[/template]
+

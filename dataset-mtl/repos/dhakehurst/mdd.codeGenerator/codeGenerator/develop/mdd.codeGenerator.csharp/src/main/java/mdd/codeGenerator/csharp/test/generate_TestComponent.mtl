@@ -1,0 +1,187 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_TestComponent('http://www.eclipse.org/uml2/4.0.0/UML') extends mdd::codeGenerator::csharp::generate_Class /]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Classifier/]
+[import mdd::codeGenerator::csharp::generate_Class/]
+[import mdd::codeGenerator::csharp::generate_PortType/]
+[import mdd::codeGenerator::csharp::generate_Property/]
+[import mdd::codeGenerator::csharp::generate_Operation /]
+[import mdd::codeGenerator::csharp::generate_Reception /]
+
+[template public generate(c : Class, baseDir:String) overrides generate ? (c.hasStereotype('UmlTp::TestComponent')) ]
+[file (baseDir+getProperty('artifact.testFolder')+'/'+c.qualifiedName('/')+'.cs', false, 'UTF-8')]
+namespace [c.namespace.qualifiedName('.')/] {
+using global::framework.basicTypes;
+
+///<summary> Test Component </summary>
+public class [c.name/]
+[c.gen_Implements()/]
+{
+	global::framework.os.OsRef os;
+	global::framework.logging.LoggerRef log;
+	global::framework.persistence.PersistenceRef config;
+	global::framework.basicTypes.String objectId;
+
+  #region Constructors
+  [if (c.constructors()->isEmpty())]
+    [c.generate_DefaultConstructor()/]
+  [else]
+  [for (op : Operation | c.constructors())]
+	[op.gen_Constructor()/]
+  [/for]
+  [/if]
+  #endregion
+
+	  #region Ports
+	  [for (pt : Port | c.ownedPort)]
+		[pt.gen_Port()/]
+	  [/for]
+	  #endregion
+	
+	  #region Properties
+	  [for (pr : Property | c.ownedAttribute->reject(a|a.oclIsTypeOf(Port)))]
+		[pr.generate()/]
+	  [/for]
+      #endregion
+
+  #region Operations
+  [for (op : Operation | c.ownedOperation->reject(op2|c.constructors()->exists(o|o=op2)))]
+	[op.generate()/]
+  [/for]
+  [for (i : Interface | c.interfaceRealization.contract)]
+    [let owner : Interface = i]
+    #region [i.qualifiedName('::')/]
+    [for (op : Operation | i.ownedOperation->sortedBy(e | e.name))]
+      #region [op.name/]
+      public struct [op.name/]_Arguments
+      {
+        [for (p : Parameter | op.ownedParameter->reject(p:Parameter|p.direction = ParameterDirectionKind::return))]
+          public [p.typeNameTC(op.templateSignature())/] [p.name/];
+        [/for]
+      }
+      public global::System.Collections.Generic.LinkedList<[op.name/]_Arguments> [op.name/]_cache = new global::System.Collections.Generic.LinkedList<[op.name/]_Arguments>();
+	  /// <summary> Reception Description </summary>
+      public [op.generateSignature()/] {
+        [op.name/]_Arguments args;
+        [for (p : Parameter | op.ownedParameter->reject(p:Parameter|p.direction = ParameterDirectionKind::return))]
+          args.[p.name/] = [p.assignName(op.templateSignature())/];
+        [/for]
+        lock ([op.name/]_cache) {
+            [op.name/]_cache.AddFirst(args);
+        }
+		[if op.ownedParameter->exists(p:Parameter|p.direction = ParameterDirectionKind::return) ]
+		return null;
+		[/if]
+      }
+	  #endregion
+    [/for]
+    #endregion
+    [/let]
+  [/for]
+  #endregion
+
+  [c.activeSupport() /]	
+  #region Receptions
+  [c.receptionSupport() /]	
+  [for (i : Interface | c.interfaceRealization.contract)]
+    [let owner : Interface = i]
+    #region [i.qualifiedName('::')/]
+    [for (r : Reception | i.ownedReception->sortedBy(e | e.name))]
+      #region rx_[r.name/]
+      public struct rx_[r.name/]_Arguments
+      {
+        [for (p : Parameter | r.ownedParameter)]
+          public [p.typeName()/] [p.name/];
+        [/for]
+      }
+      public global::System.Collections.Generic.LinkedList<rx_[r.name/]_Arguments> rx_[r.name/]_cache = new global::System.Collections.Generic.LinkedList<rx_[r.name/]_Arguments>();
+	  /// <summary> Reception Description </summary>
+      public [r.generateSignature()/] {
+        rx_[r.name/]_Arguments args;
+        [for (p : Parameter | r.ownedParameter)]
+          args.[p.name/] = [p.name/];
+        [/for]
+        lock (rx_[r.name/]_cache) {
+            rx_[r.name/]_cache.AddFirst(args);
+        }
+        this._fw_eventQueue.Add( new [r.signalName()/]( [r.generateArguments()/] ) );
+      }
+	  #endregion
+    [/for]
+    #endregion
+    [/let]
+  [/for]
+  #endregion
+
+  #region Nested Classes
+  [for (nc : Class | c.nestedClassifier->filter(Class))]
+    [nc.generatePortType(baseDir)/]
+  [/for]
+  #endregion
+}
+
+}
+[/file]
+[/template]
+
+[query public templateSignature(arg : Operation) : Classifier =
+	if arg.ownedTemplateSignature.oclIsUndefined() then
+		arg.ownedTemplateSignature
+	else
+		arg.ownedTemplateSignature.ownedParameter.ownedParameteredElement->any(true).oclAsType(Classifier)
+	endif
+/]
+
+
+[query public assignName(arg : Parameter, tplt:Classifier) : String =
+  if self.type.oclIsUndefined() then
+	'null'
+  else
+    let
+      tName:String = self.type.fullName()
+    in
+		if self.upperBound() = 1 then
+	      self.name
+	    else
+			if tplt.oclIsUndefined() then
+  				self.name
+			else
+		  		self.name+'.cast<'+tplt.constraintName()+'>()'
+			endif		  
+	    endif
+  endif
+/]
+
+[query public typeNameTC(arg : Parameter, tplt:Classifier) : String =
+  if self.type.oclIsUndefined() then
+	'void'
+  else
+    let
+      tName:String = self.type.fullName()
+    in
+		if self.upperBound() = 1 then
+	      tName
+	    else
+			if tplt.oclIsUndefined() then
+  				'global::framework.collections.Sequence<'+tName+'>'
+			else
+		  		'global::framework.collections.Sequence<'+tplt.constraintName()+'>'
+			endif
+	    endif
+  endif
+/]
+
+[query public constraintName(arg : Classifier) : String =
+	arg.general()->any(true).fullName()
+/]

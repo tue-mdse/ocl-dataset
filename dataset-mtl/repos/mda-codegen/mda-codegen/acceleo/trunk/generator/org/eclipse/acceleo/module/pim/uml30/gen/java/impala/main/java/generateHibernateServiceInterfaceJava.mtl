@@ -1,0 +1,70 @@
+[comment encoding = UTF-8 /]
+[module generateHibernateServiceInterfaceJava('http://www.eclipse.org/uml2/3.0.0/UML')]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::structureUtil /]
+
+[template public generateHibernateServiceInterface(aModel : Model)]
+[file (aModel.generateProjectFolder().concat(aModel.pathToMainJava()).concat('/org/springframework/').concat(aModel.generateSpecificProjectFolder('')).concat('/hibernate/').concat(aModel.generateSpecificProjectFolder('').toUpperFirst()).concat('.java'), false, 'UTF-8')]
+package org.springframework.[aModel.generateSpecificProjectFolder('')/].hibernate;
+
+import java.util.Collection;
+
+import org.springframework.dao.DataAccessException;
+import org.springframework.orm.hibernate3.support.HibernateDaoSupport;
+[for (anEntity : Class | aModel.eAllContents(Class)->select(aClass:Class|aClass.isEntity()))]
+import [anEntity.generateJavaPackage()/].[anEntity.name/];
+[/for]
+//[protected ('user imports')]
+//[/protected]
+/**
+ * The high-level [aModel.generateSpecificProjectFolder('')/] business interface.
+ *
+ * <p>This is basically a data access object,
+ * as [aModel.generateSpecificProjectFolder('')/] doesn't have dedicated business logic.
+ *
+ */
+@SuppressWarnings("unchecked")
+public interface [aModel.generateSpecificProjectFolder('').toUpperFirst()/] {
+
+	[for (anEntity : Class | aModel.eAllContents(Class)->select(aClass:Class|aClass.isEntity()))]
+    Collection get[anEntity.name/]s() throws DataAccessException;
+
+    Owner load[anEntity.name/](int id) throws DataAccessException;
+
+    void store[anEntity.name/]([anEntity.name/] [anEntity.name.toLowerFirst()/]) throws DataAccessException;
+
+		[for (aFinderOperation : Operation | anEntity.getOperations()->select(anOperation:Operation|anOperation.isFinder()))]
+    Collection [aFinderOperation.getFinderMethodeName()/]([aFinderOperation.generateRawParameters()/]) throws DataAccessException;
+		[/for]
+	[/for]
+
+	
+}
+	[/file]
+[/template]
+
+[comment][template public generateFinderParamArray(aFinderOperation : Operation) post (trim())]
+new Object['['/][']'/]{[aFinderOperation.ownedParameter.name->sep(', ')/]}
+[/template]
+
+[template public generateQLSampleTemplate(aParameter : Parameter, prefix : String) post (trim())]
+[prefix/].aParameter = ?
+[/template]
+
+[template public generateFinderQLSample(aFinderOperation : Operation)]
+from [aFinderOperation.owner.oclAsType(Class).name/] [aFinderOperation.owner.oclAsType(Class).name.toLowerFirst()/] where [aFinderOperation.ownedParameter.generateQLSampleTemplate(aFinderOperation.owner.oclAsType(Class).name.toLowerFirst())->sep(' and ')/]
+[/template]
+
+
+[query public getFinderMethodeName(aFinderOperation : Operation) : String = 
+if(aFinderOperation.name.toLowerFirst().startsWith('find')) then
+aFinderOperation.name.toLowerFirst()
+else
+'find'.concat(aFinderOperation.name.toUpperFirst())
+endif 
+/][/comment]

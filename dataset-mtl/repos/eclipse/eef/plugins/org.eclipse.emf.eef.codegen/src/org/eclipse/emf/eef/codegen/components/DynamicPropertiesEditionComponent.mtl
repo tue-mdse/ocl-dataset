@@ -1,0 +1,184 @@
+[comment encoding = UTF-8
+ *******************************************************************************
+ * Copyright (c) 2008-2009 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module DynamicPropertiesEditionComponent('http://www.eclipse.org/emf/eef/components/1.0.0','http://www.eclipse.org/emf/eef/views/1.0.0','http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/eef/generation/1.0.0')/]
+
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::services::viewCommon /]
+[import org::eclipse::emf::eef::codegen::services::typeUtils /]
+[import org::eclipse::emf::eef::codegen::services::imports/]
+
+[template public DynamicPropertiesEditionComponent(peContext : PropertiesEditionContext, basePackage : String)]
+[for (pec : PropertiesEditionComponent | peContext.eAllContents(PropertiesEditionComponent))]
+	[for (topLevelView : View | pec.views) ? (topLevelView.explicit)]
+[if (pec.mustDynamicPecBeGenerated(topLevelView))]
+[peContext.initializeImportManager(pec.componentsPackage(), pec.subPECClass(topLevelView))/]
+[file (pec.fullFilePath(topLevelView), false)]
+[peContext.associatedGenModel().licenceText().trim()/]
+package [pec.componentsPackage()/];[addImports(Sequence{
+	'org.eclipse.emf.eef.runtime.impl.services.PropertiesEditionPartProviderService',
+	'org.eclipse.emf.eef.runtime.api.providers.IPropertiesEditionPartProvider'})/]
+
+[let content : String = peContext.fileContent(pec, topLevelView, basePackage)]
+[peContext.genSortedImports()/]
+[peContext.additionalImports(pec, topLevelView, basePackage)/]
+
+[content/]
+[/let]
+[/file]
+		[/if]
+	[/for]
+[/for]
+[/template]
+
+[template private fileContent(peContext : PropertiesEditionContext, pec : PropertiesEditionComponent, topLevelView : View, basePackage : String)]
+/**
+ * [peContext.associatedGenModel().authorText().trim()/]
+ * [peContext.associatedGenModel().generationMark()/]
+ */
+public class [pec.subPECClass(topLevelView)/] extends ComposedPropertiesEditionComponent {
+
+	public static String [topLevelView.viewPartConstant(pec)/] = "[topLevelView.viewKey(pec).toASCII()/]"; //$NON-NLS-1$
+
+	private String['['/][']'/] parts = {[topLevelView.viewPartConstant(pec)/]};
+
+	/**
+	 * The EObject to edit
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	private [pec.pecModelClass()/] [pec.pecModelClass().toJavaIdentifier()/];
+
+	/**
+	 * The [topLevelView.viewKey(pec)/] part
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	private [topLevelView.pepInterface()/] [topLevelView.viewIdentifier(pec)/];
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.impl.components.ComposedPropertiesEditionComponent#partsList()
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public String['['/][']'/] partsList() {
+		return parts;
+	}
+
+[comment]
+Implemented later ...
+[for (view : View | pec.views) ? (pec.mustBeGenerated())]
+			private [pec.subPECClass(view)/] [pec.subPECClass(view).toLowerFirst()/];
+[/for]
+[/comment]
+[for (subPec : PropertiesEditionComponent | pec.referencedBinding.binding->filter(PropertiesEditionComponent)) ? (subPec.mustBeGenerated())]
+	[for (view : View | subPec.views) ? (view.ancestors()->includes(topLevelView))]
+	/**
+	 * The [subPec.subPECClass(view)/] sub component
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	protected [include(subPec.subPECQualifiedClass(view))/] [subPec.subPECClass(view).toLowerFirst()/];
+
+	[/for]
+[/for]
+	/**
+	 * Parameterized constructor
+	 * 
+	 * @param [pec.pecModelClass().toJavaIdentifier()/] the EObject to edit
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public [pec.subPECClass(topLevelView)/](EObject [pec.pecModelClass().toJavaIdentifier()/], String editing_mode) {
+		super(editing_mode);
+		if ([pec.pecModelClass().toJavaIdentifier()/] instanceof [pec.pecModelClass()/]) {
+[comment]
+Implemented later ...
+[for (view : View | pec.views) ? (pec.mustBeGenerated())]
+			[pec.subPECClass(view).toLowerFirst()/] = new [pec.subPECClass(view)/]([pec.pecModelClass().toJavaIdentifier().trim()/], editing_mode); 
+			addSubComponent([pec.subPECClass(view).toLowerFirst()/]);
+[/for]
+[/comment]
+[for (subPec : PropertiesEditionComponent | pec.referencedBinding.binding->filter(PropertiesEditionComponent)) ? (subPec.mustBeGenerated())]
+	[for (view : View | subPec.views) ? (view.ancestors()->includes(topLevelView))]
+			[subPec.subPECClass(view).toLowerFirst()/] = new [subPec.subPECClass(view)/]([pec.pecModelClass().toJavaIdentifier()/], editing_mode);
+			addSubComponent([subPec.subPECClass(view).toLowerFirst()/]);
+	[/for]
+[/for]
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.impl.components.ComposedPropertiesEditionComponent#
+	 *  getPropertiesEditionPart(int, java.lang.String)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public IPropertiesEditionPart getPropertiesEditionPart(int kind, String key) {
+		if ([topLevelView.viewPartConstant(pec)/].equals(key) && [pec.pecModelClass().toJavaIdentifier()/] == null) {
+			IPropertiesEditionPartProvider provider = PropertiesEditionPartProviderService.getInstance().getProvider([include(topLevelView.owningViewsRepository().vrQualifiedClass())/].class);
+			if (provider != null) {
+				[topLevelView.viewIdentifier(pec)/] = ([topLevelView.pepInterface()/])provider.getPropertiesEditionPart([topLevelView.editorID()/].class, kind, this);
+			}
+			return (IPropertiesEditionPart)[topLevelView.viewIdentifier(pec)/];
+		}
+		return new NullCompositePropertiesEditionPart(this);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.impl.components.ComposedPropertiesEditionComponent#translatePart(java.lang.String)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public java.lang.Class translatePart(String key) {
+		if ([topLevelView.viewPartConstant(pec)/].equals(key))
+			return [topLevelView.editorID()/].class;
+		return super.translatePart(key);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.impl.components.ComposedPropertiesEditionComponent#mustBeComposed(java.lang.Object, int)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public boolean mustBeComposed(Object key, int kind) {
+		return [for (view : View | pec.dynamicViews(topLevelView)) separator (' || ')]key == [view.editorID()/].class[/for];
+	}
+
+	/** 
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.emf.eef.runtime.impl.components.ComposedPropertiesEditionComponent
+	 *  #initPart(java.lang.Object, int, org.eclipse.emf.ecore.EObject, org.eclipse.emf.ecore.resource.ResourceSet)
+	 * [peContext.associatedGenModel().generationMark()/]
+	 */
+	public void initPart(Object key, int kind, EObject element, ResourceSet allResource) {
+		if (key == [topLevelView.editorID()/].class) {
+			((IPropertiesEditionPart)[topLevelView.viewIdentifier(pec)/]).setContext(element, allResource);
+[for (subPec : PropertiesEditionComponent | pec.referencedBinding.binding->filter(PropertiesEditionComponent)) ? (subPec.mustBeGenerated())]
+	[for (view : View | subPec.views) ? (view.ancestors()->includes(topLevelView))]
+			[subPec.subPECClass(view).toLowerFirst()/].setPropertiesEditionPart([view.editorID()/].class, kind, [topLevelView.viewIdentifier(pec)/].get[view.name.toJavaClassifier()/]SubView());
+			[subPec.subPECClass(view).toLowerFirst()/].initPart([view.editorID()/].class, kind, element);
+	[/for]
+[/for]
+		}
+	}
+}
+[/template]
+
+[template public fullFilePath(pec : PropertiesEditionComponent, view : View)]
+[pec.subPECQualifiedClass(view).toPath()/].java
+[/template]
+
+[comment overrides this template if additional imports are needed/]
+[template public additionalImports (peContext : PropertiesEditionContext, pec : PropertiesEditionComponent, topLevelView : View, basePackage : String)/]

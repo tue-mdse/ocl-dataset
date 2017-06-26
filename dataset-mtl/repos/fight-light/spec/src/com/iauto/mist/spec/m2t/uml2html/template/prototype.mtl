@@ -1,0 +1,286 @@
+[comment encoding = UTF-8 /]
+[module prototype('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import com::iauto::mist::spec::m2t::uml2html::query::commonQuery/]
+
+[comment]js state machine行为定义部分
+以下调用顺序描述内容摘自js state machine说明：
+assume event go transitions from red state to green
+onbeforego - specific handler for the go event only
+onbeforeevent - generic handler for all events
+onleavered - specific handler for the red state only
+onleavestate - generic handler for all states
+onentergreen - specific handler for the green state only
+onenterstate - generic handler for all states
+onaftergo - specific handler for the go event only
+onafterevent - generic handler for all events[/comment]
+[template public genPrototype(aStateMachine : StateMachine)]
+[comment]状态机定义,根据uml中statemachine的数量生成[/comment]
+[aStateMachine.name/] = function() {};
+
+[aStateMachine.name/].prototype = {
+[comment]用于当前状态机迁移图页面显示[/comment]
+  svg: loadSVG('[aStateMachine.name/]'),
+[comment]用于记录当前状态机的父状态机[/comment]
+  stmParent: 'none',
+  stateParent: 'none',
+[comment]记录每个返回状态进入前，页面显示的情况，栈[/comment]
+  history : {
+  [for (ips : Pseudostate | aStateMachine.region.getAllVertex()->selectByType(Pseudostate)->select(kind=PseudostateKind::shallowHistory)->sortedBy(name))]
+    '[ips.name/]': [ '[' /]],
+  [/for]
+  },
+    [comment]状态迁移图中进入状态时的行为定义[/comment]
+    [for (iv : Vertex | aStateMachine.allOwnedElements()->selectByKind(Vertex)->sortedBy(name))]
+        [comment]处理State[/comment]
+        [let is : State = iv]
+            [comment]带有子状态机[/comment]
+            [let ism : StateMachine = is.submachine]
+  'onenter[is.name/]': function(event, from, to) {
+                [comment][for (icpr : ConnectionPointReference | is.connection->select(exit->notEmpty())->sortedBy(name))]
+    if ('[icpr.exit.name/]' == from) {
+      this.current = '[is.name/]';
+                [if (icpr.outgoing->notEmpty())]
+      this['[event]'/]();
+                [/if]
+      return;
+    }
+                [/for][/comment]
+    [ism.name/]Obj.stmParent = '[aStateMachine.name/]';
+    [ism.name/]Obj.stateParent = '[is.name/]';
+    [ism.name/]Obj.init();
+  },
+  'onleave[is.name/]': function(event, from, to) {
+    if ([ism.name/]Obj.current !== 'none') {
+                [for (ips : Pseudostate | ism.region.getAllVertex()->selectByType(Pseudostate)->select(kind=PseudostateKind::shallowHistory)->sortedBy(name))]
+      if ([ips.container.getAllVertexInRegion()->selectByType(State).name->sep('[\'', '\', \'', '\']')/].indexOf([ism.name/]Obj.current)>=0) {
+        [ism.name/]Obj.history['[\''+ips.name+'\']'/].push(StateRouter.currState);
+      }
+                [/for]
+      [ism.name/]Obj['['/]'onleave' + [ism.name/]Obj.current](null, [ism.name/]Obj.current, to);
+      [ism.name/]Obj.current = 'none';
+    }
+  },
+                [comment]state上的ConnectionPointReference[/comment]
+                [for (icpr : ConnectionPointReference | is.connection->select(entry->notEmpty())->sortedBy(name))]
+  'onenter[icpr.entry.name/]': function(event, from, to) { 
+    this.current = '[is.name/]';
+    [ism.name/]Obj.stmParent = '[aStateMachine.name/]';
+    [ism.name/]Obj.stateParent = '[is.name/]';
+    [ism.name/]Obj['[\'onenter' + icpr.entry.name + '\'](event, \''+ is.name + '\', \''+ icpr.entry.name + '\')'/];
+    return;
+  },
+                [/for]
+                [for (icpr : ConnectionPointReference | is.connection->select(exit->notEmpty())->sortedBy(name))]
+  'onenter[is.name+'_'+icpr.exit.name/]': function(event, from, to) {
+                    [for (ips : Pseudostate | ism.region.getAllVertex()->selectByType(Pseudostate)->select(kind=PseudostateKind::shallowHistory)->sortedBy(name))]
+      if ([ips.container.getAllVertexInRegion()->selectByType(State).name->sep('[\'', '\', \'', '\']')/].indexOf(StateRouter.currState.replace('[ism.name/]::', ''))>=0) {
+        [ism.name/]Obj.history['[\''+ips.name+'\']'/].push(StateRouter.currState);
+      }
+                    [/for]
+      this.current = '[is.name+'_'+icpr.exit.name/]';
+                [if (icpr.outgoing->notEmpty())]
+      this['[event]'/]();
+                [/if]
+      return;
+  },
+                [/for]
+            [comment]没有子状态机[/comment]
+            [else]
+                [if (is.region->isEmpty())]
+  'onenter[is.name/]': function(event, from, to) { StateRouter.entry('[aStateMachine.name/]'); },
+  'onleave[is.name/]': function(event, from, to) { StateRouter.exit('[aStateMachine.name/]'); },
+                [/if]
+            [/let]
+        [comment]处理Pseudostate[/comment]
+        [elselet ips : Pseudostate = iv]
+            [comment]choice[/comment]
+            [if (ips.kind=PseudostateKind::choice)]
+  'onenter[ips.name/]': function(event, from, to) { StateRouter.entry4Choice('[aStateMachine.name/]'); },
+  'onleave[ips.name/]': function(event, from, to) { StateRouter.exit4Choice('[aStateMachine.name/]'); },
+            [comment]entrypoint[/comment]
+            [elseif (ips.kind=PseudostateKind::entryPoint)]
+  'onenter[ips.name/]': function(event, from, to) {
+    this.current = '[ips.name/]';
+                [if (ips.outgoing->notEmpty())]
+    this['[event]'/]();
+                [/if]
+  },
+            [comment]exitpoint[/comment]
+            [elseif (ips.kind=PseudostateKind::exitPoint)]
+  'onenter[ips.name/]': function(event, from, to) {
+    this.current = 'none';
+    var stmObj = window['[this.stmParent + \'Obj\']'/];
+    stmObj['[\'onenter\' + this.stateParent +\'_'+ips.name+'\'](event, \''+ips.name+'\', this.stateParent)'/];
+  },
+            [comment]shallowHistory[/comment]
+            [elseif (ips.kind=PseudostateKind::shallowHistory)]
+  'onenter[ips.name/]': function(event, from, to) {
+    var stmObj = StateRouter.backLastState(this.history['[\''+ips.name+'\']'/].pop());
+    stmObj['[\'onenter\' + stmObj.current](null, \''+ips.name+'\', stmObj.current);'/]
+  },
+            [elseif (ips.kind=PseudostateKind::terminate)]
+  'onenter[ips.name/]': function(event, from, to) { StateRouter.clearup(); },
+            [/if]
+        [/let]
+    [/for]
+[comment]back part[/comment]
+[let sequence : Sequence(Transition) = aStateMachine.region.getAllTransitionInRegion()->select(checkTransition()).getTransitionBegin()->select(checkTransition())->asSequence()][transitionInit(sequence, aStateMachine.name)/][/let]
+[for (transition : String | aStateMachine.region.getAllTransitionInRegion()->select(checkTransition())->select(not (target.oclIsTypeOf(Pseudostate) and target.oclAsType(Pseudostate).kind=PseudostateKind::exitPoint)).getTransitionBegin()->select(checkTransition()).name->asSet())]
+[let sequence : Sequence(Sequence(Pseudostate)) = Sequence{}][generateOnbeforeMethod(transition, aStateMachine, sequence)/][if (sequence->at(1)->notEmpty() or sequence->at(2)->notEmpty())]
+  'onbefore[transition.removePrefix()/]': function(event, from, to) { 
+    [for (history : Pseudostate | sequence->at(1))]
+    [let stateLimit1 : Sequence(Sequence(String)) = Sequence{}][generateExitNodeInRegionOfTransition(transition, history, aStateMachine, 'sameLevel', stateLimit1)/]
+   	if ([stateLimit1->sep('[\'', '\', \'', '\']')/].indexOf(from) >= 0) {
+      this.history['[\''+history.name+'\']'/].push(StateRouter.currState);
+    }    
+    [/let]
+    [/for]
+    [for (history : Pseudostate | sequence->at(2))]
+    [let stateLimit2 : Sequence(Sequence(String)) = Sequence{}][generateExitNodeInRegionOfTransition(transition, history, aStateMachine, 'outRegion', stateLimit2)/]
+   	if ([stateLimit2->sep('[\'', '\', \'', '\']')/].indexOf(from) >= 0) {
+      [if (not clearHistory(history))]
+      this.history['[\''+history.name+'\']'/].length = 0;
+      [/if]
+      this.history['[\''+history.name+'\']'/].push(StateRouter.currState);
+    }
+	[/let]
+    [/for]
+  },
+  [/if]
+  [/let]
+[/for]
+};
+
+StateMachine.create({
+[comment]状态机实现[/comment]
+  target: [aStateMachine.name/].prototype,
+  events: ['['/]
+    [if(aStateMachine.region->asSequence()->at(1).getInitTransition()<>null)]
+    { name: 'init', from: 'none', to: '[aStateMachine.region->asSequence()->at(1).getInitTransition().target.name/]' },
+    [else]
+    { name: 'init', from: 'none', to: '' },
+    [/if]
+    [for (is : Vertex | aStateMachine.allOwnedElements()->select(oclIsTypeOf(State) or oclIsTypeOf(Pseudostate)).oclAsType(Vertex)->sortedBy(name))
+        ][let outgoings : Sequence(Transition) = Sequence(Transition){}][genOutgoings(is,outgoings)
+    /][for (it : Transition | outgoings->select(checkTransition())->select(not isCompositeStateWithoutInitial(target))->sortedBy(name))]
+        [let ips : Pseudostate = it.source]
+            [if (ips.kind=PseudostateKind::entryPoint)]
+                [for (itn : String | it.getTransitionBegin()->excluding(null)->sortedBy(name).name)]
+    { name: '[itn.removePrefix()/]', from: '[ips.name/]', to: '[it.target.getTargetNode()/]' },
+                [/for]
+            [elseif (ips.kind=PseudostateKind::initial)]
+            [else]
+    { name: '[it.name.removePrefix()/]', from: '[ips.name/]', to: '[it.target.getTargetNode()/]' },
+            [/if]
+        [elselet icpr : ConnectionPointReference = it.source]
+            [if (icpr.exit->notEmpty())]
+                [for (itn : String | it.getTransitionBegin()->excluding(null)->sortedBy(name).name->asOrderedSet())]
+    { name: '[itn.removePrefix()/]', from: '[icpr.state.name+'_'+icpr.exit.name/]', to: '[it.target.getTargetNode()/]' },
+                [/for]
+            [/if]
+        [else]
+    { name: '[it.name.removePrefix()/]', from: '[is.name/]', to: '[it.target.getTargetNode()/]' },
+        [/let]
+    [/for]
+        [/let]
+    [/for]
+  ]
+});
+[/template]
+
+[template public generateOnbeforeMethod(transition : String, stm : StateMachine, sequence : Sequence(Sequence(Pseudostate)) )]
+[invoke('com.iauto.mist.spec.m2t.uml2html.util.utils', 'generateOnbeforeMethod(java.lang.String, org.eclipse.uml2.uml.StateMachine, java.util.List)', Sequence{transition, stm, sequence})/]
+[/template]
+
+[template public generateExitNodeInRegionOfTransition(transition : String , history : Pseudostate, stm : StateMachine, type : String, sequence : Sequence(Sequence(String)) )]
+[invoke('com.iauto.mist.spec.m2t.uml2html.util.utils', 'generateExitNodeInRegionOfTransition(java.lang.String, org.eclipse.uml2.uml.Pseudostate, org.eclipse.uml2.uml.StateMachine, java.lang.String, java.util.List)', Sequence{transition, history, stm, type, sequence})/]
+[/template]
+
+[query public transitionInit(transitions : Sequence(Transition), stateMachineName : String ) : Sequence(Sequence(Pseudostate)) = 
+invoke('com.iauto.mist.spec.m2t.uml2html.util.utils', 'transitionInit(java.util.List, java.lang.String)', Sequence{transitions, stateMachineName}) 
+/]
+
+[template public genOutgoings(iv : Vertex , outgoings : Sequence(Transition) )]
+[invoke('com.iauto.mist.spec.m2t.uml2html.util.utils', 'genOutgoingsWithExitPoint(org.eclipse.uml2.uml.Vertex, java.util.List , java.lang.Boolean)', Sequence{iv,outgoings,false})/]
+[/template]
+
+[query public clearHistory(history : Pseudostate) : Boolean =  
+    if history.container.state.outgoing->select(target = history)->notEmpty() then true
+    else 
+       if history.incoming->select(source->notEmpty()).ignoreChoiceOutgoing()->select(checkTransition())->select(source.isVertexInRegion(history.container))->notEmpty() then true
+       else false
+       endif
+    endif
+ /]
+
+[query public getVertex(transition : Transition) : Vertex =  
+	if transition.target.oclIsTypeOf(ConnectionPointReference) then transition.target.oclAsType(ConnectionPointReference).state
+	else 
+       transition.target
+    endif
+/]
+
+[query public getHistoryContainerTransitions(iv : Vertex, ir : Region) : Bag(Transition) = 
+if iv.oclIsTypeOf(ConnectionPointReference) then
+    iv.oclAsType(ConnectionPointReference).state->union(iv.oclAsType(ConnectionPointReference).state.connection).incoming->select(source->notEmpty()).ignoreChoiceOutgoing()->select(checkTransition())->select(source.isVertexInRegion(ir))
+else
+    if iv.oclIsTypeOf(State) then
+        (iv.oclAsType(State).incoming->union(iv.oclAsType(State).connection.incoming))->select(source->notEmpty()).ignoreChoiceOutgoing()->select(checkTransition())->select(source.isVertexInRegion(ir))
+    else
+        null
+    endif
+endif
+ /]
+
+[query public getTargetNode(iv : Vertex) : String = 
+if iv.oclIsTypeOf(ConnectionPointReference) then
+    iv.oclAsType(ConnectionPointReference).entry->any(outgoing->notEmpty()).name
+else 
+	if (iv.oclIsTypeOf(Pseudostate) and (iv.oclAsType(Pseudostate).kind = PseudostateKind::exitPoint or iv.oclAsType(Pseudostate).kind = PseudostateKind::entryPoint) and iv.oclAsType(Pseudostate).state->notEmpty()) then 
+        iv.outgoing->asSequence()->at(1).target.getTargetNode()
+    else
+        if iv.oclIsTypeOf(State) then
+	       if iv.oclAsType(State).region->notEmpty() then 
+	          iv.oclAsType(State).region->asSequence()->at(1).getInitTransition().target.getTargetNode()
+	       else
+	          iv.name
+	       endif
+	    else 
+		   iv.name
+	    endif 
+    endif
+endif
+ /]
+
+[comment]获取最顶层的状态机的submachineState[/comment]
+[query public getTopStateName(iv : Vertex) : String = 
+if iv.container.stateMachine<>null then
+ iv.container.stateMachine.submachineState.name
+else
+    getTopStateName(iv.container.state)
+endif
+ /]
+
+[comment]检查target是否为复合状态，并且包含initial[/comment]
+[query public isCompositeStateWithoutInitial(iv : Vertex) : Boolean = 
+if iv.oclIsTypeOf(State) then
+	let state : State = iv.oclAsType(State) in
+	if state.region.ownedMember->selectByType(State)->notEmpty() then
+	    if state.region.ownedMember->selectByType(Pseudostate)->notEmpty() then 
+	        let c : Collection(Pseudostate) = state.region.ownedMember->selectByType(Pseudostate) in 
+	            if c->select(kind = PseudostateKind::initial)->notEmpty() then 
+	                false
+	            else 
+	                true 
+	            endif
+	    else
+	        true
+	    endif
+	else
+	    false
+	endif
+else 
+	false
+endif
+ /]

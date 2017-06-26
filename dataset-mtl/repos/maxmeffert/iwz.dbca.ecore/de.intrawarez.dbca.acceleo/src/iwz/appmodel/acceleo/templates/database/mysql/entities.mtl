@@ -1,0 +1,47 @@
+[comment encoding = UTF-8 /]
+[module entities('http://iwz/appmodel')]
+
+
+[import iwz::appmodel::acceleo::templates::common/]
+[import iwz::appmodel::acceleo::templates::database::names/]
+[import iwz::appmodel::acceleo::templates::database::mysql::types/]
+
+[template private createView(entity : Entity)]
+CREATE VIEW [entity.getDatabaseName()/] AS 
+-- view must select ([entity.getProperties().getDatabaseName()->sep(',')/])
+-- [protected('view:code:' + entity.name)]
+--
+-- YOUR CODE GOES HERE
+--
+-- [/protected]
+[/template]
+
+
+[template private createTable(entity : Entity)]
+CREATE TABLE [entity.getDatabaseName()/] (
+[for (p : Property | entity.getProperties()) separator(',')]
+	[p.name/] [p.getDatabaseDataType()/][if (p.isNullable)] NULL[else] NOT NULL[/if]
+[/for]
+);
+ALTER TABLE [entity.getDatabaseName()/] ADD CONSTRAINT pk[entity.getDatabaseName()/]
+	PRIMARY KEY ([entity.getPrimaryProperties().getDatabaseName()->sep(',')/]);
+[/template]
+
+
+[template public generateSchema(entity : Entity)]
+
+-- ======================================================================================
+-- Entity: [entity.name/]
+-- ======================================================================================
+
+[if (entity.isTransient)]
+[entity.createView()/]
+[else]
+[entity.createTable()/]
+[/if]
+
+[/template]
+
+
+
+

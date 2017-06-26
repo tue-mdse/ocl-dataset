@@ -1,0 +1,89 @@
+[comment encoding = UTF-8 /]
+[comment]
+/*****************************************************************************
+ * Copyright (c) 2013 INTEMPORA S.A.
+ *
+ * This software is a computer program whose purpose is to transform RobotML models
+ * into RTMaps diagrams and RTMaps components via source code generation techniques.
+ * 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *  Nicolas DU LAC (INTEMPORA) - Initial API and implementation
+ *
+ *****************************************************************************/
+[/comment]
+[module generate_rtmaps_model_datatypes_h('http://www.eclipse.org/uml2/3.0.0/UML', 'http://Papyrus/RobotML/1')]
+
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::DataTypeQueries /]
+
+[template public generateRTMapsModelDataTypes(root_model : Model)]
+[file ('user_sdk/include/' + root_model.name + '/' + root_model.name + '_datatypes_all.h', false, 'UTF-8')]
+#ifndef __RTMAPS_[root_model.name/]_DATATYPES_COMMON_H__
+#define __RTMAPS_[root_model.name/]_DATATYPES_COMMON_H__
+
+#include "robotml/maps_robotml_datatypes_all.h"
+
+
+/*******************************************/
+/* DATA TYPES FORWARD DECLARATIONS*/
+/*******************************************/
+
+[for (datatype : NamedElement | getElementsDataType(root_model))]
+[if (datatype.oclIsKindOf(Enumeration))]
+enum [datatype.name/];
+[else]
+class [datatype.name/];
+[/if]
+[/for]
+
+/*******************************************/
+/* COMPOSED DATA TYPES INCLUDE FILES*/
+/*******************************************/
+[for (datatype : NamedElement | getElementsDataType(root_model))]
+#include <[root_model.name/]/[datatype.name/].h>
+	[file ('user_sdk/include/' + root_model.name + '/' + datatype.name + '.h', false, 'UTF-8'))]
+#ifndef ___[datatype.name/]_H__
+#define ___[datatype.name/]_H__
+
+[for (prop : Property | datatype.oclAsType(DataType).getAllAttributes())]
+[if (isPrimitiveType(prop.type.oclAsType(Element)) = false)]
+	[if (isRobotMLDataType(root_model.oclAsType(Element),prop.type.name))]
+#include "robotml/[prop.type.name/].h"
+	[else]
+#include "[root_model.name/]/[prop.type.name/].h"
+	[/if]
+[/if]
+[/for]
+
+[getCppClassForDatatType(datatype.oclAsType(DataType))/]
+
+#endif //___[datatype.name/]_H__
+	[/file]
+[/for]
+
+#endif //__RTMAPS_[root_model.name/]__DATATYPES_H__
+[/file]
+
+[file ('user_sdk/include/' + root_model.name + '/' + root_model.name + '_datatype_filters.h', false, 'UTF-8')]
+#ifndef __MAPS_[root_model.name/]_DATATYPE_FILTERS_H__
+#define __MAPS_[root_model.name/]_DATATYPE_FILTERS_H__
+
+
+[for (datatype : NamedElement | getElementsDataType(root_model))]
+#include "[root_model.name/]/[datatype.name/].h"
+[/for]
+#include "maps.hpp"
+
+[for (datatype : NamedElement | getElementsDataType(root_model))]
+// The RTMaps input filter for the structure [datatype.name/]
+const MAPSTypeFilterBase MAPSFilter[datatype.name/] = MAPS_FILTER_USER_STRUCTURE([datatype.name/]);
+[/for]
+
+#endif //__MAPS_[root_model.name/]_DATATYPE_FILTERS_H__
+[/file]
+
+[/template]

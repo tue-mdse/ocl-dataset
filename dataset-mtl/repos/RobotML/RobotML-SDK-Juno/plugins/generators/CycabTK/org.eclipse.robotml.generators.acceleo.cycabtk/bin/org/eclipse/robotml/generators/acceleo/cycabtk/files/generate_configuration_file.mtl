@@ -1,0 +1,182 @@
+[comment encoding = UTF-8 /]
+[module generate_configuration_file('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[comment][import org::eclipse::robotml::generators::acceleo::mmqueries::MMQueries /][/comment]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[comment][import org::eclipse::robotml::generators::acceleo::cycabtk::queries::CycabTkQueries /][/comment]
+
+[template public generateCycabTKRobot(c : Class)]
+[c.name/] = cycabtk.DynamicCar "[c.name/]"
+[/template]
+
+[template public generateVehicleConfiguration(model : Model)]
+<vehicleMass>150.0</vehicleMass>
+
+<maxEngineForce>5000</maxEngineForce>
+<maxBreakingForce>1000</maxBreakingForce>
+<maxAllowedVelocity>5.0</maxAllowedVelocity>
+
+<wheelFriction>1000</wheelFriction>
+<suspensionStiffness>50</suspensionStiffness>
+<suspensionDamping>2.3</suspensionDamping>
+<suspensionCompression>4.4</suspensionCompression>
+
+<vehicleWidth>0.617</vehicleWidth>
+<vehicleLength>0.704</vehicleLength>
+
+<axleLength>0.43</axleLength>
+
+<frontToBackAxleRows>1</frontToBackAxleRows>
+
+<wheelVelocityPIDkp>80.0</wheelVelocityPIDkp>
+<wheelVelocityPIDki>5</wheelVelocityPIDki>
+<wheelVelocityPIDkd>0.2</wheelVelocityPIDkd>
+<wheelVelocityPIDmaxSum>10.0</wheelVelocityPIDmaxSum>
+<wheelVelocityPIDmaxVal>1000.0</wheelVelocityPIDmaxVal>
+[/template]
+
+[template public generateWheelConfiguration(model : Model)]
+[model.name/] = cycabtk.DynamicCar "[model.name/]"
+<wheels numberOfWheels = "2">
+	<wheel typeOfWheel = "axleWheel">
+		<wheelSide>Left</wheelSide>
+		<axlePosition>0</axlePosition>
+		
+		<wheelRadius>0.157</wheelRadius>
+		<wheelWidth>0.042</wheelWidth>         
+		<suspensionRestLength>0.2</suspensionRestLength>
+		<wheelConnectionHeight>-0.3</wheelConnectionHeight>
+	</wheel>
+
+	<wheel typeOfWheel = "axleWheel">
+		<wheelSide>Right</wheelSide>
+		<axlePosition>0</axlePosition>
+		
+		<wheelRadius>0.157</wheelRadius>
+		<wheelWidth>0.042</wheelWidth>         
+		<suspensionRestLength>0.2</suspensionRestLength>
+		<wheelConnectionHeight>-0.3</wheelConnectionHeight>
+	</wheel>
+</wheels>
+[/template]
+
+[template public generateConfigurationFile(model : Model)]
+[file ('data/configuration/' + model.name + '.xml', false, 'UTF-8')]
+
+
+[comment]<vehicle typeOfVehicle = "differential">
+
+[generateVehicleConfiguration(model)/]
+[generateWheelConfiguration(model)/]
+
+</vehicle>[/comment]
+
+
+[comment][for (elt: Element | model.allOwnedElements())]
+	[let c: Class = elt.oclAsType(Class)]
+		Class : [c.name/]
+		[for (s : Stereotype | c.getAppliedStereotypes())]
+			Stereotypes : [s.name/]
+			[if(s.name = 'Robot')]
+				[for(att: Property | c.getAllAttributes())]
+					Property : [att.name/]
+
+
+					[let elem_component: Class = att.type]
+						[elem_component.name/]
+						Stereotypes :
+						[for (s : Stereotype | elem_component.getAppliedStereotypes())]
+							[s.name/]
+							[for (at : Property | s.getAllAttributes())]
+								[at.getLabel()/] [at.type.name/] [at.default/]
+		
+							[/for]
+						[/for]
+					[/let]
+
+
+				[/for]
+
+
+				[comment][for (at : Property | s.getAllAttributes())]
+					[at.getLabel()/] [at.type.name/] [elt.getValue(s, at.name)/]
+				[/for][/comment]
+			[/if]
+		[/for]
+
+	[/let]
+[/for][/comment]
+
+
+[comment][for (elt: NamedElement | getElementsWithStereotype(model, 'Robot'))]
+	Robot : [elt.name/]
+	[let c: Class = elt.oclAsType(Class)]
+		Class : [c.name/]
+		[for(att: Property | c.getAllAttributes())]
+			Property : [att.name/]
+			[let elem_component: Class = att.type]
+				[elem_component.name/]
+				Stereotypes :
+				[for (s : Stereotype | elem_component.getAppliedStereotypes())]
+					[s.name/]
+					[for (at : Property | s.getAllAttributes())]
+						[at.getLabel()/] [at.type.name/] [comment][elem.getValue(s, at.name)/][/comment]
+						[getTaggedValue(at, s)/]
+					[/for]
+
+				[/for]
+			[/let]
+		[/for]
+	[/let]
+[/for][/comment]
+
+
+[for (elt: Element | model.allOwnedElements())]
+	
+	[if(elt.oclIsKindOf(InstanceSpecification))]
+		[let inst: InstanceSpecification = elt.oclAsType(InstanceSpecification)]
+			Instance : [inst.name/]
+
+			[for (classif: Classifier | inst.classifier)]
+				Stereotypes :
+				[for (s : Stereotype | classif.getAppliedStereotypes())]
+					[s.name/]
+					[for (at : Property | s.getAllAttributes())]
+						[at.getLabel()/] [at.type.name/] [comment][inst.getValue(s, at.name)/][/comment]
+						[comment][getTaggedValue(inst, at, s)/][/comment]
+					[/for]
+				[/for]
+			[/for]
+
+		[/let]
+	[/if]
+
+	[comment][let c: Class = elt.oclAsType(Class)]
+		Class : [c.name/]
+		[for(att: Property | c.getAllAttributes())]
+			Property : [att.name/]
+			[let elem_component: Class = att.type]
+				[elem_component.name/]
+				Stereotypes :
+				[for (s : Stereotype | elem_component.getAppliedStereotypes())]
+					[s.name/]
+					[for (at : Property | s.getAllAttributes())]
+						[at.getLabel()/] [at.type.name/] [comment][elem.getValue(s, at.name)/][/comment]
+						[getTaggedValue(at, s)/]
+					[/for]
+
+				[/for]
+			[/let]
+		[/for]
+	[/let]
+
+	[/if][/comment]
+
+[/for]
+
+
+
+[/file]
+
+[/template]

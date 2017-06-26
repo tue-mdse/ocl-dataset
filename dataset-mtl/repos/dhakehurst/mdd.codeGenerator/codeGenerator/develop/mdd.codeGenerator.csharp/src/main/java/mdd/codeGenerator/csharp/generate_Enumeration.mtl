@@ -1,0 +1,80 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_Enumeration('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Classifier/]
+
+[template public generate(arg : Enumeration, srcDir:String)]
+[file (srcDir+getProperty('artifact.codeFolder')+'/'+self.qualifiedName('/')+'.cs', false, 'UTF-8')]
+namespace [self.namespace.qualifiedName('.')/] {
+
+	/// <summary> Enumeration Description </summary>
+	public enum [self.name/]
+	{
+	  [for (el : EnumerationLiteral | self.ownedLiteral) separator (',\n')]
+		/// <summary> EnumerationLiteral Description </summary>
+		[el.name/][/for]
+
+	}
+
+    public static class [self.name/]Extensions
+    {
+        static public [self.name/] first(this [self.name/] self) {
+			return [self.name/].[self.ownedLiteral->first().name/];
+        }
+        static public [self.name/] last(this [self.name/] self) {
+			return [self.name/].[self.ownedLiteral->last().name/];
+        }
+        static public [self.name/] next(this [self.name/] self) {
+            switch (self) {
+	  		[for (el : EnumerationLiteral | self.ownedLiteral)]
+				case [arg.name/].[el.name/]: return [arg.name/].[el.next().name/];
+			[/for]
+                default: throw new System.Exception("Error getting next enum value "+self.GetType().Name+"."+self);
+            }
+        }
+        static public [self.name/] previous(this [self.name/] self) {
+            switch (self) {
+	  		[for (el : EnumerationLiteral | self.ownedLiteral)]
+				case [arg.name/].[el.name/]: return [arg.name/].[el.previous().name/];
+			[/for]
+                default: throw new System.Exception("Error getting previous enum value "+self.GetType().Name+"."+self);
+            }
+        }
+    }
+
+}
+[/file]
+[/template]
+
+[query public next(arg : EnumerationLiteral) : EnumerationLiteral =
+  let
+	index:Integer = self.enumeration.ownedLiteral->indexOf(self)
+  in
+    if self=self.enumeration.ownedLiteral->last() then
+	  self.enumeration.ownedLiteral->first()
+	else
+      self.enumeration.ownedLiteral->at(index+1)
+	endif
+/]
+
+[query public previous(arg : EnumerationLiteral) : EnumerationLiteral =
+  let
+	index:Integer = self.enumeration.ownedLiteral->indexOf(self)
+  in
+    if self=self.enumeration.ownedLiteral->first() then
+	  self.enumeration.ownedLiteral->last()
+	else
+      self.enumeration.ownedLiteral->at(index-1)
+	endif
+/]

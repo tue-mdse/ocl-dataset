@@ -1,0 +1,170 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_PortType('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Classifier/]
+[import mdd::codeGenerator::csharp::generate_Operation /]
+[import mdd::codeGenerator::csharp::generate_Reception /]
+
+[template public generatePortType(c : Class, srcDir:String)]
+[if (c.owner.oclIsKindOf(Package))]
+[file (srcDir+getProperty('artifact.codeFolder')+'/'+c.qualifiedName('/')+'.cs', false, 'UTF-8')]
+namespace [c.namespace.qualifiedName('.')/] {
+
+[c.generateContent(srcDir)/]
+
+}
+[/file]
+[else]
+[c.generateContent(srcDir)/]
+[/if]
+[/template]
+
+[template public generateContent(c : Class, srcDir:String)]
+	/// <summary> Port Description </summary>
+	public class [c.name/]
+	[c.portRealises()/]
+	{
+	  /// <summary> Uses </summary>
+	  public class Uses
+	  [c.portUses() /]
+	  {
+		[c.generateLogger(c.name+'::Uses') /]
+
+	  [for (i : Interface | c.uses()->filter(Interface))]
+	    [let ownerX : Interface = i]
+	    #region [i.qualifiedName('::')/]
+		private System.Collections.Generic.List<[i.fullName()/]> _[i.name.toLowerFirst()/] = new System.Collections.Generic.List<[i.fullName()/]>();
+		public System.Collections.Generic.List<[i.fullName()/]> [i.name.toLowerFirst()/] { get { return this._[i.name.toLowerFirst()/]; } }
+	    [for (r : Reception | i.allOwnedReception())]
+          /// <summary> Reception Description </summary>
+	      public [r.generateSignature()/] {
+			if (0 >= this.[ownerX.name.toLowerFirst()/].Count) {
+				this.log.debug(new global::framework.logging.Message("[ownerX.name.toLowerFirst()/] is not connected."));
+			} else {
+	        	this.[ownerX.name.toLowerFirst()/].ForEach(p=>p.rx_[r.name/]( [r.generateArguments()/] ));
+			}
+	      }
+	    [/for]
+	    [for (op : Operation | i.ownedOperation)]
+          /// <summary> Reception Description </summary>
+	      public [op.generateSignature()/] {
+			if (0 >= this.[ownerX.name.toLowerFirst()/].Count) {
+				this.log.debug(new global::framework.logging.Message("[ownerX.name.toLowerFirst()/] is not connected."));
+				[if not op.returnResult()->isEmpty()]return null;[/if]
+			} else {
+	       	  [if not op.returnResult()->isEmpty()]
+				return this.[ownerX.name.toLowerFirst()/].Select(p=>p.[op.name/]( [op.generateArguments()/] )).First();
+			  [else]
+				this.[ownerX.name.toLowerFirst()/].ForEach(p=>p.[op.name/]( [op.generateArguments()/] ));
+			  [/if]
+			}
+	      }
+	    [/for]
+		#region Properties
+	    [for (p : Property | i.attribute)]
+	      public [p.typeName()/] [p.name/] {
+            get {
+				if (null == this.[ownerX.name.toLowerFirst()/]) {
+					this.log.debug(new global::framework.logging.Message("[ownerX.name.toLowerFirst()/] is not connected."));
+					return null;
+				} else {
+		        	return this.[ownerX.name.toLowerFirst()/].[p.name/];
+				}
+			}
+			set {
+				if (null == this.[ownerX.name.toLowerFirst()/]) {
+					this.log.debug(new global::framework.logging.Message("[ownerX.name.toLowerFirst()/] is not connected."));
+				} else {
+		        	this.[ownerX.name.toLowerFirst()/].[p.name/] = value;
+				}
+			}
+	      }
+	    [/for]
+		#endregion
+	    [/let]
+        #endregion
+	  [/for]
+	  }
+	
+	  [for (i : Interface | c.implements()->filter(Interface))]
+	    [let ownerX : Interface = i]
+	    #region [i.qualifiedName('::')/]
+		public [i.fullName()/] [i.name.toLowerFirst()/] { get; set; }
+	    [for (r : Reception | i.allOwnedReception())]
+          /// <summary> Reception Description </summary>
+	      public [r.generateSignature()/] {
+			if (null == this.[ownerX.name.toLowerFirst()/]) {
+				this.log.debug(new global::framework.logging.Message("[ownerX.name.toLowerFirst()/] is not connected."));
+			} else {
+		        this.[ownerX.name.toLowerFirst()/].rx_[r.name/]( [r.generateArguments()/] );
+			}
+	      }
+	    [/for]
+	    [for (op : Operation | i.ownedOperation)]
+          /// <summary> Reception Description </summary>
+	      public [op.generateSignature()/] {
+			if (null == this.[ownerX.name.toLowerFirst()/]) {
+				this.log.debug(new global::framework.logging.Message("[ownerX.name.toLowerFirst()/] is not connected."));
+				[if not op.returnResult()->isEmpty()]return null;[/if]
+			} else {
+		        [if not op.returnResult()->isEmpty()]return [/if]this.[op.interface.name.toLowerFirst()/].[op.name/]( [op.generateArguments()/] );
+			}
+	      }
+	    [/for]
+		#region Properties
+	    [for (p : Property | i.attribute)]
+	      public [p.typeName()/] [p.name/] {
+            get {
+				if (null == this.[ownerX.name.toLowerFirst()/]) {
+					this.log.debug(new global::framework.logging.Message("[ownerX.name.toLowerFirst()/] is not connected."));
+					return null;
+				} else {
+		        	return this.[ownerX.name.toLowerFirst()/].[p.name/];
+				}
+			}
+			set {
+				if (null == this.[ownerX.name.toLowerFirst()/]) {
+					this.log.debug(new global::framework.logging.Message("[ownerX.name.toLowerFirst()/] is not connected."));
+				} else {
+		        	this.[ownerX.name.toLowerFirst()/].[p.name/] = value;
+				}
+			}
+	      }
+	    [/for]
+		#endregion
+	    [/let]
+	    #endregion
+	  [/for]
+
+	  [c.generateLogger(c.name) /]
+	  Uses _uses_cache = new Uses();	
+	  public Uses uses { get { return _uses_cache; } }
+	}
+[/template]
+
+[template public portRealises(c:Class) ]
+[for (i:Interface | c.interfaceRealization.contract->asSet()) before(': ') separator(', ') ]global::[i.qualifiedName('.')/][/for]
+[/template]
+
+[template public portUses(c:Class) ]
+[for (i:Type | c.uses()) before(': ') separator(', ') ]global::[i.qualifiedName('.')/][/for]
+[/template]
+
+[query public allOwnedReception(i : Classifier) : Set(Reception) =
+  if i.general->isEmpty() then
+  	i.ownedMember->filter(Reception)
+  else
+    i.general.allOwnedReception()->union( i.ownedMember->filter(Reception) )
+  endif
+/]

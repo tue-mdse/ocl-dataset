@@ -1,0 +1,180 @@
+[comment encoding = UTF-8 /]
+[module generate('http://dupa.org/robmod.ecore')]
+
+
+[template public generateElement(aComponent : Component) ? (aComponent.type2 = ComponentType::Library)]
+[comment @main/]
+
+[for (c : Component | aComponent.composition)]
+  [c.generateCPP()/]
+[/for]
+
+[aComponent.generateCMAKE()/]
+
+[/template]
+
+[template public generateCPP(aComponent : Component)]
+[file ('src/' + aComponent.type + '.cpp', false, 'UTF-8')]
+
+#include <rtt/TaskContext.hpp>
+#include <rtt/Port.hpp>
+#include <rtt/Component.hpp>
+
+// [protected ('includes')]
+// TODO Put includes here.
+// [/protected]
+
+class [aComponent.type.toUpperFirst() /] : public RTT::TaskContext {
+public:
+  [aComponent.type.toUpperFirst() /](const std::string & name) : TaskContext(name) {
+    [for (p:InputPort | aComponent.inputPorts)]
+      [if (aComponent.handlers->exists(trigeredBy->includes(p)))]
+    [p.name/]_trig = false;
+      [/if]
+    [/for]
+
+	[for (p : Property | aComponent.properties)]
+      [if (p.value->notEmpty())]
+    prop_[p.name/] = [p.value/];
+      [/if]
+	[/for]
+	
+	[for (p : Property | aComponent.properties)]
+    this->addProperty("[p.name/]", prop_[p.name/]);
+	[/for]
+
+	[for (p:InputPort | aComponent.inputPorts)]
+  		[if (aComponent.handlers->exists(trigeredBy->includes(p)))]
+    this->ports()->addEventPort("[p.name/]", port_[p.name/], boost::bind(&[aComponent.type.toUpperFirst()/]::[p.name/]_onData, this, _1)).doc("[p.description/]");
+  		[else]
+    this->ports()->addPort("[p.name/]", port_[p.name/]).doc("[p.description/]");
+  		[/if]
+	[/for]
+
+	[for (p:OutputPort | aComponent.outputPorts)]
+    this->ports()->addPort("[p.name/]", port_[p.name/]).doc("[p.description/]");
+	[/for]
+  }
+
+  ~[aComponent.type.toUpperFirst() /](){
+  }
+
+  bool configureHook() {
+    // [protected ('configureHook')]
+    // TODO Put implementation of configureHook here !!!
+    // [/protected]
+    return true;
+  }
+
+  bool startHook() {
+    // [protected ('startHook')]
+    // TODO Put implementation of startHook here !!!
+    // [/protected]
+    return true;
+  }
+
+  void stopHook() {
+    // [protected ('stopHook')]
+    // TODO Put implementation of stopHook here !!!
+    // [/protected]
+  }
+
+  void updateHook() {
+[for (h:Handler | aComponent.handlers)]
+	if([for (p : InputPort | h.trigeredBy)][p.name/]_trig && [/for] true) {
+      do[h.name/]();
+  [for (p : InputPort | h.trigeredBy)]
+      [p.name/]_trig = false;
+  [/for]
+    }
+[/for]
+  }
+
+private:
+
+[for (h:Handler | aComponent.handlers)]
+  void do[h.name/]() {
+    // [protected (h.name)]
+    // TODO Put implementation of handler here !!!
+    // [/protected]
+  }
+[/for]
+
+[for (p:InputPort | aComponent.inputPorts)]
+  [if (aComponent.handlers->exists(trigeredBy->includes(p)))]
+  void [p.name/]_onData(RTT::base::PortInterface* port) {
+    [p.name/]_trig = true;
+  }
+  [/if]
+[/for]
+
+[for (p:InputPort | aComponent.inputPorts)]
+  RTT::InputPort<[p.dataType/] > port_[p.name/];
+[/for]
+
+[for (p:OutputPort | aComponent.outputPorts)]
+  RTT::OutputPort<[p.dataType/] > port_[p.name/];
+[/for]
+
+[for (p : Property | aComponent.properties)]
+  [p.type/] prop_[p.name/];
+[/for]
+
+[for (p:InputPort | aComponent.inputPorts)]
+  [if (aComponent.handlers->exists(trigeredBy->includes(p)))]
+  bool [p.name/]_trig;
+  [/if]
+[/for]
+
+  // [protected ('userData')]
+  // TODO userData !!!
+  // [/protected]
+
+};
+
+ORO_CREATE_COMPONENT([aComponent.type.toUpperFirst() /])
+
+[/file]
+[/template]
+
+[template public generateCMAKE(c : Component)]
+[file ('CMakeLists.txt', false, 'UTF-8')]
+cmake_minimum_required(VERSION 2.4.6)
+include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+
+# Set the build type.  Options are:
+#  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
+#  Debug          : w/ debug symbols, w/o optimization
+#  Release        : w/o debug symbols, w/ optimization
+#  RelWithDebInfo : w/ debug symbols, w/ optimization
+#  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
+#set(ROS_BUILD_TYPE RelWithDebInfo)
+
+rosbuild_init()
+rosbuild_include(rtt_rosnode GenerateRTTtypekit )
+
+rosbuild_find_ros_package(rtt )
+find_package(Orocos-RTT HINTS ${rtt_PACKAGE_PATH}/../install )
+
+#set the default path for built executables to the "bin" directory
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+#set the default path for built libraries to the "lib" directory
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+
+#uncomment if you have defined messages
+rosbuild_genmsg()
+#uncomment if you have defined services
+rosbuild_gensrv()
+
+include(${OROCOS-RTT_USE_FILE_PATH}/UseOROCOS-RTT.cmake)
+ 
+[for (c : Component | composition)]
+orocos_component([c.type.toLower()/] src/[c.type.toUpperFirst()/].cpp)
+[/for]
+
+#[protected ('user_build')]
+#TODO Put custom build directives heare !!!
+#[/protected]
+
+[/file]
+[/template]

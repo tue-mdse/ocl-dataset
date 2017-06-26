@@ -1,0 +1,57 @@
+[module strutsconfigscenario('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::struts::common::common/]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[comment][template public fullFilePath(_package:Package)]
+[if (_package.nestingPackage.name = 'cinematic' and _package.name <> '')][_package.pathToMainWebapp()/]/WEB-INF/conf/struts-config/struts-config-[_package.name/].xml[/if]
+[/template][/comment]
+
+
+[template public generateStrutsConfigScenario(_package:Package)? (_package.nestingPackage.name = 'cinematic' and _package.name <> '')]
+[comment This template is called by the main module file /]
+[file (_package.fullFilePath(_package.pathToMainWebapp(), 'WEB-INF/conf/struts-config', 'struts-config-'.concat(_package.name).concat('.xml')), false))]
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE struts-config PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 1.1//EN" "http://jakarta.apache.org/struts/dtds/struts-config_1_1.dtd">
+
+<struts-config>
+
+    <!-- ========== Form Bean Definitions ================================== -->
+    <form-beans type="org.apache.struts.action.ActionFormBean">
+[for (class:Class|_package.ownedElement->filter(Class))]
+	[if (class.hasStereotype(getProperty('Screen')))]
+		<form-bean name="[class.name/]Form" type="[class.scenarioPackage() /].forms.[class.name/]Form" />
+	[/if]
+[/for]
+	</form-beans>
+
+	<!-- ========== Action Mapping Definitions =============================== -->
+    <action-mappings >
+[for (class:Class|_package.ownedElement->filter(Class))]
+	[if (class.hasStereotype(getProperty('Screen')))]
+		<action	path="/[class._package.name/]/[class.name.toLower()/]" 
+				type="[class.scenarioPackage()/].actions.[class.name/]Action" 
+				parameter="event" 
+				name="[class.name/]Form" 
+				scope="request" 
+				validate="true" 
+				input=".view.[class.name/]">
+			<forward name="self" path=".view.[class.name/]" />
+		[for (prop:Property|class.getOppositeAttributes())]
+			<forward name="[prop.type.name.toLowerFirst()/]" path="/pages/[prop.type.eContainer(Package).name/]/[prop.type.name.toLower()/]?event=init" /> 
+		[/for]
+		</action>
+	[/if]
+[/for]
+	</action-mappings>
+
+</struts-config>
+[/file]
+[/template]
+
+
+

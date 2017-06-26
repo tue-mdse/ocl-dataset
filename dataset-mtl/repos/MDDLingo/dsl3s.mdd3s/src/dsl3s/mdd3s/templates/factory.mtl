@@ -1,0 +1,288 @@
+[comment encoding = UTF-8 /]
+[module factory('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import dsl3s::mdd3s::templates::services/]
+
+[comment
+Date: 10-04-2013    Author: Luís de Sousa  (luis.a.de.sousa@gmail.com)
+Generates a factory class contining methods to load spatial layers, creating
+the respective spatial or animat instances.
+/]
+
+[template public factory(c : Class) ? (c.hasStereotype('Simulation'))]
+
+[file ('Factory.java', false, 'UTF-8')]
+import java.util.List;
+import java.util.ArrayList;
+
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.FileReader;
+import java.net.URL;
+
+import au.com.bytecode.opencsv.CSVReader;
+
+import sim.engine.Schedule;
+import sim.util.Bag;
+import sim.util.geo.MasonGeometry;
+import sim.field.geo.GeomVectorField;
+import sim.field.geo.GeomGridField;
+import sim.field.geo.GeomGridField.GridDataType;
+import sim.field.grid.DoubleGrid2D;
+import sim.io.geo.ShapeFileImporter;
+import sim.io.geo.ArcInfoASCGridImporter;
+
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Point;
+import com.vividsolutions.jts.geom.Polygon;
+
+public class Factory 
+{
+	protected static Boolean DEBUG = true;
+
+	protected static GeometryFactory geomFactory = new GeometryFactory();
+
+	protected static GeomVectorField loadVectorLayer(String filePath, Bag attributes)
+	{
+		GeomVectorField layer = new GeomVectorField();
+
+		try 
+		{
+			ShapeFileImporter.read(new URL("file:" + filePath), layer, attributes);
+		} 
+		catch (Exception ex)
+		{ 
+			System.out.println("Exception using ShapeFileImporter:");
+			System.out.println("Message: " + ex.getMessage());
+			System.out.println("Cause: " + ex.getCause());
+			ex.printStackTrace(System.out);
+			return null;
+		}
+		
+		return layer;
+	}
+
+	protected static GeomGridField loadRasterLayer(String filePath)
+	{
+		GeomGridField gridField = new GeomGridField();
+
+		try 
+		{
+			InputStream inputStream = new FileInputStream(filePath);
+			ArcInfoASCGridImporter.read(inputStream, GridDataType.DOUBLE, gridField);
+			return gridField;
+		}
+		catch (Exception ex)
+		{ 
+			if(DEBUG)
+			{
+				System.out.println("Exception using ArcInfoASCGridImporter:");
+				System.out.println("Message: " + ex.getMessage());
+				System.out.println("Cause: " + ex.getCause());
+				ex.printStackTrace(System.out);
+			}
+			return null;
+		}
+	}
+
+	/**
+	  * There is no way to know the type of an attribute beforehand. 
+      * The available types are tested successively. 
+      */
+	protected static Double getAttributeValue(MasonGeometry geom, String name)
+	{
+		try
+		{
+			return ((MasonGeometry) geom).getDoubleAttribute(name);
+		}
+		catch (Exception ex) {}
+		
+		try
+		{
+			Integer i = ((MasonGeometry) geom).getIntegerAttribute(name);
+			return new Double(i);
+		}
+		catch (Exception ex) {}
+		
+		try
+		{
+			String s = ((MasonGeometry) geom).getStringAttribute(name);
+			return new Double(s);
+		}
+		catch (Exception ex) {}
+		
+		return null;
+	}
+
+ [for (assA:Association | c.getAssociations())]
+  [for (a:Element | assA.relatedElement) ]
+  [let aClass: Class = a.oclAsType(Class)] 
+   [if (aClass.isNotNull())]
+    [if (aClass.hasStereotype('Spatial'))]
+
+	 [if (aClass.getTaggedValue(aClass, 'Spatial', 'inputLayer').isNotNull())]
+	protected static GeomVectorField load[aClass.name/]FromLayer(String filePath, GeomVectorField space, Schedule schedule)
+	{
+		GeomVectorField layer = loadVectorLayer(filePath, null);
+		
+		// Import as vector
+		if(layer != null)
+		{
+			for(Object geom : layer.getGeometries())
+			{
+				Geometry g = ((MasonGeometry) geom).getGeometry();
+				[aClass.name/] new[aClass.name/] = new [aClass.name/](g);
+				new[aClass.name/].setStopper(schedule.scheduleRepeating(new[aClass.name/]));
+				space.addGeometry(new[aClass.name/]);
+			}
+			
+		}
+		//If import failed as a vector try with raster
+		else 
+		{
+			System.out.println("Failed to load input layer for class [aClass.name/] as a vector, trying as raster.");
+			GeomGridField rast = loadRasterLayer(filePath);
+
+			if(rast == null) 
+			{
+				System.out.println("Failed to load input layer for class [aClass.name/] as raster. No data imported.");
+				return null;
+			}
+
+			DoubleGrid2D grid = (DoubleGrid2D) rast.getGrid();
+		[if (aClass.getTaggedValue(aClass, 'Spatial', 'maxValue').isNull())]
+			[aClass.name/].valueMax = grid.max();
+		[/if]
+		[if (aClass.getTaggedValue(aClass, 'Spatial', 'minValue').isNull())]
+			[aClass.name/].valueMin = grid.min();
+		[/if]
+			for(int x = 0; x < grid.getWidth(); x++)
+			for(int y = 0; y < grid.getHeight(); y++)
+			{
+				Polygon poly = rast.toPolygon(x, y);
+				[aClass.name/] new[aClass.name/] = new [aClass.name/](grid.get(x, y), poly);
+              [if (aClass.getTaggedValue(aClass, 'Attribute', 'stepVar').isNotNull())]
+				new[aClass.name/].setStopper(schedule.scheduleRepeating(new[aClass.name/]));
+              [/if]
+				space.addGeometry(new[aClass.name/]);	
+			}
+		} 
+
+		return layer;
+	}
+     [/if]
+	[/if]
+    [if (aClass.hasStereotype('Animat'))]
+
+     [if (aClass.getTaggedValue(aClass, 'Animat', 'inputLayer').isNotNull())]
+	public static void load[aClass.name/]FromLayer(String filePath, GeomVectorField space, Schedule schedule)
+	{
+[comment
+This is a bit awkward. It might make more sense to have the Geometry as a 
+property of the Animat class than to have the Animat class inheriting from the
+MasonGeometry class.
+/]
+		Bag desiredAttributes = new Bag();
+	 [comment Iterate through linked Attributes /]
+	 [for (ass:Association | aClass.getAssociations())]
+	  [for (s:Element | ass.relatedElement) ]
+	   [let sClass: Class = s.oclAsType(Class)]
+	   [if (sClass.isNotNull())]
+	    [if (sClass.hasStereotype('Attribute'))]
+         [if (sClass.getTaggedValue(sClass, 'Attribute', 'inputAttribute').isNotNull())]
+		desiredAttributes.add("[sClass.getTaggedValue(sClass, 'Attribute', 'inputAttribute')/]");
+         [/if]
+        [/if]
+       [/if]
+       [/let]
+      [/for]	 
+     [/for]
+
+		GeomVectorField layer = loadVectorLayer(filePath, desiredAttributes);
+
+		for(Object geom : layer.getGeometries())
+		{
+			[aClass.name/] new[aClass.name/] = new [aClass.name/](((MasonGeometry) geom).getGeometry());
+			new[aClass.name/].setStopper(schedule.scheduleRepeating(new[aClass.name/]));
+	 [for (ass:Association | aClass.getAssociations())]
+	  [for (s:Element | ass.relatedElement) ]
+	   [let sClass: Class = s.oclAsType(Class)]
+	   [if (sClass.isNotNull())]
+	    [if (sClass.hasStereotype('Attribute'))]
+         [if (sClass.getTaggedValue(sClass, 'Attribute', 'inputAttribute').isNotNull())]
+			new[aClass.name/].attribute[sClass.name/].setValue(getAttributeValue((MasonGeometry) geom, "[sClass.getTaggedValue(sClass, 'Attribute', 'inputAttribute')/]"));
+         [/if]
+        [/if]
+       [/if]
+       [/let]
+      [/for]	 
+     [/for]
+			space.addGeometry(new[aClass.name/]);
+		}
+	}
+
+    [/if] [comment inputLayer <> null /]
+
+	protected static [aClass.name/] generate[aClass.name/](double x, double y, Schedule schedule)
+	{
+		Coordinate coord = new Coordinate(new Double(x), new Double(y));
+		Geometry geom = geomFactory.createPoint(coord);
+		[aClass.name/] new[aClass.name/] = new [aClass.name/](geom);
+		new[aClass.name/].setStopper(schedule.scheduleRepeating(new[aClass.name/]));
+		return new[aClass.name/];
+	}
+    [/if]
+   [/if]
+  [/let]
+  [/for]	 
+ [/for]
+
+	protected static List<Double> readGlobal(String filePath)
+	{
+		List<Double> array = new ArrayList<Double>(); 
+		String ['['/][']'/] nextLine = null;
+		int lineNumber = 0;
+		CSVReader reader = null;
+      
+		try //Open file 
+		{
+			reader = new CSVReader(new FileReader(filePath));
+		}
+		catch(Exception ex)
+		{
+		    System.out.println("Couldn't read the input file " + filePath + " :\n" + ex.getMessage());
+		    return null;
+		}
+	    
+		try  //First line
+		{
+			nextLine = reader.readNext();
+			array.add(new Double(nextLine['['/]0[']'/]));
+		}
+		catch(Exception ex)
+		{
+		  if(DEBUG) System.out.println("Couldn't process the first line of '" + filePath + "', but it could be an header; moving on.");
+		}
+	    
+		try //Remaining lines
+		{ 
+	      while ((nextLine = reader.readNext()) != null) 
+          {
+	        lineNumber++;        
+	        array.add(new Double(nextLine['['/]0[']'/]));
+	      }
+		}
+		catch(Exception ex)
+		{
+			System.out.println("Error processing " + filePath + " Couldn't convert '" + nextLine['['/]0[']'/] + "' to double:\n" + ex.getMessage());
+			return null;
+		}
+		
+		return array;
+	}
+}
+
+[/file]
+
+[/template]

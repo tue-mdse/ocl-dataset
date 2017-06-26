@@ -1,0 +1,407 @@
+[comment encoding = UTF-8 /]
+[module generateMessageView('http://cs.mcgill.ca/sel/ram/3.0')]
+
+[import ca::mcgill::sel::ram::generator::common::commonHelpers /]
+[import ca::mcgill::sel::ram::generator::java::javaHelpers /]
+
+
+[**
+ * Generates the message view for the given operation.
+ * @param op The operation
+ */]
+[template public generateMessageView(op : Operation) post(trim())]
+[let messages : Set(Message) = op.getMessagesForOperation()]
+    [if (not messages->isEmpty())]
+[generateMessage(messages->asSequence()->first())/]
+    [else]
+/* TODO: No message view defined */
+        [let returnDefaultValue : String = op.returnType.getDefaultTypeValue()]
+            [if (op.operationType <> OperationType::Constructor and returnDefaultValue <> '')]
+return [returnDefaultValue/];
+            [/if]
+        [/let]
+    [/if]
+[/let]
+[/template]
+
+
+[**
+ * Generates a message definition.
+ * @param m The message
+ */]
+[template private generateMessage(m : Message) post(trim())]
+[generateLocalProperties(m)/]
+[generateFragments(m.getMessageFragments(), m)/]
+[/template]
+
+
+[**
+ * Generates local properties of the given message.
+ * @param m The message
+ */]
+[template private generateLocalProperties(m : Message) post(trim())]
+[for (tp : TemporaryProperty | m.localProperties)]
+[generateLocalProperty(tp)/]
+[/for]
+[/template]
+
+
+[**
+ * Generates the given local property.
+ * @param p The property
+ */]
+[template private generateLocalProperty(p : TemporaryProperty) /]
+
+
+[**
+ * Generates the given local property.
+ * @param p The property
+ */]
+[template private generateLocalProperty(p : Attribute) post(trim())]
+[p.type.getTypeName()/] [getLocalPropertyName(p.name)/];
+[/template]
+
+
+[**
+ * Generates the given local property.
+ * @param p The property
+ */]
+[template private generateLocalProperty(p : Reference) post(trim())]
+[p.type.getTypeName()/] [getLocalPropertyName(p.name)/];
+[/template]
+
+
+[**
+ * Generates each fragment for the given fragments collection.
+ * @param fragments The fragments
+ * @param m The message
+ */]
+[template private generateFragments(fragments : Set(InteractionFragment), m : Message)
+        post(trim().removeMultipleNewLines())]
+[for (f : InteractionFragment | fragments)]
+[generateFragment(f, m)/]
+[/for]
+[/template]
+
+
+[**
+ * Generates the given interaction fragment.
+ * @param f The fragment
+ * @param m The message
+ */]
+[template private generateFragment(f : InteractionFragment, m : Message) /]
+
+
+[**
+ * Generates the given interaction fragment.
+ * @param f The fragment
+ * @param m The message
+ */]
+[template private generateFragment(f : MessageOccurrenceSpecification, m : Message)
+        post(trim().removeNewLines())]
+[let subMessage : Message = f.message]
+[if (f = subMessage.sendEvent)]
+    [if (subMessage.isValidReplyMessage())]
+        [if (not subMessage.isConstructorMessage())]
+return [generateValueSpecification(subMessage.returns, m)/];
+        [/if]
+    [elseif (subMessage.isNotReplyMessage())]
+        [if (subMessage.hasAssignValue())]
+[getStructuralFeatureName(subMessage.assignTo, m)/] = 
+        [/if]
+        [if (subMessage.isCreateMessage())]
+new [subMessage.signature.returnType.getTypeName()/]
+([generateMessageParameters(subMessage,m)/]);
+        [else]
+            [if (not subMessage.selfMessage)]
+                [if (subMessage.signature._static)]
+[subMessage.getTargetLifeline().represents.getTypeNameOfTypedElement()/].
+                [else]
+[subMessage.getTargetLifeline().represents.name/].
+                [/if]
+            [/if]
+[subMessage.signature.name/]([generateMessageParameters(subMessage,m)/]);
+        [/if]
+    [/if]
+[/if]
+[/let]
+[/template]
+
+
+[**
+ * Generates the given interaction fragment.
+ * @param f The fragment
+ * @param m The message
+ */]
+[template private generateFragment(f : CombinedFragment, m : Message)
+        post(trim())]
+[if (interactionOperator = InteractionOperatorKind::alt or interactionOperator.oclIsUndefined())]
+[generateAltFragment(f, m)/]
+[elseif (interactionOperator = InteractionOperatorKind::opt)]
+[generateOptFragment(f, m)/]
+[elseif (interactionOperator = InteractionOperatorKind::loop)]
+[generateLoopFragment(f, m)/]
+[elseif (interactionOperator = InteractionOperatorKind::disruptable)]
+[generateDisruptableFragment(f, m)/]
+[elseif (interactionOperator = InteractionOperatorKind::critical)]
+[generateCriticalFragment(f, m)/]
+[/if]
+[/template]
+
+
+[**
+ * Generates the given interaction fragment.
+ * @param f The fragment
+ * @param m The message
+ */]
+[template private generateFragment(f : ExecutionStatement, m : Message) post(trim())]
+[generateValueSpecification(specification, m).appendIfNeeded(';')/]
+[/template]
+
+[template private generateFragment(f : AssignmentStatement, m : Message) post(trim())]
+[getStructuralFeatureName(f.assignTo, m)/] = [generateValueSpecification(f.value, m).appendIfNeeded(';')/]
+[/template]
+
+
+[**
+ * Generates message call parameters.
+ * @param m The message
+ * @param globalMessage The message containing the local properties
+ */]
+[template private generateMessageParameters(m : Message, globalMessage:Message)
+        post(trim().removeNewLines())]
+[for (p : ParameterValueMapping | m.getDefinedMessageArguments()) separator(', ')]
+[generateValueSpecification(p.value, globalMessage)/]
+[/for]
+[/template]
+
+
+[**
+ * Generates an alternative fragment.
+ * @param f The fragment
+ * @param m The message
+ */]
+[template private  generateAltFragment(f : CombinedFragment, m : Message)
+        post(removeMarkedNewLines('#').trim())]
+[for (io : InteractionOperand | f.operands)]
+    [if (io <> f.operands->first())]
+ else #
+    [/if]
+    [if (io = f.operands->first() or (not io.interactionConstraint.oclIsUndefined() 
+                    and not io.interactionConstraint.oclAsType(OpaqueExpression)._body.oclIsUndefined()
+                    and io.interactionConstraint.oclAsType(OpaqueExpression)._body.size() > 0
+        )
+    )]
+if ([generateValueSpecification(io.interactionConstraint, m)/]) #
+    [/if]
+{
+    [generateFragments(io.fragments, m)/]
+}#
+[/for]
+[/template]
+
+
+[**
+ * Generates an optional fragment.
+ * @param f The fragment
+ * @param m The message
+ */]
+[template private  generateOptFragment(f : CombinedFragment, m : Message)
+        post(trim())]
+if ([generateValueSpecification(operands->first().interactionConstraint, m)/]) {
+    [generateFragments(operands->first().fragments, m)/]
+}
+[/template]
+
+
+[**
+ * Generates a loop fragment.
+ * @param f The fragment
+ * @param m The message
+ */]
+[template private  generateLoopFragment(f : CombinedFragment, m : Message)
+        post(trim())]
+[generateLoopType(operands->first().interactionConstraint, m)/]
+    [generateFragments(operands->first().fragments, m)/]
+}
+[/template]
+
+[**
+ * Generates the given value specification.
+ * @param v The value specification
+ * @param m The message
+ */]
+[template private generateLoopType(v : ValueSpecification, m : Message)/]
+
+
+
+
+[**
+ * Generates the given value specification.
+ * @param v The value specification
+ * @param m The message
+ */]
+
+[template private generateLoopType(v : OpaqueExpression, m : Message)]
+[let separator : String = '((?!/\\'+'*)[^;:"\'])']
+[let comments : String = '/\\'+'*([^*]|[\\'+'r\\'+'n]|(\\'+'*+([^*/]|[\\'+'r\\'+'n])))*\\'+'*+/']
+[let stringLiteralDoubleQuote : String = '\\"(\\\\.|[^"\\\\])*\\"']
+[let stringLiteralSingleQuote : String = '\\'+'\''+'(\\\\.|[^'+'\''+'\\\\])*\\'+'\'']
+
+[let composition : String = '(' + separator +  '|' + comments + '|' + stringLiteralDoubleQuote + '|' + stringLiteralSingleQuote + ')*']
+[let usualFor : String = composition + ';' + composition + ';' + composition]
+[let foreach : String = composition + ':' + composition]
+[let res : String = usualFor + '|' + foreach]
+    
+    [if (v._body.matches(res))]
+    for ([generateValueSpecification(v, m)/]) {
+    [else]
+    while ([generateValueSpecification(v, m)/]) {
+    [/if]
+
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/template]
+
+
+[**
+ * Generates a disruptable fragment.
+ * @param f The fragment
+ * @param m The message
+ */]
+[template private  generateDisruptableFragment(f : CombinedFragment, m : Message)
+        post(removeMarkedNewLines('#').trim())]
+[for (io : InteractionOperand | operands)]
+    [if (io = f.operands->first())]
+try #
+    [/if]
+    [if (io <> f.operands->first())]
+        [if (not io.interactionConstraint.oclIsUndefined())]
+ catch ([generateValueSpecification(io.interactionConstraint, m)/]) #
+        [else]
+ catch (Exception e) #
+        [/if]
+    [/if]
+{
+    [generateFragments(io.fragments, m)/]
+}#
+[/for]
+[/template]
+
+
+[**
+ * Generates a critical fragment.
+ * @param f The fragment
+ * @param m The message
+ */]
+[template private  generateCriticalFragment(f : CombinedFragment, m : Message)
+        post(trim())]
+synchronized (this) {
+    [generateFragments(operands->first().fragments, m)/]
+}
+[/template]
+
+
+[**
+ * Generates the given value specification.
+ * @param v The value specification
+ * @param m The message
+ */]
+[template private generateValueSpecification(v : ValueSpecification, m : Message) /]
+
+
+[**
+ * Generates the given value specification.
+ * @param v The value specification
+ * @param m The message
+ */]
+[template private generateValueSpecification(v : ParameterValue, m : Message) post(trim())]
+    [parameter.name/]
+[/template]
+
+
+[**
+ * Generates the given value specification.
+ * @param v The value specification
+ * @param m The message
+ */]
+[template private generateValueSpecification(v : StructuralFeatureValue, m : Message) post(trim())]
+[if (m.getTargetLifeline().represents = value)]
+	this
+[else]
+    [getStructuralFeatureName(value, m)/]
+[/if]
+[/template]
+
+
+[**
+ * Generates the given value specification.
+ * @param v The value specification
+ * @param m The message
+ */]
+[template private generateValueSpecification(v : LiteralString, m : Message) post(trim())]
+    "[value/]"
+[/template]
+
+
+[**
+ * Generates the given value specification.
+ * @param v The value specification
+ * @param m The message
+ */]
+[template private generateValueSpecification(v : LiteralBoolean, m : Message) post(trim())]
+    [value/]
+[/template]
+
+
+[**
+ * Generates the given value specification.
+ * @param v The value specification
+ * @param m The message
+ */]
+[template private generateValueSpecification(v : LiteralInteger, m : Message) post(trim())]
+    [value/]
+[/template]
+
+
+[**
+ * Generates the given value specification.
+ * @param v The value specification
+ * @param m The message
+ */]
+[template private generateValueSpecification(v : OpaqueExpression, m : Message)
+        post(removeMarkedNewLines('#').trim())]
+[if (not v.language.isLang('java'))]/* #[/if]
+[_body/]#
+[if (not v.language.isLang('java'))] */[/if]
+[/template]
+
+
+[**
+ * Returns the correct local name of a structural feature object.
+ * @param sf The structural feature
+ * @param m The message
+ */]
+[query private getStructuralFeatureName(sf : StructuralFeature, m : Message) : String =
+    if m.localProperties->includes(sf) then
+        sf.getLocalPropertyName(name)
+    else
+        'this.' + sf.name
+    endif
+/]
+
+
+[**
+ * Returns the name of a local property.
+ * Here you can customize local variable names, like 'local_' + name for example.
+ * @param name The original name
+ */]
+[query private getLocalPropertyName(name : String) : String =
+    name
+/]

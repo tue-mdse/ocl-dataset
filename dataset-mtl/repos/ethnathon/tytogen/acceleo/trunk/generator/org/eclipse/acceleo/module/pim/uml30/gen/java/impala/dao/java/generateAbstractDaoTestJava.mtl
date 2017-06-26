@@ -1,0 +1,86 @@
+[module generateAbstractDaoTestJava('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::compositeUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoUtil /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dao::common::daoCommon /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::stringUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainCommon /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::build::common::entityUtil /]
+
+[template public generateAbstractDaoTestJava(aModel : Model)]
+[file (aModel.generateProjectFolder().concat(aModel.pathToTestJava()).concat('/tests/integration/AbstractDaoTest.java'), false, 'UTF-8')]
+package tests.integration;
+//[protected ('imports')]
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import javax.sql.DataSource;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import junit.framework.TestCase;
+
+
+
+import org.impalaframework.facade.Impala;
+import org.impalaframework.interactive.InteractiveTestRunner;
+import org.impalaframework.module.ModuleDefinitionSource;
+import org.impalaframework.module.RootModuleDefinition;
+import org.impalaframework.interactive.definition.source.TestDefinitionSource;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.util.FileCopyUtils;
+//[/protected]
+
+public abstract class AbstractDaoTest extends TestCase implements
+        ModuleDefinitionSource {
+    protected JdbcTemplate jdbcTemplate = null;
+    protected final Log log = LogFactory.getLog(getClass());
+
+	@Override
+    public void setUp() throws Exception {
+        super.setUp();
+        Impala.init(this);
+        this.jdbcTemplate = new JdbcTemplate(AbstractServiceTest.getBean(
+                "dataSource", DataSource.class));
+
+        runScript("../[aModel.generateSpecificProjectFolder('-build')/]/src/main/resources/db/emptyDB.txt");
+        runScript("../[aModel.generateSpecificProjectFolder('-build')/]/src/main/resources/db/populateDB.txt");
+    }
+
+    private void runScript(String file) throws IOException,
+            FileNotFoundException {
+        String empty = FileCopyUtils.copyToString(new FileReader(file));
+        String['['/][']'/] statements = empty.split(";");
+        for (String sql : statements) {
+            if (sql.trim().length() > 0) {
+                jdbcTemplate.execute(sql);
+            }
+        }
+    }
+
+	protected static <T extends Object> T getBean(String beanName, Class<T> type) {
+		return Impala.getModuleBean("[aModel.generateProjectFolder()/]", beanName, type);
+	}
+
+    public final RootModuleDefinition getModuleDefinition() {
+        return new TestDefinitionSource("[aModel.generateProjectFolder()/]", "[aModel.generateSpecificProjectFolder('-hibernate')/]").getModuleDefinition();
+
+//        return new SimpleModuleDefinitionSource("[aModel.generateSpecificProjectFolder('-main')/]",
+//                new String['['/][']'/]{"[aModel.generateProjectFolder()/]-context.xml"
+//				[if (aModel.eAllContents(Class)->select(aClass:Class|aClass.isManageableEntity())->notEmpty())]
+//									, "[aModel.generateProjectFolder()/]-manageable.xml"
+//				[/if] 
+//				},
+//                new String['['/][']'/]{"[aModel.generateProjectFolder()/]", "[aModel.generateSpecificProjectFolder('-hibernate')/]"}).getModuleDefinition();
+    }
+	
+}
+[/file]
+[/template]

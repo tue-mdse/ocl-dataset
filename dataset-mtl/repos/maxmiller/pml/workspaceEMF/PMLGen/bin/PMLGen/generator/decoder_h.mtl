@@ -1,0 +1,70 @@
+[comment encoding = UTF-8 /]
+[module decoder_h('/PML/model/pml.ecore')]
+
+[import PMLGen::generator::pmlutil /]
+
+[template public generateElement(c : Decoder)]
+	[file (c.name.concat('_untimed.h'), false, 'UTF-8')]
+	#ifndef [c.name.concat('_h')/]
+	#define  [c.name.concat('_h')/]
+	#include "systemc.h"
+	
+	SC_MODULE([c.name/]){
+    	 sc_port<read_in> in;
+	    sc_port<write_in> out;
+
+		[for (p : Input | c.inDecoder)]
+	    	[forIn(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+        [for (p : Output | c.outDecoder)]
+	    	[forIn(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+	    [for (o : Behavior | c.behaviorDecoder)]
+        	[o.typeBehavior.toString().toLower()/] [o.name.toLower()/](); 
+        [/for]
+		SC_CTOR([c.name/]) {
+			[for (o : Behavior | c.behaviorDecoder)]
+	        	SC_METHOD([o.name.toLower()/]); 
+	        [/for]
+			[for (p : Input | c.inDecoder)]
+	        	[if(p.sensitive) ]
+				   [forSensitive(p.name, p.length.abs())/]
+				[/if]
+	   		[/for]
+        }       
+	};
+	#endif
+	
+	[/file]
+
+[file (c.name.concat('_timed.h'), false, 'UTF-8')]
+	#ifndef [c.name.concat('_h')/]
+	#define  [c.name.concat('_h')/]
+	#include "systemc.h"
+	
+	SC_MODULE([c.name/]){
+	 		[for (p : Input | c.inDecoder)]
+	    	[forInTimed(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+        [for (p : Output | c.outDecoder)]
+	    	[forOut(p.name, p.type.toString(), p.bit, p.length) /]	    
+	    [/for]
+	    [for (o : Behavior | c.behaviorDecoder)]
+        	[o.typeBehavior.toString().toLower()/] [o.name.toLower()/](); 
+        [/for]
+        
+		SC_CTOR([c.name/]) {
+			[for (o : Behavior | c.behaviorDecoder)]
+	        	SC_THREAD([o.name.toLower()/]); 
+	        [/for]
+			[for (p : Input | c.inDecoder)]
+	        	[if(p.sensitive) ]
+				    [forSensitiveTimed(p.name, p.length.abs())/]
+				[/if]
+	   		[/for]
+        }       
+	};
+	#endif
+	
+	[/file]
+[/template]

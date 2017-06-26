@@ -1,0 +1,252 @@
+import 'EnvExample1.ecore'
+--import 'Environment.ocl' FIXME imported OCL doesn't work
+import 'SourceMM1.ecore'
+import 'TargetMM1.ecore'
+
+package ocl
+---- Default Environment related functionality
+context OclElement
+--	
+def : env() : lookup::LookupEnvironment[1] =
+	_env(null)
+
+def : _env(child : OclElement) : lookup::LookupEnvironment[1] =
+	parentEnv()
+
+def : _exported_env(importer : OclElement) : lookup::LookupEnvironment[1] =
+	lookup::LookupEnvironment { }
+	
+def : parentEnv() : lookup::LookupEnvironment[1] =
+	let parent = oclContainer() in if parent = null then lookup::LookupEnvironment { } else parent._env(self) endif
+endpackage 
+
+package lookup
+
+-- Lookup operations
+context LookupEnvironment
+	
+def : nestedEnv() : LookupEnvironment = 
+	LookupEnvironment {
+		parentEnv = self
+	}
+
+def : addElementsOf(element : ocl::OclElement) : LookupEnvironment =
+	let newEnv = element._env(null)
+	in LookupEnvironment {
+		namedElements = self.namedElements->including(newEnv.namedElements)
+	}
+
+def : addElementsOf(elements : Collection(ocl::OclElement)) : LookupEnvironment =
+	elements->iterate(element ; acc : LookupEnvironment = self 
+		| acc.addElementsOf(element))
+
+
+-- TODO This is not needed. Can be removed
+---- General LookupEnvironment access operations
+--def : getNamedElements(name : String) : OrderedSet(target::NamedElement) =
+--	namedElements->select(x | x.name = name)
+
+endpackage
+
+package target
+
+context NamedElement -- common element in target
+
+
+-- Namespace lookup
+def : _lookupNamespaces(env : lookup::LookupEnvironment, nName : String, local : Boolean) : Namespace[*] =
+	let foundNS = env.namedElements->selectByKind(Namespace)->select(name = nName) 
+	in  if foundNS->isEmpty() and not (env.parentEnv = null) and not local 
+		then _lookupNamespaces(env.parentEnv, nName, local)
+		else foundNS->asSet()
+		endif
+
+-- Note: when calling this element, the source element of the argument passed to this method, will be the contextual 
+-- object on which error reports will be handled
+def : _lookupNamespace(nName : String, local : Boolean) : Namespace[?] =
+	let foundNS = _lookupNamespaces(env(), nName, local)
+	in  if foundNS->isEmpty()
+		then null
+		else foundNS->any(true) -- LookupVisitor will report ambiguous result
+		endif
+
+def : lookupNamespace(pathElement : source::PathElementCS) : Namespace[?] =
+	_lookupNamespace(pathElement.name, false)
+
+def : lookupLocalNamespace(pathElement : source::PathElementCS) : Namespace[?] =
+	_lookupNamespace(pathElement.name, true)	
+
+
+-- QN Namespace lookup
+def : lookupNamespace(pathName : source::PathNameCS) : Namespace[?] =
+	lookupNamespace(pathName.path)
+
+def : lookupNamespace(pathSeq : OrderedSet(source::PathElementCS)) : Namespace[?] =
+	if pathSeq->size() = 1
+	then lookupNamespace(pathSeq->first())
+	else lookupNamespace(pathSeq->subOrderedSet(1,pathSeq->size()-1))?.lookupLocalNamespace(pathSeq->last())
+	endif
+-- B Lookups
+def: _lookupBs(env : lookup::LookupEnvironment, bName : String, local : Boolean) : B[*] =
+	let	foundBs = env.namedElements->selectByKind(B)->select(name = bName)
+	in	if foundBs->isEmpty() and not (env.parentEnv = null) and not local 
+		then _lookupBs(env.parentEnv, bName, local)
+		else foundBs->asSet()
+		endif
+
+def : _lookupB(bName : String, local : Boolean) : B[?] =
+	let	foundBs = _lookupBs(env(), bName, local)
+	in	if foundBs->isEmpty()
+		then null
+		else foundBs->any(true) -- LookupVisitor will report ambiguous result
+		endif
+
+def : lookupB(path : source::PathElementCS) : B[?] =
+	_lookupB(path.name, false)
+	
+def : lookupLocalB(path : source::PathElementCS) : B[?] =
+	_lookupB(path.name, true)
+	
+-- QN B lookups
+def : lookupB(pathName : source::PathNameCS) : B[?] =
+	lookupB(pathName.path)
+
+def : lookupB(pathSeq : OrderedSet(source::PathElementCS)) : B[?] = 
+	if pathSeq->size() = 1
+	then lookupB(pathSeq->first())
+	else lookupNamespace(pathSeq->subOrderedSet(1,pathSeq->size()-1))?.lookupLocalB(pathSeq->last())
+	endif
+	
+
+
+-- C Lookups
+def: _lookupCs(env : lookup::LookupEnvironment, cName : String, local : Boolean) : C[*] =
+	let	foundCs = env.namedElements->selectByKind(C)->select(name = cName)
+	in	if foundCs->isEmpty() and not (env.parentEnv = null) and not local 
+		then _lookupCs(env.parentEnv, cName, local)
+		else foundCs->asSet()
+		endif
+
+def : _lookupC(cName : String, local : Boolean) : C[?] =
+	let	foundCs = _lookupCs(env(), cName, local)
+	in	if foundCs->isEmpty()
+		then null
+		else foundCs->any(true) -- LookupVisitor will report ambiguous result
+		endif
+	
+-- QN C lookups
+def : lookupC(path : source::PathElementCS) : C[?] =
+	_lookupC(path.name, false)
+	
+def : lookupLocalC(path : source::PathElementCS) : C[?] =
+	_lookupC(path.name, true)
+	
+def : lookupC(pathSeq : OrderedSet(source::PathElementCS)) : C[?] = 
+	if pathSeq->size() = 1
+	then lookupC(pathSeq->first())
+	else lookupNamespace(pathSeq->subOrderedSet(1,pathSeq->size()-1))?.lookupLocalC(pathSeq->last())
+	endif
+	
+def : lookupC(pathName : source::PathNameCS) : C[?] =
+	lookupC(pathName.path)
+
+context TRoot
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	parentEnv().nestedEnv()
+		.addElements(ownedA)
+	
+context A1
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+-- FIXME LookupVisitor doesn't handle any other operation called from this one. Inline here, for the time being
+--	_env_B(child)
+	let ownedBs = self.ownsB
+	in if child = null -- child = null, then the lookup is a qualified one, hence, add all children
+		then parentEnv().nestedEnv().addElements(ownedBs)
+		else parentEnv().nestedEnv().addElements(ownedBs->select(x | ownedBs->indexOf(x) < ownedBs->indexOf(child)))
+		endif
+
+	
+--def : _env_B(child : ocl::OclElement) : lookup::LookupEnvironment =
+--	let ownedBs = self.ownsB
+--	in parentEnv().nestedEnv()
+--		.addElements(ownedBs->select(x | ownedBs->indexOf(x) < ownedBs->indexOf(child)))
+
+context A2
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+-- FIXME LookupVisitor doesn't handle any other operation called from this one. Inline here, for the time being
+--	_env_C(child)
+	let ownedCs = self.ownsC
+	in if child = null	-- child = null, then the lookup is a qualified one, hence, add all children
+		then parentEnv().nestedEnv().addElements(ownedCs) 
+		else parentEnv().nestedEnv().addElements(ownedCs->select(x| ownedCs->indexOf(x) < ownedCs->indexOf(child)))
+		endif
+
+	
+--def : _env_C(child : ocl::OclElement) : lookup::LookupEnvironment =
+--	let ownedCs = self.ownsC
+--	in parentEnv().nestedEnv()
+--		.addElements(ownedCs->select(x| ownedCs->indexOf(x) < ownedCs->indexOf(child)))
+
+context B
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	parentEnv()
+	
+context C
+def : _env(child : ocl:: OclElement) : lookup::LookupEnvironment =
+	parentEnv()
+
+context D
+def : _env(child : ocl::OclElement) : lookup::LookupEnvironment =
+	parentEnv()
+
+
+-- Specifying parent() env() operations
+-- Note: Since CG now relies on the LookupVisitor the inlining below is not needed anymore
+
+--context TRoot
+--def : parentEnv() : lookup::LookupEnvironment =
+--	env::LookupEnvironment{}
+--	
+--context A1
+--def : parentEnv() : lookup::LookupEnvironment =
+--	let parent = oclContainer()
+--	in parent.oclAsType(TRoot)._env(self)
+--	
+--
+--context A2
+--def : parentEnv() : lookup::LookupEnvironment =
+--	let parent = oclContainer()
+--	in parent.oclAsType(TRoot)._env(self)
+--	
+--
+--
+--context B
+--def : env() : lookup::LookupEnvironment =
+--	self._env(null)
+--
+--
+--	
+--def : parentEnv() : lookup::LookupEnvironment =
+--	let parent = oclContainer()
+--	in parent.oclAsType(A1)._env(self)
+--	
+--context C
+--def : env() : lookup::LookupEnvironment =
+--	self._env(null)
+--	
+--def : parentEnv() : lookup::LookupEnvironment =
+--	let parent = oclContainer()
+--	in parent.oclAsType(A2)._env(self)
+--
+--
+--context D
+--def : parentEnv() : lookup::LookupEnvironment =
+--	let parent = oclContainer()
+--	in
+--		if parent.oclIsKindOf(B)
+--		then parent.oclAsType(B)._env(self)
+--		else parent.oclAsType(C)._env(self)
+--		endif
+--
+
+endpackage

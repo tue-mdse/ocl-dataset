@@ -1,0 +1,119 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2012, 2014 CNES and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Cedric Notot (Obeo) - initial API and implementation
+[/comment]
+
+[module paramFile('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::umlgen::gen::autojava::specific::lib::type /]
+[import org::eclipse::umlgen::gen::autojava::specific::lib::requests::common /]
+[import org::eclipse::umlgen::gen::autojava::requests::common /]
+[import org::eclipse::umlgen::gen::autojava::services::utilServices /]
+[import org::eclipse::umlgen::gen::autojava::services::rtsjServices /]
+[import org::eclipse::umlgen::gen::autojava::common::parameters /]
+[import org::eclipse::umlgen::gen::autojava::common::common /]
+
+[template public genFileBody(anOperation : BehavioralFeature)]
+[anOperation.genParamPackagePath().genPackageDeclaration()/]
+
+import org.eclipse.umlgen.rtsj.framework.ArgsBuffer;
+[for (aType : Type | anOperation.getParams()->select(itT : TypedElement | itT.type <> null and not itT.type.isJavaPrimitive() and not itT.type.oclIsKindOf(Enumeration)).type)]
+import [aType.genPackagePath() + '.' + aType.genName()/];
+[/for]
+import org.eclipse.umlgen.rtsj.framework.ParameterSet;
+
+public class [anOperation.genClassParamsName()/] implements ParameterSet {
+[for (aParameter : TypedElement | anOperation.getParams())]
+	public [aParameter.genMethodParam()/];
+[/for]
+	
+	public [anOperation.genClassParamsName()/](boolean provider) {
+	[if (anOperation.eContainer(Interface).isAsynchronous())]
+		if (provider) {
+		[for (t : TypedElement | anOperation.getParams()->select(itT : TypedElement | itT.getUpper() <> 1 or not itT.type.isJavaPrimitive()))]
+			[t.genInstantiation()/]
+		[/for]		
+		}
+	[/if]	
+	}
+
+	public void readObject(ArgsBuffer argsBuffer) {
+	[for (aParameter : TypedElement | anOperation.getParams())]
+		[aParameter.genReader()/]
+	[/for]		
+	}
+
+	public void writeObject(ArgsBuffer argsBuffer) {
+	[for (aParameter : TypedElement | anOperation.getParams())]
+		[aParameter.genWriter()/]
+	[/for]		
+	}
+
+	public int byteSize() {
+	[if (anOperation.oclIsKindOf(Reception) and not anOperation.oclAsType(Reception).signal.oclIsUndefined())]
+		return [anOperation.oclAsType(Reception).signal.computeSignalSize()/];
+	[else]
+		return 0; // Synchrone case (not used)
+	[/if]	
+	}
+}
+[/template]
+
+[template public genReader(aParameter : TypedElement) post(trim())]
+[if (aParameter.getUpper() <> 1)]
+for (int i = 0; i < [aParameter.genName()/].length; i++) {
+	[aParameter.genReaderBuffer()/]
+}
+[else]
+[aParameter.genReaderBuffer()/]
+[/if]
+[/template]
+
+[template public genWriter(aParameter : TypedElement) post(trim())]
+[if (aParameter.getUpper() <> 1)]
+for (int i = 0; i < [aParameter.genName()/].length; i++) {
+	[aParameter.genWriterBuffer()/]
+}
+[else]
+[aParameter.genWriterBuffer()/]
+[/if]
+[/template]
+
+[template public genParamPackagePath(anOperation: BehavioralFeature)]
+[anOperation.eContainer(Interface).genClassPath('params')/]
+[/template]
+
+[template protected genInstantiation(aTypedElement : TypedElement) post(trim())]
+[if (aTypedElement.getUpper() <> 1)]
+	[aTypedElement.genName()/] = new [aTypedElement.genTypeName()/]['['/][aTypedElement.getUpper()/][']'/];[if (aTypedElement.getUpper() = -1)] // TODO We have to retrieve a max value in the model to allocate memory[/if]
+[elseif(not aTypedElement.type.isJavaPrimitive() and not aTypedElement.type.oclIsKindOf(Enumeration))]
+	[aTypedElement.genName()/] = new [aTypedElement.genTypeName()/]();[if (aTypedElement.type.oclIsKindOf(Classifier) and aTypedElement.type.oclAsType(Classifier).isAbstract or aTypedElement.type.oclIsTypeOf(Interface))] // TODO When the class if abstract (or interface), what is the child to instantiate ?[/if]
+[/if]
+[/template]
+
+[template protected genReaderBuffer (aParameter : TypedElement) post(trim())]
+[if (aParameter.type.isJavaPrimitive() or aParameter.type.oclIsKindOf(Enumeration))]
+	[aParameter.genName()/][aParameter.genIndice()/] = argsBuffer.read[aParameter.type.genBufferType()/]();
+[else]
+	[aParameter.genName()/][aParameter.genIndice()/].read[aParameter.type.genBufferType()/](argsBuffer);
+[/if]
+[/template]
+
+[template protected genWriterBuffer (aParameter : TypedElement) post(trim())]
+[if (aParameter.type.isJavaPrimitive() or aParameter.type.oclIsKindOf(Enumeration))]
+	argsBuffer.write[aParameter.type.genBufferType()/]([aParameter.genName()/][aParameter.genIndice()/]);
+[else]
+	[aParameter.genName()/][aParameter.genIndice()/].write[aParameter.type.genBufferType()/](argsBuffer);
+[/if]
+[/template]
+
+[template protected genIndice(aParameter : TypedElement)]
+[if (aParameter.get('upper')->first().oclAsType(Integer) <> 1)]['['/]i[']'/][/if]
+[/template]

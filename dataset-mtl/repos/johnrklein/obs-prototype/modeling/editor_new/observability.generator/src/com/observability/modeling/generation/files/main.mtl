@@ -1,0 +1,40 @@
+[comment encoding = UTF-8 /]
+[module main('http://www.observability.com/emf')/]
+[import com::observability::modeling::generation::files::centralServer/]
+[import com::observability::modeling::generation::files::cassandra/]
+[import com::observability::modeling::generation::files::mongo/]
+[import com::observability::modeling::generation::files::postgres/]
+[import com::observability::modeling::generation::files::redis/]
+
+
+[template public mainModel(aModel : Model)]
+	
+	[for (aDatabaseCluster:DatabaseCluster | aModel.clusters)]
+	[comment @main /]
+		[let dbType : DbType = aDatabaseCluster.associatedDbType]
+			[if hasFile(dbType.name)]
+				[if dbType.name.toLower().trim().strcmp('cassandra') = 0]
+					[aDatabaseCluster.generateCassandra(aModel.interval)/]
+				[elseif dbType.name.toLower().trim().strcmp('mongo') = 0]
+					[aDatabaseCluster.generateMongodb(aModel.interval)/]
+				[elseif dbType.name.toLower().trim().strcmp('postgres') = 0]
+					[aDatabaseCluster.generatePostgres(aModel.interval)/]
+				[elseif dbType.name.toLower().trim().strcmp('redis') = 0]
+					[aDatabaseCluster.generateRedis(aModel.interval)/]
+				[/if]
+			[/if]
+		[/let]
+	[/for]
+	[aModel.generateCentralServer()/]
+	
+	[zipAll()/]
+[/template]
+
+[query public hasFile(arg0 : String) : Boolean
+	= invoke('com.observability.modeling.generation.services.DescriptorFiles', 'hasFile(java.lang.String)', Sequence{arg0})
+/]
+
+[query public zipAll(anOclAny: OclAny) : OclVoid
+	= invoke('com.observability.modeling.generation.services.DescriptorFiles', 'zipAll()', Sequence{})
+/]
+

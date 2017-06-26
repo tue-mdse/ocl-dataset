@@ -1,0 +1,348 @@
+[comment encoding = UTF-8 /]
+[module genEntityUI('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::gen::as::common::mxmlUtils /]
+[import com::mgs::uml::common::umlUtils /]
+[import com::mgs::uml::gen::as::presentation::genValidator /]
+[import com::mgs::uml::gen::as::entity::genEntityInterface /]
+[import com::mgs::uml::gen::as::common::asUtils /]
+[import com::mgs::uml::gen::as::business::genServices /]
+[import com::mgs::uml::gen::as::business::genValueObject /]
+[import com::mgs::uml::common::services /]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::gen::as::presentation::genCrudUI /]
+
+
+[template public changeHandlerName(p : NamedElement) post (trim())]
+	[p.UIID()/]ChangeHandler
+[/template]
+[template public clickHandlerName(p : NamedElement) post (trim())]
+	[p.UIID()/]ClickHandler
+[/template]
+[template public editClickHandlerName(p : NamedElement) post (trim())]
+	[p.UIIDEdit()/]ClickHandler
+[/template]
+
+[template public resultHandlerName(p : Operation) post (trim())]
+	[p.UIID()/]Result
+[/template]
+
+[template public UIID(e : NamedElement) post (trim())]
+	ui_[e.name.toLowerFirst()/]
+[/template]
+[template public UIIDEdit(e : NamedElement) post (trim())]
+	[e.UIID()/]_edit
+[/template]
+
+[template public UIID(e : Operation) post (trim())]
+	ui_service_[e.name.toLowerFirst()/]
+[/template]
+
+[template public entityUIName(c : Class) post (trim())]
+	[c.name.toUpperFirst()/]UI
+[/template]
+
+
+[template public genEntityUI(c : Class) ? (profile_isEntity())]
+	
+[comment @main /]
+[file ('ui/entity/' + c.entityUIName() + '.mxml' , false, 'UTF-8')]
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Box xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:s="library://ns.adobe.com/flex/spark"  implements="ui.Navigation"
+	creationComplete="onCreationComplete(event)" xmlns:val="validators.*" xmlns:serviceUI="ui.service.*" label="[c.name/]">
+    <mx:Metadata>
+        ['['/]Event(name="objectSelection", type="ui.SelectionUIEvent")[']'/]
+        ['['/]Event(name="serviceSend", type="ui.ServiceSendUIEvent")[']'/]
+        ['['/]Event(name="serviceRecv", type="ui.ServiceRecvUIEvent")[']'/]
+    </mx:Metadata>
+	[mxmlScriptBegin()/]
+
+			import mx.events.FlexEvent;
+			
+			import entity.EntityCache;
+
+			[c.getModel().genInterfaceImports()/]
+			
+			import [c.genEntityPackage()/].[c.genName()/];
+			import services.[c.genPackage()/].[c.genServiceName()/];
+			import services.[c.genPackage()/].[c.serviceEventName()/];
+			
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import entity.EntityEvent;
+			import entity.IEntity;
+			
+			import mx.controls.Alert;
+			
+			import mx.collections.ArrayCollection;
+			import mx.containers.TabNavigator;
+			import mx.validators.ValidationResult;
+			import mx.events.ValidationResultEvent;
+
+			import ui.SelectionUIEvent;
+			import ui.ServiceRecvUIEvent;
+			import ui.ServiceSendUIEvent;
+			
+			private var current:[c.interfaceName()/];
+			
+			private function onCreationComplete(event:FlexEvent):void{
+				handleNavigation(null);
+			}
+			
+			private function populateFields():void{
+				ui_id.text = current == null ? "" : new String(current.getId());
+[for (p : Property | c.allProperties())]
+[if (p.upper <> 1)]
+				[p.UIID()/].label = current == null ? "" : new String(current.[p.getterName()/]().length);
+				[p.UIID()/].enabled = current != null && current.[p.getterName()/]().length > 0;
+[elseif (not p.isSimplePrimitive())]
+				[p.UIID()/].label = "open";
+				[p.UIID()/].enabled = current != null && current.[p.getterName()/]() != null;
+[elseif (p.type.name = 'Boolean')]
+				[p.UIID()/].selected = current != null && current.[p.getterName()/]();
+[else]
+				[p.UIID()/].text = current == null || current.[p.getterName()/]() == null ? "" : new String(current.[p.getterName()/]());
+[/if]
+[/for]
+			}
+			private function onCurrentUpdate(event:EntityEvent):void{
+				populateFields();
+			}
+			private function onItemUpdate(event:EntityEvent):void{
+				this.listing.invalidateList();
+			}
+			private function onItemRemoved(event:EntityEvent):void{
+				var tab:ArrayCollection = listing.dataProvider as ArrayCollection;
+				tab.removeItemAt(tab.getItemIndex(event.object));
+				listing.dataProvider = tab;
+			}
+			
+			private function result(event:[c.serviceEventName()/]):void{
+				handleNavigation(event.instance);
+			}
+			public function handleNavigation(object:Object):void{
+				if(current == object && current!=null){
+					return;
+				}
+				var tab:ArrayCollection = listing.dataProvider as ArrayCollection;
+				if(current != null){
+					current.removeEventListener(EntityEvent.UPDATED, onCurrentUpdate);
+				}
+				if(object == null){
+					current = null;
+				}else if(object is [c.interfaceName()/]){
+					var element:[c.interfaceName()/] = object as [c.interfaceName()/];
+					current = element;
+					current.addEventListener(EntityEvent.UPDATED, onCurrentUpdate);
+					if(tab == null){
+						tab = new ArrayCollection();
+					}
+					if(!tab.contains(object)){
+						tab.addItem(object);
+						current.addEventListener(EntityEvent.UPDATED, onItemUpdate);
+						current.addEventListener(EntityEvent.REMOVED, onItemRemoved);
+					}
+					listing.dataProvider = tab;
+					listing.selectedItem = object;
+					
+					if((current as [c.genName()/]).isPartial()){
+						var service:[c.genServiceName()/] = new [c.genServiceName()/]();
+						service.addEventListener(FaultEvent.FAULT, service_all_Fault);
+						service.addEventListener([c.serviceEventName()/].UPDATE, result);
+						service.retrieveById(new String(current.getId()));
+					}
+					
+				}else if(object is Array){
+					if(tab == null){
+						tab = new ArrayCollection();
+					}
+					for each(var e:Object in (object as Array)){
+						if(e is [c.interfaceName()/]){
+							if(!tab.contains(e)){
+								tab.addItem(e);
+								(e as IEntity).addEventListener(EntityEvent.UPDATED, onItemUpdate);
+								(e as IEntity).addEventListener(EntityEvent.REMOVED, onItemRemoved);
+							}
+						}
+					}
+					listing.dataProvider = tab;
+					handleNavigation(tab.length == 0 ? null : tab['[0]'/]);
+				}
+				// update sub objects.
+				populateFields();
+				ui_create.handleNavigation(current);
+				ui_retrieveAll.handleNavigation(current);
+				ui_retrieveOne.handleNavigation(current);
+				ui_update.handleNavigation(current);
+				ui_delete.handleNavigation(current);
+[for (p : Property | c.profile_propertiesEntity()) ? (isSimplePrimitive() and isUnique)]
+				ui_retrieve_by_[p.name.toLowerFirst()/].handleNavigation(current);
+[/for]
+			}
+			private function handleValid(event:ValidationResultEvent):void{
+			}
+			private function handleInvalid(event:ValidationResultEvent):void{
+			}
+			private function listingClickHandler(event:MouseEvent):void{
+				handleNavigation(listing.selectedItem);
+			}
+			private function ui_newClickHandler(event:MouseEvent):void{
+				handleNavigation(EntityCache.getInstance().create[c.genName()/]());
+			}
+			private function onObjectSelection(event:SelectionUIEvent):void{
+				handleNavigation(event.selection);
+			}
+			
+[for (p : Property | c.allProperties()) ? (isSimplePrimitive())]
+			private function [p.changeHandlerName()/](event:Event):void{
+				if(current != null){
+[if (p.type.name = 'Date')]
+					current.[p.setterName()/]([p.UIID()/].selectedDate);
+[elseif (p.type.name = 'Boolean')]
+					current.[p.setterName()/]([p.UIID()/].selected);
+[else]
+					current.[p.setterName()/]([p.UIID()/].text);
+[/if]
+				}
+			}
+[/for]
+[for (p : Property | c.allProperties()) ? (not isSimplePrimitive())]
+			private function [p.clickHandlerName()/](event:MouseEvent):void{
+				dispatchEvent(new SelectionUIEvent(SelectionUIEvent.SELECT, current.[p.getterName()/]()));
+			}
+			private function [p.editClickHandlerName()/](event:MouseEvent):void{
+[if (p.type.profile_isEntity())]
+				var element:[p.type->filter(Class).interfaceName()/] = EntityCache.getInstance().create[p.type->filter(Class).genName()/]();
+[if (p.upper = 1)]
+				current.[p.setterName()/](element);
+[else]
+				current.[p.adderName()/](element);
+[/if]
+[if (p.hasOppositeProperty())]
+[if (p.getOppositeProperty().upper = 1)]
+				element.[p.getOppositeProperty().setterName()/](current);
+[else]
+				element.[p.getOppositeProperty().adderName()/](current);
+[/if]
+[/if]
+				dispatchEvent(new SelectionUIEvent(SelectionUIEvent.SELECT, element));
+[else]
+				// TODO generate edition for non entity objects.
+[/if]
+			}
+			
+[/for]
+			private function service_all_Fault(event:FaultEvent):void{
+			
+				Alert.show(event.fault.message);
+			}
+			[for (op : Operation | c.ownedOperation)]
+			private function [op.clickHandlerName()/](event:MouseEvent):void{
+				// [protected (op.name + 'Click')]
+				// TODO implements [op.clickHandlerName()/]
+				// [/protected]
+			}
+			private function [op.resultHandlerName()/](event:ResultEvent):void{
+				// [protected (op.name + 'Result')]
+				// TODO implements [op.clickHandlerName()/]
+				// [/protected]
+			}
+			[/for]
+			
+	[mxmlScriptEnd()/]
+
+
+[for (p : Property | c.profile_propertiesEntity())]
+	<!-- <val:[validatorName(c, p)/] source="{[p.UIID()/]}" property="text" invalid="handleValid(event)" valid="handleInvalid(event)" /> -->
+[/for]
+	<mx:VBox width="100%" height="100%">
+	<mx:HBox width="100%" height="100%">
+		<mx:Panel title="Liste" width="100%" height="100%">
+			<mx:VBox width="100%" height="100%">
+				<mx:TabNavigator id="listSwitch" width="100%" height="100%">
+					<mx:Box label="All">
+						<mx:List id="listing" itemRenderer="ui.EntityItemRenderer" click="listingClickHandler(event)" width="100%" height="100%"/>
+					</mx:Box>
+					<mx:Box label="Context">
+						<mx:List id="listing2" itemRenderer="ui.EntityItemRenderer" click="listingClickHandler(event)" width="100%" height="100%"/>
+					</mx:Box>
+				</mx:TabNavigator>
+				<mx:Button id="ui_new" label="New" click="ui_newClickHandler(event)" />
+			</mx:VBox>
+		</mx:Panel>
+		<mx:VBox height="100%">
+			<mx:Panel title="Details" width="100%" height="100%">
+				<mx:Grid>
+					<mx:GridRow>
+						<mx:GridItem>
+							<mx:Label text="id" />
+						</mx:GridItem>
+						<mx:GridItem>
+							<mx:Label id="ui_id" text="" />
+						</mx:GridItem>
+					</mx:GridRow>
+[for (p : Property | c.allProperties())]
+					<mx:GridRow>
+						<mx:GridItem>
+							<mx:Label text="[p.name/]" />
+						</mx:GridItem>
+						<mx:GridItem>
+[if (not p.isSimplePrimitive())]
+							<mx:HBox>
+								<mx:Button id="[p.UIID()/]" label="Empty" enabled="false" click="[p.clickHandlerName()/](event)" />
+								<mx:Button id="[p.UIIDEdit()/]" label="New" enabled="true" click="[p.editClickHandlerName()/](event)" />
+							</mx:HBox>
+[elseif (p.type.name = 'Date')]
+							<mx:DateField id="[p.UIID()/]" change="[p.changeHandlerName()/](event)" />
+[elseif (p.type.name = 'Boolean')]
+							<mx:CheckBox id="[p.UIID()/]" change="[p.changeHandlerName()/](event)" />
+[else]
+							<mx:TextInput id="[p.UIID()/]" change="[p.changeHandlerName()/](event)" />
+[/if]
+						</mx:GridItem>
+					</mx:GridRow>
+[/for]
+				</mx:Grid>
+			</mx:Panel>
+		</mx:VBox>
+	</mx:HBox>
+		[genServicePanel()/]
+	</mx:VBox>
+</mx:Box>
+[/file]
+	
+[/template]
+
+[template public genServicePanel(c : Class)]
+<s:Panel title="Services" width="100%" height="100%">
+	<s:layout>
+		<s:VerticalLayout/>
+	</s:layout>
+<mx:TabNavigator creationPolicy="all" width="100%" height="100%">
+	<serviceUI:[c.createUIName()/] label="Create" id="ui_create"
+		objectSelection="onObjectSelection(event)"
+	/>
+	<serviceUI:[c.retrieveAllUIName()/] label="RetrieveAll" id="ui_retrieveAll"
+		objectSelection="onObjectSelection(event)"
+	/>
+	<serviceUI:[c.retrieveOneUIName()/] label="RetrieveOne" id="ui_retrieveOne"
+		objectSelection="onObjectSelection(event)"
+	/>
+	<serviceUI:[c.updateUIName()/] label="Update" id="ui_update"
+		objectSelection="onObjectSelection(event)"
+	/>
+	<serviceUI:[c.deleteUIName()/] label="Delete" id="ui_delete"
+		objectSelection="onObjectSelection(event)"
+	/>
+[for (p : Property | c.profile_propertiesEntity()) ? (isSimplePrimitive() and isUnique)]
+	<serviceUI:[p.retrieveByPropertyUIName()/] label="Retrieve by [p.name.toUpperFirst()/]" id="ui_retrieve_by_[p.name.toLowerFirst()/]"
+		objectSelection="onObjectSelection(event)"
+	/>
+[/for]
+[for (op : Operation | c.ownedOperation)]
+	<mx:HBox label="[op.name/]">
+		<mx:Button label="[op.name/]" click="[op.clickHandlerName()/](event)" />
+	</mx:HBox>
+[/for]
+</mx:TabNavigator>
+</s:Panel>
+[/template]

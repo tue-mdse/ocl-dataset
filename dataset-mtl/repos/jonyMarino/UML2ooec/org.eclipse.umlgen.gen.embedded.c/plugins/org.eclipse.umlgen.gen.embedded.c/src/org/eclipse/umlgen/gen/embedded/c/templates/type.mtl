@@ -1,0 +1,50 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2015 Spacebel SA.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Johan Hardy (Spacebel) - initial API and implementation
+[/comment]
+[module type('http://www.eclipse.org/uml2/5.0.0/UML')/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::datatype/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::namedelement/]
+[import org::eclipse::umlgen::gen::embedded::c::templates::typedef/]
+[import org::eclipse::umlgen::gen::embedded::c::templates::structure/]
+[import org::eclipse::umlgen::gen::embedded::c::templates::enumeration/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::enumerationliteral/]
+
+[query private getOnlyRelevantTypes(seq : Sequence(uml::Type)) : Sequence(uml::Type) =  
+seq->select(t : uml::Type | not(t.oclIsTypeOf(uml::Class) or t.oclIsTypeOf(uml::UseCase) or t.oclIsTypeOf(uml::StateMachine)))/]
+
+[query public getAllPublicTypes(p : uml::PackageableElement) : Sequence(uml::Type) =  
+p.ownedElement->filter(uml::Type)->asSequence()->select(t : uml::Type | not(t.name->isEmpty()) and (t.visibility = VisibilityKind::public))/]
+
+[query public getAllPrivateTypes(p : uml::PackageableElement) : Sequence(uml::Type) =  
+p.ownedElement->filter(uml::Type)->asSequence()->select(t : uml::Type | not(t.name->isEmpty()) and (t.visibility = VisibilityKind::private))/]
+
+[template private genTypes(seq : Sequence(uml::NamedElement)) post(trim())]
+[for (d : uml::NamedElement | seq->orderByContents())]
+[if (d.oclIsTypeOf(uml::Enumeration) and d.oclAsType(uml::Enumeration).hasNoConstant() 
+                                     and not(d.oclAsType(uml::Enumeration).isAbstract))]
+[d.oclAsType(uml::Enumeration).genEnum()/]
+[elseif (d.oclIsKindOf(uml::DataType) and d.oclAsType(uml::DataType).isTypedef() 
+                                      and not(d.oclAsType(uml::DataType).isAbstract))]
+[d.oclAsType(uml::DataType).genTypedef()/]
+[elseif (d.oclIsKindOf(uml::DataType) and d.oclAsType(uml::DataType).isNotTypedef() 
+                                      and not(d.oclAsType(uml::DataType).ownedAttribute->isEmpty()) 
+                                      and not(d.oclAsType(uml::DataType).isAbstract))]
+[d.oclAsType(uml::DataType).genStruct()/]
+[/if][/for]
+[/template]
+
+[template public genHTypes(p : uml::PackageableElement) post(trim())]
+[let seq : Sequence(uml::NamedElement) = getAllPublicTypes()->getOnlyRelevantTypes()][seq->genTypes()/][/let]
+[/template]
+
+[template public genCTypes(p : uml::PackageableElement) post(trim())]
+[let seq : Sequence(uml::NamedElement) = getAllPrivateTypes()->getOnlyRelevantTypes()][seq->genTypes()/][/let]
+[/template]

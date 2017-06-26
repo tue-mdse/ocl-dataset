@@ -1,0 +1,55 @@
+[comment encoding = UTF-8 /]
+[module simplePDLToDot('http://simplepdl')]
+
+
+[file (aProcess.name.concat('.dot'), false, 'UTF-8')]
+digraph [aProcess.name/] {
+[for (ws : WorkSequence | aProcess.processElements->getWSs())]
+	[ws.predecessor.name/] -> [ws.successor.name/] ['['/]arrowhead=vee label=[ws.getWSType()/][']'/]
+[/for]
+[for (g : Guidance | aProcess.processElements->getGuidances())]
+	g[g.element.name/] ['['/]shape=box[']'/]
+	g[g.element.name/] -> [for (e : ProcessElement | g.element)]e.name [/for] 
+[/for]
+[for (r : Resource | aProcess.processElements->getResources())]
+	[r.name/] ['['/]shape=diamond label=[r.quantity/][']'/]
+[/for]
+[for (r : UseResources | aProcess.processElements->getUseResources())]
+	[r.usedResource/] -> [r.associatedWD/] ['['/]label=[r.weight/][']'/]
+[/for]
+}
+[/file]
+[/template]
+
+[query public getWSs(elements : OrderedSet(ProcessElement)) : OrderedSet(WorkSequence) = 
+	elements->select( e | e.oclIsTypeOf(WorkSequence) )
+		->collect( e | e.oclAsType(WorkSequence) )
+		->asOrderedSet()
+/]
+
+[query public getUseResources(elements : OrderedSet(ProcessElement)) : OrderedSet(UseResources) = 
+	elements->select( e | e.oclIsTypeOf(UseResources) )
+		->collect( e | e.oclAsType(UseResources) )
+		->asOrderedSet()
+/]
+
+
+[query public getResources(elements : OrderedSet(ProcessElement)) : OrderedSet(Resource) = 
+	elements->select( e | e.oclIsTypeOf(Resource) )
+		->collect( e | e.oclAsType(Resource) )
+		->asOrderedSet()
+/]
+
+[query public getGuidances(elements : OrderedSet(ProcessElement)) : OrderedSet(Guidance) = 
+	elements->select( e | e.oclIsTypeOf(Guidance) )
+		->collect( e | e.oclAsType(Guidance) )
+		->asOrderedSet()
+/]
+
+[template public getWSType(ws : WorkSequence)]
+[if (ws.linkType = WorkSequenceType::startToStart)]
+s2s[elseif (ws.linkType = WorkSequenceType::startToFinish)]
+s2f[elseif (ws.linkType = WorkSequenceType::finishToStart)]
+f2s[elseif (ws.linkType = WorkSequenceType::finishToFinish)]
+f2f[/if]
+[/template]

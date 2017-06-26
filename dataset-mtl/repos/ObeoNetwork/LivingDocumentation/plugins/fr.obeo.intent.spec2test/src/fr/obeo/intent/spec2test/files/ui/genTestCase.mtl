@@ -1,0 +1,41 @@
+[comment encoding = UTF-8 /]
+[module genTestCase('http://www.eclipse.org/intent/specification/1.0', 'http://www.eclipse.org/emf/2002/Ecore')]
+[import fr::obeo::intent::spec2test::files::genAutomationUtils /]
+
+[template public genTestCase(contxt : Context, scenarios: OrderedSet(Scenario), type : TestType)post (trim())]
+[let pkg : String = getFeaturePackage(scenarios->first().oclAsType(EObject), type)]
+[file (getFeaturePath(scenarios->first().oclAsType(EObject), type)+'/'+contxt.getCamelCaseName()+type.toString().toUpperFirst()+'Tests.java', false, 'UTF-8')]
+[genLicence()/]
+package [pkg/];
+import org.junit.Rule;
+import org.junit.Test;
+import [getContextsPackage(contxt.eContainer(Specification))/].[contxt.getCamelCaseName()/];
+
+public class [contxt.getCamelCaseName()+type.toString().toUpperFirst() +'Tests'/] {
+	@Rule
+	public [contxt.getCamelCaseName()/] context = new [contxt.getCamelCaseName()/]();
+
+[for (scenario : Scenario | getTestTypeScenarios(contxt, type))]
+	@Test
+	public void [scenario.getCamelCaseName().toLowerFirst()/]() throws Exception {
+	[for (action : Action | scenario.when)]
+		context.action[action.getCamelCaseName()/]([action.getParameters(scenario)/]);
+	[/for]
+	[for (behaviour : Behaviour | scenario._then)]
+		context.assert[behaviour.getCamelCaseName()/]([behaviour.getParameters(scenario)/]);
+	[/for]
+	}
+[/for]
+}
+[/file]
+[/let]
+[/template]
+
+[query public getParameters (scenarioElement : ScenarioElement,scenario : Scenario) : String = 
+if scenarioElement.parameters->size()>0 then
+scenarioElement.parameters->collect(param|'\"'+param.eInverse(Value)->select(value|value.eContainer()=scenario).value+'\"')->sep(',')
+else
+''
+endif
+/]
+

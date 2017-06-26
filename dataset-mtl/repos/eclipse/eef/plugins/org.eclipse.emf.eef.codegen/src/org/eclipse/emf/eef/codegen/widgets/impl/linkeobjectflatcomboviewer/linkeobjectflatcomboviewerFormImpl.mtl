@@ -1,0 +1,81 @@
+[comment encoding = UTF-8
+ *******************************************************************************
+ * Copyright (c) 2008-2013 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module linkeobjectflatcomboviewerFormImpl('http://www.eclipse.org/emf/eef/views/1.0.0', 'http://www.eclipse.org/emf/eef/components/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/eef/generation/1.0.0') extends org::eclipse::emf::eef::codegen::widgets::api::widgetFormImpl/]
+
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::services::viewCommon /]
+[import org::eclipse::emf::eef::codegen::services::imports/]
+
+[comment ===== Case Widget = AdvancedEObjectFlatComboViewer ===== /]
+[template public manageImports(widget : Widget, pec : PropertiesEditionComponent, view : View, basePackage : String) overrides manageImports ? (widget.name = 'LinkEObjectFlatComboViewer')]
+[pec.addImports(Sequence{
+	'org.eclipse.swt.widgets.Composite',
+	'org.eclipse.emf.ecore.EObject',
+	'org.eclipse.emf.eef.runtime.impl.notify.PropertiesEditionEvent',
+	'org.eclipse.emf.eef.runtime.ui.widgets.AbstractAdvancedEObjectFlatComboViewer.EObjectFlatComboViewerListener',
+	'org.eclipse.emf.eef.runtime.ui.widgets.FormUtils',
+	'org.eclipse.swt.layout.GridData'})/]
+[/template]
+
+[template public widgetDeclaration(editor : ElementEditor) overrides widgetDeclaration ? (editor.representation.name = 'LinkEObjectFlatComboViewer')]
+	protected [include('org.eclipse.emf.eef.runtime.ui.widgets.LinkEObjectFlatComboViewer')/] [editor.elementEditorName()/];
+	protected [include('org.eclipse.jface.viewers.ViewerFilter')/] [editor.elementEditorName()/]Filter;
+[/template]
+
+[template public implementation(editor : ElementEditor) overrides implementation ? (editor.representation.name = 'LinkEObjectFlatComboViewer')]
+return create[editor.name.toJavaClassifier()/]LinkFlatComboViewer(parent, widgetFactory);
+[/template]
+
+[template public additionalImplementation(editor : ElementEditor, pec : PropertiesEditionComponent, inputPEC: PropertiesEditionComponent) overrides additionalImplementation ? (editor.representation.name = 'LinkEObjectFlatComboViewer')]
+	/**
+	 * @param parent the parent composite
+	 * @param widgetFactory factory to use to instanciante widget of the form
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected Composite create[editor.name.toJavaClassifier()/]LinkFlatComboViewer(Composite parent, FormToolkit widgetFactory) {
+		[if (editor.nameAsLabel)]
+		FormUtils.createPartLabel(widgetFactory, parent, [include(editor.owningViewsRepository().qualifiedMessagesProvider())/].[editor.editorKey(editor.owningView())/], propertiesEditionComponent.isRequired([editor.editorID()/], [editor.owningViewsRepository().vrClass()/].FORM_KIND));
+		[else]
+		createDescription(parent, [editor.editorID()/], [include(editor.owningViewsRepository().qualifiedMessagesProvider())/].[editor.editorKey(editor.owningView())/]);
+		[/if]
+		// create callback listener
+		EObjectFlatComboViewerListener listener = new EObjectFlatComboViewerListener(){
+			public void handleSet(EObject element){
+				propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/], PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.SET, null, element)); 
+			}
+			public void navigateTo(EObject element){ }
+
+			public EObject handleCreate() {
+				propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/], PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.ADD, null, null)); 
+				return [editor.viewCompletePackageGetter()/];
+			}
+
+			public void handleEdit(EObject element) {
+				propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/], PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.EDIT, null, element)); 
+			}
+		};
+		//create widget
+		[editor.elementEditorName()/] = new LinkEObjectFlatComboViewer([editor.owningViewsRepository().messagesProvider()/].[editor.editorKey(editor.owningView())/], resourceSet, [editor.elementEditorName()/]Filter, propertiesEditionComponent.getEditingContext().getAdapterFactory(), listener);
+		[editor.elementEditorName()/].createControls(parent, widgetFactory);
+		GridData [editor.elementEditorName()/]Data = new GridData(GridData.FILL_HORIZONTAL);
+		[editor.elementEditorName()/].setLayoutData([editor.elementEditorName()/]Data);
+		[editor.elementEditorName()/].setID([editor.editorID()/]);
+		FormUtils.createHelpButton(widgetFactory, parent, propertiesEditionComponent.getHelpContent([editor.editorID()/], [editor.owningViewsRepository().vrClass()/].FORM_KIND), null); //$NON-NLS-1$
+		// [protected ('for create'.concat(editor.name.toJavaClassifier()).concat('LinkFlatComboViewer'))]
+
+		// [/protected]
+		return parent;
+	}
+
+[/template]

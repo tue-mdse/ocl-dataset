@@ -1,0 +1,46 @@
+[comment encoding = UTF-8 /]
+[module toDot('http://petrinet')]
+
+
+[template public toDot(aPetriNet : PetriNet)]
+[comment @main/]
+[file (aPetriNet.name.concat('.dot'), false, 'UTF-8')]
+digraph [aPetriNet.name/] {
+	{
+		node ['['/]shape=circle[']'/]
+		[for (pl : Place | aPetriNet.node->getPLs())]
+		[pl.name/] ['['/]label=[pl.nbJetons/][']'/]
+		[/for]
+	}
+	{
+		node ['['/]shape=box[']'/]
+		[for (tr : Transition | aPetriNet.node->getTRs())]
+		[tr.name/]
+		[/for]
+	}
+	[for (arc : Arc | aPetriNet.arc)]
+	[arc.source.name/] -> [arc.target.name/] ['['/]arrowhead=[if arc.readArc]dot[else]vee[/if] label=[arc.poids/][']'/]
+	[/for]
+}
+[/file]
+[/template]
+
+[query public getPLs(elements : OrderedSet(Node)) : OrderedSet(Place) = 
+	elements->select( e | e.oclIsTypeOf(Place) )
+		->collect( e | e.oclAsType(Place) )
+		->asOrderedSet()
+/]
+
+[query public getTRs(elements : OrderedSet(Node)) : OrderedSet(Transition) = 
+	elements->select( e | e.oclIsTypeOf(Transition) )
+		->collect( e | e.oclAsType(Transition) )
+		->asOrderedSet()
+/]
+
+[query public getArcsIncidents(tr: Transition, arcs: OrderedSet(Arc)) : OrderedSet(Arc) = 
+	arcs->select( e | e.oclAsType(Arc).target = tr)
+/]
+
+[query public getArcsSortants(tr: Transition, arcs: OrderedSet(Arc)) : OrderedSet(Arc) = 
+	arcs->select( e | e.oclAsType(Arc).source = tr)
+/]

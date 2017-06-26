@@ -1,0 +1,74 @@
+[comment encoding = UTF-8 /]
+[module names(
+	'http://cs.manchester.ac.uk/mdsd/ObjectRelationalMapping',
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::orm::m2t::core::featureProperties/]
+
+
+[query public containerUniqueClassName(model : OrmModel) : String
+	= 'ContainerUnique'
+/]
+
+[query public validatorClassNamePostfix(model : OrmModel) : String
+	= 'Validator'
+/]
+
+[query public modelClassName(type : EnumerationType) : String
+	= type.name
+/]
+
+
+[query public instanceName(entity : EntityOrView) : String
+	= entity.name.toLowerFirst()
+/]
+
+[query public modelClassName(entity : EntityOrView) : String
+	= entity.name
+/]
+
+[query public modelName(entity : EntityOrView) : String
+	= entity.name
+/]
+
+[query public normalizerClassName(entity : EntityOrView) : String
+	= entity.name.concat('Normalizer')
+/]
+
+
+[query public getMethodName(feature : Feature) : String
+	= let prefix : String
+		= if feature.isBooleanDataType() then
+				feature.booleanPrefix()
+			else
+				'get'
+			endif
+		in prefix.concat(feature.modelPropertyName().toUpperFirst())
+/]
+
+[query private booleanPrefix(feature : Feature) : String
+	= if feature.oclIsKindOf(EntityFeature) then
+			if feature.oclAsType(EntityFeature).booleanIsHasChoice = IsHasChoices::isA then
+				'is'
+			else
+				'has'
+			endif
+		else if feature.oclIsTypeOf(EncapsulatedAttribute) then
+			feature.oclAsType(EncapsulatedAttribute).attribute.booleanPrefix()
+		else
+			feature.oclAsType(EncapsulatedAssociation).association.booleanPrefix()
+		endif endif
+/]
+
+[query public instanceName(feature : Feature) : String
+	= feature.modelPropertyName()
+/]
+
+[query public modelName(association : Association) : String
+	= if association.oclIsKindOf(EntityAssociation) then
+			association.oclAsType(EntityAssociation).opposite.partOf.modelName()
+		else if association.oclIsTypeOf(EncapsulatedAssociation) then
+			association.oclAsType(EncapsulatedAssociation).association.modelName()
+		else
+			'xxx'
+		endif endif
+/]

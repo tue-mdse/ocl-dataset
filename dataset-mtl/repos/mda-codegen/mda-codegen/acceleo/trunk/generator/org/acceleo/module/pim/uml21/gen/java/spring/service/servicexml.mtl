@@ -1,0 +1,75 @@
+[module servicexml('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(model : Model)]
+[if (model.services()->notEmpty())][model.pathToMainResources()/]/META-INF/spring/[model.baseImports()/]/layer-services.xml[/if]
+[/template][/comment]
+
+
+[template public generateServiceSpringApplicationContext(model : Model)? (model.services()->notEmpty())]
+[comment This template is called by the main module file /]
+[file (model.fullFilePath(model.pathToMainResources(), '/META-INF/spring/'.concat(model.baseImports()), 'layer-services.xml'), false))]
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:jee="http://www.springframework.org/schema/jee"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
+           http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.0.xsd
+           http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.0.xsd
+           http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-2.0.xsd">
+
+[for (class:Class|model.services())]
+	<bean id="[class.computeBeanId()/]" class="[class.serviceImplPackage()/].[class.name/]Impl">	
+	[for (prop:Property|attribute->select(isConfig()))]
+		[if (prop.default <> null)]
+				<property name="[prop.name/]" value="[prop.default/]"/>
+		[else]
+				<property name="[prop.name/]" value=""/>
+		[/if]
+	[/for]
+		[iocInjectors('Dao')/]
+		[iocInjectors('Service')/]
+		[iocInjectors('Config')/]
+	</bean>
+[/for]
+[comment 
+	<%if (hasServicesTransactionOperations()){%>
+		<bean id="transactionManager"
+			class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+			<property name="sessionFactory" ref="sessionFactory" />
+		</bean>
+	<%}%>
+/]
+[for (class:Class|model.services())]
+	<tx:advice id="txAdvice[class.name/]" transaction-manager="transactionManager">
+		<tx:attributes>
+	[for (oper:Operation|class.ownedOperation->select(isTransactional()))]
+			<tx:method name="[oper.name/]" [if (oper.isTransactionalPropagationValueSpecified())]propagation="[getTransactionalPropagationValue()/]"[/if] [if (oper.isTransactionalIsolationValueSpecified())]isolation="[oper.getTransactionalIsolationValue()/]"[/if]/>
+	[/for]
+			<tx:method name="*" read-only="false"/>
+		</tx:attributes>
+	</tx:advice>
+	<aop:config>
+		<aop:advisor pointcut="execution(* [class.serviceImplPackage()/].[class.name/]Impl.*(..))" advice-ref="txAdvice[class.name/]" />
+	</aop:config>
+[/for]
+</beans>
+[/file]
+[/template]

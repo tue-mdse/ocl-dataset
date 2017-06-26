@@ -1,0 +1,169 @@
+[
+  {
+    "name": "ServiceType",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Service",
+    "expressions": [{
+      "operations": {
+        "<=": 2,
+        "<>": 1,
+        "or": 2,
+        "and": 1,
+        "=": 3
+      },
+      "name": "speedFulfilled",
+      "body": "type = ServiceType::BESTEFFORT or ( \n\t\t\tdesignSpeed <= providedBy.designSpeed and (if type = ServiceType::IMPORTANT then designSpeed <= providedBy.backup.designSpeed\n\t\t\t\telse type = ServiceType::WEAKCONTRACT or providedBy.backup <> null endif))",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "VariableExpImpl": 8,
+        "OperationCallExpImpl": 9,
+        "NullLiteralExpImpl": 1,
+        "EnumLiteralExpImpl": 3,
+        "IfExpImpl": 1,
+        "PropertyCallExpImpl": 12
+      },
+      "properties": [
+        "serviceexample::Cluster::designSpeed",
+        "serviceexample::Service::type",
+        "serviceexample::Cluster::backup",
+        "serviceexample::Service::providedBy",
+        "serviceexample::Service::designSpeed"
+      ]
+    }],
+    "properties": [
+      "type",
+      "Container",
+      "Cluster",
+      "providedBy",
+      "designSpeed"
+    ]
+  },
+  {
+    "name": "Cluster",
+    "expressions": [
+      {
+        "operations": {"<>": 1},
+        "name": "backupDifferent",
+        "body": "backup <> self",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["serviceexample::Cluster::backup"]
+      },
+      {
+        "operations": {
+          "includesAll": 1,
+          "or": 1,
+          "=": 1
+        },
+        "name": "sameServics",
+        "body": "backup = null or backup.services->includesAll(services)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 3,
+          "VariableExpImpl": 3,
+          "NullLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "serviceexample::Cluster::services",
+          "serviceexample::Cluster::backup"
+        ]
+      },
+      {
+        "operations": {
+          "<=": 1,
+          "size": 1,
+          "=": 1
+        },
+        "name": "onlyOneImportant",
+        "body": "services->select(s | s.type = ServiceType::IMPORTANT)->size() <= 1",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 3,
+          "VariableExpImpl": 2,
+          "IntegerLiteralExpImpl": 1,
+          "EnumLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "serviceexample::Service::type",
+          "serviceexample::Cluster::services"
+        ]
+      },
+      {
+        "operations": {
+          "<=": 1,
+          "sum": 1
+        },
+        "name": "goodSpeed",
+        "body": "designSpeed <= server.speed->sum()",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 2,
+          "VariableExpImpl": 3,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "serviceexample::Cluster::designSpeed",
+          "serviceexample::Cluster::server",
+          "serviceexample::Server::speed"
+        ]
+      }
+    ],
+    "properties": [
+      "designSpeed",
+      "services",
+      "server",
+      "backup",
+      "Container",
+      "Service",
+      "Cluster"
+    ]
+  },
+  {
+    "name": "NamedThing",
+    "expressions": [],
+    "properties": ["name"]
+  },
+  {
+    "name": "Server",
+    "expressions": [{
+      "operations": {
+        "<=": 1,
+        "and": 1,
+        ">": 1
+      },
+      "name": "speedValid",
+      "body": "speed > 0 and speed <= 5",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "OperationCallExpImpl": 3,
+        "VariableExpImpl": 2,
+        "IntegerLiteralExpImpl": 2,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": ["serviceexample::Server::speed"]
+    }],
+    "properties": [
+      "speed",
+      "Cluster"
+    ]
+  },
+  {
+    "name": "Container",
+    "expressions": [],
+    "properties": [
+      "service",
+      "cluster"
+    ]
+  }
+]

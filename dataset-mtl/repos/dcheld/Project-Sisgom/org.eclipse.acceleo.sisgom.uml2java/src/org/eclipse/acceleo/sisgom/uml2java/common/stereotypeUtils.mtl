@@ -1,0 +1,30 @@
+[comment encoding = UTF-8 /]
+[module stereotypeUtils('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+
+[query public getStereotypePropertyValue(stereotypedElement : Element, stereotypeName : String, propertyName : String) : OclAny = 
+   let stereotype : Stereotype = stereotypedElement.getAppliedStereotype(stereotypeName) in
+     if not stereotype.oclIsUndefined() then
+       stereotypedElement.getValue(stereotype, propertyName)
+     else 
+       null
+     endif/]
+
+[query public getStereotypeProperty(stereotypedElement : Stereotype, propertyName : String) : Property = 
+   stereotypedElement.attribute->select(a : Property | a.name = propertyName)->asOrderedSet()->first()/]
+
+[query public hasStereotypeQuery(elem : Element, name : String) : Boolean = 
+	self.getAppliedStereotypes()->exists(e : Stereotype | e.name = name)
+ /]
+
+[query public getStereotypeQuery(elem : Element, name : String) : Stereotype = 
+	self.getAppliedStereotypes()->select(e : Stereotype | e.name = name)->asOrderedSet()->first()
+ /]
+
+[query public getPropertyId(aClass : Class) : Property = 
+	let a : Set(Property) = aClass.getAllAttributes()->select(aProp : Property | aProp.hasStereotypeQuery('Id')) in
+		if a->isEmpty() then
+			null
+		else
+			a->asSequence()->first()
+		endif/]

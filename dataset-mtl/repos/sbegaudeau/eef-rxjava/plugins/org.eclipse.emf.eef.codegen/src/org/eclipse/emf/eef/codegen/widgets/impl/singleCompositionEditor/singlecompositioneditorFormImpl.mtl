@@ -1,0 +1,76 @@
+[comment encoding = UTF-8
+ *******************************************************************************
+ * Copyright (c) 2008-2012 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module singlecompositioneditorFormImpl('http://www.eclipse.org/emf/eef/views/1.0.0', 'http://www.eclipse.org/emf/eef/components/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/eef/generation/1.0.0') extends org::eclipse::emf::eef::codegen::widgets::api::widgetFormImpl/]
+
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::services::viewCommon /]
+[import org::eclipse::emf::eef::codegen::services::imports/]
+
+[comment ===== Case Widget = SingleCompositionEditor ===== /]
+[template public manageImports(widget : Widget, pec : PropertiesEditionComponent, view : View, basePackage : String) overrides manageImports ? (widget.name = 'SingleCompositionEditor')]
+[pec.addImports(Sequence{
+	'org.eclipse.swt.widgets.Composite',
+	'org.eclipse.emf.ecore.EObject',
+	'org.eclipse.emf.eef.runtime.impl.notify.PropertiesEditionEvent',
+	'org.eclipse.emf.eef.runtime.ui.widgets.SingleCompositionEditor.SingleCompositionListener',
+	'org.eclipse.emf.eef.runtime.ui.widgets.FormUtils',
+	'org.eclipse.swt.SWT',
+	'org.eclipse.swt.layout.GridData'})/]
+[/template]
+
+[template public widgetDeclaration(editor : ElementEditor) overrides widgetDeclaration ? (editor.representation.name = 'SingleCompositionEditor')]
+	protected [include('org.eclipse.emf.eef.runtime.ui.widgets.SingleCompositionEditor')/] [editor.elementEditorName()/];
+[/template]
+
+[template public implementation(editor : ElementEditor) overrides implementation ? (editor.representation.name = 'SingleCompositionEditor')]
+return create[editor.name.toJavaClassifier()/]SingleCompositionEditor(parent, widgetFactory);
+[/template]
+
+[template public additionalImplementation(editor : ElementEditor, pec : PropertiesEditionComponent, inputPEC: PropertiesEditionComponent) overrides additionalImplementation ? (editor.representation.name = 'SingleCompositionEditor')]
+	/**
+	 * @param parent the parent composite
+	 * @param widgetFactory factory to use to instanciante widget of the form
+	 * [editor.owningViewsRepository().associatedGenModel().generationMark()/]
+	 */
+	protected Composite create[editor.name.toJavaClassifier()/]SingleCompositionEditor(Composite parent, FormToolkit widgetFactory) {
+		[if (editor.nameAsLabel)]
+		FormUtils.createPartLabel(widgetFactory, parent, [include(editor.owningViewsRepository().qualifiedMessagesProvider())/].[editor.editorKey(editor.owningView())/], propertiesEditionComponent.isRequired([editor.editorID()/], [editor.owningViewsRepository().vrClass()/].FORM_KIND));
+		[else]
+		createDescription(parent, [editor.editorID()/], [include(editor.owningViewsRepository().qualifiedMessagesProvider())/].[editor.editorKey(editor.owningView())/]);
+		[/if]
+		//create widget
+		[editor.elementEditorName()/] = new SingleCompositionEditor(widgetFactory, parent, SWT.NONE);
+		GridData [editor.elementEditorName()/]Data = new GridData(GridData.FILL_HORIZONTAL);
+		[editor.elementEditorName()/].setLayoutData([editor.elementEditorName()/]Data);
+		[editor.elementEditorName()/].addEditorListener(new SingleCompositionListener() {
+			
+			public void edit() {
+				propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this,  [editor.editorID()/], PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.EDIT, null, null));				
+				[editor.elementEditorName()/].refresh();
+			}
+			
+			public void clear() {
+				propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this,  [editor.editorID()/], PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.UNSET, null, null));
+				[editor.elementEditorName()/].refresh();
+			}
+		});
+		[editor.elementEditorName()/].setID([editor.editorID()/]);
+		FormUtils.createHelpButton(widgetFactory, parent, propertiesEditionComponent.getHelpContent([editor.editorID()/], [editor.owningViewsRepository().vrClass()/].FORM_KIND), null); //$NON-NLS-1$
+		// [protected ('for create'.concat(editor.name.toJavaClassifier()).concat('SingleCompositionEditor'))]
+
+		// [/protected]
+		return parent;
+	}
+
+[/template]

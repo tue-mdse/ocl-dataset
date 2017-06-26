@@ -1,0 +1,89 @@
+[comment encoding = UTF-8 /]
+[module generate_cycabtk('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DeploymentQueries /]
+
+[import generate_main_lua/]
+[import generate_configuration_file/]
+[import generate_vehicle/]
+[import generate_lidar/]
+[import generate_camera/]
+[import generate_gps/]
+[import generate_system/]
+[import generate_cycabtk_conf/]
+[import generate_cycabtk_launch/]
+[import generate_imu/]
+[import generate_robot/]
+
+[template public generateCycabTK(model : Model)]
+[comment @main/]
+[comment]RTMaps main diagram generation[/comment]
+
+[if (isRootModel(model))]
+	[comment][inspectModel(model)/][/comment]	
+	
+	[for (c: Class | getDefinedComponentsForPlatform(model, 'cycabTK'))]
+		[if getAttributeValue(c, 'native', getStereotype(c), 'false') = 'false']
+		[if( hasStereotype(c, 'Robot'))]
+			[generateRobot(c, model)/]
+		[elseif (hasStereotype(c, 'LidarSystem'))]
+			[generateLidar(c, model)/]
+		[elseif (hasStereotype(c, 'CameraSystem'))]
+			[generateCamera(c, model)/]
+		[elseif (hasStereotype(c, 'GPSSystem'))]
+			[generateGPS(c, model)/]
+		[elseif (hasStereotype(c, 'InertialMeasurementUnitSystem'))]
+			[generateIMU(c, model)/]
+		[elseif (inheritsFrom(c, 'RoboticSystem'))]
+			[generateSystem(c, model)/]
+		[/if]
+		[/if]
+	[/for]
+	
+	[comment][generateConfigurationFile(model)/][/comment]
+	[comment][generateMainLua(model)/][/comment]
+	
+	[comment][for (elt: NamedElement | getElementsWithInheritedStereotype(model, 'RoboticSystem'))]
+		[let c : Class = elt.oclAsType(Class)]
+		[if (hasStereotype(c, 'LidarSystem'))]
+			[generateLidar(c, model)/]
+		[elseif (hasStereotype(c, 'CameraSystem'))]
+			[generateCamera(c, model)/]
+		[elseif (hasStereotype(c, 'GPSSystem'))]
+			[generateGPS(c, model)/]
+		[elseif (hasStereotype(c, 'IMU'))]
+			[generateIMU(c, model)/]
+		[else]
+			[generateSystem(c, model)/]
+		[/if]
+		[/let]
+	[/for]
+
+	[for (elt: NamedElement | getElementsWithStereotype(model, 'Robot'))]
+		[let c : Class = elt.oclAsType(Class)]
+			[generateRobot(c, model)/]
+		[/let]
+	[/for][/comment]
+	
+	[comment][for (elt: NamedElement | getElementsWithStereotype(model, 'LidarSystem'))]
+		[let c : Class = elt.oclAsType(Class)]
+			[generateLidar(c, model)/]
+		[/let]
+	[/for][/comment]
+
+	[generateMainLua(model)/]
+	
+	[generateCycabtkConf(model)/]
+	
+	[generateCycabtkLaunch(model)/]
+
+[/if]
+
+[/template]
+
+
+[template public generate_subcomponents(c : Class, model : Model) ]
+
+[/template]

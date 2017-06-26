@@ -1,0 +1,137 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module list.
+ */]
+[module list('http://www.eclipse.org/uml2/5.0.0/UML') extends frontend::entities::main ]
+[import ::utils /]
+
+[**
+ * The documentation of the template mainListState.
+ * @param c
+ */]
+[template public mainListState(c : Class, path : String)]
+[let filePath : String = path.concat('list/')]
+    [c.genController(filePath)/]
+    [c.genTemplate(filePath)/]
+[/let]
+[/template]
+
+[template private genController(c : Class, path : String)]
+[file (path.concat(c.getName()).concat('.list.ctrl.js'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+(function (ng) {
+
+    var mod = ng.module("[c.getModule()/]");
+
+    mod.controller("[c.getListCtrlName()/]", ['['/]"$scope", '$state', '[c.getRecordsName()/]', '$stateParams',
+        function ($scope, $state, [c.getRecordsName()/], $params) {
+            $scope.records = [c.getRecordsName()/];
+
+            //Paginación
+            this.itemsPerPage = $params.limit;
+            this.currentPage = $params.page;
+            this.totalItems = [c.getRecordsName()/].totalRecords;
+
+            this.pageChanged = function () {
+                $state.go('[c.getListStateName()/]', {page: this.currentPage});
+            };
+
+            $scope.actions = {
+                create: {
+                    displayName: 'Create',
+                    icon: 'plus',
+                    fn: function () {
+                        $state.go('[c.getNewStateName()/]');
+                    }
+                },
+                refresh: {
+                    displayName: 'Refresh',
+                    icon: 'refresh',
+                    fn: function () {
+                        $state.reload();
+                    }
+                }[if (c.isChild())],
+                cancel: {
+                    displayName: 'Go back',
+                    icon: 'arrow-left',
+                    fn: function () {
+                        $state.go('[c.getParentAttribute().getClass().getDetailStateName()/]');
+                    }
+                }
+
+                [/if]
+            };
+            $scope.recordActions = {
+                detail: {
+                    displayName: 'Detail',
+                    icon: 'eye-open',
+                    fn: function (rc) {
+                        $state.go('[c.getDetailStateName()/]', {[c.getIdParamName()/]: rc.id});
+                    },
+                    show: function () {
+                        return true;
+                    }
+                },
+                edit: {
+                    displayName: 'Edit',
+                    icon: 'edit',
+                    fn: function (rc) {
+                        $state.go('[c.getEditStateName()/]', {[c.getIdParamName()/]: rc.id});
+                    },
+                    show: function () {
+                        return true;
+                    }
+                },
+                delete: {
+                    displayName: 'Delete',
+                    icon: 'minus',
+                    fn: function (rc) {
+                        $state.go('[c.getDeleteStateName()/]', {[c.getIdParamName()/]: rc.id});
+                    },
+                    show: function () {
+                        return true;
+                    }
+                }
+            };
+        }[']'/]);
+})(window.angular);
+[/file]
+[/template]
+
+[template private genTemplate(c : Class, path : String)]
+[file (path.concat(c.getName()).concat('.list.tpl.html'), false, 'UTF-8')]
+<!--
+[c.getModel().license()/]
+-->
+<header>
+    <toolbar name="model.name" display-name="model.displayName" actions='actions'></toolbar>
+</header>
+[comment  
+Tipos de lista (typeList):
+list
+gallery
+dataTable
+/]
+[if (c.valueOf('typeList')='list')]
+<list-records fields="model.fields" records="records" actions="recordActions"></list-records>
+[elseif (c.valueOf('typeList')='gallery')]
+<gallery fields="model.fields" records="records" actions="recordActions"></gallery>
+[elseif (c.valueOf('typeList')='dataTable')]
+<datatable fields="model.fields" records="records" actions="recordActions" ></datatable>
+[else]
+<list-records fields="model.fields" records="records" actions="recordActions"></list-records>
+[/if]
+<pagination ng-if="ctrl.itemsPerPage < ctrl.totalItems"
+            total-items="ctrl.totalItems"
+            max-size="5"
+            ng-model="ctrl.currentPage"
+            ng-change="ctrl.pageChanged()"
+            items-per-page="ctrl.itemsPerPage"
+            class="pagination-md" 
+            boundary-links="true" 
+            rotate="false">
+</pagination>
+[/file]
+[/template]

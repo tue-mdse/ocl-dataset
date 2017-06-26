@@ -1,0 +1,158 @@
+[comment encoding = UTF-8 /]
+[module generate_aroccam_readme('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DataTypeQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DeploymentQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::FSMQueries /]
+
+
+[template public generateAroccamReadme(model : Model)]
+
+[file ('README.txt', false, 'UTF-8')]
+
+#if first time executing ros
+echo "source /opt/ros/fuerte/setup.bash" >> ~/.bashrc
+close terminal
+
+#execute roscore
+open a new terminal
+roscore
+
+#execute cycabtk
+open a new terminal
+ls /opt/oarp/Urban/scripts/Scenario/ #to see available scenario
+rosrun CycabTKSimulator cycabtk_simulator -l file.lua #adapt "file" to the scenario name
+
+#execute effibox
+open a terminal
+cd applicationPath/build/
+effibox -a libApplicationName
+
+--------------------------------------------
+--------GENERATOR DEBUG INFORMATIONS--------
+--------------------------------------------
+
+----DeploymentPlan
+List of components instances in the model :
+
+[for (inst: InstanceSpecification | getInstanceSpecifications(model))]
+Name: [inst.name/] Allocation: [getAllocationName(inst)/] [let p: Property = getInstance(model, inst)][if (p.isProperty())]RealName:[p.name/], Type: [p.type.name/], Stereotype:[p.type.oclAsType(Class).getStereotype()/][/if][/let] 
+[/for]
+
+[comment]
+----Stereotypes
+[comment] acceleo help [/comment]
+* Sensor systems:
+[for (elt: NamedElement | getElementsWithStereotype(model,'SensorSystem'))]
+	Sensor: [elt.name/] Qualifier: [elt.qualifiedName/] Label: [elt.getLabel()/]
+[/for]
+* Gps systems:
+[for (elt: NamedElement | getElementsWithStereotype(model,'GPSSystem'))]
+	Sensor: [elt.name/] Qualifier: [elt.qualifiedName/] Label: [elt.getLabel()/]
+[/for]
+* Lidar systems:
+[for (elt: NamedElement | getElementsWithStereotype(model,'LidarSystem'))]
+	Sensor: [elt.name/] Qualifier: [elt.qualifiedName/] Label: [elt.getLabel()/]
+[/for]
+* Camera systems:
+[for (elt: NamedElement | getElementsWithStereotype(model,'CameraSystem'))]
+	Sensor: [elt.name/] Qualifier: [elt.qualifiedName/] Label: [elt.getLabel()/]
+[/for]
+* Actuator systems:
+[for (elt: NamedElement | getElementsWithStereotype(model,'ActuatorSystem'))]
+	Actuator: [elt.name/] Qualifier: [elt.qualifiedName/] Label: [elt.getLabel()/]
+[/for]
+[for (elt: NamedElement | getElementsWithStereotype(model,'System'))]
+	Subsystem: [elt.name/] Qualifier: [elt.qualifiedName/] Label: [elt.getLabel()/]
+[/for]
+[for (elt: NamedElement | getElementsWithStereotype(model,'DataType'))]
+    DataType: [elt.name/] Qualifier: [elt.qualifiedName/] Label: [elt.getLabel()/]
+[/for]
+[for (elt: NamedElement | getRobotMLComponentModels(model))]
+	[elt.name/] Qualifier: [elt.qualifiedName/] Label: [elt.getLabel()/]
+[/for]
+
+[comment] get root class [/comment]
+[let main_comp : Class = getRootClassForModel(model)]
+
+-----DataTypes:
+	[for (elt: NamedElement | getElementsDataType(model))]
+struct [elt.name/]
+{
+	[for (elem: Element | elt.allOwnedElements())]
+		[let p: Property = elem.oclAsType(Property)]
+	[p.type.name/] [p.name/];
+		[/let]
+	[/for]
+};
+
+	[/for]
+
+-----Composants:
+	[for (elt: NamedElement | getRobotMLComponentModels(model))]
+		[let c: Class = elt.oclAsType(Class)]
+
+Classe [c.name/] : macro-component: [c.isMacroComponent()/]
+		[if (isMacroComponent(c))]
+		Sous compos:
+		[for (sub_prop: Property | getLevel1SubComponentsForComponent(c))]
+			[let sub_c : Class = sub_prop.type.oclAsType(Class)]
+			Stereotype : [sub_c.getStereotype()/] Name: [sub_c.name/] Prop.name : [sub_prop.name/] Prop.type.name : [sub_prop.type.name/]
+				Inputs ports:
+				[for (port : Port | getInputPortsForElement(sub_c))]
+					Name: [port.name/] Type name: [port.type.name/]
+				[/for]
+				Output ports:
+				[for (port : Port | getOutputPortsForElement(sub_c))]
+					Name: [port.name/] Type name: [port.type.name/]
+				[/for]
+			[/let]
+		[/for]
+		[/if]
+		[/let]
+
+		Inputs ports:
+		[for (port : Port | getInputPortsForElement(elt))]
+			Name: [port.name/] Type name: [port.type.name/]
+		[/for]
+		Output ports:
+		[for (port : Port | getOutputPortsForElement(elt))]
+			Name: [port.name/] Type name: [port.type.name/]
+		[/for]
+		States:
+		[for (op : Operation | elt.oclAsType(Class).getAllOperations())]
+			[comment][op.type.name/][op.bodyCondition /][op.interface/][op.datatype/][/comment]
+			[for( param: Parameter | op.ownedParameter)]
+				[op.name/]([param.type.name/] [param.name/]
+				[if (param.direction.toString() = 'in')]
+				[/if]
+
+			[/for]
+		[/for]
+	[/for]
+
+----Connectors
+	[for (elt: NamedElement | getRobotMLComponentModels(model))]
+		[let c: Class = elt.oclAsType(Class)]
+[c.name/] :
+		[for (conn : Connector | getInternalConnectors(c)) before('\t//internal connexions\n')]
+	<Connection Input="[getDestComponentInstanceNameForConnector(conn)/]" Output="[getSourceComponentInstanceNameForConnector(conn)/]"/>
+		[/for]
+
+		[if c.isMacroComponent()]
+			[for (conn : Connector | getExternalOutputConnectors(c)) before('\t//external input\n')]
+	<Connection Input="[getDestComponentInstanceNameForConnector(conn)/]" Output="[getSourceComponentInstanceNameForConnector(conn)/]"/>
+			[/for]
+			[for (conn: Connector | getExternalInputConnectors(c)) before('\t//external output\n')]
+	<Connection Input="[getDestComponentInstanceNameForConnector(conn)/]" Output="[getSourceComponentInstanceNameForConnector(conn)/]"/>
+			[/for]
+		[/if]
+		[/let]
+	[/for]
+[/let]
+[/comment]
+[/file]
+
+[/template]

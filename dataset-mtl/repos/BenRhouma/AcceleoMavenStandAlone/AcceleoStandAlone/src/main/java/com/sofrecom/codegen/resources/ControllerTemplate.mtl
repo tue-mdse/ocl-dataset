@@ -1,0 +1,128 @@
+[comment encoding = UTF-8 /]
+[module ControllerTemplate('http://wwww.sofrecom.codegen')]
+
+[template public generateControllerTemplate(entity : Entity)]
+
+[file ('./controllers/'.concat(entity.name.concat('Controller.java')), false, 'UTF-8')]
+package controllers;
+
+
+import com.google.inject.Inject;
+import config.Global;
+import dto.[entity.name/];
+import play.api.mybatis.guice.paginator.Page;
+import play.data.Form;
+import play.libs.F;
+import play.mvc.Controller;
+import play.mvc.Result;
+import service.[entity.name/]Service;
+import dto.[entity.name/]CriteriaBuilder;
+
+
+/**
+ * @author : Zied
+ */
+public class [entity.name/]Controller extends Controller {
+
+    @Inject
+    static [entity.name/]Service [entity.name.toLower()/]Service = Global.InjectorFactory.getInjector().getInstance([entity.name/]Service.class);
+
+    static Form<[entity.name/]> [entity.name.toLower()/]Form = Form.form([entity.name/].class);
+
+	static Form<[entity.name/]> searchForm = Form.form([entity.name/].class);
+
+    public static Result submit() {
+
+        final Form<[entity.name/]> frm = play.data.Form.form([entity.name/].class).bindFromRequest();
+        if(frm.get().getId() == null){
+            F.Tuple<Boolean, String> [entity.name.toLower()/]FromRequest = [entity.name.toLower()/]Service.create[entity.name/]FromRequest(frm.get());
+            if ([entity.name.toLower()/]FromRequest._1 != null && ![entity.name.toLower()/]FromRequest._1) {
+                flash("error", [entity.name.toLower()/]FromRequest._2);
+                return rejectEditPage(frm.get().getId());
+            }
+        }else{
+
+            F.Tuple<Boolean, String> insertoperation = [entity.name.toLower()/]Service.update[entity.name/](frm.get());
+            if(insertoperation._1){
+                flash("success" ,"[entity.name.toLower()/] updated");
+            }
+            else{
+                flash("error" , insertoperation._2);
+                frm.reject("login");
+                return rejectEditPage(frm.get().getId());
+            }
+        }
+        return getListpage();
+    }
+
+    public static Result rejectEditPage(Long id) {
+        Form<[entity.name/]> frm;
+        if (id == null) {
+            frm = play.data.Form.form([entity.name/].class).bindFromRequest();
+            return badRequest(views.html.[entity.name.toLower()/].[entity.name.toLower()/]_edit.render("", frm));
+        } else {
+            [entity.name/] [entity.name.toLower()/] = [entity.name.toLower()/]Service.select[entity.name/](id);
+            return badRequest(views.html.[entity.name.toLower()/].[entity.name.toLower()/]_edit.render("", [entity.name.toLower()/]Form.fill([entity.name.toLower()/])));
+        }
+    }
+
+    public static Result editPage(Long id) {
+        Form<[entity.name/]> frm;
+        if (id == null) {
+            frm = play.data.Form.form([entity.name/].class).bindFromRequest();
+            return ok(views.html.[entity.name.toLower()/].[entity.name.toLower()/]_edit.render("", frm));
+        } else {
+            [entity.name/] [entity.name.toLower()/] = [entity.name.toLower()/]Service.select[entity.name/](id);
+            return ok(views.html.[entity.name.toLower()/].[entity.name.toLower()/]_edit.render("", [entity.name.toLower()/]Form.fill([entity.name.toLower()/])));
+        }
+    }
+
+    public static Result add[entity.name/]() {
+        Form<[entity.name/]> newForm = new Form<[entity.name/]>([entity.name/].class);
+        return ok(views.html.[entity.name.toLower()/].[entity.name.toLower()/]_edit.render("", newForm));
+    }
+
+
+    public static Result delete[entity.name/](Long id) {
+        [entity.name.toLower()/]Service = Global.InjectorFactory.getInjector().getInstance([entity.name/]Service.class);
+        F.Tuple<Boolean, String> deleteResult = [entity.name.toLower()/]Service.delete[entity.name/]ById(id);
+
+
+        if(deleteResult ._1){
+            flash("success" ,"[entity.name.toLower()/] deleted");
+            return getListpage();
+        }
+        else{
+            flash("error" , deleteResult._2);
+            return rejectEditPage(id);
+        }
+
+    }
+
+
+    public static Result getListpage() {
+		searchForm = Form.form([entity.name/].class).bindFromRequest();
+        final [entity.name/] [entity.name.toLower()/] = searchForm.get();
+        final Page page = new Page<>([entity.name/].class, [entity.name/]CriteriaBuilder.buildCriteria([entity.name.toLower()/]));
+        return ok(views.html.[entity.name.toLower()/].[entity.name.toLower()/]_list.render("blank page", page, searchForm.fill([entity.name.toLower()/])));
+
+    }
+
+
+    public static Result list(int page) {
+        [entity.name.toLower()/]Service = Global.InjectorFactory.getInjector().getInstance([entity.name/]Service.class);
+        return ok(views.html.[entity.name.toLower()/].[entity.name.toLower()/]_list.render("blank page", [entity.name.toLower()/]Service.getPage(page), searchForm.fill(new [entity.name/]())));
+     }
+
+	public static Result filter() {
+
+        searchForm = Form.form([entity.name/].class).bindFromRequest();
+        final [entity.name/] [entity.name.toLower()/] = searchForm.get();
+        final Page page = new Page<>([entity.name/].class, [entity.name/]CriteriaBuilder.buildCriteria([entity.name.toLower()/]));
+        return ok(views.html.[entity.name.toLower()/].[entity.name.toLower()/]_list.render("blank page", page, searchForm.fill([entity.name.toLower()/])));
+    }
+
+
+}
+[/file]
+[/template]

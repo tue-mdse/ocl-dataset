@@ -1,0 +1,308 @@
+[comment encoding = UTF-8 /]
+[module widgetXML('http://www.eclipse.org/amalgam/tutorials/xtext/Droid')/]
+
+[import org::eclipse::amalgam::tutorials::acceleo::files::layoutResourceXML /]
+[import org::eclipse::amalgam::tutorials::acceleo::files::valueResourceXML /]
+
+[template public viewXML(view : View)]
+[if (view.oclIsKindOf(Widget))]
+[view.oclAsType(Widget).widgetXML()/]
+[/if]
+
+[if (view.oclIsKindOf(Layout))]
+[layoutXML(view.oclAsType(Layout))/]
+[/if]
+[/template]
+
+
+[template public widgetXML(widget : Widget)]
+<[widget.widgetXMLheader()/]
+[comment][if (false = widget.eContainer(ViewCollection).eContainer().oclIsKindOf(View))]
+    xmlns:android="http://schemas.android.com/apk/res/android"
+[/if][/comment]
+[widget.viewDefaultProperties()/]
+
+[widgetAttributes(widget)/]
+/>
+[/template]
+
+
+[template public viewDefaultProperties(view : View)]
+  [if (view.name <> null)]
+  android:id="@+id/[view.name/]"	
+  [/if]
+  android:layout_width="fill_parent"
+  android:layout_height="wrap_content"
+[/template]
+
+
+[comment]I created this template just to make it work as a polymorphic template[/comment]
+[template private widgetXMLheader(widget : Widget)]
+[/template]
+
+[template private widgetXMLheader(textView : TextView)]
+TextView
+[/template]
+
+
+[template private widgetXMLheader(editText : EditText)]
+EditText
+[/template]
+
+
+[template private widgetXMLheader(button : Button)]
+[if (button.src <> null)]ImageButton[else]Button[/if]
+[/template]
+
+
+[template public xmlResourceProperties(seq : Sequence(ValueAccess))]
+[for (va : ValueAccess | seq)]
+[if (va.eAllContents()->isEmpty() = false)]
+  [widgetAttributeDefinition(va)/]
+[/if]
+[/for]
+[/template]
+
+
+[comment][template public attributeValue(va : ValueAccess) post (trim())]
+	[if (va.oclIsKindOf(ResourceAccess))]
+		[resourceAccessValue(va.oclAsType(ResourceAccess))/]
+	[/if]
+
+	[if (va.oclIsKindOf(ValueDefinition))]
+		[valueDefinitionValue(va.oclAsType(ValueDefinition))/]
+	[/if]
+[/template][/comment]
+
+
+[comment][template private stringAV(va : StringVA) post (trim())]
+	[if (va.access <> null)]
+		[va.access.resourceAccessValue()/]
+	[/if]
+
+	[if (va.value <> null)]
+		[va.value.valueDefinitionValue()/]
+	[/if]
+[/template][/comment]
+
+
+
+[template private widgetAttributes(widget : Widget) ]
+[widgetSpecificAttributes(widget)/]
+[xmlResourceProperties(widget.eContents(ValueAccess))/]
+[/template]
+
+
+
+[template public widgetSpecificAttributes(widget : Widget)]
+[comment]<!-- This is an error. -->[/comment]
+[/template]
+
+[template public widgetSpecificAttributes(button : Button)]
+[if (button.target <> null)]
+  android:onClick="goTo[button.target.name.toUpperFirst()/]Screen"
+[/if]
+[/template]
+
+
+
+
+[template private widgetAttributeDefinition(va : ValueAccess) post (trim())]
+[if (va.oclIsKindOf(StringVA))][va.oclAsType(StringVA).valueAttribute()/][/if]
+[if (va.oclIsKindOf(IntegerVA))][va.oclAsType(IntegerVA).valueAttribute()/][/if]
+[if (va.oclIsKindOf(BooleanVA))][va.oclAsType(BooleanVA).valueAttribute()/][/if]
+[if (va.oclIsKindOf(ColorVA))][va.oclAsType(ColorVA).valueAttribute()/][/if]
+[if (va.oclIsKindOf(DimensionVA))][va.oclAsType(DimensionVA).valueAttribute()/][/if]
+[if (va.oclIsKindOf(DrawableVA))][va.oclAsType(DrawableVA).valueAttribute()/][/if]
+[/template]
+
+
+[comment]I have to make this because xtext is not allowing me to use an specialized abstract property[/comment]
+[template private valueAttribute(va : StringVA) post(trim())]
+[comment][if va.attributeValue().trim().size() > 0 ][/comment]
+	android:[va.eContainingFeature().name/]="[attributeValue(va)/]"
+[comment][/if][/comment]
+[/template]
+
+[template private valueAttribute(va : IntegerVA) post(trim())]
+[comment][if va.attributeValue().trim().size() > 0 ][/comment]
+	android:[va.eContainingFeature().name/]="[attributeValue(va)/]"
+[comment][/if][/comment]
+[/template]
+
+[template private valueAttribute(va : BooleanVA) post(trim())]
+[comment][if va.attributeValue().trim().size() > 0 ][/comment]
+	android:[va.eContainingFeature().name/]="[attributeValue(va)/]"
+[comment][/if][/comment]
+[/template]
+
+[template private valueAttribute(va : ColorVA) post(trim())]
+[comment][if va.attributeValue().trim().size() > 0 ][/comment]
+	android:[va.eContainingFeature().name/]="[attributeValue(va)/]"
+[comment][/if][/comment]
+[/template]
+
+[template private valueAttribute(va : DimensionVA) post(trim())]
+[comment][if va.attributeValue().trim().size() > 0 ][/comment]
+	android:[va.eContainingFeature().name/]="[attributeValue(va)/]"
+[comment][/if][/comment]
+[/template]
+
+[template private valueAttribute(va : DrawableVA) post(trim())]
+[if va.attributeValue().trim().size() > 0 ]
+	android:[va.eContainingFeature().name/]="[attributeValue(va)/]"
+[/if]
+[/template]
+
+
+[template private attributeValue(va : StringVA) post (trim())]
+	[if (va.access <> null)]
+		[if (va.access.resource <> null)]@string/[va.access.resource.name/][/if]
+		[if (va.access.externalResource <> null)]@string/[va.access.externalResource/][/if]
+	[/if]
+	[if (va.value <> null)]
+		[va.value.value/]
+	[/if]
+[/template]
+
+[template private attributeValue(va : IntegerVA) post (trim())]
+	[if (va.access <> null)]
+		[if (va.access.resource <> null)]@integer/[va.access.resource.name/][/if]
+		[if (va.access.externalResource <> null)]@integer/[va.access.externalResource/][/if]
+	[/if]
+	[if (va.value <> null)]
+		[va.value.value/]
+	[/if]
+[/template]
+
+[template private attributeValue(va : BooleanVA) post (trim())]
+	[if (va.access <> null)]
+		[if (va.access.resource <> null)]@bool/[va.access.resource.name/][/if]
+		[if (va.access.externalResource <> null)]@bool/[va.access.externalResource/][/if]
+	[/if]
+	[if (va.value <> null)]
+		[va.value.value/]
+	[/if]
+[/template]
+
+[template private attributeValue(va : ColorVA) post (trim())]
+	[if (va.access <> null)]
+		[if (va.access.resource <> null)]@color/[va.access.resource.name/][/if]
+		[if (va.access.externalResource <> null)]@color/[va.access.externalResource/][/if]
+	[/if]
+	[if (va.value <> null)]
+		[va.value.value/]
+	[/if]
+[/template]
+
+[template private attributeValue(va : DimensionVA) post (trim())]
+	[if (va.access <> null)]
+		[if (va.access.resource <> null)]@dimen/[va.access.resource.name/][/if]
+		[if (va.access.externalResource <> null)]@dimen/[va.access.externalResource/][/if]
+	[/if]
+	[if (va.value <> null)]
+		[va.value.value/]
+	[/if]
+[/template]
+
+[template private attributeValue(va : DrawableVA) post (trim())]
+	[if (va.access <> null)]
+		[if (va.access.resource <> null)]@drawable/[va.access.resource.name/][/if]
+		[if (va.access.externalResource <> null)]@drawable/[va.access.externalResource/][/if]
+	[/if]
+	[comment][if (va.value <> null)]
+		[va.value.value/]
+	[/if][/comment]
+[/template]
+
+
+
+
+[comment][template private widgetAttributeDefinition(va : ValueAccess) post (trim())]
+[if va.attributeValue().trim().size() > 0 ]
+	android:[va.eContainingFeature().name/]="[attributeValue(va)/]"
+[/if]
+[/template][/comment]
+
+
+[comment][template private resourceAccessValue(ra : ResourceAccess) post(trim())]
+	[if (ra.externalResource.oclIsUndefined())]
+		[resourceAccessType(ra)/]/[resourceAccessName(ra)/]
+	[/if]
+
+	[if (ra.externalResource <> null)]
+		[resourceAccessType(ra)/]/[ra.externalResource/]
+	[/if]
+[/template][/comment]
+
+
+[comment][template private resourceAccessType(ra : ResourceAccess) post(trim())]
+	[if (ra.oclIsKindOf(StringRA))]
+		@string
+	[/if]
+
+	[if (ra.oclIsKindOf(IntegerRA))]
+		@integer
+	[/if]
+
+	[if (ra.oclIsKindOf(BooleanRA))]
+		@bool
+	[/if]
+
+	[if (ra.oclIsKindOf(ColorRA))]
+		@color
+	[/if]
+
+	[if (ra.oclIsKindOf(DimensionRA))]
+		@dimen
+	[/if]
+[/template][/comment]
+
+[comment]This could not be this way if I could have an abstract property being
+overloaded by a concrete property[/comment]
+[comment][template private resourceAccessName(ra : ResourceAccess) post(trim())]
+	[if (ra.oclIsKindOf(StringRA))]
+		[ra.oclAsType(StringRA).resource.name/]
+	[/if]
+	
+	[if (ra.oclIsKindOf(IntegerRA))]
+		[ra.oclAsType(IntegerRA).resource.name/]
+	[/if]
+
+	[if (ra.oclIsKindOf(BooleanRA))]
+		[ra.oclAsType(BooleanRA).resource.name/]
+	[/if]
+
+	[if (ra.oclIsKindOf(ColorRA))]
+		[ra.oclAsType(ColorRA).resource.name/]
+	[/if]
+
+	[if (ra.oclIsKindOf(DimensionRA))]
+		[ra.oclAsType(DimensionRA).resource.name/]
+	[/if]
+[/template][/comment]
+
+[comment][template private textViewAttributes(tv : TextView)]
+[tv.eGet('text').oclIsUndefined()/]
+    android:text=[propertyValue(tv.text)/]
+    android:hint=[propertyValue(tv.hint)/]
+    android:textColor=[propertyValue(tv.textColor)/]
+[/template]
+
+[/comment]
+
+[comment][template private widgetDefaultAttributes (aWidget : Widget) ]
+		android:id="@+id/[aWidget.id/]"
+    android:layout_width="fill_parent" 
+    android:layout_height="wrap_content" 
+
+    android:top=[propertyValue(aWidget.top)/]
+    android:left=[propertyValue(aWidget.left)/]
+    android:width=[propertyValue(aWidget.width)/]
+    android:height=[propertyValue(aWidget.height)/]
+    android:background=[propertyValue(aWidget.background)/]
+
+    android:clickable=[propertyValue(aWidget.clickable)/]
+    android:fadeScrollBars=[propertyValue(aWidget.fadeScrollBars)/]
+    android:isScrollContainer=[propertyValue(aWidget.isScrollContainer)/]
+[/template][/comment]

@@ -1,0 +1,96 @@
+[comment encoding = UTF-8 /]
+[module dbAdapter('http://www.eclipse.org/uml2/4.0.0/UML')/]
+
+[import xismobile::pim::uml2::gen::android::common::xisMobileUtils /]
+[import xismobile::pim::uml2::gen::android::common::utils /]
+
+[template public generateDbAdapter(c : Class)]
+
+[file ('src/' + c.getPackageDirectoryPath() + '/domain/'.concat(c.name.toUpperFirst()).concat('DbAdapter.java'), false, 'UTF-8')]
+package [c.getPackagePath()/].domain;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+
+
+public class [c.name.toUpperFirst()/]DbAdapter {
+
+	private [c.name.toUpperFirst()/]DbHelper dbHelper;
+	private SQLiteDatabase db;
+	
+	private String['['/][']'/] allColumns = {
+		[c.name.toUpperFirst()/]DbHelper.COLUMN_ID,
+		[for (p : Property | c.attribute)]
+		[c.name.toUpperFirst()/]DbHelper.COLUMN_[p.name.toUpperCase()/],
+		[/for]
+	};
+	
+	
+	public [c.name.toUpperFirst()/]DbAdapter(Context ctx) {
+		dbHelper = new [c.name.toUpperFirst()/]DbHelper(ctx);
+	}
+	
+	public void open() {
+		db = dbHelper.getWritableDatabase();
+	}
+	
+	public void close() {
+		dbHelper.close();
+	}
+	
+	public long create[c.name.toUpperFirst()/]([getAllAttributes()/]) {
+		ContentValues values = new ContentValues();
+		[genContentValues()/]
+		return db.insert([c.name.toUpperFirst()/]DbHelper.TABLE_NAME, null, values);
+	}
+	
+	public boolean delete[c.name.toUpperFirst()/](long rowId) {
+		return db.delete([c.name.toUpperFirst()/]DbHelper.TABLE_NAME,
+			[c.name.toUpperFirst()/]DbHelper.COLUMN_ID + "=" + rowId, null) > 0;
+	}
+	
+	public boolean deleteAll[c.name.toUpperFirst()/]s() {
+		return db.delete([c.name.toUpperFirst()/]DbHelper.TABLE_NAME, null, null) > 0;
+	}
+
+	public Cursor get[c.name.toUpperFirst()/](long rowId) {
+		Cursor cursor = db.query([c.name.toUpperFirst()/]DbHelper.TABLE_NAME, allColumns,
+			[c.name.toUpperFirst()/]DbHelper.COLUMN_ID + "=" + rowId, null, null, null, null);
+		
+		if (cursor != null) {
+			cursor.moveToFirst();
+		}
+		return cursor;
+	}
+	
+	public Cursor getAll[c.name.toUpperFirst()/]s() {
+		return db.query([c.name.toUpperFirst()/]DbHelper.TABLE_NAME, allColumns,
+			null, null, null, null, null);
+	}
+	
+	public boolean update[c.name.toUpperFirst()/](long rowId, [getAllAttributes()/]) {
+		ContentValues values = new ContentValues();
+		[genContentValues()/]
+		return db.update([c.name.toUpperFirst()/]DbHelper.TABLE_NAME, values,
+			[c.name.toUpperFirst()/]DbHelper.COLUMN_ID + "=" + rowId, null) > 0;
+	}
+
+}
+[/file]
+[/template]
+
+[template public getAllAttributes(c : Class) post(trim())]
+[c.attribute.getAttributeTypeAndName()->sep(', ')/]
+[/template]
+
+[template public getAttributeTypeAndName(p : Property)]
+[p.type.name/] [p.name.toLowerFirst()/]
+[/template]
+
+[template public genContentValues(c : Class)]
+[for (p : Property | c.attribute)]
+values.put([c.name.toUpperFirst()/]DbHelper.COLUMN_[p.name.toUpperCase()/], [p.name.toLowerFirst()/]);
+[/for]
+[/template]

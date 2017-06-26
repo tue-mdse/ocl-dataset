@@ -1,0 +1,176 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generateMarkDown.
+ */]
+[module generateMarkDown('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import de::urszeidler::eclipse::solidity::util::uml2service /]
+[import de::urszeidler::eclipse::solidity::templates::generateContracts /]
+[**
+ * The documentation of the template generateMarkDown.
+ * @param aModel
+ */]
+[template public generateMarkDown(aModel : Model)]
+[comment @main/]
+[generatePackage(aModel)/]
+[iteratePackages(aModel)/]
+[/template]
+
+[template public generatePackage (p : Package)?(isGeneratePackage(p)) ]
+[file (p.name+'.md', false, 'UTF-8')]
+# [p.name/]
+
+[p.printDoc()/]
+[for (	aClass : Class | p.allContracts())]
+* [contractLink(aClass)/]
+[/for]
+[for (	aClass : Class | p.allContracts())]
+[printContract(aClass)/]
+[/for]
+
+[/file]
+[/template]
+
+[template public contractLink(aClass : Class) ]
+[ '[' /][aClass.name/][ ']' /](#contract-[aClass.name.toLowerCase()/])[/template]
+[template public contractLink(aClass : Class, selfC : Class) ]
+[if (aClass.owner=selfC.owner)]
+[ '[' /][aClass.name/][ ']' /](#contract-[aClass.name.toLowerCase()/])
+[else]
+[ '[' /][aClass.name/][ ']' /]([aClass.owner.oclAsType(NamedElement).name/]#contract-[aClass.name.toLowerCase()/])
+[/if]
+[/template]
+
+[**
+ * Iterates over the packages.
+*/]
+[template private iteratePackages(p : Package)]
+[for (p1 : Package | p.nestedPackage)]
+[if (isGeneratePackage(p1))]
+[generatePackage(p1)/]
+[/if]
+[iteratePackages(p1)/]
+[/for]
+[/template]
+
+
+[template public printContract (aClass : Class) ]
+
+## contract: [aClass.name/]
+
+    overview:
+[for (op : Operation | aClass.allConstructors())]
+	constructor [aClass.name/]([printParameters(op,ParameterDirectionKind::_in)/])
+[/for]
+[for (op : Operation | aClass.allAbstractFunctions())]
+	abstract function [printFunctionDeclaration(op)/]
+[/for]
+[for (op : Operation | aClass.allFunctions())]
+	function [printFunctionDeclaration(op)/]
+[/for]
+
+[if (not aClass.superClass->isEmpty())]inherites: [for (c : Class | aClass.superClass->sortedBy(indexInContainer()))separator (',')][contractLink(c,aClass)/][/for][/if]
+
+[aClass.printDoc()/]
+[for (ne : NamedElement | aClass.ownedMember->filter(Enumeration)->sortedBy(indexInContainer()))]
+### [aClass.name/] enums: [ne.name/]
+
+[ne.printDoc()/]
+name|doc
+----|----|----
+[for (l : EnumerationLiteral | ne.oclAsType(Enumeration).ownedLiteral)]
+[l.name/]|[l.printDoc()/]
+[/for][/for]
+[printStructs(aClass)/]
+[if (not aClass.allCProperties()->isEmpty())][printPropperties(aClass)/][/if][if (not aClass.allMappingProperties()->isEmpty())][printMapping(aClass)/][/if]-
+[for (op : Operation | aClass.allConstructors())]
+
+#### [aClass.name/].[printFunctionDeclarationA(op)/]
+
+[op.printDoc()/]
+[if (not op.ownedParameter->isEmpty())]
+name|type|doc
+----|----|----
+[for (p : Parameter | op.ownedParameter)]
+[p.name/]|[p.type.name/]|[p.printSingleLineDoc()/]
+[/for]
+[/if]
+[/for]
+[for (op : Operation | aClass.allFunctions())]
+
+#### [aClass.name/].[printFunctionDeclaration(op)/]
+
+[op.printDoc()/]
+[if (not op.ownedParameter->isEmpty())]
+name|type|direction|doc
+----|----|----|----
+[for (p : Parameter | op.ownedParameter)]
+[p.name/]|[p.type.name/]|[p.direction/]|[p.printSingleLineDoc()/]
+[/for]
+[/if]
+[/for]
+[for (op : Operation | aClass.ownedOperation->select(hasStereotype('Event')))]
+
+#### event [op.name /]
+
+[op.printDoc()/]
+[if (not op.ownedParameter->isEmpty())]
+name|type|indexed|doc
+----|----|----|----
+[for (p : Parameter | op.ownedParameter)]
+[p.name/]|[p.type.name/]|[if (hasStereotype(p, 'Indexed')) ]X[else][/if]|[p.printSingleLineDoc()/]
+[/for]
+[/if]
+[/for]
+[/template]
+
+[template public printStructs(aClass : Class)?(not aClass.allStructs()->isEmpty())]
+
+### structs:
+[for (ne : NamedElement | aClass.allStructs())]
+
+[ne.name/]
+[ne.printDoc()/]
+[printPropperties(ne.oclAsType(Class))/]
+[/for]
+[/template]
+
+[template public printMapping (c : Class)?(not c.allMappingProperties()->isEmpty())]
+
+#### [c.name/] mappings
+
+name|type|mapsTo|visiblity|doc
+----|----|----|----|----
+[for (p : Property | c.allMappingProperties())]
+[p.name/]|[p.type.name/]|[getStereotypeValue('Mapping', 'value').oclAsType(NamedElement).name/]|[p.visibility/]|[p.printSingleLineDoc()/][/for]
+[/template]
+
+[template public printPropperties (c : Class)?(not c.allCProperties()->isEmpty()) ]
+
+#### [c.name/] properties
+
+name|type|visiblity|delegate|doc
+----|----|----|----|----
+[for (p : Property | c.allCProperties())]
+[p.name/]|[p.type.name/]|[p.visibility/]|[if (p.hasStereotype('Delegate'))]X[/if]|[p.printSingleLineDoc()/]
+[/for]
+[/template]
+
+[template public printCommentDoc (comments : Set(Comment)) ? (not comments->isEmpty()) ]
+[for (c : Comment | comments)]
+[c._body.printLines()/]
+[/for]
+[/template]
+
+[template public printLines(aString : String)]
+[for (line : String | aString.tokenizeLine())]
+[line/]
+[/for]
+[/template]
+
+[template public printSingleLineDoc (ne : NamedElement)?(not ne.ownedComment->isEmpty()) ]
+[for (c : Comment | ne.ownedComment)][c._body/][/for][/template]
+
+[template public printDoc (ne : NamedElement)  ? (not ne.ownedComment->isEmpty()) ]
+[printCommentDoc(ne.ownedComment)/]
+[/template]

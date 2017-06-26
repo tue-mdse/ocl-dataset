@@ -1,0 +1,129 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_TestContext('http://www.eclipse.org/uml2/4.0.0/UML') extends mdd::codeGenerator::csharp::generate_Class /]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Classifier/]
+[import mdd::codeGenerator::csharp::test::generate_TestCase /]
+[import mdd::codeGenerator::csharp::generate_Property /]
+[import mdd::codeGenerator::csharp::generate_ConfigFile/]
+
+[template public generate(tc : Class, baseDir:String) overrides generate ? (tc.hasStereotype('UmlTp::TestContext')) ]
+[self.generateConfigXml('testContext',baseDir+getProperty('artifact.testResourceFolder')+'/'+tc.qualifiedName('/')+'_Test.config.xml') /]
+[file (baseDir+getProperty('artifact.testFolder')+'/'+tc.qualifiedName('/')+'_Test.cs', false, 'UTF-8')]
+namespace [tc.namespace.qualifiedName('.')/] {
+
+	using NUnit.Framework;
+	
+	['['/]TestFixture]
+	public class [tc.name/]_Test {
+
+        private global::framework.os.dotNet_4_0.OsImpl os;
+		private global::framework.io.fileSystem.ActualFileSystem fs;
+		private global::framework.persistence.xml.XmlPersistence config;
+		private global::framework.logging.log4Net.LoggerImpl logger;
+        private global::framework.basicTypes.String objectId;
+
+        ['['/]SetUp]
+        public void setUp() {
+			this.objectId = "testContext";
+			this.os = new framework.os.dotNet_4_0.OsImpl();
+			this.fs = new framework.io.fileSystem.ActualFileSystem();
+			this.logger = new framework.logging.log4Net.LoggerImpl("logger.config.xml");
+			this.config = new framework.persistence.xml.XmlPersistence(new framework.persistence.PersistenceStoreIdentity("configuration"), "[tc.qualifiedName('/')+'_Test.config.xml'/]");
+
+		  [self.createParts()/]
+		  [self.createLinks()/]
+		  [self.startCompositeParts()/]
+        }
+        ['['/]TearDown]
+        public void tearDown() {
+            this.config.Dispose();
+            this.logger.Dispose();
+            this.fs.Dispose();
+            this.os.Dispose();
+        }
+
+	  [for (op : Operation | tc.ownedOperation)]
+		[op.generate()/]
+	  [/for]
+	
+	  #region Properties
+	  [for (pr : Property | tc.ownedAttribute)]
+		[pr.generate()/]
+	  [/for]
+	  #endregion
+	
+	}
+
+}
+[/file]
+[/template]
+
+[template public generate_TCDefaultConstructor(c : StructuredClassifier) ? (c.hasStereotype('UmlTp::TestContext')) ]
+public [c.name/]_Test() {
+  [c.createParts()/]
+  [c.createLinks()/]
+}
+[/template]
+
+[template public generate(tc : Component, baseDir:String) overrides generate ? (tc.hasStereotype('UmlTp::TestContext')) ]
+[self.generateConfigXml('testContext',baseDir+getProperty('artifact.testResourceFolder')+'/'+tc.qualifiedName('/')+'_Test.config.xml') /]
+[file (baseDir+getProperty('artifact.testFolder')+'/'+tc.qualifiedName('/')+'_Test.cs', false, 'UTF-8')]
+namespace [tc.namespace.qualifiedName('.')/] {
+
+	using global::NUnit.Framework;
+	using global::framework.basicTypes;
+	
+	['['/]TestFixture]
+	public class [tc.name/]_Test {
+
+        private global::framework.os.dotNet_4_0.OsImpl os;
+		private global::framework.io.fileSystem.ActualFileSystem fs;
+		private global::framework.persistence.xml.XmlPersistence config;
+		private global::framework.logging.log4Net.LoggerImpl logger;
+        private global::framework.basicTypes.String objectId;
+
+        ['['/]SetUp]
+        public void setUp() {
+			this.objectId = "testContext";
+			this.os = new framework.os.dotNet_4_0.OsImpl();
+			this.fs = new framework.io.fileSystem.ActualFileSystem();
+			this.logger = new framework.logging.log4Net.LoggerImpl("logger.config.xml");
+			this.config = new framework.persistence.xml.XmlPersistence(new framework.persistence.PersistenceStoreIdentity("configuration"), "[tc.qualifiedName('/')+'_Test.config.xml'/]");
+
+		  [self.createParts()/]
+		  [self.createLinks()/]
+		  [self.startCompositeParts()/]
+        }
+        ['['/]TearDown]
+        public void tearDown() {
+            this.config.Dispose();
+            this.logger.Dispose();
+            this.fs.Dispose();
+            this.os.Dispose();
+        }
+
+	  [for (op : Operation | tc.ownedOperation)]
+		[op.generate()/]
+	  [/for]
+	
+	  #region Properties
+	  [for (pr : Property | tc.ownedAttribute)]
+		[pr.generate()/]
+	  [/for]
+	  #endregion	
+	}
+
+}
+[/file]
+[/template]

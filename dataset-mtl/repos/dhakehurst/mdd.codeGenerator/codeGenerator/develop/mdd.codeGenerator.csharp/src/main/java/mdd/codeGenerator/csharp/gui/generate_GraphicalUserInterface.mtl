@@ -1,0 +1,455 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_GraphicalUserInterface('http://www.eclipse.org/uml2/4.0.0/UML') extends mdd::codeGenerator::csharp::generate_Component /]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Operation /]
+[import mdd::codeGenerator::csharp::generate_Reception /]
+[import mdd::codeGenerator::csharp::generate_Property /]
+[import mdd::codeGenerator::csharp::generate_Classifier/]
+[import mdd::codeGenerator::csharp::generate_PortType/]
+[import mdd::codeGenerator::csharp::generate_PrimitiveType/]
+
+[template public generate(c : Component, srcDir:String) overrides generate ? (c.hasStereotype('MddProfile::GraphicalUserInterface') and not c.hasStereotype('UmlTp::TestComponent')) ]
+[c.generateComponent( srcDir+getProperty('artifact.codeFolder') )/]
+[c.generateData(srcDir+getProperty('artifact.codeFolder') )/]
+[c.generateView(srcDir+getProperty('artifact.codeFolder') )/]
+[c.generateViewXaml(srcDir+getProperty('artifact.codeFolder') )/]
+[c.generateControl(srcDir+getProperty('artifact.codeFolder') )/]
+[/template]
+
+[template public generate(c : Component, srcDir:String) overrides generate ? (c.hasStereotype('MddProfile::GraphicalUserInterface') and c.hasStereotype('UmlTp::TestComponent')) ]
+[c.generateComponent( srcDir+getProperty('artifact.testFolder') )/]
+[c.generateData(srcDir+getProperty('artifact.testFolder') )/]
+[c.generateView(srcDir+getProperty('artifact.testFolder') )/]
+[c.generateViewXaml(srcDir+getProperty('artifact.testFolder') )/]
+[c.generateControl(srcDir+getProperty('artifact.testFolder') )/]
+[/template]
+
+[template public generateComponent(c : Component, srcDir:String)]
+[file (srcDir+'/'+c.qualifiedName('/')+'.cs', false, 'UTF-8')]
+
+namespace [c.namespace.qualifiedName('.')/] {
+
+	/// <summary> GraphicalUserInterface </summary>
+	public class [c.name/]
+	: global::framework.os.threading.Runnable
+	{
+	
+        global::framework.os.OsRef os = new global::framework.os.OsRef();
+        global::framework.logging.LoggerRef log = new global::framework.logging.LoggerRef(new global::framework.logging.Location("[c.name/]"));
+        global::framework.basicTypes.String objectId;
+
+	  #region Constructors
+		public [c.name/](global::framework.basicTypes.String objectId) {
+			this.objectId = objectId;
+			
+			this._fw_data = new [c.name/]Data(this.objectId+".data", this);	
+			this._fw_control = new [c.name/]Control(this.objectId+".control", this);	
+			[c.createParts() /]
+
+			[c.createLinks() /]
+		[for (pt : Port | self.ownedPort)]
+		  [for (i : Interface | pt.provided)]
+			this.port_[pt.name/].[i.name.toLowerFirst()/] = this._fw_data;
+		  [/for]
+		[/for]
+		[for (pt : Port | self.ownedPort)]
+		  [for (i : Interface | pt.required)]
+			this._fw_control.[i.name.toLowerFirst()/] = this.port_[pt.name/].uses;
+		  [/for]
+		[/for]
+		}
+	  #endregion
+
+        private [self.name/]Data _fw_data;
+		public [self.name/]Data fw_data { get {return this._fw_data;}  }
+        private [self.name/]View _fw_view;
+        private [self.name/]Control _fw_control;
+        public [self.name/]Control fw_control { get { return this._fw_control; } }
+
+		#region Active Support
+		private global::framework.os.threading.Thread _thread;
+		public global::framework.os.threading.Thread thread {
+		    get { return _thread; }
+		}
+		
+		public void start() {
+		    this._thread = os.createThread(this.objectId);
+		    this.thread.start(this);
+		}
+	    [c.createRun()/]
+	    [c.createStop()/]
+		#endregion	
+
+	  	#region Operations 
+	  [for (op : Operation | c.ownedOperation->reject(op2|op2.name = c.name))]
+		[op.generate()/]
+	  [/for]	
+	  	#endregion
+
+	  #region Ports
+	  [for (pt : Port | c.ownedPort)]
+		[pt.gen_Port()/]
+	  [/for]
+	  #endregion
+	
+	  #region Properties
+	  [for (pr : Property | c.ownedAttribute->reject(a|a.oclIsTypeOf(Port)))]
+		[pr.generate()/]
+	  [/for]
+      #endregion
+
+	  #region Nested Classes
+	  [for (c : Class | c.nestedClassifier->filter(Class))]
+		[c.generatePortType(srcDir)/]
+	  [/for]
+      #endregion
+	
+	}
+}
+[/file]
+[/template]
+
+[template public createRun(c : Component)]
+public void run() {
+    try {
+        [self.name/] g = this;
+        System.Threading.Thread viewthread = new System.Threading.Thread(new System.Threading.ThreadStart(() => {
+            this._fw_view = new [self.name/]View(g);
+            this._fw_view.ShowDialog();
+        }));
+        viewthread.SetApartmentState(System.Threading.ApartmentState.STA);
+        viewthread.Start();
+    } catch (framework.basicTypes.Exception ex) {
+    }
+}
+[/template]
+
+[template public createStop(c : Component)]
+public void stop() {
+
+}
+[/template]
+
+[template public generateData(c : Component, srcDir:String)]
+[file (srcDir+'/'+self.qualifiedName('/')+'Data.cs', false, 'UTF-8')]
+
+namespace [self.namespace.qualifiedName('.')/] {
+
+	/// <summary> Component </summary>
+	public class [self.name/]Data
+	  :
+	[for (pt : Port | self.ownedPort)]
+	  [for (i : Interface | pt.provided)]
+		[i.qualifiedName('.')/],
+	  [/for]
+	[/for]
+		global::System.ComponentModel.INotifyPropertyChanged
+	{
+		public [self.name/]Data(global::framework.basicTypes.String objectId, [self.name/] gui) {
+			this.gui = gui;
+		}
+
+		[self.name/] gui;
+
+        #region INotifyPropertyChanged Members
+
+        public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+        void notifyPropertyChanged(string name) {
+            System.ComponentModel.PropertyChangedEventHandler handler = PropertyChanged;
+            if (handler != null) {
+                handler(this, new System.ComponentModel.PropertyChangedEventArgs(name));
+            }
+        }
+
+        #endregion
+
+	[for (pt : Port | self.ownedPort)]
+	  [for (inf : Interface | pt.provided)]
+		#region [inf.name/]
+		[inf.qualifiedName('.')/] [inf.name.toLowerFirst()/];
+		[for (op : Operation | inf.ownedOperation)]
+		string _[pt.name/]_[inf.name/]_[op.name/]_text;
+        public string [pt.name/]_[inf.name/]_[op.name/]_text { get { return _[pt.name/]_[inf.name/]_[op.name/]_text; } set { this._[pt.name/]_[inf.name/]_[op.name/]_text = value; this.notifyPropertyChanged("[pt.name/]_[inf.name/]_[op.name/]_text"); } }
+		public [op.generateSignature()/] {
+			this.[pt.name/]_[inf.name/]_[op.name/]_text += "[op.name/](";
+		  [for (p : Parameter | op.ownedParameter->reject(pp:Parameter|ParameterDirectionKind::return = pp.direction))]
+		  	this.[pt.name/]_[inf.name/]_[op.name/]_text += [p.to_string()/] + ", ";
+		  [/for]
+			this.[pt.name/]_[inf.name/]_[op.name/]_text +=")" + System.Environment.NewLine;
+		  [if op.getReturnResult().oclIsUndefined() ][else]return null;[/if]
+		}
+		[/for]
+		[for (r : Reception | inf.ownedReception)]
+		string _[pt.name/]_[inf.name/]_[r.name/]_text;
+        public string [pt.name/]_[inf.name/]_[r.name/]_text { get { return _[pt.name/]_[inf.name/]_[r.name/]_text; } set { this._[pt.name/]_[inf.name/]_[r.name/]_text = value; this.notifyPropertyChanged("[pt.name/]_[inf.name/]_[r.name/]_text"); } }
+		public [r.generateSignature()/] {
+			this.[pt.name/]_[inf.name/]_[r.name/]_text += "[r.name/](";
+		  [for (p : Parameter | r.ownedParameter)]
+		  	this.[pt.name/]_[inf.name/]_[r.name/]_text += [p.to_string()/] + ", ";
+		  [/for]
+			this.[pt.name/]_[inf.name/]_[r.name/]_text +=")" + System.Environment.NewLine;
+		}
+		[/for]
+		#endregion
+	  [/for]
+	[/for]
+	}
+}
+[/file]
+[/template]
+
+[template public to_string(arg : Parameter)]
+[self.name/][if (self.type.basePType().name = 'String')].to_string()[/if]
+[/template]
+
+
+[template public generateView(c : Component, srcDir:String)]
+[file (srcDir+'/'+self.qualifiedName('/')+'View.xaml.cs', false, 'UTF-8')]
+
+namespace [self.namespace.qualifiedName('.')/] {
+	using System;
+	using System.Collections.Generic;
+	using System.Linq;
+	using System.Text;
+	using System.Windows;
+	using System.Windows.Controls;
+	using System.Windows.Data;
+	using System.Windows.Documents;
+	using System.Windows.Input;
+	using System.Windows.Media;
+	using System.Windows.Media.Imaging;
+	using System.Windows.Navigation;
+	using System.Windows.Shapes;
+
+	/// <summary> Component </summary>
+	public partial class [self.name/]View : Window {
+
+        global::framework.os.OsRef os = new global::framework.os.OsRef();
+
+		public [self.name/]View([self.name/] gui) {
+			this.InitializeComponent();
+			this.gui = gui;
+			this.DataContext = this.gui.fw_data;
+		}
+
+		[self.name/] gui;
+
+        private void Window_Closed(object sender, EventArgs e) {
+            System.Environment.Exit(0);
+        }
+
+	  [for (pt : Port | self.ownedPort)]
+        #region [pt.name/]
+          [for (inf : Interface | pt.required)]
+          		#region [inf.name/]
+            [for (r : Reception | inf.ownedReception)]
+					void [pt.name/]_[inf.name/]_[r.name/]_TxButtonClick(object sender, RoutedEventArgs e) {
+						[c.name/]Control.[r.name/]Command cmd = new [c.name/]Control.[r.name/]Command();
+						cmd.context = this.gui.fw_control;
+			  [for (param : Parameter | r.ownedParameter)]
+						cmd.[param.name/] = [param.generateValue(''+pt.name+'_'+inf.name+'_'+r.name)/];
+			  [/for]
+						cmd.execute();
+					}
+
+            [/for]
+            [for (op : Operation | inf.ownedOperation)]
+					void [pt.name/]_[inf.name/]_[op.name/]_CallButtonClick(object sender, RoutedEventArgs e) {
+					}
+            [/for]
+				#endregion
+          [/for]
+          [for (i : Interface | pt.provided)]
+
+          [/for]
+        #endregion
+	  [/for]
+
+	}
+}
+[/file]
+[/template]
+
+
+[template public generateValue(arg : Parameter, contextName : String)]
+[if (self.type.oclIsKindOf(PrimitiveType))]
+  [if ('String' = self.type.oclAsType(PrimitiveType).baseType().name )]
+new [self.typeName()/]( this.[contextName+'_'+self.name/].Text )
+  [else][if ('Boolean' = self.type.oclAsType(PrimitiveType).baseType().name )]
+new [self.typeName()/]( System.Boolean.Parse(this.[contextName+'_'+self.name/].Text) )
+  [else][if ('Integer' = self.type.oclAsType(PrimitiveType).baseType().name )]
+new [self.typeName()/]( System.Int64.Parse(this.[contextName+'_'+self.name/].Text) )
+  [else][if ('PositiveInteger' = self.type.oclAsType(PrimitiveType).baseType().name )]
+new [self.typeName()/]( System.UInt64.Parse(this.[contextName+'_'+self.name/].Text) )
+  [else][if ('Real' = self.type.oclAsType(PrimitiveType).baseType().name )]
+new [self.typeName()/]( System.Double.Parse(this.[contextName+'_'+self.name/].Text) )
+  [else][if ('DateTime' = self.type.oclAsType(PrimitiveType).baseType().name )]
+new [self.typeName()/]( System.DateTime.Parse(this.[contextName+'_'+self.name/].Text ))
+  [else]
+* unknown PrimitiveType base - [self.typeName()/] *
+  [/if][/if][/if][/if][/if][/if]
+[else][if (self.type.oclIsKindOf(Enumeration))]
+([self.typeName()/])System.Enum.Parse(typeof([self.type.qualifiedName('.')/]),[contextName+'_'+self.name/].Text)
+[else]
+new [self.typeName()/]()
+[/if][/if]
+[/template]
+
+[template public generateViewXaml(c : Component, srcDir:String)]
+[file (srcDir+'/'+self.qualifiedName('/')+'View.xaml', false, 'UTF-8')]
+<Window
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	x:Class="[self.qualifiedName('.')/]View"
+	x:Name="Window"
+	Title="[self.name/]"
+	Width="600" Height="500"
+    Closed="Window_Closed"
+>
+
+    <TabControl TabStripPlacement="Top">
+	  [for (pt : Port | self.ownedPort)]
+        <TabItem Header="[pt.name/]">
+			<TabControl TabStripPlacement="Left">
+          [for (inf : Interface | pt.required)]
+          		<TabItem Header="[inf.name/]">
+                    <StackPanel Orientation="Vertical">
+            [for (op : Reception | inf.ownedReception)]
+						<StackPanel Orientation="Horizontal">
+							<Button Click="[pt.name/]_[inf.name/]_[op.name/]_TxButtonClick" >Tx</Button>
+							<Label>[op.name/](</Label>
+              [for (p : Parameter | op.ownedParameter->reject(pp:Parameter|ParameterDirectionKind::return = pp.direction))]
+							[p.generateInputWidget(pt.name+'_'+inf.name+'_'+op.name)/]
+              [/for]
+							<Label>)</Label>
+						</StackPanel>
+            [/for]
+            [for (op : Operation | inf.ownedOperation)]
+						<StackPanel Orientation="Horizontal">
+							<Button Click="[pt.name/]_[inf.name/]_[op.name/]_CallButtonClick" >Call</Button>
+							<Label>[op.name/](</Label>
+              [for (p : Parameter | op.ownedParameter->reject(pp:Parameter|ParameterDirectionKind::return = pp.direction)) separator ('<Label>, </Label>')]
+							[p.generateInputWidget(pt.name+'_'+inf.name+'_'+op.name)/]
+              [/for]
+							<Label>)</Label>
+						</StackPanel>
+            [/for]
+                    </StackPanel>
+				</TabItem>
+          [/for]
+          [for (inf : Interface | pt.provided)]
+          		<TabItem Header="[inf.name/]">
+                    <TabControl TabStripPlacement="Left">
+            [for (op : Reception | inf.ownedReception)]
+                        <TabItem Header="[op.name/]">
+                            <TextBox
+								Name="[pt.name/]_[inf.name/]_[op.name/]_TextBox"
+								Text="{Binding [pt.name/]_[inf.name/]_[op.name/]_text}"
+								AcceptsReturn="True"
+								IsReadOnly="True"
+								VerticalScrollBarVisibility="Auto"
+								HorizontalScrollBarVisibility="Auto"
+							/>
+                        </TabItem>
+            [/for]
+            [for (op : Operation | inf.ownedOperation)]
+                        <TabItem Header="[op.name/]">
+                            <TextBox
+								Text="{Binding [pt.name/]_[inf.name/]_[op.name/]_text}"
+								AcceptsReturn="True"
+								IsReadOnly="True"
+								VerticalScrollBarVisibility="Auto"
+								HorizontalScrollBarVisibility="Auto"
+							/>
+                        </TabItem>
+            [/for]
+                    </TabControl>
+				</TabItem>
+          [/for]
+			</TabControl>
+        </TabItem>
+	  [/for]
+   </TabControl>
+
+</Window>
+[/file]
+[/template]
+
+[template public generateInputWidget(arg : Parameter, contextName : String)]
+<Label Content="[self.name/]" />
+[if (self.type.oclIsKindOf(PrimitiveType))]
+  [if ('String' = self.type.oclAsType(PrimitiveType).baseType().name )]
+<TextBox Name="[contextName+'_'+self.name/]" />
+  [else]
+<TextBox Name="[contextName+'_'+self.name/]" />
+  [/if]
+[else][if (self.type.oclIsKindOf(Enumeration))]
+<ComboBox Name="[contextName+'_'+self.name/]"
+          SelectedIndex="0"
+>
+  [for (el : EnumerationLiteral | self.type.oclAsType(Enumeration).ownedLiteral)]
+	<ComboBoxItem>[el.name/]</ComboBoxItem>
+  [/for]
+</ComboBox>
+[else]
+[/if][/if]
+[/template]
+
+
+[template public generateControl(c : Component, srcDir:String)]
+[file (srcDir+'/'+self.qualifiedName('/')+'Control.cs', false, 'UTF-8')]
+
+namespace [self.namespace.qualifiedName('.')/] {
+
+	/// <summary> Component </summary>
+	public class [self.name/]Control {
+		public [self.name/]Control(global::framework.basicTypes.String objectId, [self.name/] gui) {
+			this.gui = gui;
+		}
+
+		[self.name/] gui;
+
+        public abstract class Command {
+            public [self.name/]Control context;
+            public abstract void execute();
+        }
+
+	[for (pt : Port | self.ownedPort)]
+	  #region [pt.name/]
+	  [for (inf : Interface | pt.required)]
+        #region [inf.name/]
+		public [inf.qualifiedName('.')/] [inf.name.toLowerFirst()/];
+            [for (r : Reception | inf.ownedReception)]
+		public class [r.name/]Command : Command {
+			[for (pr : Parameter | r.ownedParameter)]
+				[pr.generate()/]
+			[/for]
+			public override void execute() {
+				this.context.[inf.name.toLowerFirst()/].rx_[r.name/]( [r.generateArguments()/] );
+			}
+		}
+            [/for]
+            [for (op : Operation | inf.ownedOperation)]
+
+            [/for]
+        #endregion
+	  [/for]
+      #endregion
+	[/for]
+
+	}
+}
+[/file]
+[/template]

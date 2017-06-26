@@ -1,0 +1,195 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module utils('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[template public log(srcDir : String, s:String)]
+[file (srcDir+'/generator.log', true, 'UTF-8')]
+[s/][/file]
+[/template]
+
+[query public activeProperties(c : StructuredClassifier) : Sequence(Property) =
+  c.ownedAttribute->asSequence()
+  ->select(a:Property|a.isComposite)
+  ->select(a:Property| a.type.oclIsKindOf(Class) )
+  ->select(a:Property|a.type.oclAsType(Class).isActive)
+
+/]
+
+[query public isPortType(arg : Class) : Boolean =
+  Port.allInstances().type->includes(self)
+/]
+
+[query public general(arg : Classifier) : Set(Classifier) =
+ self.generalization.general->oclAsSet()
+/]
+
+[query public allOwnedElements2(arg : Classifier) : Set(Classifier) =
+	self.allParents().ownedElement->union( self.ownedElement )->flatten().oclAsSet()
+/]
+
+[template public generate(arg : ValueSpecification)]unknown ValueSpecification subtype [self/][/template]
+
+[query public version(arg : Artifact) : String =
+    if self.hasStereotype('ThalesProfile::Versionable') then
+      self.getTaggedValue('ThalesProfile::Versionable','version')
+    else
+		'unknown'
+    endif
+/]
+
+[query public isOptional(pr : Property) : Boolean =
+ pr.lowerBound() = 0
+/]
+
+[query public isCollection(pr : Property) : Boolean =
+ pr.upperBound() <> 1
+/]
+
+[query public isQualified(pr : Property) : Boolean =
+ not pr.qualifier->isEmpty()
+/]
+
+[query public isCollection(pr : Parameter) : Boolean =
+ pr.upperBound() <> 1
+/]
+
+[query public concat(seq : Sequence(String)) : String =
+  if seq->isEmpty() then
+    ''
+  else
+    if (1 = seq->size()) then
+		seq->first()
+	else
+		seq->first() + seq->subSequence(2,seq->size())->concat()
+	endif
+  endif
+/]
+
+[query public isBasicType(t : Type) : Boolean  =
+ let
+	basicTypeNames:Set(String) = Set{ 'Boolean', 'Real', 'Integer', 'PositiveInteger', 'String', 'BitString' }
+ in
+  basicTypeNames->includes(t.name)
+/]
+
+[query public basePType(arg : Type) : PrimitiveType =
+	if arg.oclAsType(Classifier).generalization.general->isEmpty() then
+		arg.oclAsType(PrimitiveType)
+	else
+  let
+    t : PrimitiveType = arg.oclAsType(Classifier).generalization.general->filter(PrimitiveType)->any(t | t.isBasicType())
+  in
+
+	if not t.oclIsUndefined() then
+		t
+	else
+		arg.oclAsType(Classifier).generalization.general->filter(PrimitiveType).basePType()->any(true)
+	endif
+endif
+/]
+
+[query public dependsOn(c : Class) : Set(Type) =
+	c.ownedAttribute.type
+	->union( c.ownedOperation.ownedParameter.type )
+	->asSet()
+/]
+
+[query public uses(t : Type) : Set(Type) =
+	t.clientDependency->filter(Usage).supplier->filter(Type)->asSet()
+/]
+
+[query public constructors(c : Classifier) : Set(Operation) =
+   c.ownedMember->filter(Operation)->select(op|op.hasStereotype('Standard::Create'))
+/]
+
+[query public hasBody(op:Operation, tgt:String) : Boolean =
+  op.method.oclAsType(OpaqueBehavior).language->includes(tgt)
+/]
+
+[query public qualifiedName2(ne:NamedElement, separator:String) : String =
+	if ne.namespace.oclIsTypeOf(Model) then
+		if ne.isQualifying() then ne.nonKeyWordName() else '' endif
+    else
+		if ne.isQualifying() then
+			ne.namespace.qualifiedName(separator) + separator + ne.nonKeyWordName()
+		else
+			ne.namespace.qualifiedName(separator)
+		endif
+    endif
+/]
+
+[query public nonKeyWordName(ne:NamedElement) : String =
+  ne.name
+/]
+
+[comment qualifying if name of package is lowercase first letter /]
+[query public isQualifying(me : NamedElement) : Boolean =
+	not me.oclIsKindOf(Package) or (me.name.toLowerFirst() = me.name)
+/]
+
+[query public qualifiedName(ne:NamedElement, separator:String) : String =
+	ne.qualifiedNames().name->sep(separator)->filter(String)->concat()
+/]
+
+[query public qualifiedName3(ne:NamedElement, separator:String) : String =
+if ne.oclIsUndefined() then
+	Sequence{}
+else
+	ne.ancestors()
+    ->filter(NamedElement)
+    ->select(isQualifying())
+    .name->sep(separator)->filter(String)
+    ->concat()
+endif
+/]
+
+[query public qualifiedNames(ne : NamedElement) : Sequence(NamedElement) =
+if ne.oclIsUndefined() then
+	Sequence{}
+else
+	ne.ancestors()
+    ->asSequence()
+    ->reverse()->including(ne)
+    ->filter(NamedElement)
+    ->select(isQualifying())
+endif
+/]
+
+
+
+
+[query public qualifiedNames1(pe : PackageableElement) : Sequence(String) =
+ if pe.namespace.oclIsTypeOf(Model) or not pe.namespace.oclIsKindOf(PackageableElement)  then
+   Sequence{ pe.name }
+ else
+   pe.namespace.oclAsType(PackageableElement).qualifiedNames()->union(Sequence{ pe.name })
+ endif
+/]
+
+[query public ancestorNames(pe : PackageableElement) : Sequence(String) =
+ if pe.namespace.oclIsTypeOf(Model) or not pe.namespace.oclIsKindOf(PackageableElement)  then
+   Sequence{ pe.name }
+ else
+   pe.namespace.oclAsType(PackageableElement).qualifiedNames()->union(Sequence{ pe.name })
+ endif
+/]
+
+[query public hasStereotype(e:Element, stereotypeName : String) : Boolean =
+    e.getAppliedStereotypes()->exists(s | stereotypeName = s.qualifiedName )
+/]
+
+ [query public getTaggedValue(stereotypedElement : Element, stereotypeName : String, propertyName : String) : OclAny = 
+   let stereotype : Stereotype = stereotypedElement.getAppliedStereotype(stereotypeName) in
+     if not stereotype.oclIsUndefined() then
+       stereotypedElement.getValue(stereotype, propertyName)
+     else 
+       null
+     endif/]

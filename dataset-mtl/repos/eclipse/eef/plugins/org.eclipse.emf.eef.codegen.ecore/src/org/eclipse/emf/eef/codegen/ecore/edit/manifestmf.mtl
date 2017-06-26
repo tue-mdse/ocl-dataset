@@ -1,0 +1,53 @@
+[comment encoding = UTF-8
+/**
+ * <copyright>
+ *
+ * Copyright (c) 2002-2011 IBM Corporation and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *   IBM - Initial API and implementation
+ *   Obeo - Migrate to Acceleo
+ *
+ * </copyright>
+ */
+/]
+[module manifestmf('http://www.eclipse.org/emf/2002/GenModel')/]
+
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenModel /]
+
+[template public manifestmf(genModel : GenModel)]
+[file (manifestmfPath(), false, 'UTF-8')]
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: %pluginName
+Bundle-SymbolicName: [genModel.editPluginID/];singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-ClassPath: [if (genModel.runtimeJar)][genModel.editPluginID/].jar[else].[/if]
+[if (genModel.runtimePlatform <> GenRuntimePlatform::GWT)]
+Bundle-Activator: [genModel.getQualifiedEditPluginClassName()/]$Implementation
+[/if]
+Bundle-Vendor: %providerName
+Bundle-Localization: plugin
+[if (genModel.complianceLevel = GenJDKLevel::JDK50)]
+Bundle-RequiredExecutionEnvironment: J2SE-1.5
+[elseif (genModel.complianceLevel = GenJDKLevel::JDK60)]
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+[/if]
+[for (pack : String | genModel.getEditQualifiedPackageNames()) before ('Export-Package:') separator (',' + genModel.getLineDelimiter())]
+ [pack/][/for]
+
+[for (pluginID : String | genModel.getEditRequiredPlugins()) before ('Require-Bundle:') separator (',' + genModel.getLineDelimiter())]
+ [pluginID/][if (not pluginID.startsWith('org.eclipse.core.runtime'))];visibility:=reexport[/if][/for]
+
+[if (genModel.runtimeVersion = GenRuntimeVersion::EMF22 or genModel.runtimeVersion = GenRuntimeVersion::EMF23)]
+Eclipse-LazyStart: true
+[/if]
+Bundle-ActivationPolicy: lazy
+[/file]
+[/template]
+
+[query public manifestmfPath(genModel : GenModel) : String = 'META-INF/MANIFEST.MF' /]

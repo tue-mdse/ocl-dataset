@@ -1,0 +1,95 @@
+[comment encoding = UTF-8 /]
+[module generate_mapping_file('http://www.eclipse.org/uml2/3.0.0/UML','http://Papyrus/RobotML/1')]
+[import org::eclipse::acceleo::module::OrocosGenerator::mmqueries::OrocosQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+
+[template public generateMappingFile(model : Model)]
+[file ('/Deployment/connect.xml', false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties SYSTEM "cpf.dtd">
+<properties>
+<simple name="Import" type="string"><value>[model.name/]</value></simple>	
+
+	
+	<!-- Sensors -->
+	[for (elt: NamedElement | getSensors(model))] 
+		[let c : Class = elt.oclAsType(Class)]
+			[for (port  : Port | getAllPorts(elt))]
+                                        [let type : String = port.type.name]   
+                        
+	<struct name="ROSCon[type.substring(type.lastIndex('::') + 2)/]_in" type="ConnPolicy">
+                                        [/let] 
+		<simple name="type" type="short"><value>[if (port.isDataFlowPort())] 0 [elseif (port.isServicePort())] 1 [else] -1 [/if]</value></simple><!-- type of connection: 0 means Data, 1 Service, -1 Unknow -->
+		<simple name="size" type="short"><value>1</value></simple><!-- buffer size -->
+		<simple name="transport" type="short"><value>3</value></simple><!--3 means ROS-->     
+		<simple name="name_id" type="string"><value> [port.name.toUpperFirst()/] </value></simple><!-- topic name -->
+	</struct>                                              
+			[/for]
+		[/let]
+	[/for]
+
+
+	<!-- Actuators -->
+	[for (elt: NamedElement | getActuators(model))]
+		[let c : Class = elt.oclAsType(Class)]
+			[for (port  : Port | getAllPorts(elt))]
+                                        [let type : String = port.type.name]                            
+	
+	<struct name="ROSCon[type.substring(type.lastIndex('::') + 2)/]_out" type="ConnPolicy">
+                                        [/let] 
+		<simple name="type" type="short"><value>[if (port.isDataFlowPort())] 0 [elseif (port.isService)] 1 [else] -1 [/if]</value></simple><!-- type of connection: 0 means Data, 1 Service, -1 Unknown -->
+		<simple name="size" type="short"><value>1</value></simple><!-- buffer size -->
+		<simple name="transport" type="short"><value>3</value></simple><!--3 means ROS-->     
+		<simple name="name_id" type="string"><value> [port.name.toUpperFirst()/] </value></simple><!-- topic name --> 
+	</struct>                                             
+			[/for]
+		[/let]
+	[/for]
+
+
+	<!-- System -->
+	[comment]Loop all elements[/comment]
+	[for (elt: NamedElement | getSystems(model))] 
+		[let c : Class = elt.oclAsType(Class)]
+[comment] If an element have input or/and output port, then it must be system[/comment]
+		[if (elt.getAllPorts() -> isEmpty() = false)]
+
+	<struct name="[c.name/]" type="[c.namespace.name/]::[c.name/]">		
+		<simple name="Server" type="boolean"><value>1</value></simple>
+		<simple name="UseNamingService" type="boolean"><value>1</value></simple>
+		<struct name="Activity" type="PeriodicActivity">
+				 <simple name="Period" type="double"><value>1</value></simple>
+				 <simple name="Priority" type="short"><value>0</value></simple>
+				 <simple name="Scheduler" type="string"><value>ORO_SCHED_RT</value></simple>
+		 </struct>
+
+		 <simple name="AutoConf" type="boolean"><value>1</value></simple>
+		 <simple name="AutoStart" type="boolean"><value>1</value></simple>
+
+		<!-- List all peers (uni-directional) -->
+		<struct name="Peers" type="PropertyBag">
+				[for (port  : Port | getAllPorts(elt))]			
+					[if (getOppositePort(port) <> null )]
+			<simple type="string"><value> [getOppositePort(port).class.name/] </value></simple>									
+					[/if]
+				[/for]
+		</struct>
+
+		 <struct name="Ports" type="PropertyBag">
+[comment]Port type is always in the form of aaa::bbb, for example, sensor_msgs::LaserScan. So we need to pre-process it before using as xml value[/comment]
+				[for (port  : Port | getInputPortsForElement(elt))]			
+			<simple name="[port.name/]" type="string"><value> ROSCon[port.name.toUpperFirst()/] </value></simple>
+				[/for]
+				[for (port : Port | getOutputPortsForElement(elt))]
+			<simple name="[port.name/]" type="string"><value> ROSCon[port.name.toUpperFirst()/] </value></simple>
+				[/for]				 
+		 </struct>
+	</struct>
+			[/if]
+		[/let]
+	[/for]
+</properties>	
+[/file]
+[/template]
+

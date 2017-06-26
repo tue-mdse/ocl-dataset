@@ -1,0 +1,81 @@
+[comment encoding = UTF-8 /]
+[module templateTestInterface('http://www.eclipse.org/uml2/4.0.0/UML') extends idv::hsiehpinghan::acceleo::java::template::templateClassifier]
+
+[import idv::hsiehpinghan::acceleo::utility::propertyUtility /]
+[import idv::hsiehpinghan::acceleo::java::template::query::queryClassJava /]
+[import idv::hsiehpinghan::acceleo::testng::template::templateTestng /]
+
+[comment]---------------------------public---------------------------[/comment]
+[**
+ * 取得測testInterface的資料夾+檔名+附檔名字串。
+ * @param aClass
+ */]
+[template public templateTestInterfaceFileNameWithFolderAndExtension(aClass : Class) post (self.trim())]
+	[queryProperty('testng', 'testSourceFolderPath') /]/[aClass.templateClassifierFolderPath() /]/[aClass.templateTestInterfaceInterfaceName() /].java
+[/template]
+
+[**
+ * 產生testng的interface，
+ * 這些interface主要是用來確認acceleo重新產生檔案後，
+ * 有刪減的operation都有修改到。
+ * @param aClass
+ */]
+[template public templateTestInterface(aClass : Class)]
+[aClass.templatePackageSection() /]
+
+[aClass.templateTestInterfaceInterfaceSection() /]
+[/template]
+
+[comment]--------------------------protected-------------------------[/comment]
+
+
+[comment]---------------------------private--------------------------[/comment]
+[**
+ * 產生operation的javadocSection。
+ * @param anOperation
+ */]
+[template private templateOperationJavadocSection(anOperation : Operation)]
+/**
+[if (anOperation.queryOwnedComments()->isEmpty() = false)]
+ [anOperation.templateJavadocCommentsSection() /]
+[/if]
+ */
+[/template]
+
+[**
+ * 取得operations section。
+ * @param anOperation
+ */]
+[template private templateOperationSection(anOperation : Operation) post(self.trim())]
+	void [anOperation.queryName() /][anOperation.templateOperationParametersSeparatedString() /]()
+[/template]
+
+[**
+ * 取得testInterface的interface section。
+ * @param aClass
+ */]
+[template private templateTestInterfaceInterfaceSection(aClass : Class)]
+public interface [aClass.templateTestInterfaceInterfaceName() /] {
+[aClass.templateTestInterfaceOperationsSection() /]
+}
+[/template]
+
+[**
+ * 取得testInterface的operations section。
+ * @param aClass
+ */]
+[template private templateTestInterfaceOperationsSection(aClass : Class)]
+[for (anOperation : Operation | aClass.queryOperations())]
+	[anOperation.templateOperationJavadocSection() /]
+	[anOperation.templateOperationSection() /];
+[/for]
+
+	/***********************
+	 * Implemented methods *
+	 **********************/
+[for (anOperation : Operation | aClass.queryClassImplementsOperations())]
+	[anOperation.templateOperationJavadocSection() /]
+	[anOperation.templateOperationSection() /];
+[/for]
+[/template]
+

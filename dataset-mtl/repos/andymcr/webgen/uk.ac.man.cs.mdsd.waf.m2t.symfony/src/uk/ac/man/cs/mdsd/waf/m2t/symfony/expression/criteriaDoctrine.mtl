@@ -1,0 +1,236 @@
+[comment encoding = UTF-8 /]
+[module criteriaDoctrine(
+	'http://cs.manchester.ac.uk/mdsd/Expression',
+	'http://cs.manchester.ac.uk/mdsd/ObjectRelationalMapping',
+	'http://cs.manchester.ac.uk/mdsd/Service',
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::orm::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::names/]
+
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(NullLiteral)) post(trim())]
+NULL
+[/template]
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(IntegerLiteral)) post(trim())]
+[let literal : IntegerLiteral = expression.oclAsType(IntegerLiteral)]
+[literal.value/]
+[/let]
+[/template]
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(StringLiteral)) post(trim())]
+[let literal : StringLiteral = expression.oclAsType(StringLiteral)]
+'[literal.value/]'
+[/let]
+[/template]
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(CurrentTime)) post(trim())]
+':now'
+[/template]
+
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(FeatureReference)) post(trim())]
+[let path : FeatureReference = expression.oclAsType(FeatureReference)]
+[path.feature.featureReference()/]
+[/let]
+[/template]
+
+[template public featureReference(feature : Feature) post(trim())]
+'[feature.columnName()/]'
+[/template]
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(ParameterReference)) post(trim())]
+[let path : ParameterReference = expression.oclAsType(ParameterReference)]
+$[path.parameter.name/]
+[/let]
+[/template]
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(CurrentUser)) post(trim())]
+[let path : CurrentUser = expression.oclAsType(CurrentUser)]
+$this->get('people')->getId()
+[/let]
+[/template]
+
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateBooleanOperator)) post(trim())]
+[let predicate : PredicateBooleanOperator = expression.oclAsType(PredicateBooleanOperator)]
+Criteria::expr()->[predicate.operator()/]([if (predicate.expressions->any(e | e.oclIsKindOf(Predicate))->notEmpty())]
+[for (expression : Expression | predicate.expressions) separator (',')]
+
+    [expression.criteriaExpression()/][/for]
+
+)
+[else]
+[for (expression : Expression | predicate.expressions) separator (', ')]
+// y
+[expression.criteriaExpression()/]
+[/for]
+[/if]
+[/let]
+[/template]
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateEqualityOperator)) post(trim())]
+[let predicate : PredicateEqualityOperator = expression.oclAsType(PredicateEqualityOperator)]
+Criteria::expr()->[predicate.operator()/]([if (predicate.left.oclIsKindOf(Predicate) or predicate.right.oclIsKindOf(Predicate))]
+
+    [predicate.left.criteriaExpression()/],
+    [predicate.right.criteriaExpression()/]
+)
+[else]
+[predicate.left.criteriaExpression()/], [predicate.right.criteriaExpression()/])
+[/if]
+[/let]
+[/template]
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateComparisonOperator)) post(trim())]
+[let predicate : PredicateComparisonOperator = expression.oclAsType(PredicateComparisonOperator)]
+Criteria::expr()->[predicate.operator()/]([predicate.left.criteriaExpression()/], [predicate.right.criteriaExpression()/])
+[/let]
+[/template]
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateIsOperator)) post(trim())]
+[let predicate : PredicateIsOperator = expression.oclAsType(PredicateIsOperator)]
+[predicate.left.criteriaExpression()/], 'IS[if (predicate.negated)] NOT[/if]', [predicate.right.criteriaExpression()/]
+[/let]
+[/template]
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateLikeOperator)) post(trim())]
+[let predicate : PredicateLikeOperator = expression.oclAsType(PredicateLikeOperator)]
+Criteria::expr()->[predicate.operator()/]([predicate.left.criteriaExpression()/], [predicate.right.criteriaExpression()/])
+[/let]
+[/template]
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateIsNull)) post(trim())]
+[let predicate : PredicateIsNull = expression.oclAsType(PredicateIsNull)]
+[if (not predicate.negated)]
+Criteria::expr()->isNull([predicate.feature.criteriaExpression()/])
+[else]
+Criteria::expr()->neq([predicate.feature.criteriaExpression()/], null)
+[/if][/let]
+[/template]
+
+[template public criteriaExpression(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateIsEmpty)) post(trim())]
+[let predicate : PredicateIsEmpty = expression.oclAsType(PredicateIsEmpty)]
+Criteria::expr()->[if (predicate.negated)]gt[else]eq[/if]([predicate.feature.criteriaExpression()/], '0')
+[/let]
+[/template]
+
+[query private operator(predicate : PredicateBooleanOperator) : String
+	= if predicate.operator = BooleanOperator::And then
+			'andX'
+		else if predicate.operator = BooleanOperator::Or then
+			'orX'
+		else
+			'?'
+		endif endif
+/]
+
+[query private operator(predicate : PredicateEqualityOperator) : String
+	= if not predicate.negated then
+			'eq'
+		else
+			'neq'
+		endif
+/]
+
+[query private operator(predicate : PredicateComparisonOperator) : String
+	= if predicate.operator = ComparisionOperator::GreaterThan then
+			if not predicate.negated then
+				'gt'
+			else
+				'lte'
+			endif
+		else if predicate.operator = ComparisionOperator::LessThan then
+			if not predicate.negated then
+				'lt'
+			else
+				'gte'
+			endif
+		else
+			'?'
+		endif endif
+/]
+
+[query private operator(predicate : PredicateLikeOperator) : String
+	= if not predicate.negated then
+			'contains'
+		else
+			'notLike'
+		endif
+/]
+
+
+[template public criteriaParameter(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateBooleanOperator)) post(trim())]
+[let predicate : PredicateBooleanOperator = expression.oclAsType(PredicateBooleanOperator)]
+[for (expression : Expression | predicate.expressions)]
+[expression.criteriaParameter()/]
+[/for]
+[/let]
+[/template]
+
+[template public criteriaParameter(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateEqualityOperator)) post(trim())]
+[let predicate : PredicateEqualityOperator = expression.oclAsType(PredicateEqualityOperator)]
+[predicate.left.criteriaParameter()/]
+[predicate.right.criteriaParameter()/]
+[/let]
+[/template]
+
+[template public criteriaParameter(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateComparisonOperator)) post(trim())]
+[let predicate : PredicateComparisonOperator = expression.oclAsType(PredicateComparisonOperator)]
+[predicate.left.criteriaParameter()/]
+[predicate.right.criteriaParameter()/]
+[/let]
+[/template]
+
+[template public criteriaParameter(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateIsOperator)) post(trim())]
+[let predicate : PredicateIsOperator = expression.oclAsType(PredicateIsOperator)]
+[predicate.left.criteriaParameter()/]
+[predicate.right.criteriaParameter()/]
+[/let]
+[/template]
+
+[template public criteriaParameter(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateLikeOperator)) post(trim())]
+[let predicate : PredicateLikeOperator = expression.oclAsType(PredicateLikeOperator)]
+[predicate.left.criteriaParameter()/]
+[predicate.right.criteriaParameter()/]
+[/let]
+[/template]
+
+[template public criteriaParameter(expression : Expression)
+	? (expression.oclIsTypeOf(PredicateIsEmpty)) post(trim())]
+[let predicate : PredicateIsEmpty = expression.oclAsType(PredicateIsEmpty)]
+[predicate.feature.criteriaParameter()/]
+[/let]
+[/template]
+
+[template public criteriaParameter(expression : Expression)
+	? (expression.oclIsTypeOf(ParameterReference)) post(trim())]
+[let path : ParameterReference = expression.oclAsType(ParameterReference)]
+$query->setParameter('[path.parameter.name/]', $[path.parameter.name/]);
+[/let]
+[/template]
+
+[template public criteriaParameter(expression : Expression)
+	? (expression.oclIsTypeOf(CurrentTime)) post(trim())]
+$query->setParameter('now', new \DateTime('now'));
+[/template]

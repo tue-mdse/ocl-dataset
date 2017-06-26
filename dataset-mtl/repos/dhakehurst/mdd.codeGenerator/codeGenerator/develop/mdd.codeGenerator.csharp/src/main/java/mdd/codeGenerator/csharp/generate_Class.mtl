@@ -1,0 +1,208 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_Class('http://www.eclipse.org/uml2/4.0.0/UML') extends mdd::codeGenerator::csharp::generate_Element /]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Operation /]
+[import mdd::codeGenerator::csharp::generate_Property /]
+[import mdd::codeGenerator::csharp::generate_Reception /]
+[import mdd::codeGenerator::csharp::generate_Classifier/]
+[import mdd::codeGenerator::csharp::generate_PortType/]
+
+
+[template public generate(c : Class, srcDir:String) ? (c.getAppliedStereotypes()->isEmpty())]
+[file (srcDir+getProperty('artifact.codeFolder')+'/'+c.qualifiedName('/')+'.cs', false, 'UTF-8')]
+
+namespace [c.namespace.qualifiedName('.')/] {
+
+	using global::System.Linq;
+	using global::framework.basicTypes;
+
+    /// <summary> Class Description </summary>
+	public class [c.name/]
+	[c.gen_Implements()/]
+	{
+        private global::framework.os.OsRef os;
+        private global::framework.logging.LoggerRef log;
+        private global::framework.persistence.PersistenceRef config;
+        private global::framework.basicTypes.String objectId;
+
+	  /// <summary> Constructor Description </summary>
+	  [if (c.constructors()->isEmpty())]
+	    [c.generate_DefaultConstructor()/]
+	  [else]
+	  [for (op : Operation | c.constructors())]
+		[op.gen_Constructor()/]
+	  [/for]
+	  [/if]
+	
+	  #region Operations
+	  [for (op : Operation | c.ownedOperation->reject(op2|c.constructors()->exists(o|o=op2)))]
+		[op.generate()/]
+	  [/for]
+      #endregion
+
+	  #region Triggered Operation
+    [for (i : Interface | c.interfaceRealization.contract)]
+      [let owner : Interface = i]
+      #region [i.qualifiedName('::')/]
+        [for (r : Reception | i.ownedReception)]
+      void [r.name/] ([r.gen_Parameters()/]) {
+      }
+        [/for]
+      #endregion
+      [/let]
+    [/for]
+      #endregion
+
+	
+	  #region Properties
+	  [for (pr : Property | c.ownedAttribute)]
+		/// <summary> Property Description </summary>
+		[pr.generate()/]
+	  [/for]
+      #endregion
+
+	  [c.activeSupport() /]	
+	  
+	  #region Receptions
+	  [self.receptionSupport()/]
+	  [for (i : Interface | c.interfaceRealization.contract)]
+	    [let owner : Interface = i]
+	    #region [i.qualifiedName('::')/]
+	    [for (r : Reception | i.ownedReception)]
+			[r.generate()/]
+	    [/for]
+        #endregion
+	    [/let]
+	  [/for]
+	  #endregion
+	}
+
+} //namespace [c.namespace.qualifiedName('.')/]
+[/file]
+[/template]
+
+[template public receptionSupport(arg : Class)]
+private System.Collections.Concurrent.BlockingCollection<object> _fw_eventQueue = new System.Collections.Concurrent.BlockingCollection<object>();
+public T _fw_receive<T>(framework.time.Duration timeout) where T : class {
+    object obj;
+    bool res = this._fw_eventQueue.TryTake(out obj, timeout.asMilliseconds.asInteger().to_Int32());
+    if (true == res && obj is T) {
+        return obj as T;
+    } else {
+        return null;
+    }
+}
+[/template]
+
+[template public activeSupport(arg : Class)]
+[if self.isActive]
+#region Active Support
+
+private global::framework.os.threading.Thread _thread;
+public global::framework.os.threading.Thread thread {
+    get { return _thread; }
+}
+
+public void start() {
+	if (null == this._thread) {
+		this.initialiseTriggers();
+    	this._thread = os.createThread(this.objectId);
+    	this.thread.start(this);
+	}
+}
+
+delegate void TriggerAction<in T>(T signal);
+System.Collections.Generic.Dictionary<System.Type, TriggerAction<object>> triggers;
+void initialiseTriggers() {
+	this.triggers = new System.Collections.Generic.Dictionary<System.Type, TriggerAction<object>>();
+    [for (i : Interface | arg.interfaceRealization.contract)]
+      [let owner : Interface = i]
+    #region [i.qualifiedName('::')/]
+        [for (r : Reception | i.ownedReception)]
+	this.triggers['['/]typeof([r.signalName()/])] = (obj => {
+		 [r.signalName()/] signal = obj as [r.signalName()/];
+		 this.[r.name/]([for (p : Parameter | r.ownedParameter) separator (',')]signal.[p.name/][/for]);
+	});
+        [/for]
+    #endregion
+      [/let]
+    [/for]
+}
+
+private System.Threading.CancellationTokenSource _fw_cancellationTokenSource = new System.Threading.CancellationTokenSource();
+[if not self.ownedOperation->exists(op | 'run' = op.name) ]
+  [if not self.ownedOperation->exists(op | 'runStart' = op.name) ]
+/// <summary> Operation Description </summary>
+public void runStart() {
+    try {
+      [self.startCompositeParts()/]
+    } catch (framework.basicTypes.Exception ex) {
+		log.error(new framework.logging.Message(ex.Message));
+    }
+}
+  [/if]
+  [if not self.ownedOperation->exists(op | 'runStep' = op.name) ]
+/// <summary> Operation Description </summary>
+public void runStep() {
+	try {
+	    object obj = _fw_eventQueue.Take(_fw_cancellationTokenSource.Token);
+	    if (this.triggers.ContainsKey(obj.GetType())) {
+			log.trace(new framework.logging.Message("trigger " + obj));
+	        this.triggers['['/]obj.GetType()].Invoke(obj);
+	    } else {
+	        log.warn(new framework.logging.Message("unhandled signal " + obj));
+	    }
+	} catch (Exception ex) {
+	    log.error(new framework.logging.Message(ex.Message));
+	}
+}
+  [/if]
+  [if not self.ownedOperation->exists(op | 'runFinish' = op.name) ]
+/// <summary> Operation Description </summary>
+public void runFinish() {
+
+}
+  [/if]
+/// <summary> Operation Description </summary>
+public void run() {
+	log.trace(new framework.logging.Message("run()"));
+	try {
+		this.runStart();
+		while (false == _fw_cancellationTokenSource.IsCancellationRequested) {
+			try {
+				this.runStep();
+			} catch (System.Exception ex) {
+				log.error(new global::framework.logging.Message(ex.Message));
+			}
+		}
+		this.runFinish();
+	} catch (System.Exception ex) {
+		log.error(new global::framework.logging.Message(ex.Message));
+	}
+}
+[/if]
+[if not self.ownedOperation->exists(op | 'stop' = op.name) ]
+/// <summary> Operation Description </summary>
+public void stop() {
+	log.trace(new framework.logging.Message("stop()"));
+	this._fw_cancellationTokenSource.Cancel();
+  [for ( pr : Property | arg.activeProperties() )]
+    this.[pr.name/].stop();
+	this.[pr.name/].thread.join();
+  [/for]
+}
+[/if]
+#endregion
+[/if]
+[/template]

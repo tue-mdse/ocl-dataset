@@ -1,0 +1,263 @@
+[
+  {
+    "name": "NamedElement",
+    "expressions": [],
+    "properties": ["name"]
+  },
+  {
+    "name": "DigitalActuator",
+    "expressions": [],
+    "properties": ["DigitalAction"]
+  },
+  {
+    "name": "Condition",
+    "expressions": [],
+    "properties": ["Transition"]
+  },
+  {
+    "name": "AMLMachine",
+    "expressions": [],
+    "properties": [
+      "start",
+      "bricks",
+      "frequency",
+      "states"
+    ]
+  },
+  {
+    "name": "AnalogActuator",
+    "expressions": [{
+      "operations": {
+        "<=": 1,
+        "size": 1,
+        "allInstances": 1
+      },
+      "name": "TooMuchAnalogActuator",
+      "body": "\n\t\tAnalogSensor.allInstances()->size() <= 3",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "OperationCallExpImpl": 3,
+        "IntegerLiteralExpImpl": 1,
+        "TypeExpImpl": 1
+      },
+      "properties": []
+    }],
+    "properties": ["AnalogAction"]
+  },
+  {
+    "name": "AnalogAction",
+    "expressions": [],
+    "properties": ["actuator"]
+  },
+  {
+    "name": "AnalogSensor",
+    "expressions": [{
+      "operations": {
+        "<=": 1,
+        "size": 1,
+        "allInstances": 1
+      },
+      "name": "TooMuchAnalogSensor",
+      "body": "\n\t\tAnalogSensor.allInstances()->size() <= 5",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "OperationCallExpImpl": 3,
+        "IntegerLiteralExpImpl": 1,
+        "TypeExpImpl": 1
+      },
+      "properties": []
+    }],
+    "properties": [
+      "AnalogCondition",
+      "AnalogActionSensor"
+    ]
+  },
+  {
+    "name": "TimeCondition",
+    "expressions": [{
+      "operations": {">": 1},
+      "name": "TimeMustBePositive",
+      "body": "\n\tself.time > 0",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "OperationCallExpImpl": 1,
+        "VariableExpImpl": 1,
+        "IntegerLiteralExpImpl": 1,
+        "PropertyCallExpImpl": 1
+      },
+      "properties": ["arduinoml::TimeCondition::time"]
+    }],
+    "properties": [
+      "tComp",
+      "time"
+    ]
+  },
+  {
+    "name": "AnalogActionValue",
+    "expressions": [{
+      "operations": {
+        "<=": 1,
+        "and": 1,
+        ">=": 1
+      },
+      "name": "InvalidValue",
+      "body": "\n\tself.value >= 0 and self.value <= 1023",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "VariableExpImpl": 2,
+        "OperationCallExpImpl": 3,
+        "IntegerLiteralExpImpl": 2,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": ["arduinoml::AnalogActionValue::value"]
+    }],
+    "properties": ["value"]
+  },
+  {
+    "name": "Brick",
+    "expressions": [
+      {
+        "operations": {
+          "<=": 1,
+          "or": 2,
+          "size": 1,
+          "oclIsTypeOf": 3,
+          "allInstances": 1
+        },
+        "name": "TooMuchBricks",
+        "body": "\n\t\tBrick.allInstances()->select(b | b.oclIsTypeOf(DigitalSensor) or b.oclIsTypeOf(DigitalActuator) or b.oclIsTypeOf(AnalogActuator))->size() <= 5",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "OperationCallExpImpl": 8,
+          "VariableExpImpl": 3,
+          "IntegerLiteralExpImpl": 1,
+          "TypeExpImpl": 4
+        },
+        "properties": []
+      },
+      {
+        "operations": {
+          "<>": 4,
+          "or": 2,
+          "oclIsTypeOf": 8,
+          "and": 4,
+          "allInstances": 4,
+          "+": 1,
+          "indexOf": 4,
+          "=": 1,
+          "-": 1
+        },
+        "name": "pin",
+        "body": "\n\t\t\t\tif (self.oclIsTypeOf(AnalogSensor)) then\n\t\t\t\t\tBrick.allInstances()->select(b | b.oclIsTypeOf(AnalogSensor) and b.name <> null)->sortedBy(name)->indexOf(self)\n\t\t\t\telse if (self.oclIsTypeOf(AnalogActuator)) then\n\t\t\t\t\t8 + Brick.allInstances()->select(b | b.oclIsTypeOf(AnalogActuator) and b.name <> null)->sortedBy(name)->indexOf(self)\n\t\t\t\telse if (Brick.allInstances()->select(b | (b.oclIsTypeOf(DigitalSensor) or b.oclIsTypeOf(DigitalActuator)) and b.name <> null)->sortedBy(name)->indexOf(self) = 1) then\n\t\t\t\t\t8\n\t\t\t\telse\n\t\t\t\t\t13 - Brick.allInstances()->select(b | (b.oclIsTypeOf(DigitalSensor) or b.oclIsTypeOf(DigitalActuator)) and b.name <> null)->sortedBy(name)->indexOf(self)\n\t\t\t\tendif\n\t\t\t\tendif\n\t\t\t\tendif",
+        "type": "PropertyImpl",
+        "constructs": {
+          "IteratorExpImpl": 8,
+          "VariableExpImpl": 20,
+          "OperationCallExpImpl": 29,
+          "NullLiteralExpImpl": 4,
+          "IntegerLiteralExpImpl": 4,
+          "TypeExpImpl": 12,
+          "IfExpImpl": 3,
+          "PropertyCallExpImpl": 8
+        },
+        "properties": ["arduinoml::NamedElement::name"]
+      }
+    ],
+    "properties": [
+      "AMLMachine",
+      "pin"
+    ]
+  },
+  {
+    "name": "AMLState",
+    "expressions": [],
+    "properties": [
+      "transitions",
+      "Transition",
+      "AMLMachine",
+      "actions",
+      "AMLMachine"
+    ]
+  },
+  {
+    "name": "DigitalState",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "AnalogComparison",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "AnalogActionSensor",
+    "expressions": [],
+    "properties": ["sensor"]
+  },
+  {
+    "name": "Action",
+    "expressions": [],
+    "properties": ["AMLState"]
+  },
+  {
+    "name": "TimeComparison",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "DigitalSensor",
+    "expressions": [],
+    "properties": ["DigitalCondition"]
+  },
+  {
+    "name": "Transition",
+    "expressions": [],
+    "properties": [
+      "goto",
+      "conditions",
+      "AMLState"
+    ]
+  },
+  {
+    "name": "DigitalCondition",
+    "expressions": [],
+    "properties": [
+      "sensor",
+      "dState"
+    ]
+  },
+  {
+    "name": "DigitalAction",
+    "expressions": [],
+    "properties": [
+      "actuator",
+      "dState"
+    ]
+  },
+  {
+    "name": "AnalogCondition",
+    "expressions": [{
+      "operations": {
+        "<=": 1,
+        "and": 1,
+        ">=": 1
+      },
+      "name": "InvalidValue",
+      "body": "\n\tself.value >= 0 and self.value <= 1023",
+      "type": "ConstraintImpl",
+      "constructs": {
+        "OperationCallExpImpl": 3,
+        "VariableExpImpl": 2,
+        "IntegerLiteralExpImpl": 2,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": ["arduinoml::AnalogCondition::value"]
+    }],
+    "properties": [
+      "aComp",
+      "sensor",
+      "value"
+    ]
+  }
+]

@@ -1,0 +1,63 @@
+[comment encoding = UTF-8 /]
+[module javaDenyOverridesRuleCombineAlgorithm('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthorizationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore')]
+
+
+[template public javaDenyOverridesRuleCombineAlgorithm(anAnnotationStack : AnnotationStack)]
+
+[file (anAnnotationStack.hasCorePSM.name  + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/utilities/authorization/combine/DenyOverridesRuleCombAlgorithm.java', false, 'UTF-8')]
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.combine;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.AbstractEvaluationContext;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.AuthorizationResult;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.core.ResourceAccessRule;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.AuthorizationResultCode;
+import eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].utilities.authorization.enums.CombiningAlgorithmEnum;
+
+public class DenyOverridesRuleCombAlgorithm extends RuleCombiningAlgorithm {
+
+	public DenyOverridesRuleCombAlgorithm() {
+		super(CombiningAlgorithmEnum.DENY_OVERRIDES);
+	}
+	
+	@Override
+	public AuthorizationResult combine(AbstractEvaluationContext evaluationContext, List<?> rules) {
+		List<String> errors = new ArrayList<String>();
+		boolean atLeastOnePermit = false;
+		boolean atLeastOneError = false;
+		Iterator<?> it = rules.iterator();
+		
+		 while (it.hasNext()) {
+			 ResourceAccessRule rule = (ResourceAccessRule)it.next();
+			 AuthorizationResult result = rule.evaluate(evaluationContext);
+			 
+			 if (result.getResultCode() == AuthorizationResultCode.DENY){
+				 return result;
+			 }		 
+			 if (!atLeastOnePermit && result.getResultCode() == AuthorizationResultCode.PERMIT){
+				 atLeastOnePermit = true;
+			 }			 
+			 if(!atLeastOneError && result.getResultCode() == AuthorizationResultCode.INDETERMINATE){
+				 atLeastOneError = true;
+				 errors.addAll(result.getErrorMessages());
+			 }
+		 }
+		 
+		 if (atLeastOneError){
+			 return new AuthorizationResult(AuthorizationResultCode.INDETERMINATE,errors);
+		 }
+		 if (atLeastOnePermit){
+			 return new AuthorizationResult(AuthorizationResultCode.PERMIT);
+		 }
+		 
+		 return new AuthorizationResult(AuthorizationResultCode.NOT_APPLICABLE);
+	}
+
+}
+
+
+[/file]
+[/template]

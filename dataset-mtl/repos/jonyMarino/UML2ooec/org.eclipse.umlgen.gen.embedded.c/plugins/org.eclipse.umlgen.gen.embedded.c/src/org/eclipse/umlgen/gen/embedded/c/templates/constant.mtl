@@ -1,0 +1,65 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2015 Spacebel SA.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Johan Hardy (Spacebel) - initial API and implementation
+[/comment]
+[module constant('http://www.eclipse.org/uml2/5.0.0/UML')/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::property/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::namedelement/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::constraint/]
+[import org::eclipse::umlgen::gen::embedded::c::services::configuration/]
+[import org::eclipse::umlgen::gen::embedded::c::services::queries/]
+
+[query public hasCConstants(c : uml::Class) : Boolean = 
+not(getReadOnly(getHasTypeApplied(ownedAttribute->asSequence()))->isEmpty())/]
+
+[query public hasHConstants(c : uml::Class) : Boolean = 
+not(getPublic(getReadOnly(getHasTypeApplied(ownedAttribute->asSequence())))->isEmpty())/]
+
+[template public genHConstants(c : uml::Class) post(trim())]
+[let seqProp : Sequence(uml::Property) = getPublic(getReadOnly(getHasTypeApplied(ownedAttribute->asSequence())))]
+[for (p : uml::Property | seqProp )]
+[if ownedComment->notEmpty()]
+/*! 
+ * [ownedComment.format('\x5cbrief ', false, ' *        ', 120)/]
+[if (isTraceabilityEnabled())]
+[if (p.isConstrained(getModel().getAllConstraints()))]
+ *
+ * <b>Requirements traceability</b>
+ [p.getRequirementList('*     ')/]
+[/if]
+[/if]
+ */
+[/if]
+extern const [p.type.name/] [p.name/][if (p.isArrray())]['['/][p.getMultiplicity()/][']'/][/if];
+
+[/for]
+[/let]
+[/template]
+
+[template public genCConstants(c : uml::Class) post(trim())]
+[let seqProp : Sequence(uml::Property) = getReadOnly(getHasTypeApplied(ownedAttribute->asSequence()))]
+[for (p : uml::Property | seqProp )]
+[if ownedComment->notEmpty()]
+/*! 
+ * [ownedComment.format('\x5cbrief ', false, ' *        ', 120)/]
+[if (isTraceabilityEnabled())]
+[if (p.isConstrained(getModel().getAllConstraints()))]
+ *
+ * <b>Requirements traceability</b>
+ [p.getRequirementList('*     ')/]
+[/if]
+[/if]
+ */
+[/if]
+[if (isPrivate())]static [/if]const [p.type.name/] [p.name/][if (p.isArrray())]['['/][p.getMultiplicity()/][']'/][/if] = [p.default/];
+
+[/for]
+[/let]
+[/template]

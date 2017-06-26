@@ -1,0 +1,53 @@
+[comment encoding = UTF-8 
+
+Copyright (c) 2012 Obeo
+All rights reserved.  This program and the accompanying materials
+are made available under the terms of the Eclipse Public License 1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+You can apply any license to the files generated with this module and Acceleo.
+
+Contributors :
+	Mathieu Cartaud (Obeo) - initial API and implementation
+/]
+[module osgiServiceXmlFile('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel', 'http://www.obeonetwork.org/dsl/eclipse')]
+
+[import org::obeonetwork::dsl::gen::eclipse::common::normalizeName /]
+
+[template private osgiServiceXmlFile(aDeclarativeService : DeclarativeService)]
+[aDeclarativeService.eContainer(Bundle).genBundlePath()/]/OSGI-INF/[aDeclarativeService.serviceClassName.toLowerFirst()/].xml
+[/template]
+
+[template public genOsgiServiceXmlFile(aDeclarativeService : DeclarativeService)]
+[file (aDeclarativeService.osgiServiceXmlFile(), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<scr:component xmlns:scr="http://www.osgi.org/xmlns/scr/v1.1.0" name="[aDeclarativeService.serviceClassName/]">
+   <implementation class="[aDeclarativeService.genServicePackageName()/].[aDeclarativeService.serviceClassName.toUpperFirst()/]"/>
+[if (aDeclarativeService.providedServices->size() > 0)]
+   [aDeclarativeService.genProvidedServices()/]
+[/if][if (aDeclarativeService.requiredServices->size() > 0)]
+   [aDeclarativeService.genReferencedServices()/]
+[/if]
+</scr:component>
+[/file]
+[/template]
+
+[template private genReferencedServices(aDeclarativeService : DeclarativeService) post(trim())]
+[for (aRequiredService : RequiredService | aDeclarativeService.requiredServices)]
+   <reference bind="add[aRequiredService.reference.name.toUpperFirst()/]" cardinality="[aRequiredService.reference.lowerBound/]..[aRequiredService.genUpperBound()/]" interface="[aRequiredService.genInterfaceID()/]" name="[aRequiredService.reference.name/]" policy="static" unbind="remove[aRequiredService.reference.name.toUpperFirst()/]"/>
+[/for]
+[/template]
+
+
+[template private genProvidedServices(aDeclarativeService : DeclarativeService) post(trim())]
+   <service>
+[for (aProvidedService : ProvidedService | aDeclarativeService.providedServices)]
+      <provide interface="[aProvidedService.genInterfaceProvidedID()/]"/>
+[/for]
+   </service>
+[/template]
+
+[template private genUpperBound(aRequiredService : RequiredService)]
+[if (aRequiredService.reference.upperBound = -1)]n[else][aRequiredService.reference.upperBound/][/if]
+[/template]

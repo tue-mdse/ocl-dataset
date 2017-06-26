@@ -1,0 +1,239 @@
+[comment encoding = UTF-8 /]
+[module generate( 
+	'http://fr.inria.aoste.timesquare.ecl',
+	'http://org.gemoc.moccml/1.0',
+	'http://www.eclipse.org/ocl/3.1.0/CompleteOCLCST',
+	'http://www.eclipse.org/ocl/3.1.0/BaseCST',
+	'http://www.eclipse.org/ocl/3.1.0/Pivot',
+	'http://www.eclipse.org/ocl/3.1.0/EssentialOCLCST')]
+
+[import org::gemoc::mocc::transformations::ecl2mtl::libLoader::loadLibrary /] 
+[import org::gemoc::mocc::transformations::ecl2mtl::main::generateCCSLLibraries /] 
+[import org::gemoc::mocc::transformations::ecl2mtl::main::generateMoCMLLibraries /]
+[import org::gemoc::mocc::transformations::ecl2mtl::main::xtendmodule /] 
+[import org::gemoc::mocc::transformations::ecl2mtl::services::eclQueries /]
+[import org::gemoc::mocc::transformations::ecl2mtl::services::stringQueries /]
+[import org::gemoc::mocc::transformations::ecl2mtl::services::fiacreQueries /]  
+
+
+[template public ecl2mtl(anECLDocument : ECLDocument, resFileNames : String, rootElementName:String)] 
+[comment @main/]
+[file (resFileNames.toString()+'toClockSystem.mtl', false, 'UTF-8')] 
+[ '[' /]comment encoding = UTF-8 /[ ']' /]
+
+[ '[' /]module generate('http://fr.inria.aoste.timemodel.ccslmodel.clockexpressionandrelation', 
+	'http://www.eclipse.org/emf/2002/Ecore', 
+	'http://org.gemoc.moccml/1.0', 
+	'http://fr.inria.aoste.timemodel',
+	'http://org.gemoc.moccml.fsmmodel/1.0',
+	[anECLDocument.getNsURIToDeclare()/]) [ ']' /]
+
+[ '[' /]template public generate(a[rootElementName.deleteSpecialCharacters()/] : [rootElementName/])[ ']' /]
+[ '[' /]comment @main/[ ']' /]
+[ '[' /]file (a[rootElementName.deleteSpecialCharacters()/].name+'_withMoC-[anECLDocument.getMoCIDFromFirstLib()/].clocksystem', false, 'UTF-8')[ ']' /]
+
+"Some global constants"
+|system moccmllibs ccsllibs|
+[if (anECLDocument.imports.importURI.endsWith('.moccml')->size()<>0)]
+"MoCCML librairies specifications" 
+[for (importS : ImportStatement | anECLDocument.imports)]
+[if (importS.importURI.endsWith('.moccml'))]
+[importS.loadMoCMLLibrary().generateMoCMLLibraries() /]
+[/if]
+[/for]
+[/if]
+
+[ if (anECLDocument.imports.importURI.endsWith('.ccslLib')->size()<>0)]
+	"CCSL librairies specifications"
+	[ for (importS : ImportStatement | anECLDocument.imports)]
+		[ if (importS.importURI.endsWith('.ccslLib'))]
+			[ let aLibrary : Library = importS.loadCCSLLibrary()]
+				[aLibrary.name/]
+				[ comment aLibrary.generateCCSLLibraries()/]
+			[ /let]
+		[/if]
+	[ /for]
+[ /if]
+
+
+"Instanciation" 
+
+[comment  For All Context type, get All clocks/]
+
+system := ClockSystem named: '[ '[' /]a[rootElementName.deleteSpecialCharacters()/].name/[ ']' /]_withMoC-[anECLDocument.getMoCIDFromFirstLib()/]'.
+[comment [anECLDocument.getAllContextOccurences()->sep(', ')/]
+system addLibrary:moccmllibs asDictionary.
+"system addLibs:ccsllibs asDictionary."
+
+[for (cDecl : String | anECLDocument.getContextLabels(rootElementName))][ '[' /]for (element : [cDecl/]| a[rootElementName.deleteSpecialCharacters()/].eAllContents([cDecl/]))[ ']' /]
+"clocks for [cDecl.getDeclRightPart()/] [ '[' /]element.name/[ ']' /]" 
+[if (anECLDocument.hasEventsDSA(cDecl))]
+	[comment]system addClocks: #([for (e : String | anECLDocument.getAllEvents(cDecl))][e/][ '[' /]element.name /[ ']' /] [/for]).[/comment]
+[for (e : String | anECLDocument.getAllEvents(cDecl))][e/][/for]
+	[/if]
+	[if (anECLDocument.hasInternalEvents(cDecl))]
+"internal clocks for [cDecl/] [ '[' /]element.name/[ ']' /]" 
+    [comment]system addInternalClocks: #([for (e : String | anECLDocument.getAllInternalEventsAsString(cDecl))][e/][ '[' /]element.name /[ ']' /] [/for]).[/comment]
+	[anECLDocument.getAllInternalEventsAsString(cDecl)/]
+	[/if]
+[ '[' /]/for[ ']' /]
+[/for]	
+
+[for (cDecl : String | anECLDocument.getContextLabels(rootElementName))][ '[' /]for (element : [cDecl/]| a[rootElementName.deleteSpecialCharacters()/].eAllContents([cDecl/]))[ ']' /]
+	[if (anECLDocument.hasInternalEvents(cDecl))]
+"expressions used by  [cDecl.getDeclRightPart()/] [ '[' /]element.name/[ ']' /]" 
+	[for (internalClockName : String | anECLDocument.getAllInternalEventsListAsString(cDecl))]
+
+	[ '[' /]if ( [anECLDocument.getClockIterator(cDecl, internalClockName)/]) [ ']' /]
+	system all[anECLDocument.getExpressionName(cDecl, internalClockName)/]: #([anECLDocument.printListedClockParameters(cDecl, internalClockName)/]) named: #[internalClockName/][ '[' /]element.name/[ ']' /]. 
+	[ '[' /]/if[ ']' /]
+ 
+ 	[/for]
+	[/if]
+"relations for [cDecl.getDeclRightPart()/] [ '[' /]element.name/[ ']' /]" 
+	[for (invar : ConstraintCS | anECLDocument.getInvariants(cDecl))]
+	"[invar.name/] in [cDecl.getDeclRightPart()/] [ '[' /]element.name/[ ']' /]"
+	[if (invar.getLibraryName().equalsIgnoreCase('CCSL') or invar.getLibraryName().equalsIgnoreCase('kernelLibrary'))]
+		[ '[' /]if ( [invar.getRelationCondition()/]) [ ']' /]
+	system library: #Kernel relation: #[invar.getRelationDeclName()/] clocks: #([invar.getClockNamesListedAndSepBySpace()/]) [if (invar.getRelationDeclName().equalsIgnoreCase('Precedes'))] constants:{-1} [/if].
+		[ '[' /]/if[ ']' /]
+	[else]
+	[ '[' /]if ( [invar.getRelationCondition()/]) [ ']' /]
+	system
+		library: #[invar.getLibraryName()/]
+		relation: #[invar.getRelationName()/]
+		clocks: #([invar.getClockNamesListedAndSepBySpace()/])
+		constants: {[invar.getConstantsOrLinkersListedAndSepByDot()/]}
+		variables: {[invar.getVariablesListedAndSepByDot()/]}.
+	[ '[' /]/if[ ']' /]
+
+	[/if]
+	[/for]
+[ '[' /]/for[ ']' /]
+[/for]
+[ '[' /]/file[ ']' /]
+[ '[' /]file ('ClkSysFunctionTest.clocksystem', false, 'UTF-8')[ ']' /]
+SimpleSDF example1 system
+[ '[' /]/file[ ']' /]
+
+
+[ '[' /]/template[ ']' /]
+
+
+
+[/file]
+[file (resFileNames.toString()+'toFiacre.mtl', false, 'UTF-8')]
+[ '[' /]comment encoding = UTF-8 /[ ']' /]
+
+[ '[' /]module generate('http://fr.inria.aoste.timemodel.ccslmodel.clockexpressionandrelation', 
+	'http://www.eclipse.org/emf/2002/Ecore', 
+	'http://org.gemoc.moccml/1.0', 
+	'http://fr.inria.aoste.timemodel',
+	'http://org.gemoc.moccml.fsmmodel/1.0',
+	'http://www.eclipse.org/xtend', 
+	'http://www.eclipse.org/xtend/RichString', 
+	'http://www.eclipse.org/xtext/xbase/Xbase',
+	[anECLDocument.getNsURIToDeclare()/]) [ ']' /]
+[ '[' /]template public generate(a[rootElementName.deleteSpecialCharacters()/] : [rootElementName/])[ ']' /]
+[ '[' /]comment @main/[ ']' /]
+[ '[' /]file (a[rootElementName.deleteSpecialCharacters()/].name+'_FiacreProcess.fcr', false, 'UTF-8')[ ']' /]
+// *********************** Type Declaration ******************************/
+[for (pck : PackageDeclarationCS | anECLDocument.packages)]
+[pck.getModelConstantsDeclaration(rootElementName)/]
+[pck.getTypeArrayIDDeclaration(rootElementName)/]
+[comment pck.getBasicTypesDeclaration(rootElementName)/]
+[comment pck.getTypesDeclaration(rootElementName)/]
+[comment pck.getRootTypeArraysDeclaration(rootElementName)/]
+
+[for (ct : ClassifierContextDeclCS  | pck.getContextsFromPack())]
+/*********************************************************************
+Defining the Functions for : [ct.classifier.name/]
+**********************************************************************/
+[if (anECLDocument.imports.importURI.endsWith('.xtend')->size()<>0)]
+[for (importS : ImportStatement | anECLDocument.imports)]
+[if (importS.importURI.endsWith('.xtend'))]
+[importS.loadXtendFile().generateXtend(ct.classifier.name)/]
+[/if]
+[/for]
+[/if]
+[/for]
+[for (ct : ClassifierContextDeclCS  | pck.getContextsFromPack())]
+[if (ct.classifier.ownedOperation->size()<>0)]
+[if (ct.getEvents()->size()<>0)]
+/************************* [ct.classifier.name/] Process Instances***************************/
+[ '[' /]for (element : [ct.classifier.name/]| a[rootElementName.deleteSpecialCharacters()/].eAllContents([ct.classifier.name/]))[ ']' /]
+process p[ '[' /]element.name/[ ']' /] [ct.lSquareBracket()/][getEventParameters(pck, 'element.name', ct.classifier.name)/][ct.rSquareBracket()/]([getGlobalParameters(ct)/]) is
+	states s0
+	var _self:[ct.classifier.name/]
+[getProcTransitions(pck, 'element.name', ct.classifier.name)/]
+[ '[' /]/for[ ']' /]
+[/if][/if][/for]
+[comment This coming part can be further deleted. It is used only for Test /]
+process pUnConstrainedSemantics[pck.lSquareBracket()/][for (ct : ClassifierContextDeclCS  | pck.getContextsFromPack())]
+[ '[' /]for (element : [ct.classifier.name/]| a[rootElementName.deleteSpecialCharacters()/].eAllContents([ct.classifier.name/]))[ ']' /]
+[getEventParametersOUT(pck, 'element.name', ct.classifier.name)/][ '[' /]/for[ ']' /][/for][pck.rSquareBracket()/] is
+	states s0
+[for (ct : ClassifierContextDeclCS  | pck.getContextsFromPack())]
+[ '[' /]for (element : [ct.classifier.name/]| a[rootElementName.deleteSpecialCharacters()/].eAllContents([ct.classifier.name/]))[ ']' /]
+[getProcTransitionsOUT(pck, 'element.name', ct.classifier.name)/]
+[ '[' /]/for[ ']' /]
+[/for]
+
+[ '[' /]file ('pUnConstrainedSemantics.fcr', false, 'UTF-8')[ ']' /]
+[comment This coming part can be further deleted. It is used only for Test /]
+process pUnConstrainedSemantics[pck.lSquareBracket()/][for (ct : ClassifierContextDeclCS  | pck.getContextsFromPack())]
+[ '[' /]for (element : [ct.classifier.name/]| a[rootElementName.deleteSpecialCharacters()/].eAllContents([ct.classifier.name/]))[ ']' /]
+[getEventParametersOUT(pck, 'element.name', ct.classifier.name)/][ '[' /]/for[ ']' /][/for][pck.rSquareBracket()/] is
+	
+	states s0
+[for (ct : ClassifierContextDeclCS  | pck.getContextsFromPack())]
+[ '[' /]for (element : [ct.classifier.name/]| a[rootElementName.deleteSpecialCharacters()/].eAllContents([ct.classifier.name/]))[ ']' /]
+[getProcTransitionsOUT(pck, 'element.name', ct.classifier.name)/]
+[ '[' /]/for[ ']' /]
+[/for]
+[ '[' /]/file[ ']' /]
+/******************** Process Parallelization for [rootElementName/]******************/
+component sys is
+
+var 
+	global : SystemDataRoot,
+    ID: int := 0
+	//global : SystemDataRoot := INITIAL_Configuration
+[comment getParametersDeclaration(pck)/]
+
+port
+[for (ct : ClassifierContextDeclCS  | pck.getContextsFromPack())]
+[ '[' /]for (element : [ct.classifier.name/]| a[rootElementName.deleteSpecialCharacters()/].eAllContents([ct.classifier.name/]))[ ']' /]
+[getPortDeclaration(pck, 'element.name', ct.classifier.name)/][ '[' /]/for[ ']' /][/for]
+
+
+par
+[comment This coming part can be further deleted. It is used only for Test /]
+
+pUnConstrainedSemantics[pck.lSquareBracket()/][for (ct : ClassifierContextDeclCS  | pck.getContextsFromPack())]
+[ '[' /]for (element : [ct.classifier.name/]| a[rootElementName.deleteSpecialCharacters()/].eAllContents([ct.classifier.name/]))[ ']' /]
+[getEventParameterParDefinition(pck, 'element.name', ct.classifier.name)/],[ '[' /]/for[ ']' /][/for][pck.rSquareBracket()/]
+[for (ct : ClassifierContextDeclCS  | pck.getContextsFromPack())]
+[ '[' /]for (element : [ct.classifier.name/]| a[rootElementName.deleteSpecialCharacters()/].eAllContents([ct.classifier.name/]))[ ']' /]
+|| p[ '[' /]element.name/[ ']' /] [ct.lSquareBracket()/][getEventParameterParDefinition(pck, 'element.name', ct.classifier.name)/][ct.rSquareBracket()/] ([getGlobalParametersInit(ct)/])
+[ '[' /]/for[ ']' /]
+[/for]
+end par
+sys 
+[/for]
+[ '[' /]/file[ ']' /]
+[ '[' /]/template[ ']' /]
+[/file]
+[file ('allURI.txt', false, 'UTF-8')] 
+'http://www.eclipse.org/emf/2002/Ecore', 
+'http://org.gemoc.moccml/1.0', 
+'http://fr.inria.aoste.timemodel',
+'http://org.gemoc.moccml.fsmmodel/1.0',
+[anECLDocument.getNsURIToDeclare()/]
+[/file]
+
+[comment][file (resFileNames.toString()+'toLtsObpMapping.mtl', false, 'UTF-8')] 
+
+[/file][/comment]
+
+[/template]

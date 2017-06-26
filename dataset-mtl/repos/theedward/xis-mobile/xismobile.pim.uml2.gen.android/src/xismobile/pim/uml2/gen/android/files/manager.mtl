@@ -1,0 +1,73 @@
+[comment encoding = UTF-8 /]
+[module manager('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::android::common::utils /]
+
+[template public generateManager(entities : OrderedSet(Class))]
+
+[file ('src/' + entities->first().getPackageDirectoryPath()  + '/domain/DomainEntityManager.java', false, 'UTF-8')]
+package [entities->first().getPackagePath()/].domain;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import android.content.Context;
+
+public class DomainEntityManager {
+	
+	private static DomainEntityManager instance = null;
+
+	private Context context; 
+	[for (c : Class | entities)]
+	private Set<[c.name.toUpperFirst()/]> [c.name.toLowerFirst()/]s;
+	[/for]
+	
+	protected DomainEntityManager(Context context) {
+		this.context = context;
+		[for (c : Class | entities)]
+		[c.name.toLowerFirst()/]s = new HashSet<[c.name.toUpperFirst()/]>();
+		[/for]
+	}
+
+	public static DomainEntityManager getManager(Context context) {
+		if (instance == null) {
+			instance = new DomainEntityManager(context);
+		}
+		return instance;
+	}
+
+	[for (c : Class | entities)]
+	public boolean createOrUpdate[c.name.toUpperFirst()/]([c.name.toUpperFirst()/] [c.name.toLowerFirst()/]) {
+		return [c.name.toLowerFirst()/]s.add([c.name.toLowerFirst()/]);
+	}
+
+	public [c.name.toUpperFirst()/] get[c.name.toUpperFirst()/]ById(String id) {
+		[c.name.toUpperFirst()/] [c.name.toLowerFirst()/] = null;
+
+		for ([c.name.toUpperFirst()/] [c.name.at(1).toLower()/] : [c.name.toLowerFirst()/]s) {
+			if([c.name.at(1).toLower()/].getId().equals(id)) {
+				[c.name.toLowerFirst()/] = [c.name.at(1).toLower()/];
+				break;				
+			}
+		}
+		return [c.name.toLowerFirst()/];
+	}
+
+	public List<[c.name.toUpperFirst()/]> getAll[c.name.toUpperFirst()/]s() {
+		return new ArrayList<[c.name.toUpperFirst()/]>([c.name.toLowerFirst()/]s);
+	}
+
+	public boolean delete[c.name.toUpperFirst()/]([c.name.toUpperFirst()/] [c.name.toLowerFirst()/]) {
+		return [c.name.toLowerFirst()/]s.remove([c.name.toLowerFirst()/]);
+	}
+
+	public void deleteAll[c.name.toUpperFirst()/]s() {
+		[c.name.toLowerFirst()/]s.clear();
+	}
+	[/for]
+
+}
+[/file]
+[/template]

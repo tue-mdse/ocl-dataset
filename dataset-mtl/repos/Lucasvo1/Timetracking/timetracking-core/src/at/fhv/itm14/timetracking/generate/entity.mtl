@@ -1,0 +1,53 @@
+[comment encoding = UTF-8 /]
+[module entity('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import at::fhv::itm14::timetracking::service::uml2service/]
+[import at::fhv::itm14::timetracking::generate::modules /]
+[import at::fhv::itm14::timetracking::generate::datatype /]
+
+
+
+[template public generateEntity(aClass : Class)]
+
+[file (aClass.namespace.toPath().concat(aClass.name.toUpperFirst()).concat('.java'), false, 'UTF-8')]
+
+package [aClass.namespace.name/];
+
+[for (classifier:Classifier | aClass.operationsParametersTypes())]
+import [classifier.getCompleteName()/];	
+[/for]
+import at.fhv.itm14.timetracking.persistence.DatabaseController;
+import java.util.Date;
+[if(aClass.name='User')]
+import java.util.List;
+import java.util.ArrayList;
+[/if]
+
+public class [aClass.name.toUpperFirst()/]{
+
+[aClass.generateProperties()/]
+
+[if aClass.hasStereotype('Singleton')]
+	[aClass.generateSingleton()/]
+[/if]
+
+	[aClass.generateConstructor()/]
+
+
+[for (o : Operation | aClass.ownedOperation) separator('\n')]
+	[o.generateOperation()/]
+[/for]
+
+[for (p : Property | aClass.attribute) separator('\n')]
+	public [if(p.name='activities')]List<[/if][p.type.convertJavaDataType()/][if(p.name='activities')]>[/if] get[p.name.toUpperFirst()/]() {
+		return this.[p.name/];
+	}
+
+	public void set[p.name.toUpperFirst()/]([if(p.name='activities')]List<[/if][p.type.name/][if(p.name='activities')]>[/if] [p.name/]) {
+		this.[p.name/] = [p.name/];
+	}
+[/for]
+
+}
+[/file]
+[/template]

@@ -1,0 +1,58 @@
+[comment encoding = UTF-8 
+
+Copyright (c) 2012 Obeo
+All rights reserved.  This program and the accompanying materials
+are made available under the terms of the Eclipse Public License 1.0
+
+You can apply any license to the files generated with this module and Acceleo.
+
+Original contributor :
+	* Stephane Begaudeau (Obeo)
+Other contributors : 
+ 	*
+/]
+[module classBody('http://www.obeonetwork.org/dsl/scala') extends org::obeonetwork::dsl::gen::scala::files::classifierBody/]
+
+[template public genClassifierBody(aClassifier : Classifier) overrides genClassifierBody ? (aClassifier.oclIsKindOf(Class))]
+[let aClass : Class = aClassifier.oclAsType(Class)]
+[aClass.genClassifierDocumentation()/]
+[aClass.genFinal()/][aClass.genAbstract()/][aClass.genSealed()/][aClass.genCase()/]class [aClass.genName()/] [aClass.genDefaultConstructor()/][aClass.genInheritanceSpace()/] {
+    [aClass.genFields()/]
+
+    [aClass.genConstructors()/]
+
+    [aClass.genMethods()/]
+}
+[/let]
+[/template]
+
+[template public genDefaultConstructor (aClass : Class) ]
+[if (aClass.fields->select(aField : Field | aField.constructorProperty)->size() > 0)]([aClass.fields->select(aField : Field | aField.constructorProperty).genDefaultConstructorParameter()->sep(', ')/]) [/if]
+[/template]
+
+[template public genDefaultConstructorParameter (aField : Field) ]
+[aField.genName()/]: [aField.genType()/]
+[/template]
+
+[template public genConstructors (aClass : Class) post(trim())]
+[for (aConstructor : Constructor | aClass.constructors)]
+/**
+ * The description of the constructor.
+ * 
+[if (aConstructor.ownedComment <> null)]
+ * [aConstructor.ownedComment/]
+[/if]
+[for (aParameter : Parameter | aConstructor.parameters)]
+ * @param [aParameter.name/] [aParameter.ownedComment/]
+[/for]
+ */
+def this([aConstructor.parameters.genParameter()->sep(', ')/]) = {
+    this([aConstructor.genDefaultConstructorParameters()/]);
+}
+
+[/for]
+[/template]
+
+[template public genDefaultConstructorParameters(aConstructor : Constructor)]
+[if (aConstructor.eContainer().oclIsKindOf(Class))][aConstructor.eContainer().oclAsType(Class).fields->select(aField : Field | aField.constructorProperty).genDefaultValue()->sep(', ')/][/if]
+[/template]

@@ -1,0 +1,171 @@
+[comment encoding = UTF-8 /]
+[module genBusiness('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::common::umlUtils /]
+[import com::mgs::uml::gen::as::common::asUtils /]
+[import com::mgs::uml::gen::as::entity::genEntityInterface /]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::common::services /]
+
+
+[template public genEntityImports(m : Model) post (trim())]
+[for (c : Class | m.profile_getAllEntities())]
+import entity.[c.genPackage()/].[c.genName()/];
+[/for]
+[/template]
+
+[template public genEntityFolder(c : Class) post (trim())]
+	entity/[c.genFolder()/]
+[/template]
+
+[comment generate the AS3 business class file for a class /]
+[template public genBusiness(c : Class) ? (profile_isEntity())]
+
+[comment @main /]
+
+[file (c.genEntityFolder() + '/' + c.genFilename(), false, 'UTF-8')]
+package [c.genEntityPackage()/]
+{
+	import entity.Entity;
+	[c.getModel().genInterfaceImports()/]
+	
+	[c.generateClass()/]
+
+}
+[/file]
+
+[/template]
+
+[template public genImport(c : Class) post (trim())]
+[for (linkedClass : Class | c.getAllImportedClass())]
+import [linkedClass.genPackage()/].[linkedClass.genName()/];
+[/for]
+[/template]
+
+[template public genImportVO(c : Class) post (trim())]
+import vo.[c.genPackage()/].[c.genNameVO()/];
+[/template]
+
+[template public genExtend(c : Class) post (trim())]
+[if (c.hasBaseClass())] 
+extends [c.baseClass().genName()/]
+[else]
+extends Entity
+[/if]
+[/template]
+
+[comment generate the business class /]
+[template private generateClass(c : Class) post (trim())]
+
+import entity.EntityEvent;
+
+[c.genImport()/]
+
+public class [c.genName()/] [c.genExtend()/] implements [c.interfaceName()/]
+{
+	[generateBody(c)/]
+}
+[/template]
+
+[comment generate the business class body /]
+[template private generateBody(c : Class) post (trim())]
+
+override public function getClassIdentifier():String{
+	return "[c.genIdentifier()/]";
+}
+
+[generateAttributes(c)/]
+
+[generateConstructor(c)/]
+
+[generateGetters(c)/]
+
+[generateSetters(c)/]
+
+[/template]
+
+[template private generateAttributes(c : Class) post (trim())]
+
+[for (att : Property | c.properties())]
+private var [att.genName()/]:[att.genType()/];
+
+[/for]
+
+[/template]
+
+[template private generateConstructor(c : Class) post (trim())]
+
+public function [genName()/](){
+	super();
+[for (att : Property | c.properties())  ? (upper <> 1)]
+	this.[att.genName()/] = new [att.genType()/]();
+[/for]
+}
+
+[/template]
+
+[template private generateGetters(c : Class) post (trim())]
+
+[for (att : Property | c.properties())]
+[att.genVisibility()/] function [att.genGetterName()/]():[att.genType()/]{
+	return this.[att.genName()/];
+}
+
+[/for]
+
+[/template]
+
+[template private generateSetters(c : Class) post (trim())]
+
+[for (att : Property | c.properties())]
+[att.genVisibility()/] function [att.genSetterName()/]([att.genName()/]:[att.genType()/]):void{
+	if(this.[att.genName()/] != [att.genName()/]){
+		this.[att.genName()/] = [att.genName()/];
+[if (not att.isSimplePrimitive())]
+		if([att.genName()/] != null){
+[if (att.upper = 1)]
+[if (att.getOppositeProperty().upper = 1)]
+			[att.genName()/].[att.getOppositeProperty().genSetterName()/](this);
+[else]
+			[att.genName()/].[att.getOppositeProperty().adderName()/](this);
+[/if]
+[else]
+			// TODO gen set opposite set foreach objects.
+[/if]
+		}
+[/if]
+		this.setModified(true);
+	}
+}
+[if (att.upper <> 1)]
+public function [att.containsName()/]([att.genSimpleArgument()/]):Boolean{
+	return this.[att.genName()/].indexOf([att.genName()/]) >= 0;
+}
+public function [att.adderName()/]([att.genSimpleArgument()/]):void{
+	if(!this.[att.containsName()/]([att.genName()/])){
+		this.[att.genName()/].push([att.genName()/]);
+		if([att.genName()/] != null){
+[if (att.getOppositeProperty().upper = 1)]
+			[att.genName()/].[att.getOppositeProperty().genSetterName()/](this);
+[else]
+			[att.genName()/].[att.getOppositeProperty().adderName()/](this);
+[/if]
+		}
+		this.setModified(true);
+	}
+}
+public function [att.removerName()/]([att.genSimpleArgument()/]):void{
+	if(this.[att.containsName()/]([att.genName()/])){
+		this.[att.genName()/].splice(this.[att.genName()/].indexOf([att.genName()/]), 1);
+[if (att.getOppositeProperty().upper = 1)]
+		[att.genName()/].[att.getOppositeProperty().genSetterName()/](null);
+[else]
+		[att.genName()/].[att.getOppositeProperty().removerName()/](this);
+[/if]
+		[att.genName()/].dispatchEntityEvent(EntityEvent.REMOVED);
+		this.setModified(true);
+	}
+}
+[/if]
+[/for]
+
+[/template]

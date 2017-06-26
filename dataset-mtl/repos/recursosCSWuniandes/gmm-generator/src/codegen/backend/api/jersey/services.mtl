@@ -1,0 +1,532 @@
+    [comment encoding = UTF-8 /]
+[module services('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import ::utils /]
+
+[template public mainJersey(c : Class, path : String)]
+[let filePath : String = path.concat('resources/')]
+    [if ( not c.isChild())]
+        [c.genResourceClass(filePath)/]
+    [/if]
+    [for (a : Property | c.getNonCompositeCollectionAttributes())]
+        [a.genSharedResourceClass(filePath)/]
+    [/for]
+    [for (a : Property | c.getCompositeCollectionAttributes())]
+        [a.genCompositeResourceClass(filePath)/]
+    [/for]
+    [for (a : Property | c.getRelationshipAttributes()->select(isComposite())->select(getUpper() = 1)->asSet())]
+        [a.genCompositeResourceClass(filePath)/]
+    [/for]
+
+[/let]
+[/template]
+
+[template protected genResourceClass(c : Class, path : String) ? (not c.isChild()) {
+    className : String = c.getJaxRsName();
+    logic : String = c.getName().concat('Logic');
+}]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].resources;
+
+import co.edu.uniandes.csw.auth.provider.StatusCreated;
+import java.util.List;
+import javax.inject.Inject;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import [c.getModel().baseGroup()/].api.[c.getAPIName()/];
+import [c.getModel().baseGroup()/].dtos.detail.[c.getBasicDTOName()/];
+import [c.getModel().baseGroup()/].entities.[c.getEntityName()/];
+import java.util.ArrayList;
+import javax.ws.rs.WebApplicationException;
+
+/**
+ * URI: [c.getFullURI()/]
+ * @generated
+ */
+@Path("/[c.getURI()/]")
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public class [className/] {
+
+    @Inject private [c.getAPIName()/] [logic/];
+    @Context private HttpServletResponse response;
+    @QueryParam("page") private Integer page;
+    @QueryParam("limit") private Integer maxRecords;
+
+   
+    /**
+     * Convierte una lista de [c.getEntityName()/] a una lista de [c.getBasicDTOName()/].
+     *
+     * @param entityList Lista de [c.getEntityName()/] a convertir.
+     * @return Lista de [c.getBasicDTOName()/] convertida.
+     * @generated
+     */
+    private List<[c.getBasicDTOName()/]> listEntity2DTO(List<[c.getEntityName()/]> entityList){
+        List<[c.getBasicDTOName()/]> list = new ArrayList<>();
+        for ([c.getEntityName()/] entity : entityList) {
+            list.add(new [c.getBasicDTOName()/](entity));
+        }
+        return list;
+    }
+
+
+    /**
+     * Obtiene la lista de los registros de [c.name/]
+     *
+     * @return Colección de objetos de [c.getBasicDTOName()/]
+     * @generated
+     */
+    @GET
+    public List<[c.getBasicDTOName()/]> get[c.name/]s() {
+        if (page != null && maxRecords != null) {
+            this.response.setIntHeader("X-Total-Count", [logic/].count[c.name/]s());
+            return listEntity2DTO([logic/].get[c.name/]s(page, maxRecords));
+        }
+        return listEntity2DTO([logic/].get[c.name/]s());
+    }
+
+    /**
+     * Obtiene los datos de una instancia de [c.name/] a partir de su ID
+     *
+     * @param id Identificador de la instancia a consultar
+     * @return Instancia de [c.getBasicDTOName()/] con los datos del [c.name/] consultado
+     * @generated
+     */
+    @GET
+    @Path("{id: \\d+}")
+    public [c.getBasicDTOName()/] get[c.name/](@PathParam("id") Long id) {
+        return new [c.getBasicDTOName()/]([logic/].get[c.name/](id));
+    }
+
+    /**
+     * Se encarga de crear un [c.name/] en la base de datos
+     *
+     * @param dto Objeto de [c.getBasicDTOName()/] con los datos nuevos
+     * @return Objeto de [c.getBasicDTOName()/]con los datos nuevos y su ID
+     * @generated
+     */
+    @POST
+    @StatusCreated
+    public [c.getBasicDTOName()/] create[c.name/]([c.getBasicDTOName()/] dto) {
+        return new [c.getBasicDTOName()/]([logic/].create[c.name/](dto.toEntity()));
+    }
+
+    /**
+     * Actualiza la información de una instancia de [c.name/]
+     *
+     * @param id Identificador de la instancia de [c.name/] a modificar
+     * @param dto Instancia de [c.getBasicDTOName()/] con los nuevos datos
+     * @return Instancia de [c.getBasicDTOName()/] con los datos actualizados
+     * @generated
+     */
+    @PUT
+    @Path("{id: \\d+}")
+    public [c.getBasicDTOName()/] update[c.name/](@PathParam("id") Long id, [c.getBasicDTOName()/] dto) {
+        [c.getEntityName()/] entity = dto.toEntity();
+        entity.setId(id);
+        [if (c.hasSharedAssociations())]
+        [c.getEntityName()/] oldEntity = [logic/].get[c.name/](id);
+        [for (a : Property | c.getNonCompositeCollectionAttributes())]
+        entity.[a.setter()/](oldEntity.[a.getter()/]());
+        [/for]
+        [/if]
+        return new [c.getBasicDTOName()/]([logic/].update[c.name/](entity));
+    }
+
+    /**
+     * Elimina una instancia de [c.name/] de la base de datos
+     *
+     * @param id Identificador de la instancia a eliminar
+     * @generated
+     */
+    @DELETE
+    @Path("{id: \\d+}")
+    public void delete[c.name/](@PathParam("id") Long id) {
+        [logic/].delete[c.name/](id);
+    }
+    [c.genSubResourceLocators()/]
+}
+[/file]
+[/template]
+
+[template protected genCompositeResourceClass(a : Property, path : String) {
+    className : String = a.getCompositeResourceClassName();
+    logic : String = a.getClass().getName().concat('Logic');
+    parentId : String = a.getClass().getParentAttribute().getClass().getIdVariable();
+    c : Class = a.getClass();
+}]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+/*
+[a.getClass().getModel().license()/]
+*/
+package [a.getClass().getModel().baseGroup()/].resources;
+
+import co.edu.uniandes.csw.auth.provider.StatusCreated;
+import java.util.List;
+import javax.inject.Inject;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import [c.getModel().baseGroup()/].api.[c.getAPIName()/];
+import [c.getModel().baseGroup()/].dtos.detail.[c.getBasicDTOName()/];
+import [c.getModel().baseGroup()/].entities.[c.getEntityName()/];
+import java.util.ArrayList;
+import javax.ws.rs.WebApplicationException;
+
+/**
+ * URI: [a.getFullURI()/]
+ * @generated
+ */
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public class [className/] {
+
+    @Inject private [c.getAPIName()/] [logic/];
+    @Context private HttpServletResponse response;
+    @QueryParam("page") private Integer page;
+    @QueryParam("limit") private Integer maxRecords;
+    @PathParam("[parentId/]") private Long [parentId/];
+
+   
+    /**
+     * Convierte una lista de [c.getEntityName()/] a una lista de [c.getBasicDTOName()/]
+     *
+     * @param entityList Lista de [c.getEntityName()/] a convertir
+     * @return Lista de [c.getBasicDTOName()/] convertida
+     * @generated
+     */
+    private List<[c.getBasicDTOName()/]> listEntity2DTO(List<[c.getEntityName()/]> entityList){
+        List<[c.getBasicDTOName()/]> list = new ArrayList<>();
+        for ([c.getEntityName()/] entity : entityList) {
+            list.add(new [c.getBasicDTOName()/](entity));
+        }
+        return list;
+    }
+
+
+    /**
+     * Obtiene la lista de los registros de [c.name/] asociados a un [c.getParentAttribute().getClass().name/]
+     *
+     * @return Colección de objetos de [c.getBasicDTOName()/]
+     * @generated
+     */
+    @GET
+    public List<[c.getBasicDTOName()/]> get[a.name.toUpperFirst()/]s() {
+        if (page != null && maxRecords != null) {
+            this.response.setIntHeader("X-Total-Count", [logic/].count[c.name/]s());
+            return listEntity2DTO([logic/].get[c.name/]s(page, maxRecords, [parentId/]));
+        }
+        return listEntity2DTO([logic/].get[c.name/]s([parentId/]));
+    }
+
+    /**
+     * Obtiene los datos de una instancia de [c.name/] a partir de su ID asociado a un [c.getParentAttribute().getClass().name/]
+     *
+     * @param [a.getIdVariable()/] Identificador de la instancia a consultar
+     * @return Instancia de [c.getBasicDTOName()/] con los datos del [c.name/] consultado
+     * @generated
+     */
+    @GET
+    @Path("{[a.getIdVariable()/]: \\d+}")
+    public [c.getBasicDTOName()/] get[a.name.toUpperFirst()/](@PathParam("[a.getIdVariable()/]") Long [a.getIdVariable()/]) {
+        [c.getEntityName()/] entity = [logic/].get[c.name/]([a.getIdVariable()/]);
+        if (entity.[c.getParentAttribute().getter()/]() != null && ![parentId/].equals(entity.[c.getParentAttribute().getter()/]().getId())) {
+            throw new WebApplicationException(404);
+        }
+        return new [c.getBasicDTOName()/](entity);
+    }
+
+    /**
+     * Asocia un [c.name/] existente a un [c.getParentAttribute().getClass().name/]
+     *
+     * @param dto Objeto de [c.getBasicDTOName()/] con los datos nuevos
+     * @return Objeto de [c.getBasicDTOName()/]con los datos nuevos y su ID.
+     * @generated
+     */
+    @POST
+    @StatusCreated
+    public [c.getBasicDTOName()/] create[a.name.toUpperFirst()/]([c.getBasicDTOName()/] dto) {
+        return new [c.getBasicDTOName()/]([logic/].create[c.name/]([parentId/], dto.toEntity()));
+    }
+
+    /**
+     * Actualiza la información de una instancia de [c.name/].
+     *
+     * @param [a.getIdVariable()/] Identificador de la instancia de [c.name/] a modificar
+     * @param dto Instancia de [c.getBasicDTOName()/] con los nuevos datos.
+     * @return Instancia de [c.getBasicDTOName()/] con los datos actualizados.
+     * @generated
+     */
+    @PUT
+    @Path("{[a.getIdVariable()/]: \\d+}")
+    public [c.getBasicDTOName()/] update[a.name.toUpperFirst()/](@PathParam("[a.getIdVariable()/]") Long [a.getIdVariable()/], [c.getBasicDTOName()/] dto) {
+        [c.getEntityName()/] entity = dto.toEntity();
+        entity.setId([a.getIdVariable()/]);
+        [if (c.hasSharedAssociations())]
+        [c.getEntityName()/] oldEntity = [logic/].get[c.name/]([a.getIdVariable()/]);
+        [for (a : Property | c.getNonCompositeCollectionAttributes())]
+        entity.[a.setter()/](oldEntity.[a.getter()/]());
+        [/for]
+        [/if]
+        return new [c.getBasicDTOName()/]([logic/].update[c.name/]([parentId/], entity));
+    }
+
+    /**
+     * Elimina una instancia de [c.name/] de la base de datos.
+     *
+     * @param [c.getName()/]Id Identificador de la instancia a eliminar.
+     * @generated
+     */
+    @DELETE
+    @Path("[a.getIdVariable()/]: \\d+}")
+    public void delete[a.name.toUpperFirst()/](@PathParam("[a.getIdVariable()/]") Long [a.getIdVariable()/]) {
+        [logic/].delete[c.name/]([a.getIdVariable()/]);
+    }
+    [c.genSubResourceLocators()/]
+}
+[/file]
+[/template]
+
+[template protected genSharedResourceClass(a : Property, path : String) {
+    className : String = a.getSharedResourceClassName();
+    logic : String = a.getOwner().getName().concat('Logic');
+}]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+/*
+[a.getClass().getModel().license()/]
+*/
+package [a.getClass().getModel().baseGroup()/].resources;
+
+import java.util.List;
+import javax.inject.Inject;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import [a.getClass().getModel().baseGroup()/].api.[a.getOwner().getAPIName()/];
+import [a.getClass().getModel().baseGroup()/].dtos.detail.[a.getClass().getBasicDTOName()/];
+import [a.getClass().getModel().baseGroup()/].entities.[a.getClass().getEntityName()/];
+import java.util.ArrayList;
+/**
+ * URI: [a.getFullURI()/]
+ * @generated
+ */
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public class [className/] {
+
+    @Inject private [a.getOwner().getAPIName()/] [logic/];
+    @Context private HttpServletResponse response;
+
+    /**
+     * Convierte una lista de [a.getClass().getEntityName()/] a una lista de [a.getClass().getBasicDTOName()/].
+     *
+     * @param entityList Lista de [a.getClass().getEntityName()/] a convertir.
+     * @return Lista de [a.getClass().getBasicDTOName()/] convertida.
+     * @generated
+     */
+    private List<[a.getClass().getBasicDTOName()/]> [a.name/]ListEntity2DTO(List<[a.getClass().getEntityName()/]> entityList){
+        List<[a.getClass().getBasicDTOName()/]> list = new ArrayList<>();
+        for ([a.getClass().getEntityName()/] entity : entityList) {
+            list.add(new [a.getClass().getBasicDTOName()/](entity));
+        }
+        return list;
+    }
+
+    /**
+     * Convierte una lista de [a.getClass().getBasicDTOName()/] a una lista de [a.getClass().getEntityName()/].
+     *
+     * @param dtos Lista de [a.getClass().getBasicDTOName()/] a convertir.
+     * @return Lista de [a.getClass().getEntityName()/] convertida.
+     * @generated
+     */
+    private List<[a.getClass().getEntityName()/]> [a.name/]ListDTO2Entity(List<[a.getClass().getBasicDTOName()/]> dtos){
+        List<[a.getClass().getEntityName()/]> list = new ArrayList<>();
+        for ([a.getClass().getBasicDTOName()/] dto : dtos) {
+            list.add(dto.toEntity());
+        }
+        return list;
+    }
+
+    /**
+     * Obtiene una colección de instancias de [a.getClass().getBasicDTOName()/] asociadas a una
+     * instancia de [a.getOwner().name/]
+     *
+     * @param [a.getOwner().getIdVariable()/] Identificador de la instancia de [a.getOwner().name/]
+     * @return Colección de instancias de [a.getClass().getBasicDTOName()/] asociadas a la instancia de [a.getOwner().name/]
+     * @generated
+     */
+    @GET
+    public List<[a.getClass().getBasicDTOName()/]> list[a.name.toUpperFirst()/](@PathParam("[a.getOwner().getIdVariable()/]") Long [a.getOwner().getIdVariable()/]) {
+        return [a.name/]ListEntity2DTO([logic/].list[a.name.toUpperFirst()/]([a.getOwner().getIdVariable()/]));
+    }
+
+    /**
+     * Obtiene una instancia de [a.getClass().name/] asociada a una instancia de [a.getOwner().name/]
+     *
+     * @param [a.getOwner().getIdVariable()/] Identificador de la instancia de [a.getOwner().name/]
+     * @param [a.getIdVariable()/] Identificador de la instancia de [a.getClass().name/]
+     * @generated
+     */
+    @GET
+    @Path("{[a.getIdVariable()/]: \\d+}")
+    public [a.getClass().getBasicDTOName()/] get[a.name.toUpperFirst()/](@PathParam("[a.getOwner().getIdVariable()/]") Long [a.getOwner().getIdVariable()/], @PathParam("[a.getIdVariable()/]") Long [a.getIdVariable()/]) {
+        return new [a.getClass().getBasicDTOName()/]([logic/].get[a.name.toUpperFirst()/]([a.getOwner().getIdVariable()/], [a.getIdVariable()/]));
+    }
+
+    /**
+     * Asocia un [a.getClass().name/] existente a un [a.getOwner().name/]
+     *
+     * @param [a.getOwner().getIdVariable()/] Identificador de la instancia de [a.getOwner().name/]
+     * @param [a.getIdVariable()/] Identificador de la instancia de [a.getClass().name/]
+     * @return Instancia de [a.getClass().getBasicDTOName()/] que fue asociada a [a.getOwner().name/]
+     * @generated
+     */
+    @POST
+    @Path("{[a.getIdVariable()/]: \\d+}")
+    public [a.getClass().getBasicDTOName()/] add[a.name.toUpperFirst()/](@PathParam("[a.getOwner().getIdVariable()/]") Long [a.getOwner().getIdVariable()/], @PathParam("[a.getIdVariable()/]") Long [a.getIdVariable()/]) {
+        return new [a.getClass().getBasicDTOName()/]([logic/].add[a.name.toUpperFirst()/]([a.getOwner().getIdVariable()/], [a.getIdVariable()/]));
+    }
+
+    /**
+     * Remplaza las instancias de [a.getClass().name/] asociadas a una instancia de [a.getOwner().name/]
+     *
+     * @param [a.getOwner().getIdVariable()/] Identificador de la instancia de [a.getOwner().name/]
+     * @param [a.getClass().getURI()/] Colección de instancias de [a.getClass().getDTOName()/] a asociar a instancia de [a.getOwner().name/]
+     * @return Nueva colección de [a.getClass().getDTOName()/] asociada a la instancia de [a.getOwner().name/]
+     * @generated
+     */
+    @PUT
+    public List<[a.getClass().getBasicDTOName()/]> replace[a.name.toUpperFirst()/](@PathParam("[a.getOwner().getIdVariable()/]") Long [a.getOwner().getIdVariable()/], List<[a.getClass().getBasicDTOName()/]> [a.getClass().getURI()/]) {
+        return [a.name/]ListEntity2DTO([logic/].replace[a.name.toUpperFirst()/]([a.getOwner().getIdVariable()/], [a.name/]ListDTO2Entity([a.getClass().getURI()/])));
+    }
+
+    /**
+     * Desasocia un [a.getClass().name/] existente de un [a.getOwner().name/] existente
+     *
+     * @param [a.getOwner().getIdVariable()/] Identificador de la instancia de [a.getOwner().name/]
+     * @param [a.getIdVariable()/] Identificador de la instancia de [a.getClass().name/]
+     * @generated
+     */
+    @DELETE
+    @Path("{[a.getIdVariable()/]: \\d+}")
+    public void remove[a.name.toUpperFirst()/](@PathParam("[a.getOwner().getIdVariable()/]") Long [a.getOwner().getIdVariable()/], @PathParam("[a.getIdVariable()/]") Long [a.getIdVariable()/]) {
+        [logic/].remove[a.name.toUpperFirst()/]([a.getOwner().getIdVariable()/], [a.getIdVariable()/]);
+    }
+}
+[/file]
+[/template]
+
+[template protected genSubResourceLocators(c : Class) ? (c.hasCompositeAssociations() or c.hasOne2OneCompositeAssociations() or c.hasSharedAssociations())]
+public void exists[c.name/](Long [c.getIdVariable()/]){
+    [c.getBasicDTOName()/] [c.getName()/] = get[c.name/]([c.getIdVariable()/]);
+    if ([c.getName()/]== null) {
+        throw new WebApplicationException(404);
+    }
+}
+
+[if(c.isChild() and (c.hasCompositeAssociations() or c.hasOne2OneCompositeAssociations()))]
+public void validate[c.name/]Parent(Long [c.getIdVariable()/]){
+    [c.getBasicDTOName()/] [c.getName()/] = get[c.name/]([c.getIdVariable()/]);
+    if ([c.getName()/].[c.getParentAttribute().getter()/]() == null || ![c.getParentAttribute().getClass().getIdVariable()/].equals([c.getName()/].[c.getParentAttribute().getter()/]().getId())) {
+        throw new WebApplicationException(404);
+    }
+}
+[/if]
+[for (a : Property | c.getCompositeCollectionAttributes())]
+
+@Path("{[c.getIdVariable()/]: \\d+}/[a.getURI()/]")
+public Class<[a.getCompositeResourceClassName()/]> get[a.getCompositeResourceClassName()/](@PathParam("[c.getIdVariable()/]") Long [c.getIdVariable()/]){
+    exists[c.name/]([c.getIdVariable()/]);
+    [if(c.isChild())]
+    validate[c.name/]Parent([c.getIdVariable()/]);
+    [/if]
+    return [a.getCompositeResourceClassName()/].class;
+}
+[/for]
+[for (a : Property | c.getRelationshipAttributes()->select(isComposite())->select(getUpper() = 1)->asSet())]
+
+@Path("{[c.getIdVariable()/]: \\d+}/[a.getURI()/]")
+public Class<[a.getCompositeResourceClassName()/]> get[a.getCompositeResourceClassName()/](@PathParam("[c.getIdVariable()/]") Long [c.getIdVariable()/]){
+    exists[c.name/]([c.getIdVariable()/]);
+    [if(c.isChild())]
+    validate[c.name/]Parent([c.getIdVariable()/]);
+    [/if]
+    return [a.getCompositeResourceClassName()/].class;
+}
+[/for]
+[for (a : Property | c.getNonCompositeCollectionAttributes())]
+
+@Path("{[c.getIdVariable()/]: \\d+}/[a.getURI()/]")
+public Class<[a.getSharedResourceClassName()/]> get[a.getSharedResourceClassName()/](@PathParam("[c.getIdVariable()/]") Long [c.getIdVariable()/]){
+    exists[c.name/]([c.getIdVariable()/]);
+    return [a.getSharedResourceClassName()/].class;
+}
+[/for]
+[/template]
+
+[template protected getIdVariable(a : Property)]
+[a.getURI()/]Id
+[/template]
+
+[template protected getIdVariable(c : Class)]
+[c.getURI()/]Id
+[/template]
+
+[template protected getURI(a : Property)]
+[a.name.toLowerFirst()/]
+[/template]
+
+[template protected getFullURI(c : Class) post (trim())]
+[for (cl : Class | c.getHierarchy()->reverse())]
+[cl.getURI()/]/[if (cl.name <> c.name)]{[c.getIdVariable()/]: \\d+}/[/if][/for]
+[/template]
+
+[template protected getFullURI(a : Property) post (trim())]
+[for (cl : Class | a.getOwner().getHierarchy()->reverse())]
+[cl.getURI()/]/{[cl.getIdVariable()/]: \\d+}/[/for][a.getURI()/]
+[/template]
+
+[template protected getJaxRsName(c : Class)]
+[c.name.toUpperFirst().concat('Resource')/]
+[/template]
+
+[template protected getSharedResourceClassName(a : Property)]
+[a.getOwner().name.toUpperFirst()/][a.name.toUpperFirst()/]Resource
+[/template]
+
+[template protected getCompositeResourceClassName(a : Property)]
+[a.name.toUpperFirst()/]Resource
+[/template]
+
+[query protected getOwner(a : Property) : Class = 
+a.getOtherEnd().getClass()
+/]

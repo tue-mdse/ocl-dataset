@@ -1,0 +1,482 @@
+[comment encoding = UTF-8 /]
+[module generate_aroccam_application_cpp('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DataTypeQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DeploymentQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::FSMQueries /]
+[import org::eclipse::robotml::generators::acceleo::aroccam::files::generate_aroccam_component_cpp /]
+
+[template public generateAroccamApplicationCpp(model : Model)]
+
+[file ('src/' + model.name + 'Application/' + model.name + 'Application.cpp', false, 'UTF-8')]
+#include "[model.name/]Application.hpp"
+
+//stl
+#include <iostream>
+
+//opencv
+#include <opencv/cv.h>
+
+//effiqtviewer
+#include <effiqtviewer/all.hpp>
+
+//effibox
+#include <effibox/interfaces/camera/all.hpp>
+#include <effibox/interfaces/rangefinder/all.hpp>
+#include <effibox/interfaces/gps/all.hpp>
+#include <effibox/interfaces/vehicle/all.hpp>
+#include <effibox/interfaces/imu/all.hpp>
+#include <effibox/interfaces/timer/all.hpp>
+#include <effibox/interfaces/thread/all.hpp>
+#include <effibox/interface/frameerror.hpp>
+#include <effibox/clock/rosclockdriver.hpp>
+
+using namespace effibox;
+using namespace qtviewer;
+
+void [model.name/]Application::initialization(const std::string &)
+{
+  //connexion to the clock of the simulator
+  if (!Core::Instance().isReplayMode())
+  {
+      effibox::useRosClock("timeRos");
+  }
+
+[for (inst: InstanceSpecification | getInstanceSpecifications(model)) before('\t//robotML component connections\n')]
+	[let p: Property = getInstance(model, inst)]
+		[if (p.isProperty() and inst.isAllocatedTo('aroccam'))]
+			[for (inPort : Port | p.type.oclAsType(Class).getInputPortsForElement())]
+				[for (conn : Connector | inPort.getConnectionsFromPort())]
+					[if (	hasStereotype(getSourceComponentForConnector(conn).type.oclAsType(Class),'System') or
+							hasStereotype(getSourceComponentForConnector(conn).type.oclAsType(Class),'Software'))]
+  [conn.getSourceComponentInstanceNameForConnector()/].[conn.getSourcePortName()/]->addFunctionToExecute(boost::bind(&[conn.getDestComponentForConnector().type.name/]::[conn.getDestPortName()/], &[conn.getDestComponentForConnector().name/], _1));
+					[/if]
+				[/for]
+			[/for]
+		[/if]
+	[/let]
+[/for]
+}
+
+void [model.name/]Application::finalization()
+{
+}
+
+//effibox cameras event callbacks
+[for (instanceSpec: InstanceSpecification | getInstanceSpecifications(model))]
+	[let instance: Property = getInstance(model, instanceSpec)]
+		[if (instance.isProperty() and instance.type.oclAsType(Class).hasStereotype('CameraSystem'))]
+
+void [model.name/]Application::frame[instance.name/](const effibox::FramePtr & f)
+{
+	camera::FrameCameraImagePtr frame = frame_cast<camera::FrameCameraImage>(f);
+	qtviewer::ShowFrame("[instance.name/]", frame);
+
+	//convert effibox sensor data to robotML sensor data
+	IplImage * iplImage = frame->createAndConvertToRGB();
+	Image image;
+	image.header.stamp = frame->getDate();
+	image.height = UInt32(iplImage->height);
+	image.width  = UInt32(iplImage->width);
+	image.step   = UInt32(iplImage->widthStep);
+	image.is_bigendian = 0;
+	image.encoding = "interleaved RGB";
+	image.data.resize(size_t(iplImage->imageSize));
+	std::copy(iplImage->imageData,iplImage->imageData + iplImage->imageSize, image.data.begin());
+	cvReleaseImage(&iplImage);
+
+			[for (inst: InstanceSpecification | getInstanceSpecifications(model)) before('\t//Here send RobotML sensor data to your RobotML component input\n')]
+				[let p: Property = getInstance(model, inst)]
+					[if (p.isProperty() and inst.isAllocatedTo('aroccam'))]
+						[for (inPort : Port | p.type.oclAsType(Class).getInputPortsForElement())]
+							[for (conn : Connector | inPort.getConnectionsFromPort())] 
+								[let source: Class = conn.getSourceComponentForConnector().type.oclAsType(Class)]
+									[if (inPort.type.name.equalsIgnoreCase('Image'))]
+										[if (conn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](image);
+										[comment]HACK FOR SENSOR MACRO-COMPONENT[/comment]
+										[elseif (source.hasStereotype('SensorSystem'))]
+											[for (extOutConn: Connector | source.getExternalOutputConnectors())]
+												[if (extOutConn.getDestPortName().equalsIgnoreCase(conn.getSourcePortName()))]
+													[if (extOutConn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](image);
+													[/if]
+												[/if]
+											[/for]
+										[/if]
+									[/if]
+								[/let]
+							[/for]
+						[/for]
+					[/if]
+				[/let]
+			[/for]
+}
+		[/if]
+	[/let]
+[/for]
+
+//effibox rangefinder event callbacks
+[for (instanceSpec: InstanceSpecification | getInstanceSpecifications(model))]
+	[let instance: Property = getInstance(model, instanceSpec)]
+		[if (instance.isProperty() and instance.type.oclAsType(Class).hasStereotype('LidarSystem'))]
+void [model.name/]Application::frame[instance.name/](const effibox::FramePtr & f)
+{
+	rangefinder::FrameRangefinderDistancePtr frame = frame_cast<rangefinder::FrameRangefinderDistance>(f);
+	qtviewer::ShowFrame("[instance.name/]", frame);
+
+	//convert effibox sensor data to robotML sensor data
+	const rangefinder::Layer & layer = frame->getLayer(0);
+	LaserScan laserScan;
+	laserScan.header.stamp = frame->getDate();
+	laserScan.angle_min = layer.getScan(0).getAngle().value();
+	laserScan.angle_max = layer.getScan(layer.getScanNumber()).getAngle().value();
+	laserScan.angle_increment = (laserScan.angle_max-laserScan.angle_min)/(layer.getScanNumber()-1);
+	laserScan.time_increment = 0; //NA
+	laserScan.scan_time = 0; //NA
+	laserScan.range_min = layer.getScan(0).getDistance().value();
+	laserScan.range_max = layer.getScan(0).getDistance().value();
+	laserScan.range.resize(layer.getScanNumber());
+	for (size_t i = 0; i < layer.getScanNumber(); ++i)
+	{
+		laserScan.range.at(i) = layer.getScan(i).getDistance().value();
+		if(laserScan.range.at(i) < laserScan.range_min)
+			laserScan.range_min = laserScan.range.at(i);
+		if(laserScan.range.at(i) > laserScan.range_max)
+			laserScan.range_max = laserScan.range.at(i);
+	}
+
+			[for (inst: InstanceSpecification | getInstanceSpecifications(model)) before('\t//Here send RobotML sensor data to your RobotML component input\n')]
+				[let p: Property = getInstance(model, inst)]
+					[if (p.isProperty() and inst.isAllocatedTo('aroccam'))]
+						[for (inPort : Port | p.type.oclAsType(Class).getInputPortsForElement())]
+							[for (conn : Connector | inPort.getConnectionsFromPort())] 
+								[let source: Class = conn.getSourceComponentForConnector().type.oclAsType(Class)]
+									[if (inPort.type.name.equalsIgnoreCase('LaserScan'))]
+										[if (conn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](laserScan);
+										[comment]HACK FOR SENSOR MACRO-COMPONENT[/comment]
+										[elseif (source.hasStereotype('SensorSystem'))]
+											[for (extOutConn: Connector | source.getExternalOutputConnectors())]
+												[if (extOutConn.getDestPortName().equalsIgnoreCase(conn.getSourcePortName()))]
+													[if (extOutConn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](laserScan);
+													[/if]
+												[/if]
+											[/for]
+										[/if]
+									[/if]
+								[/let]
+							[/for]
+						[/for]
+					[/if]
+				[/let]
+			[/for]
+}
+		[/if]
+	[/let]
+[/for]
+
+//effibox gps events callbacks
+[for (instanceSpec: InstanceSpecification | getInstanceSpecifications(model))]
+	[let instance: Property = getInstance(model, instanceSpec)]
+		[if (instance.isProperty() and instance.type.oclAsType(Class).hasStereotype('GPSSystem'))]
+void [model.name/]Application::frame[instance.name/]_GGA(const effibox::FramePtr & f)
+{
+	gps::FrameGpsGGAPtr frame = frame_cast<gps::FrameGpsGGA>(f);
+	qtviewer::ShowFrame("[instance.name/]", frame);
+
+	//convert effibox sensor data to robotML sensor data
+	frame->decode();
+	NavSatFix navSatFix;
+	navSatFix.header.stamp = frame->getDate();
+	navSatFix.latitude  = frame->getLatitudeWGS84();
+	navSatFix.longitude = frame->getLongitudeWGS84();
+	navSatFix.altitude = frame->getAltitudeWGS84();
+
+			[for (inst: InstanceSpecification | getInstanceSpecifications(model)) before('\t//Here send RobotML sensor data to your RobotML component input\n')]
+				[let p: Property = getInstance(model, inst)]
+					[if (p.isProperty() and inst.isAllocatedTo('aroccam'))]
+						[for (inPort : Port | p.type.oclAsType(Class).getInputPortsForElement())]
+							[for (conn : Connector | inPort.getConnectionsFromPort())] 
+								[let source: Class = conn.getSourceComponentForConnector().type.oclAsType(Class)]
+									[if (inPort.type.name.equalsIgnoreCase('NavSatFix'))]
+										[if (conn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](navSatFix);
+										[comment]HACK FOR SENSOR MACRO-COMPONENT[/comment]
+										[elseif (source.hasStereotype('SensorSystem'))]
+											[for (extOutConn: Connector | source.getExternalOutputConnectors())]
+												[if (extOutConn.getDestPortName().equalsIgnoreCase(conn.getSourcePortName()))]
+													[if (extOutConn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](navSatFix);
+													[/if]
+												[/if]
+											[/for]
+										[/if]
+									[/if]
+								[/let]
+							[/for]
+						[/for]
+					[/if]
+				[/let]
+			[/for]
+}
+		[/if]
+	[/let]
+[/for]
+
+//effibox odometry events callback
+[for (instanceSpec: InstanceSpecification | getInstanceSpecifications(model))]
+	[let instance: Property = getInstance(model, instanceSpec)]
+		[if (instance.isProperty() and (	instance.type.oclAsType(Class).hasStereotype('OdometrySystem')
+									or instance.type.oclAsType(Class).hasStereotype('Robot')	)
+		)]
+				[let ugvKind : String = getAttributeValue(instance.type.oclAsType(Class), 'kind', 'Robot', 'car')]
+				[if(ugvKind.equalsIgnoreCase('UGVdifferential'))]
+void [model.name/]Application::frame[instance.name/]_genericodometry(const effibox::FramePtr & f)
+{
+	vehicle::FrameOdometryPtr frame = frame_cast<vehicle::FrameOdometry>(f);
+	qtviewer::ShowFrame("[instance.name/]", frame);
+
+	//compute deltaT since last odometry event date
+	static effitools::date_time precDate = frame->getDate();
+	double deltaT = effitools::toDoubleSeconds(frame->getDate()-precDate);
+	precDate = frame->getDate();
+
+	//convert effibox sensor data to robotML sensor data
+	static double precLeftDistance = 0.0;
+	static double precRightDistance = 0.0;
+	DifferentialOdometry differentialOdometry;
+	differentialOdometry.header.stamp = frame->getDate();
+	differentialOdometry.left_velocity  = frame->getWheelSteeringFront().linearSpeedLeft;
+	differentialOdometry.right_velocity = frame->getWheelSteeringFront().linearSpeedRight;
+	differentialOdometry.left_distance  = precLeftDistance  + deltaT*frame->getWheelSteeringFront().linearSpeedLeft;
+	differentialOdometry.right_distance = precRightDistance + deltaT*frame->getWheelSteeringFront().linearSpeedRight;
+	precLeftDistance  = differentialOdometry.left_distance;
+	precRightDistance = differentialOdometry.right_distance;
+
+			[for (inst: InstanceSpecification | getInstanceSpecifications(model)) before('\t//Here send RobotML sensor data to your RobotML component input\n')]
+				[let p: Property = getInstance(model, inst)]
+					[if (p.isProperty() and inst.isAllocatedTo('aroccam'))]
+						[for (inPort : Port | p.type.oclAsType(Class).getInputPortsForElement())]
+							[for (conn : Connector | inPort.getConnectionsFromPort())] 
+								[let source: Class = conn.getSourceComponentForConnector().type.oclAsType(Class)]
+									[if (inPort.type.name.equalsIgnoreCase('DifferentialOdometry'))]
+										[if (conn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](differentialOdometry);
+										[comment]HACK FOR SENSOR MACRO-COMPONENT[/comment]
+										[elseif (source.hasStereotype('SensorSystem'))]
+											[for (extOutConn: Connector | source.getExternalOutputConnectors())]
+												[if (extOutConn.getDestPortName().equalsIgnoreCase(conn.getSourcePortName()))]
+													[if (extOutConn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](differentialOdometry);
+													[/if]
+												[/if]
+											[/for]
+										[/if]
+									[/if]
+								[/let]
+							[/for]
+						[/for]
+					[/if]
+				[/let]
+			[/for]
+}
+
+void [model.name/]Application::frame[instance.name/]_wifibotspecific(const effibox::FramePtr & f)
+{
+	vehicle::FrameWifibotPtr frame = frame_cast<vehicle::FrameWifibot>(f);
+
+	Odometer_Tics_Left_Right odometerTicks;
+	odometerTicks.header.stamp = frame->getDate();
+	odometerTicks.odometer_tics_left  = int32_t(frame->getOdometryLeft());
+	odometerTicks.odometer_tics_right = int32_t(frame->getOdometryRight());
+
+	//std::cout << "Ticks Odometry Left: " << int(frame->getOdometryLeft()) << std::endl;
+	//std::cout << "Ticks Odometry Right: " << int(frame->getOdometryRight()) << std::endl;
+
+			[for (inst: InstanceSpecification | getInstanceSpecifications(model)) before('\t//Here send RobotML sensor data to your RobotML component input\n')]
+				[let p: Property = getInstance(model, inst)]
+					[if (p.isProperty() and inst.isAllocatedTo('aroccam'))]
+						[for (inPort : Port | p.type.oclAsType(Class).getInputPortsForElement())]
+							[for (conn : Connector | inPort.getConnectionsFromPort())] 
+								[let source: Class = conn.getSourceComponentForConnector().type.oclAsType(Class)]
+									[if (inPort.type.name.equalsIgnoreCase('Odometer_Tics_Left_Right'))]
+										[if (conn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](odometerTicks);
+										[comment]HACK FOR SENSOR MACRO-COMPONENT[/comment]
+										[elseif (source.hasStereotype('SensorSystem'))]
+											[for (extOutConn: Connector | source.getExternalOutputConnectors())]
+												[if (extOutConn.getDestPortName().equalsIgnoreCase(conn.getSourcePortName()))]
+													[if (extOutConn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](odometerTicks);
+													[/if]
+												[/if]
+											[/for]
+										[/if]
+									[/if]
+								[/let]
+							[/for]
+						[/for]
+					[/if]
+				[/let]
+			[/for]
+}
+
+void [model.name/]Application::frame[instance.name/]_timercommand(const effibox::FramePtr & f)
+{
+	//[protected ('Compute command ' + instance.name + '_timercommand')]
+	//Send command to vehicle from your RobotML component output
+	double leftSpeed = 0.0; //replace 0.0 by your last computed result (m/s)
+	double rightSpeed = 0.0; //replace 0.0 by your last computed result (m/s)
+	//[/protected]
+
+	if (!Core::Instance().isReplayMode())
+	{
+		vehicle::FrameVehicleControlTankModelPtr frameToSend(
+			new vehicle::FrameVehicleControlTankModel(leftSpeed, rightSpeed));
+		send("[instance.name/]", frameToSend);
+	}
+}
+				[else]
+void [model.name/]Application::frame[instance.name/]_genericodometry(const effibox::FramePtr & f)
+{
+	vehicle::FrameOdometryPtr frame = frame_cast<vehicle::FrameOdometry>(f);
+	qtviewer::ShowFrame("[instance.name/]", frame);
+
+	//compute deltaT since last odometry event date
+	static effitools::date_time precDate = frame->getDate();
+	double deltaT = effitools::toDoubleSeconds(frame->getDate()-precDate);
+	precDate = frame->getDate();
+
+	//convert effibox sensor data to robotML sensor data
+	static double precLeftRearDistance = 0.0;
+	static double precRightRearDistance = 0.0;
+	CarLikeOdometry carLikeOdometry;
+	carLikeOdometry.header.stamp              = frame->getDate();
+	carLikeOdometry.steering_angle            = frame->getWheelSteeringFront().directionAngle;
+	carLikeOdometry.left_rear_wheel_velocity  = frame->getWheelSteeringRear().linearSpeedLeft;
+	carLikeOdometry.right_rear_wheel_velocity = frame->getWheelSteeringRear().linearSpeedRight;
+	carLikeOdometry.left_rear_wheel_distance  = precLeftRearDistance  + deltaT*frame->getWheelSteeringRear().linearSpeedLeft;
+	carLikeOdometry.right_rear_wheel_distance = precRightRearDistance + deltaT*frame->getWheelSteeringRear().linearSpeedRight;
+	precLeftRearDistance  = carLikeOdometry.left_rear_wheel_distance;
+	precRightRearDistance = carLikeOdometry.right_rear_wheel_distance;
+
+			[for (inst: InstanceSpecification | getInstanceSpecifications(model)) before('\t//Here send RobotML sensor data to your RobotML component input\n')]
+				[let p: Property = getInstance(model, inst)]
+					[if (p.isProperty() and inst.isAllocatedTo('aroccam'))]
+						[for (inPort : Port | p.type.oclAsType(Class).getInputPortsForElement())]
+							[for (conn : Connector | inPort.getConnectionsFromPort())] 
+								[let source: Class = conn.getSourceComponentForConnector().type.oclAsType(Class)]
+									[if (inPort.type.name.equalsIgnoreCase('CarLikeOdometry'))]
+										[if (conn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](carLikeOdometry);
+										[comment]HACK FOR SENSOR MACRO-COMPONENT[/comment]
+										[elseif (source.hasStereotype('SensorSystem'))]
+											[for (extOutConn: Connector | source.getExternalOutputConnectors())]
+												[if (extOutConn.getDestPortName().equalsIgnoreCase(conn.getSourcePortName()))]
+													[if (extOutConn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](carLikeOdometry);
+													[/if]
+												[/if]
+											[/for]
+										[/if]
+									[/if]
+								[/let]
+							[/for]
+						[/for]
+					[/if]
+				[/let]
+			[/for]
+}
+
+void [model.name/]Application::frame[instance.name/]_timercommand(const effibox::FramePtr & f)
+{
+	//[protected ('Compute car like command ' + instance.name + '_timercommand')]
+	//Send command to vehicle from your RobotML component output
+	double linearSpeed = 0.0; //replace 0.0 by your last computed result (m/s)
+	double steeringAngle = 0.0; //replace 0.0 by your last computed result (rad)
+	//[/protected]
+
+	if (!Core::Instance().isReplayMode())
+	{
+		vehicle::FrameVehicleControlBicycleModelPtr frameToSend(
+			new vehicle::FrameVehicleControlBicycleModel(linearSpeed, steeringAngle));
+		send("[instance.name/]", frameToSend);
+	}
+}
+				[/if]
+				[/let]
+
+		[/if]
+	[/let]
+[/for]
+
+//effibox imu events callback
+[for (instanceSpec: InstanceSpecification | getInstanceSpecifications(model))]
+	[let instance: Property = getInstance(model, instanceSpec)]
+		[if (instance.isProperty() and instance.type.oclAsType(Class).hasStereotype('InertialMeasurementUnitSystem'))]
+void [model.name/]Application::frame[instance.name/]_GLOBAL(const effibox::FramePtr & f)
+{
+	imu::FrameIMUPtr frame = frame_cast<imu::FrameIMU>(f);
+	qtviewer::ShowFrame("[instance.name/]", frame);
+
+	Imu imu;
+	imu.header.stamp = frame->getDate();
+	imu.linear_acceleration.x = frame->getAccelerations().x;
+	imu.linear_acceleration.y = frame->getAccelerations().y;
+	imu.linear_acceleration.z = frame->getAccelerations().z;
+	imu.angular_velocity.x    = frame->getAngularSpeeds().x;
+	imu.angular_velocity.y    = frame->getAngularSpeeds().y;
+	imu.angular_velocity.z    = frame->getAngularSpeeds().z;
+
+			[for (inst: InstanceSpecification | getInstanceSpecifications(model)) before('\t//Here send RobotML sensor data to your RobotML component input\n')]
+				[let p: Property = getInstance(model, inst)]
+					[if (p.isProperty() and inst.isAllocatedTo('aroccam'))]
+						[for (inPort : Port | p.type.oclAsType(Class).getInputPortsForElement())]
+							[for (conn : Connector | inPort.getConnectionsFromPort())] 
+								[let source: Class = conn.getSourceComponentForConnector().type.oclAsType(Class)]
+									[if (inPort.type.name.equalsIgnoreCase('Imu'))]
+										[if (conn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](imu);
+										[comment]HACK FOR SENSOR MACRO-COMPONENT[/comment]
+										[elseif (source.hasStereotype('SensorSystem'))]
+											[for (extOutConn: Connector | source.getExternalOutputConnectors())]
+												[if (extOutConn.getDestPortName().equalsIgnoreCase(conn.getSourcePortName()))]
+													[if (extOutConn.getSourceComponentInstanceNameForConnector().equalsIgnoreCase(instance.name))]
+	[conn.getDestComponentForConnector().name/].[conn.getDestPortName()/](imu);
+													[/if]
+												[/if]
+											[/for]
+										[/if]
+									[/if]
+								[/let]
+							[/for]
+						[/for]
+					[/if]
+				[/let]
+			[/for]
+}
+		[/if]
+	[/let]
+[/for]
+
+void [model.name/]Application::frameError(const FramePtr & f)
+{
+	effibox::FrameErrorPtr frame = frame_cast<FrameError>(f);
+	std::cerr << "Frame error " << frame->getErrorMessage() << " occured at " << frame->getDate() << "!" << std::endl;
+}
+[/file]
+
+[comment] Generate Sub-Components [/comment]
+[for (inst: InstanceSpecification | getInstanceSpecifications(model))]
+	[let p: Property = getInstance(model, inst)]
+		[if (p.isProperty() and inst.isAllocatedTo('aroccam'))]
+[generateAroccamComponentCpp(p.type.oclAsType(Class),model)/]
+		[/if]
+	[/let]
+[/for]
+
+[/template]

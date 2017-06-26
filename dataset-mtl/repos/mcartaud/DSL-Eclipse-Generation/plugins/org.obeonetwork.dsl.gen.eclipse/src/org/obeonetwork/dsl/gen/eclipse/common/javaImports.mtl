@@ -1,0 +1,403 @@
+[comment encoding = UTF-8 
+
+Copyright (c) 2012 Obeo
+All rights reserved.  This program and the accompanying materials
+are made available under the terms of the Eclipse Public License 1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+You can apply any license to the files generated with this module and Acceleo.
+
+Contributors :
+	Mathieu Cartaud (Obeo) - initial API and implementation
+/]
+[module javaImports('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel', 'http://www.obeonetwork.org/dsl/eclipse')]
+
+[import org::obeonetwork::dsl::gen::eclipse::common::normalizeName /]
+[import org::obeonetwork::dsl::gen::eclipse::services::findPlatform /]
+
+
+
+[comment --------------------------------------------------------------------------
+  Tests imports
+ ---------------------------------------------------------------------------------- /]
+[query private allTestImports(aBundle : Bundle) : Set(String) = 
+	aBundle.regularTestImports()->asOrderedSet()->sortedBy(s: String | s)
+ /]
+
+[query private regularTestImports(aBundle : Bundle) : Sequence(String) = 
+	Sequence {'junit.framework.Test', 'junit.framework.TestCase',
+'junit.framework.TestSuite', 'junit.textui.TestRunner', aBundle.testImport()}
+ /]
+
+[template private testImport(aBundle : Bundle)]
+[aBundle.genBundleID()/].tests.unit.utils.[aBundle.name.replaceAll(' ', '').toUpperFirst()/]Test
+[/template]
+
+[template public genTestImport(aBundle : Bundle)]
+[if (aBundle.findPlatform().toString().toLower() = 'linux')]
+import [aBundle.allTestImports()->sep(';' + '\n' + 'import ')/];
+[elseif (aBundle.findPlatform().toString().toLower() = 'windows')]
+import [aBundle.allTestImports()->sep(';' + '\r\n' + 'import ')/];
+[else]
+import [aBundle.allTestImports()->sep(';' + '\r' + 'import ')/];
+[/if]
+[/template]
+
+
+[comment --------------------------------------------------------------------------
+  Editor imports
+ ---------------------------------------------------------------------------------- /]
+[query private allEditorImports(anEditor : Editor) : OrderedSet(String) = 
+	anEditor.regularEditorImports()->union(anEditor.helpEditor())->asOrderedSet()->sortedBy(s: String | s)
+ /]
+
+[query private regularEditorImports(anEditor : Editor) : Sequence(String) = 
+	Sequence {'org.eclipse.swt.custom.TableEditor', 'org.eclipse.swt.widgets.Composite',
+'org.eclipse.swt.widgets.Table', 'org.eclipse.ui.editors.text.TextEditor'}
+ /]
+
+[query private helpEditor(anEditor : Editor) : Sequence(String) = 
+if (anEditor.dynamicHelp->size() > 0) then
+	Sequence {'org.eclipse.ui.PlatformUI'}
+else
+	Sequence {}
+endif  /]
+
+[template public genEditorImport(anEditor : Editor)]
+[if (anEditor.findPlatform().toString().toLower() = 'linux')]
+import [anEditor.allEditorImports()->sep(';' + '\n' + 'import ')/];
+[elseif (anEditor.findPlatform().toString().toLower() = 'windows')]
+import [anEditor.allEditorImports()->sep(';' + '\r\n' + 'import ')/];
+[else]
+import [anEditor.allEditorImports()->sep(';' + '\r' + 'import ')/];
+[/if]
+[/template]
+
+
+
+[comment --------------------------------------------------------------------------
+  Handlers imports
+ ---------------------------------------------------------------------------------- /]
+[query private allContextualHandlerImports(aHandler : ContextualHandler) : OrderedSet(String) = 
+	aHandler.regularHandlerImports()->union(aHandler.undefinedContextualHandlerImport())
+->union(aHandler.otherContextualHandlerImport())->union(aHandler.stringContextualHandlerImport())
+->asOrderedSet()->sortedBy(s: String | s)
+ /]
+
+[query private regularHandlerImports(aHandler : Handler) : Sequence(String) = 
+	Sequence {'org.eclipse.core.commands.AbstractHandler', 'org.eclipse.core.commands.ExecutionEvent',
+'org.eclipse.core.commands.ExecutionException', 'org.eclipse.jface.dialogs.MessageDialog', 
+'org.eclipse.ui.IWorkbenchWindow', 'org.eclipse.ui.handlers.HandlerUtil'}
+ /]
+
+[query private undefinedContextualHandlerImport(aHandler : ContextualHandler) : Sequence(String) = 
+if (not(aHandler.activateWith.oclIsUndefined()) or aHandler.activateWith->size() > 0) then
+	Sequence {'org.eclipse.jface.viewers.ISelection'}
+else
+	Sequence {}
+endif  /]
+
+[query private stringContextualHandlerImport(aHandler : ContextualHandler) : Sequence(String) = 
+if (aHandler.activateWith.toString().matches('java.lang.String')) then
+	Sequence {'org.eclipse.jface.text.ITextSelection'}
+else
+	Sequence {}
+endif  /]
+
+[query private otherContextualHandlerImport(aHandler : ContextualHandler) : Sequence(String) = 
+if (aHandler.activateWith->size() > 0 and not(aHandler.activateWith.toString().matches('java.lang.String'))) then
+	Sequence {'org.eclipse.jface.viewers.IStructuredSelection', 'java.util.ArrayList', 'java.util.Iterator', 'java.util.List'}
+else
+	Sequence {}
+endif  /]
+
+[template public genContextualHandlerImport(aHandler : ContextualHandler)]
+[if (aHandler.findPlatform().toString().toLower() = 'linux')]
+import [aHandler.allContextualHandlerImports()->sep(';' + '\n' + 'import ')/];
+[elseif (aHandler.findPlatform().toString().toLower() = 'windows')]
+import [aHandler.allContextualHandlerImports()->sep(';' + '\r\n' + 'import ')/];
+[else]
+import [aHandler.allContextualHandlerImports()->sep(';' + '\r' + 'import ')/];
+[/if]
+[/template]
+
+[template public genDefaultHandlerImport(aHandler : Handler)]
+[if (aHandler.findPlatform().toString().toLower() = 'linux')]
+import [aHandler.regularHandlerImports()->asOrderedSet()->sortedBy(s: String | s)->sep(';' + '\n' + 'import ')/];
+[elseif (aHandler.findPlatform().toString().toLower() = 'windows')]
+import [aHandler.regularHandlerImports()->asOrderedSet()->sortedBy(s: String | s)->sep(';' + '\r\n' + 'import ')/];
+[else]
+import [aHandler.regularHandlerImports()->asOrderedSet()->sortedBy(s: String | s)->sep(';' + '\r' + 'import ')/];
+[/if]
+[/template]
+
+
+[comment --------------------------------------------------------------------------
+  View imports
+ ---------------------------------------------------------------------------------- /]
+[query private allViewImports(aView : View) : OrderedSet(String) = 
+	aView.regularViewImports()->union(aView.helpViewImports())->union(aView.modelViewImports())
+->union(aView.modelDSViewImports())->asOrderedSet()->sortedBy(s : String | s)
+ /]
+
+[query private regularViewImports(aView : View) : Sequence(String) = 
+	Sequence {'org.eclipse.emf.common.notify.Notifier', 'org.eclipse.emf.ecore.resource.Resource',
+ 'org.eclipse.emf.ecore.resource.impl.ResourceImpl', 'org.eclipse.emf.edit.provider.ComposedAdapterFactory',
+ 'org.eclipse.emf.edit.provider.ReflectiveItemProviderAdapterFactory', 'org.eclipse.emf.edit.provider.resource.ResourceItemProviderAdapterFactory',
+ 'org.eclipse.emf.edit.ui.provider.AdapterFactoryContentProvider', 'org.eclipse.emf.edit.ui.provider.AdapterFactoryLabelProvider',
+ 'org.eclipse.jface.action.IMenuListener', 'org.eclipse.jface.action.IMenuManager', 'org.eclipse.jface.action.MenuManager',
+ 'org.eclipse.jface.viewers.TreeViewer', 'org.eclipse.jface.viewers.ViewerSorter', 'org.eclipse.swt.SWT',
+ 'org.eclipse.swt.widgets.Composite', 'org.eclipse.swt.widgets.Menu', 'org.eclipse.ui.part.ViewPart'}
+ /]
+
+[query private helpViewImports(aView : View) : Sequence(String) = 
+if (aView.dynamicHelp->size() > 0) then
+	Sequence {'org.eclipse.ui.PlatformUI'}
+else
+	Sequence {}
+endif  /]
+
+[query private modelViewImports(aView : View) : Sequence(String) = 
+if (aView.eContainer(Bundle).exportedPackages->size() > 0) then
+	aView.genModelViewImports().toString().tokenize(',')->union(aView.genModelViewImportsFactory().tokenize(','))
+else
+	Sequence {}
+endif  /]
+
+[query private modelDSViewImports(aView : View) : Sequence(String) = 
+if (aView.eContainer(Bundle).declarativeServices->size() > 0) then
+	aView.genModelDSViewImports().tokenize(',')->union(aView.genModelDSViewImportsFactory().tokenize(','))
+else
+	Sequence {}
+endif  /]
+
+[template private genModelViewImports(aView : View)]
+[for (aGenClass : GenClass | aView.eContainer(Bundle).exportedPackages.genModel.eAllContents(GenClass))]
+[aGenClass.eContainer(GenPackage).basePackage/].[aGenClass.eContainer(GenPackage).ecorePackage.name/].[aGenClass.ecoreClass.name.toUpperFirst()/],[/for]
+[/template]
+
+[template private genModelViewImportsFactory(aView : View)]
+[for (aGenClass : GenClass | aView.eContainer(Bundle).exportedPackages.genModel.eAllContents(GenClass))]
+[aGenClass.eContainer(GenPackage).basePackage/].[aGenClass.eContainer(GenPackage).ecorePackage.name/].[aGenClass.eContainer(GenPackage).ecorePackage.name.toUpperFirst()/]Factory,[/for]
+[/template]
+
+[template private genModelDSViewImports(aView : View)]
+[for (anEPackage : EPackage | aView.eContainer(Bundle).declarativeServices.delegatorClass.ecoreClass.eContainer(EPackage).eAllContents(EClass).eContainer(EPackage))]
+[anEPackage.ancestors(EPackage).name->reverse()->sep('.')/].[anEPackage.name/].[aView.eContainer(Bundle).declarativeServices.delegatorClass.ecoreClass.name/],[/for]
+[/template]
+
+[template private genModelDSViewImportsFactory(aView : View)]
+[for (anEPackage : EPackage | aView.eContainer(Bundle).declarativeServices.delegatorClass.ecoreClass.eContainer(EPackage).eAllContents(EClass).eContainer(EPackage))]
+[anEPackage.ancestors(EPackage).name->reverse()->sep('.')/].[anEPackage.name/].[anEPackage.name.toUpperFirst()/]Factory,[/for]
+[/template]
+
+[template public genViewImport(aView : View)]
+[if (aView.findPlatform().toString().toLower() = 'linux')]
+import [aView.allViewImports()->sep(';' + '\n' + 'import ')/];
+[elseif (aView.findPlatform().toString().toLower() = 'windows')]
+import [aView.allViewImports()->sep(';' + '\r\n' + 'import ')/];
+[else]
+import [aView.allViewImports()->sep(';' + '\r' + 'import ')/];
+[/if]
+[/template]
+
+
+
+[comment --------------------------------------------------------------------------
+  Activator imports
+ ---------------------------------------------------------------------------------- /]
+[query private allActivatorImports(aBundle : Bundle) : OrderedSet(String) = 
+	aBundle.regularActivatorImports()->union(aBundle.importActivatorProvider())->asOrderedSet()->sortedBy(s : String | s)
+ /]
+
+[query private regularActivatorImports(aBundle : Bundle) : Sequence(String) = 
+	Sequence {'org.eclipse.jface.resource.ImageDescriptor', 'org.eclipse.ui.plugin.AbstractUIPlugin',
+'org.osgi.framework.BundleContext'}
+ /]
+
+[query private importActivatorProvider(aBundle : Bundle) : Sequence(String) = 
+if (aBundle.extensionPointProvider->size() > 0) then
+	Sequence {'org.eclipse.core.runtime.IExtensionRegistry', 'org.eclipse.core.runtime.Platform'}->union(
+aBundle.extensionRegistryActivator().tokenize(','))->union(aBundle.extensionRegistryListenerActivator().tokenize(','))
+else
+	Sequence {}
+endif  /]
+
+[template private extensionRegistryActivator(aBundle : Bundle)]
+[for (anExtensionPoint : ExtensionPointProvider | aBundle.extensionPointProvider)]
+[aBundle.genBundleID()/].extension.[anExtensionPoint.genExtensionName().toLowerFirst()/].[anExtensionPoint.genExtensionName()/]Registry,[/for]
+[/template]
+
+[template private extensionRegistryListenerActivator(aBundle : Bundle)]
+[for (anExtensionPoint : ExtensionPointProvider | aBundle.extensionPointProvider)]
+[aBundle.genBundleID()/].extension.[anExtensionPoint.genExtensionName().toLowerFirst()/].[anExtensionPoint.genExtensionName()/]RegistryListener,[/for]
+[/template]
+
+[template public genActivatorImport(aBundle : Bundle)]
+[if (aBundle.findPlatform().toString().toLower() = 'linux')]
+import [aBundle.allActivatorImports()->sep(';' + '\n' + 'import ')/];
+[elseif (aBundle.findPlatform().toString().toLower() = 'windows')]
+import [aBundle.allActivatorImports()->sep(';' + '\r\n' + 'import ')/];
+[else]
+import [aBundle.allActivatorImports()->sep(';' + '\r' + 'import ')/];
+[/if]
+[/template]
+
+
+[comment --------------------------------------------------------------------------
+  Extension point imports
+ ---------------------------------------------------------------------------------- /]
+[query private allExtensionImports(anExtensionPoint : ExtensionPointClient) : OrderedSet(String) = 
+	Sequence {anExtensionPoint.genExtensionImport() ,anExtensionPoint.genExtensionImportAbstract()}->asOrderedSet()->sortedBy(s : String | s)
+ /]
+
+[template private genExtensionImportAbstract(anExtensionPoint : ExtensionPointClient)]
+[anExtensionPoint.provider.eContainer(Bundle).genBundleID()/].extension.[anExtensionPoint.provider.genExtensionName().toLowerFirst()/].Abstract[anExtensionPoint.provider.refactorExtensionClassName()/]
+[/template]
+
+[template private genExtensionImport(anExtensionPoint : ExtensionPointClient)]
+[anExtensionPoint.provider.eContainer(Bundle).genBundleID()/].extension.[anExtensionPoint.provider.genExtensionName().toLowerFirst()/].[anExtensionPoint.provider.refactorExtensionClassName()/]
+[/template]
+
+[query private allExtensionImports(anExtensionPoint : ExtensionPointClient, anAttribute : JavaAttribute) : OrderedSet(String) = 
+	Sequence {anExtensionPoint.genExtensionImport(anAttribute) ,anExtensionPoint.genExtensionImportAbstract(anAttribute)}->asOrderedSet()->sortedBy(s : String | s)
+ /]
+
+[template private genExtensionImportAbstract(anExtensionPoint : ExtensionPointClient, anAttribute : JavaAttribute)]
+[anExtensionPoint.provider.eContainer(Bundle).genBundleID()/].extension.[anAttribute.eContainer(ExtensionPointProvider).genExtensionName().toLowerFirst()/].Abstract[anAttribute.genAttributeClassName()/]
+[/template]
+
+[template private genExtensionImport(anExtensionPoint : ExtensionPointClient, anAttribute : JavaAttribute)]
+[anExtensionPoint.provider.eContainer(Bundle).genBundleID()/].extension.[anAttribute.eContainer(ExtensionPointProvider).genExtensionName().toLowerFirst()/].[anAttribute.genAttributeClassName()/]
+[/template]
+
+[template public genExtensionClientImport(anExtensionPoint : ExtensionPointClient)]
+[if (anExtensionPoint.findPlatform().toString().toLower() = 'linux')]
+import [anExtensionPoint.allExtensionImports()->sep(';' + '\n' + 'import ')/];
+[elseif (anExtensionPoint.findPlatform().toString().toLower() = 'windows')]
+import [anExtensionPoint.allExtensionImports()->sep(';' + '\r\n' + 'import ')/];
+[else]
+import [anExtensionPoint.allExtensionImports()->sep(';' + '\r' + 'import ')/];
+[/if]
+[/template]
+
+[template public genExtensionClientImport(anExtensionPoint : ExtensionPointClient, anAttribute : JavaAttribute)]
+[if (anExtensionPoint.findPlatform().toString().toLower() = 'linux')]
+import [anExtensionPoint.allExtensionImports(anAttribute)->sep(';' + '\n' + 'import ')/];
+[elseif (anExtensionPoint.findPlatform().toString().toLower() = 'windows')]
+import [anExtensionPoint.allExtensionImports(anAttribute)->sep(';' + '\r\n' + 'import ')/];
+[else]
+import [anExtensionPoint.allExtensionImports(anAttribute)->sep(';' + '\r' + 'import ')/];
+[/if]
+[/template]
+
+
+[comment --------------------------------------------------------------------------
+  Nature imports
+ ---------------------------------------------------------------------------------- /]
+[query private allNatureImports(aNature : Nature) : OrderedSet(String) = 
+	aNature.regularNatureImports()->union(aNature.builderNatureImport())->asOrderedSet()->sortedBy(s : String | s)
+ /]
+
+[query private regularNatureImports(aNature : Nature) : Sequence(String) = 
+	Sequence {'org.eclipse.core.resources.ICommand', 'org.eclipse.core.resources.IProject',
+'org.eclipse.core.resources.IProjectDescription', 'org.eclipse.core.resources.IProjectNature', 
+'org.eclipse.core.runtime.CoreException'}
+ /]
+
+[query private builderNatureImport(aNature : Nature) : Sequence(String) = 
+if (aNature.builders->size() > 0) then
+	aNature.genBuilderNatureImport().tokenize(',')
+else
+	Sequence {}
+endif
+ /]
+
+[template private genBuilderNatureImport(aNature : Nature)]
+[for (aBuilder : Builder | aNature.builders)]
+[aBuilder.ancestors(Bundle).genBundleID()/].builders.[aBuilder.name.replaceAll(' ', '_').toUpperFirst()/],[/for]
+[/template]
+
+[template public genNatureImport(aNature : Nature)]
+[if (aNature.findPlatform().toString().toLower() = 'linux')]
+import [aNature.allNatureImports()->sep(';' + '\n' + 'import ')/];
+[elseif (aNature.findPlatform().toString().toLower() = 'windows')]
+import [aNature.allNatureImports()->sep(';' + '\r\n' + 'import ')/];
+[else]
+import [aNature.allNatureImports()->sep(';' + '\r' + 'import ')/];
+[/if]
+[/template]
+
+
+[query private allToggleNatureImports(aNature : Nature) : OrderedSet(String) = 
+	aNature.regularToggleNatureImports()->union(aNature.toggleNatureActivator()->asSequence())
+->asOrderedSet()->sortedBy(s : String | s)
+ /]
+
+[query private regularToggleNatureImports(aNature : Nature) : Sequence(String) = 
+	Sequence {'java.util.Iterator', 'org.eclipse.core.resources.IProject',
+ 'org.eclipse.core.resources.IProjectDescription', 'org.eclipse.core.runtime.CoreException',
+ 'org.eclipse.core.runtime.IAdaptable', 'org.eclipse.core.runtime.IStatus',
+ 'org.eclipse.core.runtime.Status', 'org.eclipse.jface.action.IAction',
+ 'org.eclipse.jface.viewers.ISelection', 'org.eclipse.jface.viewers.IStructuredSelection',
+ 'org.eclipse.ui.IObjectActionDelegate', 'org.eclipse.ui.IWorkbenchPart'}
+ /]
+
+[template private toggleNatureActivator(aNature : Nature)]
+[aNature.ancestors(Bundle).genBundleID()/].Activator
+[/template]
+
+[template public genToggleNatureImport(aNature : Nature)]
+[if (aNature.findPlatform().toString().toLower() = 'linux')]
+import [aNature.allToggleNatureImports()->sep(';' + '\n' + 'import ')/];
+[elseif (aNature.findPlatform().toString().toLower() = 'windows')]
+import [aNature.allToggleNatureImports()->sep(';' + '\r\n' + 'import ')/];
+[else]
+import [aNature.allToggleNatureImports()->sep(';' + '\r' + 'import ')/];
+[/if]
+[/template]
+
+
+
+[comment --------------------------------------------------------------------------
+  Wizard imports
+ ---------------------------------------------------------------------------------- /]
+[query private allWizardImports(aWizard : Wizard) : OrderedSet(String) = 
+	aWizard.regularWizardImports()->union(aWizard.projectWizardImport())->union(aWizard.natureWizardImport())
+->asOrderedSet()->sortedBy(s : String | s)
+ /]
+
+[query private regularWizardImports(aWizard : Wizard) : Sequence(String) = 
+	Sequence {'java.lang.reflect.InvocationTargetException', 'org.eclipse.core.resources.ResourcesPlugin',
+ 'org.eclipse.core.runtime.CoreException', 'org.eclipse.core.runtime.IProgressMonitor',
+ 'org.eclipse.jface.operation.IRunnableWithProgress', 'org.eclipse.jface.viewers.IStructuredSelection',
+ 'org.eclipse.jface.wizard.Wizard', 'org.eclipse.ui.INewWizard',
+ 'org.eclipse.ui.IWorkbench', 'org.eclipse.ui.PlatformUI'}
+ /]
+
+[query private projectWizardImport(aWizard : Wizard) : Sequence(String) = 
+if (aWizard.oclIsKindOf(ProjectWizard)) then
+	Sequence {'org.eclipse.core.resources.IProject'}
+else
+	Sequence {'org.eclipse.core.resources.IFile', 'org.eclipse.core.runtime.IPath', 'java.io.ByteArrayInputStream', 'java.io.InputStream'}
+endif  /]
+
+[query private natureWizardImport(aWizard : Wizard) : Sequence(String) = 
+	aWizard.genNatureWizardImport().tokenize(',')
+ /]
+
+[template private genNatureWizardImport(aWizard : Wizard)]
+[for (aNature : Nature | aWizard.ancestors(Bundle).natures)][if (aWizard.oclIsKindOf(ProjectWizard))]
+[aWizard.ancestors(Bundle).genBundleID()/].natures.[aNature.name.replaceAll(' ', '_').toUpperFirst()/],[/if][/for]
+[/template]
+
+[template public genWizardImport(aWizard : Wizard)]
+[if (aWizard.findPlatform().toString().toLower() = 'linux')]
+import [aWizard.allWizardImports()->sep(';' + '\n' + 'import ')/];
+[elseif (aWizard.findPlatform().toString().toLower() = 'windows')]
+import [aWizard.allWizardImports()->sep(';' + '\r\n' + 'import ')/];
+[else]
+import [aWizard.allWizardImports()->sep(';' + '\r' + 'import ')/];
+[/if]
+[/template]

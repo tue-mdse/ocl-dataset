@@ -1,0 +1,131 @@
+[module entidad('http://www.eclipse.org/uml2/4.0.0/UML')/]
+
+[template public generate(c : Class)]
+[comment @main/]
+[file ('/src/main/java/' + c._package.qualifiedName.replaceAll('::', '/') +'/persistencia/entity/'+ c.name + '.java', false, 'UTF-8')]
+package [c._package.qualifiedName.replaceAll('::', '.')/].persistencia.entity;
+
+
+[if (c.getAssociations().navigableOwnedEnd->exists(a : Property | a.isMany()))]
+import java.util.List;
+import java.util.ArrayList;
+[/if]
+[if (c.attribute->exists(a : Property | a.type.name.equalsIgnoreCase('Date')))]
+import java.util.Date;
+[/if]
+import javax.persistence.*;
+
+/**
+  *  @generated
+  */
+[c.classHeader()/] {
+
+	@Id
+    //@Column(name = "[c.name/]_id")
+    @GeneratedValue(generator = "[c.name/]Gen", strategy = GenerationType.SEQUENCE)
+    @SequenceGenerator(name = "[c.name/]Gen", sequenceName = "[c.name/]_SEQ",allocationSize = 1)
+	private Long id;
+
+	public Long getId(){
+		return this.id;
+	}
+
+	public void setId(Long id){
+		this.id=id;
+	}
+    [c.attribute.generate()/]
+    [c.getAssociations().navigableOwnedEnd->select(type <> c).generate()/]
+    [c.attribute.accessors()/]
+	[c.getAssociations().navigableOwnedEnd->select(type <> c).accessors()/]
+}
+[/file]
+[/template]
+
+[comment Collections /]
+
+[template public generate(a : Property) ? (a.isMany())]
+
+/**
+* @generated
+* [a.lower/]-[a.upper/]-[a.isMany()/] 
+*/
+//@OneToMany(cascade={},fetch=javax.persistence.FetchType.LAZY)
+//private List<[a.type.name/]> [a.name/];
+
+[/template]
+
+[comment Single properties /]
+
+[template public generate(a : Property) ? (not a.isMany())]
+
+/**
+* @generated
+* [a.lower/]-[a.upper/]-[a.isMany()/]
+*/
+[if(a.isAttribute())]
+[if(a.type.name.equalsIgnoreCase('Date')) ]@Temporal(TemporalType.DATE)[/if]
+//@Column(name = "[a.name/]")
+[else]
+@ManyToOne(cascade={},fetch=FetchType.EAGER)
+[/if]
+private [a.type.name/] [a.name/];
+
+[/template]
+
+
+[comment Accessor many elements/]
+[template public accessors(a : Property) ? (a.isMany())]
+
+/*public List<[a.type.name/]> get[a.name.toUpperFirst()/](){
+	if([a.name/]!=null){
+		[a.name/]=new ArrayList<[a.type.name/]>(); 
+	}
+	return this.[a.name/];
+}
+
+public void set[a.name.toUpperFirst()/](List<[a.type.name/]> [a.name/]){
+	this.[a.name/]=[a.name/];
+}*/
+
+[/template]
+
+[comment Accessors for single element /]
+
+[template public accessors(a : Property) ? (not a.isMany())]
+
+/**
+* @generated
+*/
+[a.visibility/] [a.type.name/] get[a.name.toUpperFirst()/]() {
+    return this.[a.name/];
+}
+
+/**
+* @generated
+*/
+[a.visibility/] void set[a.name.toUpperFirst()/]([a.type.name/] [a.name/]) {
+    this.[a.name/] = [a.name/];
+}
+
+[/template]
+
+[template public classHeader(c : Class)]
+@Entity
+@Table(name="[c.name/]")//, schema="${schema}")
+@NamedQueries({
+	@NamedQuery(name="[c.name/].obtenerTodos", query="select e from [c.name/] e")
+})
+[c.visibility/] class [c.name/][c.extendsHeader()/][c.implementsHeader()/]
+[/template]
+
+[template public extendsHeader(c : Class) ? (c.superClass->notEmpty())]
+ extends [c.superClass.name/]
+[/template]
+
+[template public implementsHeader(c : Class) ? (c.interfaceRealization->notEmpty())]
+ implements [c.interfaceRealization.supplier.name->sep(', ')/]
+[/template]
+
+[query public isMany(s : MultiplicityElement) : Boolean =
+	s.lower > 1 or s.upper = -1 or s.upper > 1 
+/]

@@ -1,0 +1,113 @@
+[comment encoding = UTF-8 /]
+[module generateLogs('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[**
+ * This template generates the log files.
+ * @param aModel
+ */]
+[template public generateLogs(aModel : Model)]
+[generateLogBusinessMethod(aModel)/]
+[generateLogBusinessMethodInterceptor(aModel)/]
+[generateLogLifeCycleMethod(aModel)/]
+[generateLogLifeCycleMethodInterceptor(aModel)/]
+[/template]
+
+[template private generateLogBusinessMethod(aModel : Model)]
+[file ('src/main/java/'.concat(aModel.name.toLowerFirst()).concat('/persistence/logs/LogBusinessMethod.java'), false, 'UTF-8')]
+package [aModel.name.toLowerFirst()/].persistence.logs;
+
+import java.lang.annotation.*;
+import javax.interceptor.InterceptorBinding;
+
+@Inherited
+@InterceptorBinding
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface LogBusinessMethod {}
+[/file]
+[/template]
+
+[template private generateLogBusinessMethodInterceptor(aModel : Model)]
+[file ('src/main/java/'.concat(aModel.name.toLowerFirst()).concat('/persistence/logs/LogBusinessMethodInterceptor.java'), false, 'UTF-8')]
+package [aModel.name.toLowerFirst()/].persistence.logs;
+
+import javax.interceptor.AroundInvoke;
+import javax.interceptor.Interceptor;
+import javax.interceptor.InvocationContext;
+
+@LogBusinessMethod 
+@Interceptor
+public class LogBusinessMethodInterceptor implements java.io.Serializable {
+
+    //protected Logger logger = Logger.getLogger("aixmdb.beans");
+
+    @AroundInvoke
+    public Object doOnBusinessMethod(InvocationContext ctx) throws Exception {
+        //logger.entering(ctx.getTarget().getClass().getName(), ctx.getMethod().getName());
+        long startTime = System.currentTimeMillis();
+        if (ctx.getMethod().getName().startsWith("doTest"))
+            System.err.println("Run TEST: " + ctx.getTarget().getClass().getName() + "." + ctx.getMethod().getName());
+        else
+            System.out.println("Entering " + ctx.getTarget().getClass().getName() + "." + ctx.getMethod().getName());
+        try {
+            return ctx.proceed();
+        } finally {
+            long endTime = System.currentTimeMillis();
+            System.out.println("Exiting " + ctx.getTarget().getClass().getName() + "." + ctx.getMethod().getName());
+            System.err.println("time: " + (endTime - startTime) + "ms\n");
+            //logger.exiting(ctx.getTarget().toString(), ctx.getMethod().getName()); 
+        }
+    }
+}
+[/file]
+[/template]
+
+[template private generateLogLifeCycleMethod(aModel : Model)]
+[file ('src/main/java/'.concat(aModel.name.toLowerFirst()).concat('/persistence/logs/LogLifeCycleMethod.java'), false, 'UTF-8')]
+package [aModel.name.toLowerFirst()/].persistence.logs;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import javax.interceptor.InterceptorBinding;
+
+@Inherited
+@InterceptorBinding
+@Target({ElementType.TYPE})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface LogLifeCycleMethod {
+    
+}
+[/file]
+[/template]
+
+[template private generateLogLifeCycleMethodInterceptor(aModel : Model)]
+[file ('src/main/java/'.concat(aModel.name.toLowerFirst()).concat('/persistence/logs/LogLifeCycleMethodInterceptor.java'), false, 'UTF-8')]
+package [aModel.name.toLowerFirst()/].persistence.logs;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import javax.interceptor.Interceptor;
+import javax.interceptor.InvocationContext;
+
+@LogLifeCycleMethod 
+@Interceptor
+public class LogLifeCycleMethodInterceptor implements java.io.Serializable {
+
+    //protected Logger logger = Logger.getLogger("aixmdb.beans");
+    
+    @PostConstruct
+    public void doAfterConstruct(InvocationContext ctx) {
+        System.out.println("DAO " + ctx.getTarget().getClass().getName() + " has been created");
+    }
+    
+    @PreDestroy
+    public void doBeforeDestroy(InvocationContext ctx) {
+        System.out.println("DAO " + ctx.getTarget().toString() + " will be removed");
+    }
+    
+}
+[/file]
+[/template]

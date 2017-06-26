@@ -1,0 +1,46 @@
+[comment encoding = UTF-8 /]
+[module toNet('http://petrinet/1.0')]
+
+[comment Generation de la syntaxe .net à partir d'un modèle de réseau de pétri /]
+
+[template public toNet(petriNet : PetriNet)]
+[comment @main/]
+[file (petriNet.name.concat('.net'), false, 'UTF-8')]
+[for (tr : Transition | petriNet.petriNetElements->getTransitions())]
+tr [tr.name/][tr.getTransitionsPredecessors()/] ->[tr.getTransitionsSuccessors()/]
+[/for]
+[for (pl : Place | petriNet.petriNetElements->getPlaces())]
+[if (pl.marking > 0)]pl [pl.name/] ([pl.marking/])[/if]
+[/for]
+net [petriNet.name/]
+[/file]
+[/template]
+
+[query public getTransitions(elements : OrderedSet(PetriNetElement)) : OrderedSet(Transition) = 
+	elements->select( e | e.oclIsTypeOf(Transition) )
+		->collect( e | e.oclAsType(Transition) )
+		->asOrderedSet()
+/]
+
+[query public getPlaces(elements : OrderedSet(PetriNetElement)) : OrderedSet(Place) = 
+	elements->select( e | e.oclIsTypeOf(Place) )
+		->collect( e | e.oclAsType(Place) )
+		->select( e | e.marking > 0 )
+		->asOrderedSet()
+/]
+
+[template public getTransitionsPredecessors(tr : Transition)]
+[for (arc : Arc | tr.linksToPredecessor)] [arc.getPredecessorPlace()/][/for]
+[/template]
+
+[template public getTransitionsSuccessors(tr : Transition)]
+[for (arc : Arc | tr.linksToSuccessor)] [arc.getSuccessorPlace()/][/for]
+[/template]
+
+[template public getPredecessorPlace(arc : Arc)]
+[arc.predecessor.name/][if (arc.readOnly)]?[arc.multiplicity/][elseif (arc.multiplicity > 1)]*[arc.multiplicity/][/if]
+[/template]
+
+[template public getSuccessorPlace(arc : Arc)]
+[arc.successor.name/][if (arc.multiplicity > 1)]*[arc.multiplicity/][/if]
+[/template]

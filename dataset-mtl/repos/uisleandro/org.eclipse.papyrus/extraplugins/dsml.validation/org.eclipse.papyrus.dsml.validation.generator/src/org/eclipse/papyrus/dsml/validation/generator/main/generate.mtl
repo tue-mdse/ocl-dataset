@@ -1,0 +1,135 @@
+[comment encoding = UTF-8 /]
+[module generate('http://www.eclipse.org/uml2/5.0.0/UML')/] 
+
+[query public getPackageForConstraint(cstr : Constraint) : String = invoke('org.eclipse.papyrus.dsml.validation.model.profilenames.Utils', 'getPackageForConstraint(org.eclipse.uml2.uml.Constraint)', Sequence{cstr}) /]
+[query public getJavaConstraintBody(valueSpecificatoin : ValueSpecification) : String = invoke('org.eclipse.papyrus.dsml.validation.model.profilenames.Utils', 'getJavaConstraintBody(org.eclipse.uml2.uml.ValueSpecification)', Sequence{valueSpecificatoin}) /]
+[query public hasSpecificationForJava(constraint : Constraint) : Boolean   = invoke('org.eclipse.papyrus.dsml.validation.model.profilenames.Utils', 'hasSpecificationForJava(org.eclipse.uml2.uml.Constraint)', Sequence{constraint}) /]
+[query public isConstraintForStereotype(constraint : Constraint) : Boolean = invoke('org.eclipse.papyrus.dsml.validation.model.profilenames.Utils', 'isConstraintForStereotype(org.eclipse.uml2.uml.Constraint)',  Sequence{constraint}) /]
+[query public getConstraintForStereotype(constraint : Constraint) : String = invoke('org.eclipse.papyrus.dsml.validation.model.profilenames.Utils', 'getConstraintForStereotype(org.eclipse.uml2.uml.Constraint)', Sequence{constraint}) /]
+[query public getPluginID(dummy : Element) : String = invoke('org.eclipse.papyrus.dsml.validation.model.profilenames.Utils', 'getPluginID()', Sequence{}) /]
+
+
+[template public generateConstraint(constraint : Constraint)]
+[comment @main/]
+
+[if (hasSpecificationForJava(constraint) and getPackageForConstraint(constraint) <> null)]
+[file(getPluginID(constraint).replaceAll('\\.', '/') + '/' + getPackageForConstraint(constraint).replaceAll('\\.','/') + '/' + constraint.name + 'Constraint.java', false)]
+	
+package [getPluginID(constraint)/].[getPackageForConstraint(constraint)/];
+
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.emf.validation.AbstractModelConstraint;
+import org.eclipse.emf.validation.IValidationContext;
+import org.eclipse.uml2.uml.Element;
+import org.eclipse.uml2.uml.Stereotype;
+
+public class [constraint.name.toUpperFirst() + 'Constraint'/] extends AbstractModelConstraint{
+
+	public IStatus validate(IValidationContext ctx) {
+		if( ctx.getTarget()instanceof Element){
+			Element element =(Element)ctx.getTarget();
+			
+			[if isConstraintForStereotype(constraint)]
+			Stereotype appliedStereotype= element.getAppliedStereotype("[getConstraintForStereotype(constraint)/]");
+			if( appliedStereotype!=null){
+					if(evaluateConstraint(element,appliedStereotype)){
+					return ctx.createSuccessStatus();
+				}
+				else{
+					return ctx.createFailureStatus("Constraint not validated");
+				}
+			}
+			
+			[else]
+				if(evaluateConstraint(element)){
+					return ctx.createSuccessStatus();
+				}
+				else{
+					return ctx.createFailureStatus("Constraint not validated");
+					
+				}
+			[/if]	
+		}
+
+		return ctx.createSuccessStatus();
+
+}
+	private boolean evaluateConstraint (Element self, Stereotype appliedStereotype){
+		[if isConstraintForStereotype(constraint)]
+			[if getJavaConstraintBody(constraint.specification) <> null]
+				[getJavaConstraintBody(constraint.specification)/]
+			[else]
+				return true;
+			[/if]	
+
+		[else]
+			return true;
+		[/if]	
+	}
+	private boolean evaluateConstraint (Element self){
+	[if ( isConstraintForStereotype(constraint))<>true]
+			[if getJavaConstraintBody(constraint.specification) <> null]
+				[getJavaConstraintBody(constraint.specification)/]
+			[else]
+				return true;
+			[/if]	
+		[else]
+			return true;
+		[/if]	
+	}
+}
+[/file]
+[/if]
+
+[/template]
+
+[template public generateValidationContext(stereotype : Stereotype)]
+[file (getPluginID(stereotype).replaceAll('\\.', '/') + '/selectors/' + stereotype.name +'ClientSelector.java', false)]
+[comment @main/]
+package [getPluginID(stereotype)/].selectors;
+
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.validation.model.IClientSelector;
+import org.eclipse.uml2.uml.Class;
+import org.eclipse.uml2.uml.Element;
+import org.eclipse.uml2.uml.Stereotype;
+import org.eclipse.uml2.uml.util.UMLUtil;
+
+
+public class [stereotype.name/]ClientSelector implements IClientSelector {
+
+	public boolean selects(Object object) {
+		if(!(object instanceof EObject)) {
+			return false;
+		}
+
+		if(object instanceof Element) {
+			return false;
+		}
+
+		EObject stereotypeApplication = ((EObject)object);
+		Stereotype stereotype = UMLUtil.getStereotype(stereotypeApplication);
+		if(stereotype == null) {
+			return false;
+		}
+
+		return checkStereotype(stereotype, "[stereotype.name/]"); //$NON-NLS-1$
+	}
+
+	public boolean checkStereotype(Stereotype stereotype, String stereoName) {
+		if(stereoName.equals(stereotype.getName())) {
+			return true;
+		}
+		for (Class superStereo : stereotype.getSuperClasses()) {
+			if (superStereo instanceof Stereotype) {
+				if (checkStereotype((Stereotype) superStereo, stereoName)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+}
+
+[/file]
+[/template]

@@ -1,0 +1,187 @@
+[comment encoding = UTF-8 /]
+[module genProxy('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::common::gen::common::files::commonUtils /]
+[import com::mgs::uml::gen::php::proxy::proxyCommon /]
+[import com::mgs::uml::gen::php::entity::entityCommon /]
+[import com::mgs::uml::common::umlUtils /]
+[import com::mgs::uml::gen::php::common::phpUtils /]
+[import com::mgs::uml::gen::php::dao::daoCommon /]
+[import com::mgs::uml::common::profileUtils /]
+
+[template public genExtends(c : Class) post (trim())]
+[if (c.hasBaseClass())] 
+extends [c.baseClass().proxyName()/]
+[else]
+extends EntityProxy
+[/if]
+[/template]
+
+[template public genImports(c : Class)]
+[if (c.hasBaseClass())] 
+require_once('[c.baseClass().proxyFilePath()/]');
+[else]
+require_once('proxy/EntityProxy.php');
+[/if]
+[/template]
+
+[template public genProxy(m : Model)]
+
+[comment @main /]
+
+[for (c : Class | m.profile_getAllEntities())]
+[file (c.proxyFilePath(), false, 'UTF-8')]
+<?php
+[fileHeader('com.mgs.uml.gen.php.proxy.genProxy')/]
+[c.genImports()/]
+class [c.proxyName()/] [c.genExtends()/] implements [c.entityInterfaceName()/] {
+
+	public function __construct($id = -1){
+		parent::__construct($id);
+	}
+	
+	protected function init($id){
+		$this->original = new [c.entityName()/]($id);
+	}
+	
+	[genAccessors()/]
+	
+}
+
+?>
+[/file]
+[/for]
+[/template]
+
+[template public loadRelationName(p : Property) post (trim())]
+	load[p.name.toUpperFirst()/]Relation
+[/template]
+
+[template public unloadRelationName(p : Property) post (trim())]
+	unload[p.name.toUpperFirst()/]Relation
+[/template]
+
+[template public loadedRelationVar() post (trim())]
+	_relationLoaded
+[/template]
+
+[template public genGetter(p : Property, c : Class) post (trim())]
+public function [p.getterName()/]($lazyLoading = false, Connection $connection = null){
+	[p.varName()/] = $this->original->[p.getterName()/]();
+[if (not p.type.oclIsTypeOf(PrimitiveType))]
+	if(!isset([p.varName()/]) && $lazyLoading){
+		$dao = new [c.daoName()/]();
+		$value = $dao->[p.daoLoadName()/]($connection, $this);
+		if(!$this->isRelationLoaded("[p.name/]")){
+			array_push($this->[loadedRelationVar()/], "[p.name/]");
+		}
+[if (p.upper <> 1)]
+		$this->original->[p.setterName()/]($value);
+[if (p.hasOppositeProperty())]
+		foreach($value as $v){
+[if (p.getOppositeProperty().upper <> 1)]
+			$v->[p.getOppositeProperty().adderName()/]($this);
+[else]
+			$v->[p.getOppositeProperty().setterName()/]($this);
+[/if]
+		}
+[/if]
+[else]
+		$v = @$value['['/]0[']'/];
+		if($v){
+			$this->original->[p.setterName()/]($v);
+[if (p.hasOppositeProperty())]
+			$v = $value['['/]0[']'/];
+[if (p.getOppositeProperty().upper <> 1)]
+			$v->[p.getOppositeProperty().adderName()/]($this);
+[else]
+			$v->[p.getOppositeProperty().setterName()/]($this);
+[/if]
+[/if]
+		}
+[/if]
+	}
+[/if]
+	return $this->original->[p.getterName()/]();
+}
+
+[/template]
+
+[template public genSetter(p : Property) post (trim())]
+public function [p.setterName()/]([p.genArgument()/] = null){
+	if($this->original->[p.getterName()/]() !== [p.varName()/]){
+		$this->original->[p.setterName()/]([p.varName()/]);
+[if (not p.isSimplePrimitive())]
+		if(!$this->isRelationLoaded("[p.name/]")){
+			array_push($this->[loadedRelationVar()/], "[p.name/]");
+		}
+[/if]
+		if([p.varName()/] != null){
+[if (p.upper <> 1 and p.hasOppositeProperty())]
+			foreach([p.varName()/] as $element){
+[if (p.getOppositeProperty().upper = 1)]
+				$element->[p.getOppositeProperty().setterName()/]($this);
+[else]
+				$element->[p.getOppositeProperty().adderName()/]($this);
+[/if]
+			}
+[else]
+[if (p.hasOppositeProperty())]
+[if (p.getOppositeProperty().upper = 1)]
+			[p.varName()/]->[p.getOppositeProperty().setterName()/]($this);
+[else]
+			[p.varName()/]->[p.getOppositeProperty().adderName()/]($this);
+[/if]
+[/if]
+[/if]
+		}
+	}
+	$this->isuptodate = false;
+}
+
+[/template]
+
+[template public genAdder(p : Property) post (trim())]
+[if (p.upper <> 1)]
+public function [p.adderName()/]([p.genArgumentSimple()/]){
+	if(!$this->original->[p.getterName()/]() || array_search([p.varName()/], $this->original->[p.getterName()/](), true) === false){
+		$this->original->[p.adderName()/]([p.varName()/]);
+		if(!$this->isRelationLoaded("[p.name/]")){
+			array_push($this->[loadedRelationVar()/], "[p.name/]");
+		}
+[if (p.hasOppositeProperty())]
+[if (p.getOppositeProperty().upper = 1)]
+		[p.varName()/]->[p.getOppositeProperty().setterName()/]($this);
+[else]
+		[p.varName()/]->[p.getOppositeProperty().adderName()/]($this);
+[/if]
+[/if]
+	}
+	$this->isuptodate = false;
+}
+[/if]
+
+[/template]
+
+[template public genUnloadRelation(p : Property) post (trim())]
+[if (not p.isSimplePrimitive())]
+public function [p.unloadRelationName()/](){
+	$index = array_search("[p.name/]", $this->[loadedRelationVar()/], true);
+	if ($index !== false) {
+		array_splice($this->[loadedRelationVar()/], $index, 1);	
+	}
+}
+public function [p.isRelationLoaded()/](){
+	return $this->isRelationLoaded("[p.name/]");
+}
+[/if]
+
+[/template]
+
+[template public genAccessors(c : Class) post (trim())]
+[for (p : Property | c.profile_propertiesEntity())]
+[p.genGetter(c)/]
+[p.genSetter()/]
+[p.genAdder()/]
+[p.genUnloadRelation()/]
+[/for]	
+[/template]

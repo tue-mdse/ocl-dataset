@@ -1,0 +1,118 @@
+[comment encoding = UTF-8 /]
+[module generate_aroccam_application_hpp('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DataTypeQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DeploymentQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::FSMQueries /]
+[import org::eclipse::robotml::generators::acceleo::aroccam::files::generate_aroccam_component_hpp /]
+
+[template public generateAroccamApplicationHpp(model : Model)]
+
+[file ('src/' + model.name + 'Application/' + model.name + 'Application.hpp', false, 'UTF-8')]
+#ifndef __EFFIBOX_[model.name/]Application_HPP__
+#define __EFFIBOX_[model.name/]Application_HPP__
+
+//effibox
+#include <effibox/application/application.hpp>
+
+//local includes
+#include "Datatypes/all.hpp"
+
+[comment] Includes components (which has been allocated to aroccam) [/comment]
+[for (inst: InstanceSpecification | getInstanceSpecifications(model))]
+	[let p: Property = getInstance(model, inst)]
+		[if (p.isProperty() and inst.isAllocatedTo('aroccam'))]
+#include "[p.type.oclAsType(Class).getStereotype()/]/[p.type.name/]/[p.type.name/].hpp"
+		[/if]
+	[/let]
+[/for]
+
+class [model.name/]Application: public Application
+{
+	APPLICATION_DECLARATION([model.name/]Application)
+
+public:
+	void initialization(const std::string & inParameters);
+	void finalization();
+
+	//effibox cameras event callbacks
+	[for (inst: InstanceSpecification | getInstanceSpecifications(model))]
+		[let p: Property = getInstance(model, inst)]
+			[if (p.isProperty() and p.type.oclAsType(Class).hasStereotype('CameraSystem'))]
+	void frame[p.name/](const effibox::FramePtr & f);
+			[/if]
+		[/let]
+	[/for]
+
+	//effibox rangefinder event callbacks
+	[for (inst: InstanceSpecification | getInstanceSpecifications(model))]
+		[let p: Property = getInstance(model, inst)]
+			[if (p.isProperty() and p.type.oclAsType(Class).hasStereotype('LidarSystem'))]
+	void frame[p.name/](const effibox::FramePtr & f);
+			[/if]
+		[/let]
+	[/for]
+
+	//effibox gps events callbacks
+	[for (inst: InstanceSpecification | getInstanceSpecifications(model))]
+		[let p: Property = getInstance(model, inst)]
+			[if (p.isProperty() and p.type.oclAsType(Class).hasStereotype('GPSSystem'))]
+	void frame[p.name/]_GGA(const effibox::FramePtr & f);
+			[/if]
+		[/let]
+	[/for]
+
+	//effibox vehicle events callbacks
+	[for (inst: InstanceSpecification | getInstanceSpecifications(model))]
+		[let p: Property = getInstance(model, inst)]
+			[if (p.isProperty() and (	p.type.oclAsType(Class).hasStereotype('OdometrySystem')
+										or p.type.oclAsType(Class).hasStereotype('Robot')	)
+			)]
+	void frame[p.name/]_genericodometry(const effibox::FramePtr & f);
+				[let ugvKind : String = getAttributeValue(p.type.oclAsType(Class), 'kind', 'Robot', 'car')]
+				[if(ugvKind.equalsIgnoreCase('UGVdifferential'))]
+	void frame[p.name/]_wifibotspecific(const effibox::FramePtr & f);
+				[/if]
+				[/let]
+	void frame[p.name/]_timercommand(const effibox::FramePtr & f);
+			[/if]
+		[/let]
+	[/for]
+
+	//effibox imu events callbacks
+	[for (inst: InstanceSpecification | getInstanceSpecifications(model))]
+		[let p: Property = getInstance(model, inst)]
+			[if (p.isProperty() and p.type.oclAsType(Class).hasStereotype('InertialMeasurementUnitSystem'))]
+	void frame[p.name/]_GLOBAL(const effibox::FramePtr & f);
+			[/if]
+		[/let]
+	[/for]
+
+	void frameError(const effibox::FramePtr & f);
+
+	//robotML components
+	[comment] Generate components in deployment plan which has been allocated to aroccam [/comment]
+	[for (inst: InstanceSpecification | getInstanceSpecifications(model))]
+		[let p: Property = getInstance(model, inst)]
+			[if (p.isProperty() and inst.isAllocatedTo('aroccam'))]
+	[p.type.name/] [p.name/];
+			[/if]
+		[/let]
+	[/for]
+};
+
+#endif
+[/file]
+
+[comment] Generate Sub-Components [/comment]
+[for (inst: InstanceSpecification | getInstanceSpecifications(model))]
+	[let p: Property = getInstance(model, inst)]
+		[if (p.isProperty() and inst.isAllocatedTo('aroccam'))]
+[generateAroccamComponentHpp(p.type.oclAsType(Class),model)/]
+		[/if]
+	[/let]
+[/for]
+
+[/template]

@@ -1,0 +1,139 @@
+[module sqlcreate('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /] 
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /] 
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::sql::services::sqltypeservices /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[template public generateSqlServer2005Create(model:Model)]
+[comment This template is called by the main module file /]
+[file (model.pathToMainResources().concat('/').concat(model.projectName()).concat('-ddl.sql'), false))]
+
+	[for (class:Class|model.allOwnedElements()->filter(Class))]
+		[if (class.isEntity())]
+-- Tables for Entity [class.name/] 
+
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'['['/]dbo[']'/].['['/][class.name.toSqlNotation()/][']'/]') AND type in (N'U'))
+DROP TABLE [class.name.toSqlNotation()/]
+
+CREATE TABLE [class.name.toSqlNotation()/]
+(
+[comment  Class attribute iteration /][comment  attribute.filterExistProperty("association",false) 
+COMMENT ON COLUMN/]
+			[if (class.superClass->isEmpty())]
+    ID INT IDENTITY(1,1) NOT NULL,
+			[/if]
+[comment  Properties /]
+			[for (prop:Property|class.ownedAttribute)]
+[comment  Array of primitives types are not generated /]
+				[if (not (prop.isDerived) and prop.upper = 1)]
+    [prop.name.toSqlNotation()/] [prop.type.convertToSqlType()/] 
+					[if (prop.lower > 0)]NOT [/if]NULL,
+				[/if]
+			[/for]
+[comment  Direct associations /]
+			[for (prop:Property|class.getOppositeAttributes())]
+[comment  n---n /]
+				[if (prop.opposite = null)]
+[comment  |n|-->n /]
+					[if (prop.upper = 1)]
+[comment  |n|-->1 /]
+						[if (prop.oppositeAttribute().upper = 1)]
+[comment  |1|-->1 /]    [prop.genForeignKey()/] UNIQUE,
+						[else]
+[comment  |*|-->1 /]    [prop.genForeignKey()/],
+						[/if]
+					[else]
+[comment  n-->* /]
+						[if (prop.oppositeAttribute().upper = 1)]
+[comment  |1|-->* /]
+						[else]
+[comment  |*|-->* /]	
+						[/if]
+					[/if]
+				[elseif ((prop.oppositeAttribute().upper = -1 or prop.oppositeAttribute().upper > 1) and prop.upper = 1)]
+[comment  |*|<-->1 /]    
+	[prop.genForeignKey()/],
+				[elseif (prop.isMainEndPoint())]
+[comment  |n|<-->n /]
+					[if (prop.upper = 1 and prop.oppositeAttribute().upper = 1)]
+[comment  |1|<-->1 /]    
+	[prop.genForeignKey()/] UNIQUE,
+					[/if]
+				[/if]
+			[/for]
+[comment  Opposite associations /]
+			[for (prop:Property|class.pointedAttribute()->filter(Property))]
+[comment  n---|n| /]
+				[if (prop.opposite = null)]
+[comment  n-->|n| /]
+					[if (prop.upper <> 1)]
+[comment  n-->|*| /]
+						[if (prop.oppositeAttribute().upper = 1)]
+[comment  1-->|*| /]    
+	REF_[prop.oppositeAttribute().type.name.toSqlNotation()/]_[prop.name.toSqlNotation()/]_ID INT[if (prop.lower > 0)] NOT NULL[/if],
+						[/if]
+					[/if]
+				[/if]
+			[/for]
+[comment  Inheritance /]
+			[if (class.superClass->notEmpty())]
+    REF_INHERITS_[class.superClass.name.toSqlNotation()/]_ID INT NOT NULL,    
+    PRIMARY KEY (REF_INHERITS_[class.superClass.name.toSqlNotation()/]_ID)
+			[else]
+    PRIMARY KEY (ID)
+			[/if]
+);
+
+[comment  Join table for many to many associations /]
+			[for (prop:Property|class.getOppositeAttributes())]
+[comment  n---n /]
+				[if (prop.upper <> 1 and prop.oppositeAttribute().upper <> 1)]
+[comment  *---* /]
+					[if (prop.opposite = null or prop.isMainEndPoint())]
+[comment  *-->|*| /]
+IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'['['/]dbo[']'/].['['/]JOIN_[prop.oppositeAttribute().type.name.toSqlNotation()/]_[prop.type.name.toSqlNotation()/][']'/]') AND type in (N'U'))
+DROP TABLE JOIN_[prop.oppositeAttribute().type.name.toSqlNotation()/]_[prop.type.name.toSqlNotation()/]
+CREATE TABLE JOIN_[prop.oppositeAttribute().type.name.toSqlNotation()/]_[prop.type.name.toSqlNotation()/]
+(
+    [prop.oppositeAttribute().type.name.toSqlNotation()/]_ID INT NOT NULL,
+    [prop.type.name.toSqlNotation()/]_ID INT NOT NULL,
+    PRIMARY KEY ([prop.oppositeAttribute().type.name.toSqlNotation()/]_ID, [prop.type.name.toSqlNotation()/]_ID)
+);
+
+					[/if]
+				[/if]
+			[/for]
+		[/if]
+	[/for]
+
+[/file]
+[/template]
+
+
+[template public convertToSqlType(type:Type)]
+[comment For ddl generation specific to MySQL /]
+[getProperty('sql.typeconversion.'+name)/]
+[/template]
+
+
+[template public genForeignKey(property:Property)]
+REF_[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_ID INT[if (property.lower > 0)] NOT NULL[/if]
+[/template]
+
+
+[query public isMainEndPoint(property:Property) : Boolean =
+if (property.aggregation = 'composite' or 
+	(property.oppositeAttribute().aggregation <> 'composite' and 
+	(compare(property.class.name, property.type.name) > 0 or (property.class = property.type and 
+	compare(property.name, property.opposite.name) > 0)))) then 
+	true 
+else 
+	false 
+endif
+/]
+
+
+

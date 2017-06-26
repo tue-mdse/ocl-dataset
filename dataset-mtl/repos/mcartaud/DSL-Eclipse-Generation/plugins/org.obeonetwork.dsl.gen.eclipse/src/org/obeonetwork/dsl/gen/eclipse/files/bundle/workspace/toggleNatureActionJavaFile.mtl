@@ -1,0 +1,122 @@
+[comment encoding = UTF-8 
+
+Copyright (c) 2012 Obeo
+All rights reserved.  This program and the accompanying materials
+are made available under the terms of the Eclipse Public License 1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+You can apply any license to the files generated with this module and Acceleo.
+
+Contributors :
+	Mathieu Cartaud (Obeo) - initial API and implementation
+/]
+[module toggleNatureActionJavaFile('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/2002/GenModel', 'http://www.obeonetwork.org/dsl/eclipse')]
+
+[import org::obeonetwork::dsl::gen::eclipse::common::normalizeName /]
+[import org::obeonetwork::dsl::gen::eclipse::common::javaImports /]
+
+
+[template private toggleNatureActionJavaFile(aNature : Nature)]
+[aNature.eContainer(Bundle).genBundleJavaPath()/]/natures/Toggle[aNature.name.toUpperFirst()/]Action.java
+[/template]
+
+[template public genToggleNatureActionJavaFile(aNature : Nature)]
+[file (toggleNatureActionJavaFile(), false, 'UTF-8')]
+package [aNature.ancestors(Bundle).genBundleID()/].natures;
+
+
+[aNature.genToggleNatureImport()/]
+
+//[protected (': add nature imports for ' + aNature.name)]
+//[/protected]
+
+public class Toggle[aNature.name.toUpperFirst()/]Action implements IObjectActionDelegate {
+
+	/**
+	 * The current selection.
+	 */
+	private ISelection selection;
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.ui.IActionDelegate#run(org.eclipse.jface.action.IAction)
+	 */
+	public void run(IAction action) {
+		if (selection instanceof IStructuredSelection) {
+			for (Iterator<?> it = ((IStructuredSelection) selection).iterator(); it
+					.hasNext();) {
+				Object element = it.next();
+				IProject project = null;
+				if (element instanceof IProject) {
+					project = (IProject) element;
+				} else if (element instanceof IAdaptable) {
+					project = (IProject) ((IAdaptable) element)
+							.getAdapter(IProject.class);
+				}
+				if (project != null) {
+					toggleNature(project);
+				}
+			}
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.ui.IActionDelegate#selectionChanged(org.eclipse.jface.action.IAction,
+	 *      org.eclipse.jface.viewers.ISelection)
+	 */
+	public void selectionChanged(IAction action, ISelection selection) {
+		this.selection = selection;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @see org.eclipse.ui.IObjectActionDelegate#setActivePart(org.eclipse.jface.action.IAction,
+	 *      org.eclipse.ui.IWorkbenchPart)
+	 */
+	public void setActivePart(IAction action, IWorkbenchPart targetPart) {
+	}
+
+	/**
+	 * Toggles sample nature on a project
+	 * 
+	 * @param project
+	 *            to have sample nature added or removed
+	 */
+	private void toggleNature(IProject project) {
+		try {
+			IProjectDescription description = project.getDescription();
+			String['['/]] natures = description.getNatureIds();
+
+			for (int i = 0; i < natures.length; ++i) {
+				if ([aNature.name.toUpperFirst()/].NATURE_ID.equals(natures['['/]i])) {
+					// Remove the nature
+					String['['/]] newNatures = new String['['/]natures.length - 1];
+					System.arraycopy(natures, 0, newNatures, 0, i);
+					System.arraycopy(natures, i + 1, newNatures, i,
+							natures.length - i - 1);
+					description.setNatureIds(newNatures);
+					project.setDescription(description, null);
+					return;
+				}
+			}
+
+			// Add the nature
+			String['['/]] newNatures = new String['['/]natures.length + 1];
+			System.arraycopy(natures, 0, newNatures, 0, natures.length);
+			newNatures['['/]natures.length] = [aNature.name.toUpperFirst()/].NATURE_ID;
+			description.setNatureIds(newNatures);
+			project.setDescription(description, null);
+						
+		} catch (CoreException e) {
+			IStatus status = new Status(IStatus.ERROR, Activator.PLUGIN_ID, e.getMessage(), e);
+			Activator.getDefault().getLog().log(status);
+		}
+	}
+}
+[/file]
+[/template]

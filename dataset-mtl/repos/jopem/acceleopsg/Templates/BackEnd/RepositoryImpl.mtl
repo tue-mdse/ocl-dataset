@@ -1,0 +1,124 @@
+[comment encoding = UTF-8 /]
+[module RepositoryImpl('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+
+[template public generateElementRepositoryImpl(aClass : Class) ? (aClass.getEAnnotation('crud').toString().contains('crud')) {counter : Integer = 1;}]
+[comment @main /]
+[file ('main/java/'.concat(aClass._package.name.replaceAll('\\.','/')).concat('/repository/').concat('/impl/').concat(aClass.name).concat('RepositoryImpl.java'), false), 'UTF-8')]
+
+package [aClass._package.name.toLower()/].repository.impl;
+
+import java.util.List;
+
+import org.hibernate.SessionFactory;
+import org.hibernate.criterion.Example;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+import org.hibernate.criterion.Projections;
+import org.hibernate.criterion.Restrictions;
+
+import [aClass._package.name.toLower()/].domain.[name.toUpperFirst()/];
+import [aClass._package.name.toLower()/].repository.[name.toUpperFirst()/]Repository;
+
+@Repository("[name.toLower()/]Repository")
+public class [name.toUpperFirst()/]RepositoryImpl implements [name.toUpperFirst()/]Repository {
+
+	@Autowired
+	private SessionFactory sessionFactory;
+
+	public void add[name.toUpperFirst()/]([name.toUpperFirst()/] [name.toLower()/]) {
+		sessionFactory.getCurrentSession().persist([name.toLower()/]);
+	}
+
+	public void edit[name.toUpperFirst()/]([name.toUpperFirst()/] [name.toLower()/]) {
+		sessionFactory.getCurrentSession().update([name.toLower()/]);
+
+	}
+
+	@SuppressWarnings({ "unchecked" })
+	public List<[name.toUpperFirst()/]> list[name.toUpperFirst()/]ss([name.toUpperFirst()/] [name.toLower()/]) {
+
+		if ([name.toLower()/] != null) {
+
+			[name.toUpperFirst()/] [name.toLower()/]Proxy = new [name.toUpperFirst()/]();
+
+            [for (attribute)]
+
+            [if (type.toString().contains('Integer'))] 
+			//[comment aClass.name.toLower()/]Proxy.set[name.toUpperFirst()/]([aClass.name.toLower()/].get[name.toUpperFirst()/]());
+            [/if]
+            [if (type.toString().contains('Long'))] 
+			//[comment aClass.name.toLower()/]Proxy.set[name.toUpperFirst()/]([aClass.name.toLower()/].get[name.toUpperFirst()/]());
+            [/if]
+	        [/for]
+
+			return (List<[name.toUpperFirst()/]>) sessionFactory.getCurrentSession()
+					.createCriteria([name.toUpperFirst()/].class)
+					.add(Example.create([name.toLower()/]Proxy)).list();
+
+		}
+
+		return (List<[name.toUpperFirst()/]>) sessionFactory.getCurrentSession()
+				.createCriteria([name.toUpperFirst()/].class).list();
+
+	}
+
+
+	@SuppressWarnings("unchecked")
+	public List<[name.toUpperFirst()/]> list[name.toUpperFirst()/]ssQuery([name.toUpperFirst()/] [name.toLower()/], String query) {
+			//[name.toLower()/]Proxy.set#columnsGrid([name.toLower()/].get#columnsGrid());
+			return (List<[name.toUpperFirst()/]>) sessionFactory.getCurrentSession()
+					.createCriteria([name.toUpperFirst()/].class)
+					[if aClass.getAllAttributes()-> asSequence() -> size() > 0 ]
+					.add([for (p: Property | aClass.getAllAttributes())][if aClass.getAllAttributes()-> asSequence() -> size() = 1 ]Restrictions.like("[aClass.getAllAttributes().name/]", "%" + query +"%")[/if]	
+						[if i = 1  and  aClass.getAllAttributes()-> asSequence() -> size() > 1 ]
+							[for (p: Property | aClass.getAllAttributes())][if i > 1]Restrictions.or([/if][/for]	
+						[for (p: Property | aClass.getAllAttributes())]Restrictions.like("[p.name.toLower()/]", "%" + query +"%")[if i > 1])[/if][if i < aClass.getAllAttributes()-> asSequence() -> size()],[/if][/for]	
+						[/if] 		
+					[/for]).list();
+					[/if]
+	}
+
+
+	@SuppressWarnings("unchecked")
+	public List<[name.toUpperFirst()/]> list[name.toUpperFirst()/]sPagination([name.toUpperFirst()/] [name.toLower()/], int page, int size) {
+			//cuentaProxy.set#columnsGrid(cuenta.get#columnsGrid());
+			return (List<[name.toUpperFirst()/]>) sessionFactory.getCurrentSession()
+				.createCriteria([name.toUpperFirst()/].class).setFirstResult(page)
+				.setMaxResults(size).list();
+	}
+
+	@SuppressWarnings({ "unchecked" })
+	public int getTotalPages(int size) {
+		
+		int totalPages = 0;
+		totalPages = (Integer) sessionFactory.getCurrentSession()
+		.createCriteria([name.toUpperFirst()/].class).setProjection(Projections.rowCount())
+		.uniqueResult();
+		
+		totalPages = totalPages / size;
+		int remainder = totalPages / size;  
+			
+		if (remainder !=0 ) {
+			totalPages = totalPages + 1;
+		}
+		
+		return totalPages; 
+
+	}
+
+	public [name.toUpperFirst()/] get[name.toUpperFirst()/](int empid) {
+		return ([name.toUpperFirst()/]) sessionFactory.getCurrentSession().get(
+				[name.toUpperFirst()/].class, empid);
+	}
+
+	public void delete[name.toUpperFirst()/]([name.toUpperFirst()/] [name.toLower()/]) {
+		sessionFactory.getCurrentSession().delete([name.toLower()/]);
+	}
+}
+
+
+
+
+[/file]
+[/template]

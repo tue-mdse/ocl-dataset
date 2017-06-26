@@ -1,0 +1,91 @@
+[comment encoding = UTF-8 /]
+[module javaComplexTypesDefinitions('platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AnnotationLayerStack.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/AuthenticationPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/ExternalServiceLayerPSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/PSMMetamodel.ecore', 'platform:/plugin/eu.scasefp7.eclipse.mde.m2m/Metamodels/SearchLayerPSMMetamodel.ecore')]
+
+
+[template public javaComplexTypesDefinitions(anAnnotationStack : AnnotationStack, jAlgoRController : JavaAlgoResourceController)]
+[for (complexType : ComplexType | jAlgoRController.getJavaRESTClientControllerAnnotation(jAlgoRController, anAnnotationStack).hasComplexTypes)]
+[file (anAnnotationStack.hasCorePSM.name + '/src/main/java/eu/fp7/scase/' + anAnnotationStack.hasCorePSM.name.toLowerCase() + '/' + jAlgoRController.parentName.toLowerCase() + '/' + complexType.complexTypeName.toUpperFirst() + '.java', false, 'UTF-8')]
+/*
+ * ARISTOTLE UNIVERSITY OF THESSALONIKI
+ * Copyright (C) 2015
+ * Aristotle University of Thessaloniki
+ * Department of Electrical & Computer Engineering
+ * Division of Electronics & Computer Engineering
+ * Intelligent Systems & Software Engineering Lab
+ *
+ * Project             : [anAnnotationStack.hasCorePSM.name/]
+ * WorkFile            : 
+ * Compiler            : 
+ * File Description    : 
+ * Document Description: 
+* Related Documents	   : 
+* Note				   : 
+* Programmer		   : RESTful MDE Engine created by Christoforos Zolotas
+* Contact			   : christopherzolotas@issel.ee.auth.gr
+*/
+
+package eu.fp7.scase.[anAnnotationStack.hasCorePSM.name.toLowerCase()/].[jAlgoRController.parentName.toLowerCase()/];
+
+import java.util.ArrayList;
+import java.util.List;
+import javax.persistence.Transient;
+import javax.xml.bind.annotation.XmlRootElement;
+import java.util.HashSet;
+import java.util.Set;
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
+import org.codehaus.jackson.annotate.JsonProperty;
+
+/* 
+ * [complexType.complexTypeName/] class is responsible to model the corresponding Complex type that is used while this service interoperates with a 3rd party one.
+*/
+
+@XmlRootElement
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class [complexType.complexTypeName.toUpperFirst()/]{
+
+    /* There follows a list with the properties that model the [complexType.complexTypeName/] Complex Type, as prescribed in the External service layer CIM*/
+[for (property : ComplexTypeProperty | complexType.hasComplexTypeProperties)]
+	@JsonProperty("[property.name/]")
+	[if (property.isUnique = true)]
+	private [if (property.hasPrimitiveType = true)][property.type/][else][property.propertyHasComplexType.complexTypeName/][/if] [property.name/];
+	[else]
+	private List<[if (property.hasPrimitiveType = true)][property.type/][else][property.propertyHasComplexType.complexTypeName/][/if]> [property.name/] = new ArrayList<[if (property.hasPrimitiveType = true)][property.type/][else][property.propertyHasComplexType.complexTypeName/][/if]>();
+	[/if]
+[/for]
+
+	/* There follows a list of setter and getter functions.*/
+[for (property : ComplexTypeProperty | complexType.hasComplexTypeProperties) separator('\n')]
+	[if (property.isUnique = false)]
+	public void set[property.name.toUpperFirst()/](List<[if (property.hasPrimitiveType = true)][property.type/][else][property.propertyHasComplexType.complexTypeName/][/if]> [property.name/]){
+    	this.[property.name/] = [property.name/];
+    }
+	[else]
+	public void set[property.name.toUpperFirst()/]([if (property.hasPrimitiveType = true)][property.type/][else][property.propertyHasComplexType.complexTypeName/][/if] [property.name/]){
+    	this.[property.name/] = [property.name/];
+    }
+	[/if]
+[/for]
+
+[for (property : ComplexTypeProperty | complexType.hasComplexTypeProperties) separator('\n')]
+	[if (property.isUnique = false)]
+	public List<[if (property.hasPrimitiveType = true)][property.type/][else][property.propertyHasComplexType.complexTypeName/][/if]> get[property.name.toUpperFirst()/](){
+        return this.[property.name/];
+    }
+	[else]
+	public [if (property.hasPrimitiveType = true)][property.type/][else][property.propertyHasComplexType.complexTypeName/][/if] get[property.name.toUpperFirst()/](){
+        return this.[property.name/];
+    }
+	[/if]
+[/for]
+}
+[/file]
+[/for]
+[/template]
+
+[query private getJavaRESTClientControllerAnnotation(jAlgoResourceController : JavaAlgoResourceController, anAnnotationStack : AnnotationStack) : JavaRESTClientController =
+	jAlgoResourceController.getJavaRESTClientControllerAnnotations(anAnnotationStack)->select(javaRESTController | javaRESTController.isJavaRESTClientController.annotatesJavaAlgoController->includes(jAlgoResourceController))->at(1)
+/]
+
+[query private getJavaRESTClientControllerAnnotations(anAnnotationStack : AnnotationStack) : Sequence(JavaRESTClientController) =
+	anAnnotationStack.hasExternalServiceLayer.hasAnnotation->select(annotation | annotation.oclIsTypeOf(JavaRESTClientController))->asSequence()
+/]

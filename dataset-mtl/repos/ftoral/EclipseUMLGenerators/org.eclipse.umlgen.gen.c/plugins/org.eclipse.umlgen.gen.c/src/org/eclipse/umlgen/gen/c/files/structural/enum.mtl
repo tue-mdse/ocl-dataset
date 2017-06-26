@@ -1,0 +1,43 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2011, 2014 CS Systèmes d'Information (CS-SI).
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Sebastien Gabel (CS-SI) - initial API and implementation
+ *     Fabien Toral (CS Information Systems) - Circular dependencies and other corrections for PolarSys migration
+[/comment]
+[module enum('http://www.eclipse.org/uml2/4.0.0/UML', 'http://www.eclipse.org/emf/2002/Ecore')/]
+[import org::eclipse::umlgen::gen::c::files::common /]
+[import org::eclipse::umlgen::gen::c::files::structural::dataTypeQueries /]
+[import org::eclipse::umlgen::gen::c::files::structural::valueSpecification /]
+
+[comment]A classic enumeration[/comment]
+[template public gen (e : Enumeration) ? (isEnumeration() and not isRedefined())]
+enum [name/]
+{
+  [enumMembers() /]
+}[if declaredVars()->notEmpty()] [declaredVars().name->sep(', ')/][/if];
+
+[/template]
+
+[comment]A typedef enum[/comment]
+[template public gen (e : Enumeration) ? (isEnumeration() and isRedefined())]
+typedef enum [name/]
+{
+  [enumMembers() /]
+}[if redefinee()->notEmpty()] [redefinee().name->sep(', ') /][/if];
+
+[/template]
+
+[template private enumMembers (e : Enumeration)]
+[ownedLiteral.gen()->sep(',\n')/]
+[/template]
+
+[template private gen (e : EnumerationLiteral)]
+[if (e.hasComment())][e.getComment().formatInLine().concat('\n')/][/if]
+[e.name/][if (not e.specification.oclIsUndefined())] = [e.specification.serialize()/][/if] [if commentsAfterTrim().size() > 0] [commentsAfterTrim()/][/if]
+[/template]

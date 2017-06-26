@@ -1,0 +1,48 @@
+[comment encoding = UTF-8 /]
+[module generateFacades('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::name::fileNameQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::imports::classImports/]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+
+[**
+ * This template generates the facade for a class.
+ * @param aClass
+ */]
+[template public generateFacades(aClass : Class) ? (isFeatureClass(aClass) or isObjectClass(aClass))]
+[if aClass.isAbstract._not()]
+[file (getPersistenceFileName(aClass), false, 'UTF-8')]
+package [aClass.getModel().name.toLower()/].persistence;
+
+import javax.ejb.Stateless;
+import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import java.io.Serializable;
+[generateModelElementImport(aClass)/]
+import [aClass.getModel().name.toLower()/].annotations.Facade;
+import [aClass.getModel().name.toLower()/].annotations.FeatureType;
+
+
+[if aClass.isFeatureClass()]@Facade(FeatureType.[aClass.name/])[/if]
+@Stateless
+public class [aClass.name/]Facade extends AbstractFacade<[aClass.name/]> implements Serializable
+{
+	//@Inject @MomokoDatabase
+	// change with your persistence unit name here:
+	@PersistenceContext(unitName="com.thales.momokoPU")
+	private EntityManager em;
+    
+	@Override
+	protected EntityManager getEntityManager() 
+	{
+    	return em;
+	}
+
+	public [aClass.name/]Facade() 
+	{
+    	super([aClass.name/].class);
+	}
+}
+[/file]
+[/if]
+[/template]

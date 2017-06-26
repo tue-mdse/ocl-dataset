@@ -1,0 +1,90 @@
+[comment encoding = UTF-8 /]
+[**
+ * 負責產生web.xml的template
+ */]
+[module templateWebXml('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import idv::hsiehpinghan::acceleo::utility::propertyUtility /]
+
+[import idv::hsiehpinghan::acceleo::web::template::query::queryWebProperty /]
+
+[**
+ * 產生web.xml的template
+ * @param anOclAny
+ */]
+[template public templateWebXml(anOclAny : OclAny)]
+[templateWebApp() /]
+	<display-name>defaultDisplayName</display-name>
+[templateContextParam() /]
+
+	<!-- filter -->
+[comment][if (queryIsStruts2Active() = true)]
+[templateStrut2Filter() /]
+[/if][/comment]
+
+	<!-- filter-mapping -->
+[comment][if (queryIsStruts2Active() = true)]
+[templateStrut2FilterMapping() /]
+[/if][/comment]
+
+	<!-- listener -->
+[templateListener() /]
+</web-app>
+[/template]
+
+[template private templateWebApp(anOclAny : OclAny)]
+[let aString : String = queryProperty('web', 'version')]
+	[if (aString = '2.3')]
+<!DOCTYPE web-app PUBLIC
+ "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+ "http://java.sun.com/dtd/web-app_2_3.dtd" >
+
+<web-app>
+	[elseif (aString = '2.4')]
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app id="booking" version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+	[/if]
+[/let]
+[/template]
+
+[template private templateContextParam(anOclAny : OclAny)]
+[for (aString : String | queryProperty('web', 'context-param(param-name,param-value)').tokenize(';'))]
+	[let aSequenceString : Sequence(String) = aString.tokenize(',')]
+	<context-param>
+		<param-name>[aSequenceString->at(1) /]</param-name>
+		<param-value>[aSequenceString->at(2) /]</param-value>
+	</context-param>
+	[/let]
+[/for]
+[/template]
+
+[template private templateStrut2Filter(anOclAny : OclAny)]
+[for (aString : String | queryProperty('struts2', 'filter(filter-name,filter-class)').tokenize(';'))]
+	[let aSequenceString : Sequence(String) = aString.tokenize(',')]
+	<filter>
+		<filter-name>[aSequenceString->at(1) /]</filter-name>
+		<filter-class>[aSequenceString->at(2) /]</filter-class>
+	</filter>
+	[/let]
+[/for]
+[/template]
+
+[template private templateStrut2FilterMapping(anOclAny : OclAny)]
+[for (aString : String | queryProperty('struts2', 'filter-mapping(filter-name,url-pattern)').tokenize(';'))]
+	[let aSequenceString : Sequence(String) = aString.tokenize(',')]
+	<filter-mapping>
+		<filter-name>[aSequenceString->at(1) /]</filter-name>
+		<url-pattern>[aSequenceString->at(2) /]</url-pattern>
+	</filter-mapping>
+	[/let]
+[/for]
+[/template]
+
+[template private templateListener(anOclAny : OclAny)]
+[for (aString : String | queryProperty('web', 'listenerListenerClass').tokenize(';'))]
+	<listener>
+		<listener-class>[aString /]</listener-class>
+	</listener>
+[/for]
+[/template]
+

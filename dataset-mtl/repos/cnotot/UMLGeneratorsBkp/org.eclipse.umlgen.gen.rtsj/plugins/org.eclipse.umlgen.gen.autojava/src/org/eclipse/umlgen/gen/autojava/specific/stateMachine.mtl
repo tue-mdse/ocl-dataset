@@ -1,0 +1,280 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2012, 2014 CNES and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Cedric Notot (Obeo) - initial API and implementation
+[/comment]
+
+[module stateMachine('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::umlgen::gen::autojava::specific::port /]
+[import org::eclipse::umlgen::gen::autojava::specific::lib::feature /]
+[import org::eclipse::umlgen::gen::autojava::specific::lib::requests::common /]
+[import org::eclipse::umlgen::gen::autojava::specific::lib::common /]
+[import org::eclipse::umlgen::gen::autojava::services::utilServices /]
+[import org::eclipse::umlgen::gen::autojava::services::umlServices /]
+[import org::eclipse::umlgen::gen::autojava::common::common /]
+
+[comment generates behavior /]
+[template public genStateMachine(aBehavior : Behavior)]
+[/template]
+
+[comment generates state machine /]
+[template public genStateMachine(aStateMachine : StateMachine)]
+/**
+ * State Machine attribute.
+ */
+[if (getProperty('gen.annotations') = 'true')]
+@ignore
+[/if]
+protected [aStateMachine.genName()/] [aStateMachine.genName()/];
+
+/**
+ * [aStateMachine.genName()/] Class.
+ */
+[if (getProperty('gen.annotations') = 'true')]
+@stateMachine
+[/if]
+[aStateMachine.genVisibility()/][aStateMachine.genAbstract()/][aStateMachine.genFinal()/]class [aStateMachine.genName()/] {
+	[aStateMachine.genStateInstances()/]
+	[for (prop : Property | aStateMachine.get('ownedAttribute')->filter(Property))]
+	[prop.genAttribute()/]
+	[/for]
+	[for (op : Operation | aStateMachine.get('ownedOperation')->filter(Operation))]
+	[op.genOperation()/]
+	[/for]
+
+	[aStateMachine.genSMConstructor()/]
+	
+	[aStateMachine.genAbstractState()/]
+	
+	[aStateMachine.genStates(eContainer(Class), null)/]
+}
+[/template]
+
+[comment generates constructor for initial state /]
+[template public genConstructorInitialState(aStateMachine : StateMachine) post(trim())]
+[if (aStateMachine.getInitial()->notEmpty())]
+	[if (getInitialTransitionMode(aStateMachine, aStateMachine.getInitial())->notEmpty())]
+[genName()/] = new [genName()/]();
+[genName()/].[getInitialTransitionMode(aStateMachine, aStateMachine.getInitial()).genName()/].enterHState();
+	[/if]
+[/if]
+[/template]
+
+[template protected genStateInstances(aStateMachine : StateMachine)]
+/* substates */
+[for (aStateMachine.get('region')->filter(Region).get('subvertex')->filter(State)->asSequence())]
+[genStateInstance()/]
+[/for]
+[/template]
+
+[template protected genStateInstance(aState : State)]
+/**
+ * State [genName()/].
+ */
+[if (getProperty('gen.annotations') = 'true')]
+@state
+[/if]
+final [genName()/] [genName()/] = new [genName()/]();
+[if (aState.get('region')->filter(Region)->notEmpty())]
+	[for (aState.get('region')->filter(Region).get('subvertex')->filter(State)->asSequence())]
+[genStateInstance()/]
+	[/for]
+[/if]
+[/template]
+
+[template protected genAbstractState(aStatemachine : StateMachine)]
+/**
+ * [aStatemachine.genName()/] States Signals class.
+ */
+abstract class [aStatemachine.genName()/]_States implements SMState {
+	[for (s : Signal | aStatemachine.getAllSignals())]
+	[s.genRedirectedRealizedSignal()/]
+	[/for]
+	[for (p : Property | aStatemachine.call('getAssociations')->filter(Association).get('navigableOwnedEnd')->filter(Property)->select(aProp : Property | aProp.type <> aStatemachine))]
+	[p.genAttribute()/]
+	[/for]
+}
+[/template]
+
+[comment generates states minimized by name /]
+[template protected genStates(aStatemachine : StateMachine, aClass : Class, aState : State)]
+[for (pseudo : Pseudostate | aStatemachine.get('region')->filter(Region).get('subvertex')->filter(Pseudostate)->select(state : Pseudostate | state.kind = PseudostateKind::junction or state.kind = PseudostateKind::fork or state.kind = PseudostateKind::join))]
+[comment logGenerationInfo(genNonGeneratedStateMessage) /]
+[/for]
+[for (state : State | aStatemachine.minimizeByName(aStatemachine.get('region')->filter(Region).get('subvertex')->filter(State)->asSequence())->filter(State))]
+[state.genState(aClass, aStatemachine)/]
+[/for]
+[/template]
+
+[template protected genState(aState : State, aClass : Class, aStateMachine : StateMachine)]
+/**
+ * [aState.genName()/] State class.
+ */
+[if (aState.owner->filter(Region).owner->filter(StateMachine)->notEmpty())]
+class [aState.genName()/] extends [aState.owner->filter(Region).owner.oclAsType(NamedElement).genName()/]_States {
+[else]
+class [aState.genName()/] extends [aState.owner->filter(Region).owner.oclAsType(NamedElement).genName()/] {
+[/if]
+	[if (aState.submachine->notEmpty())]
+	[aState.submachine.genComplexState(aState, aClass)/]
+	[/if]
+	
+	[for (currentSignal : Signal | aState.getTransition()->select(aTransition : Transition | aTransition.source = aState).get('trigger')->filter(Trigger).event->filter(SignalEvent).signal)]	
+	/**
+	 * Description of the signal [currentSignal.genName()/].
+	 *
+		[for (p: Property | currentSignal.get('attribute')->filter(Property))]
+	 * @param [p.genName()/][p.genCommentBis()/]
+		[/for]
+	 */
+	[currentSignal.genVisibility()/][currentSignal.genAbstract()/][currentSignal.genFinal()/]void [currentSignal.genName()/]([currentSignal.get('attribute')->filter(Property).genAttributeProperty()->sep(', ')/]) {
+		[if (currentSignal.getChoice(aState)->notEmpty())]
+			[for (t : Transition | sortByCondition(minimize(aState.getTransition().eContainer(Region).get('transition')->filter(Transition)->select(t : Transition | t.source = currentSignal.getChoice(aState)->first())))->filter(Transition))]
+				[if (t.target <> null)]
+					[if (not t.getBody()->first().equalsIgnoreCase('else'))]
+		[if (i <> 1)]else [/if]if ([t.getBody()/]) {
+			[t.genExitState()/][t.genEnterState()/]	
+		}
+					[else]
+		else {
+			[t.genExitState()/][t.genEnterState()/]	
+		}
+					[/if]
+				[else]
+		current_state = null;
+				[/if]
+			[/for]
+		[else]
+			[for (t : Transition | aState.getTransition()->select(aTransition : Transition | aTransition.source = aState and aTransition.get('trigger')->filter(Trigger).event->filter(SignalEvent).signal->asSequence()->first() = currentSignal))]
+		[t.effect.specification->filter(Operation).genName()/]([t.get('trigger')->filter(Trigger).get('event')->filter(SignalEvent).signal.get('attribute')->filter(Property).genName()->sep(', ')/]);
+				[if (t.target <> t.source)]
+		[t.genExitState()/][t.genEnterState()/]
+				[/if]
+			[/for]
+		[/if]
+	}
+	[/for]
+	
+	/**
+	 * Description of the method enterHState.
+	 *
+	 * @return SMState
+	 */
+	public SMState enterHState() {
+		return [if (aState.submachine->notEmpty())]histo.enterHState()[else]current_state = this[/if];
+	}
+	
+	/**
+	 * Description of the method enterState.
+	 *
+	 * @return [aState.genName()/]
+	 */
+	public [aState.genName()/] enterState() {
+		return this;
+	}
+	
+	/**
+	 * Description of the method exitState.
+	 *
+	 * @return [aStateMachine.oclAsType(NamedElement).genName()/]
+	 */
+	public [aStateMachine.oclAsType(NamedElement).genName()/] exitState() {
+		return [aStateMachine.oclAsType(NamedElement).genName()/].this;
+	}
+	
+	/**
+	 * Description of the method exitToState.
+	 *
+	 * @param s SMState
+	 */
+	public void exitToState(SMState s) {
+	[if (aState.exit->notEmpty())]
+		exitState();
+	[/if]
+	}
+	[if (aState.doActivity->notEmpty())]
+	/**
+	 * Description of the method doState.
+	 */
+	public void doState() {
+		// [protected ('for method doState in '.concat(aState.genName()))]
+ 		// TODO <%logGenerationInfo(genErrorState("doState"))%>
+ 		//	[/protected]
+	}
+	[/if]
+}
+[if (aState.get('region')->filter(Region)->notEmpty())]
+	[for (aState.get('region')->filter(Region).get('subvertex')->filter(State)->asSequence())]
+[genState(aClass, aStateMachine)/]
+	[/for]
+[/if]
+[/template]
+
+[comment generates constructor /]
+[template protected genSMConstructor(aStatemachine : StateMachine)]
+[if (submachineState->isEmpty())]
+/**
+ * Current State.
+ */
+SMState current_state;
+[/if]
+
+/**
+ * [genName()/] Constructor.
+ */
+public [genName()/]() {
+[if (submachineState->notEmpty())]
+	histo = [genInitialState()/];
+[/if]
+}
+[/template]
+
+[template protected genComplexState(aStateMachine : StateMachine, aState: State, aClass : Class)]
+[genStateInstances()/]
+[aState.genName()/]_States histo;
+
+[genAbstractState()/]
+
+[genStates(aClass, aState)/]
+
+[genSMConstructor()/]
+[/template]
+
+[template protected genExitState(aTransition : Transition) post(trim())]
+[if (target = null)]
+exitState()
+[else]
+// goto [target.genName()/]
+current_state = exitState()
+[/if]
+[/template]
+
+[template protected genEnterState(aTransition : Transition)]
+.[target.genName()/].enter[if (target->filter(State)->asSequence()->first().isSubmachineState)]H[/if]State();
+[/template]
+
+[comment generates initial state /]
+[template protected genInitialState(aStatemachine : StateMachine)]
+[if (getInitial()->notEmpty())]
+[get('region')->filter(Region).get('transition')->filter(Transition)->select(source = getInitial()->first()).target.genName()/]
+[/if]
+[/template]
+
+[query protected getTransition(aState : State) : Sequence(Transition) = aState.incoming->union(aState.outgoing)->asSequence() /]
+
+[query protected getChoice(currentSignal : Signal, aState : State) : Sequence(Pseudostate) = aState.getTransition()->select(source = aState and trigger.event->filter(SignalEvent).signal->asSequence()->first() = currentSignal).target->filter(Pseudostate)->select(kind = PseudostateKind::choice)->asSequence() /]
+
+[query protected getAllSignals(aStateMachine : StateMachine) : Sequence(Signal) = eContainer(Class).getAllSignals()->union(eContainer(Class).get('generalization')->filter(Generalization).general->asSequence()->select(c : Classifier | c.isAbstract)->filter(Class).getAllSignals())->reject(oclIsUndefined()) /]
+
+[query protected getBody(aTransition : Transition) : Sequence(String) = get('ownedRule')->filter(Constraint).specification->filter(OpaqueExpression).get('body') /]
+
+[query protected getInitial(aStateMachine : StateMachine) : Sequence(Pseudostate) = get('region')->filter(Region).get('subvertex')->filter(Pseudostate)->select(kind = PseudostateKind::initial)->asSequence() /]
+
+[query protected getInitialTransitionMode(aStateMachine : StateMachine, pseudoStates : Sequence(Pseudostate)) : Sequence(Vertex) = get('region')->filter(Region).get('transition')->filter(Transition)->select(source = pseudoStates->first()).target->asSequence() /]

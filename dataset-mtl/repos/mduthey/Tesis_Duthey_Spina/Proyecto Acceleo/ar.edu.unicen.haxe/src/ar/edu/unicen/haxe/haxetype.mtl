@@ -1,0 +1,96 @@
+[comment encoding = UTF-8 /]
+[module haxetype('http://haxe.unicen.edu.ar')]
+[import ar::edu::unicen::haxe::utils /]
+[import ar::edu::unicen::haxe::haxeexpression /]
+
+[template public typeTemplate(arg : HaxeType)]
+[/template]
+
+[template public typeTemplate(arg : HaxeEnum) ]
+enum [arg.name/] {
+[for (t : HaxeField | arg.haxeFields)]
+	[structureTemplate(t)/] 
+[/for]
+} 
+[/template] 
+
+[template public typeTemplate(arg : HaxeClass) ] 
+[if (arg.private)]private [/if][if (arg.extern)]extern [/if][if(arg.isInterface)]interface[else]class[/if] [arg.name/][if (arg.typeParameters->notEmpty())]<[arg.typeParameters->collect(x|x.name)->sep(',')/]>[/if] [if(not arg.generalization->isEmpty())]extends [arg.generalization.referencedTerminal.name/][/if][if(not arg.implementation->isEmpty())] [arg.implementation.referencedTerminal->collect('implements '.concat(name))->sep(' ')/][/if]
+{
+[for (t : HaxeField | arg.haxeFields)]
+	[structureTemplate(t)/] 
+[/for]
+}
+[/template]
+
+[template public typeTemplate(arg : HaxeAbstract) ] 
+abstract [arg.name/]([typeAccessTemplate(arg.underlyingType)/])[if (arg.directCastingFromType->notEmpty())] from [typeAccessTemplate(arg.directCastingFromType)/][/if] [if (arg.directCastingToType->notEmpty())] to [typeAccessTemplate(arg.directCastingToType)/][/if]
+{
+[for (t : HaxeField | arg.haxeFields)]
+	[structureTemplate(t)/] 
+[/for]
+}
+[/template]
+
+
+[template public typeTemplate(arg : HaxeTypedef)]
+typedef [arg.name/] = [typeAccessTemplate(arg.refType)/];
+[/template]
+
+[template public structureTemplate(arg : HaxeField)]
+[/template]
+
+[template public structureTemplate(arg : HaxeEnumConstructor)]
+[arg.name/][if (arg.parameters->notEmpty())]([for (it : HaxeSingleVariableDeclaration | arg.parameters) separator(',')][singleVarDeclaration(it)/] [/for])[/if];
+[/template]
+
+[template public structureTemplate(attrib : HaxeAttribute)]
+[if (not attrib.isPrivate)]public [/if][if (attrib.isStatic)]static [/if]var [attrib.name/][specialPropertiesTemplate(attrib)/][if (not type->isEmpty())]:[typeAccessTemplate(attrib.type)/][/if][if (not attrib.initializer->oclIsUndefined() and attrib.initializer->notEmpty() )] = [generateExpression(attrib.initializer)/][/if];
+[/template]
+
+[template private specialPropertiesTemplate(arg : HaxeAttribute)]
+[if(arg.getterProperty <> HaxeAttributeProperty::default and arg.setterProperty <> HaxeAttributeProperty::default )]([getPropertyTemplate(arg)/],[setPropertyTemplate(arg)/])[/if]
+[/template]
+
+[template private setPropertyTemplate(attr : HaxeAttribute)]
+[propertyTemplate(attr.setterProperty, 'set')/]
+[/template]
+
+[template private getPropertyTemplate(attr : HaxeAttribute)]
+[propertyTemplate(attr.getterProperty, 'get')/]
+[/template]
+
+[template private propertyTemplate(property : HaxeAttributeProperty,method :String)]
+[if(property = HaxeAttributeProperty::method)][method/][else][property/][/if]
+[/template]
+
+[template public structureTemplate(operation : HaxeOperation) post(trim())]
+[comment TODO : add comments /]
+[if (not operation.isPrivate)]public [/if][if (operation.overrides)]override [/if][if (operation.isStatic)]static [/if]function [operation.name/] ([parametersTemplate(operation.formalParameters)/]) [if (not operation.type->oclIsUndefined() and operation.type->notEmpty())] : [typeAccessTemplate(operation.type)/][/if] [if (not operation.theBody->oclIsUndefined() and operation.theBody->notEmpty())][generateBlock(operation.theBody)/][else];[/if]
+[/template]
+
+[template public generateMetadata(metadata : HaxeMetadata)]
+@[if (metadata.compilerMetadata)]:[/if][metadata.name/][if (metadata.parameters->notEmpty())]([metadata.parameters->collect(x|generateExpression(x))->sep(',')/])[/if]
+[/template]
+
+[template public structureTemplate(operation : HaxeConstructor) post(trim())]
+[if (operation.metadata->notEmpty())]
+[for (it : HaxeMetadata|operation.metadata)]
+[generateMetadata(it)/]
+[/for]
+[/if]
+[if (not operation.isPrivate)]public [/if][if (operation.overrides)]override [/if][if (operation.isStatic)]static [/if]function new ([parametersTemplate(operation.formalParameters)/])
+[if (operation.theBody <>null)][generateBlock(operation.theBody)/][else];[/if]
+[/template]
+
+[template private commentsTemplate(commnt : HaxeComment)]
+[commnt.content/]
+[/template]
+
+[template private parametersTemplate(operations : Set(HaxeSingleVariableDeclaration))]
+[for (x : HaxeSingleVariableDeclaration | operations) separator(', ')][singleVarDeclaration(x)/][/for]
+[/template]
+
+[template private singleVarDeclaration(x : HaxeSingleVariableDeclaration)]
+[if (x.isOptional)]?[/if][x.name/] : [if(not x.type->oclIsUndefined())][typeAccessTemplate(x.type)/][/if][if(not x.initializer->oclIsUndefined() and x.initializer->notEmpty())]= [generateExpression(x.initializer)/][/if]
+[/template]

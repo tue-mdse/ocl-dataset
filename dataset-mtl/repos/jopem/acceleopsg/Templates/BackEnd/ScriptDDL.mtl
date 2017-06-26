@@ -1,0 +1,26 @@
+[module ScriptDDL('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[template public generateElementScriptDDL(aClass : Class) ? (aClass.getEAnnotation('crud').toString().contains('crud'))]
+
+[comment @main /]
+[file ('main/resources/DDLscript'.concat(aClass.name.toUpperFirst()).concat('.sql'), false), 'UTF-8') ]
+
+DROP TABLE IF EXISTS [name.toLower()/];
+
+CREATE TABLE [name.toLower()/] ( id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+[for (anAttribute: Property | getAllAttributes() ) separator(',')]
+		[let classAtribute : Class = anAttribute.type]
+           [for (superclasses: Class | classAtribute.getSuperClasses())]
+           		[let nameclass : String = superclasses.name]
+                	[if (nameclass.equalsIgnoreCase('HInput'))]	
+                        [for (att: Property | classAtribute.getAllAttributes() -> select(s: Property | s.name='typeSql'))]
+						[anAttribute.name.toLower()/] [att.default/]
+						[/for]	
+					[/if]
+				[/let]
+			[/for]
+        [/let]
+[/for]);
+
+[/file]
+[/template]

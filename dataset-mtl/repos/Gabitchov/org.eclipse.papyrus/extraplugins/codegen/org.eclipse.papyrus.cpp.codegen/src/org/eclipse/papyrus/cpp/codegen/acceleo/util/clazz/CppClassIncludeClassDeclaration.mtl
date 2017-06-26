@@ -1,0 +1,49 @@
+[module CppClassIncludeClassDeclaration('http://www.eclipse.org/uml2/5.0.0/UML', 'http://www.eclipse.org/papyrus/C_Cpp/1')/]
+[import org::eclipse::papyrus::acceleo::GenUtils/]
+[import org::eclipse::papyrus::cpp::codegen::utils::CppGenUtils/]
+[import org::eclipse::papyrus::cpp::codegen::utils::ClassUtils/]
+[import org::eclipse::papyrus::cpp::codegen::acceleo::util::clazz::CppClassIncludeDeclaration/]
+
+[comment USED??? /]
+[template public CppClassIncludeClassDeclarationTemplate(class : Class)]
+[openNS()/]
+[if (hasStereotype(class, Template))]template [/if]class [class.name/];
+[closeNS()/]
+[/template]
+
+
+[template public CppOwnerPackageIncludeDeclaration(pkg : Package)]
+[comment if currentPkg is not root it is referenced here/]
+[if ((pkg <> null) and (not hasStereotype(CppRoot)))]
+/* Owner package header include                             */
+#include <[getFullPath()/]/Pkg_[pkg.name/].h>
+[/if] 
+[/template]
+
+
+[template public CppClassAllIncludesDeclaration(class : Classifier)]
+[CppClassAllIncludesDeclaration(includedClassifiers())/]
+[/template]
+
+[template public CppClassAllIncludesDeclarationBody(class : Classifier)]
+[CppClassAllIncludesDeclaration(getTypesViaDependencies())/]
+[/template]
+
+[template public CppClassAllIncludesDeclaration(class : Classifier, list : Sequence(Classifier) )]
+[for (cl : Classifier | list)]
+	[comment Only add include if this is not for the current class and if it does not have the stereotype "NoCodeGen", unless
+			it has stereotype "C_Cpp:External"/]
+	[if((cl <> class) and (not hasStereotype(NoCodeGen)) or hasStereotype(External))]
+		[if(oclIsKindOf(Enumeration) or oclIsKindOf(PrimitiveType))]
+			[comment Enumeration is not defined in a separate file, but in the package that owns it
+				=> include the owning package (might be a duplicate input, if owning package is also the owner of current class/]
+			[if (cl.owner <> null and cl.owner.oclIsKindOf(Package))]
+[cl.owner.oclAsType(Package).CppOwnerPackageIncludeDeclaration()/]
+			[/if]
+		[else]
+			[comment include file associated with the classifier/] 
+[CppClassIncludeDeclaration()/]
+		[/if]
+	[/if]
+[/for]
+[/template]

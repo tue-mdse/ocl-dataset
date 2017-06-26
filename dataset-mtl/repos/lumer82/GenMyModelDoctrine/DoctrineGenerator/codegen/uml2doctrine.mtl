@@ -1,0 +1,258 @@
+[comment encoding = UTF-8 /]
+[module uml2doctrine('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import formtype /]
+
+[template public generate(c : Class) post (trim())]
+
+[comment @main/]
+
+[file (entityFileName(c).concat('.php'), false, 'UTF-8')]
+[documentDeclaration(c)/]
+
+[entityUse(c)/]
+
+[entityDocumentation(c)/]
+[entityDeclaration(c)/]
+	[entityId()/]
+
+	[entityProperties(c)/]
+
+	[entityAssociations(c)/]
+
+	[entityConstruct(c)/]
+}
+	[/file]
+
+	
+	[file (entityFileName(c).concat('Repository.php'), false, 'UTF-8')]
+[documentDeclaration(c)/]
+
+use Doctrine\ORM\EntityRepository;
+
+/**
+ * [c.name.concat('Repository')/]
+ */
+class [c.name.concat('Repository')/] extends EntityRepository
+{
+}
+	[/file]
+
+[formtype(c)/]
+
+	
+[/template]
+
+
+
+
+[template public documentDeclaration(c : Class) post(trim())]
+<?php
+
+namespace [entityNamespace(c)/];
+[/template]
+
+[template public entityFileName(c: Class) post (trim())]
+[c.getNamespace().name.concat('/Entity/'.concat(c.name))/]
+[/template]
+
+
+[template public entityNamespace(c : Class) post (trim())]
+[c.getNamespace().name/]\Entity
+[/template]
+
+
+
+
+[template public entityUse(c : Class) post (trim()) { used : Boolean = false; }]
+use Doctrine\ORM\Mapping as ORM;
+[/template]
+
+
+
+
+[template public entityDocumentation(c : Class) post (trim())]
+/**
+ * [c.name/]
+ *
+ * @ORM\Table()
+ * @ORM\Entity(repositoryClass="\[entityRepositoryFQN(c)/]")
+ */
+[/template]
+
+
+
+
+[template public entityFQN(c : Class) post(trim())]
+[entityNamespace(c)/]\[c.name/]
+[/template]
+
+
+
+
+[template public entityRepositoryFQN(c : Class) post (trim())]
+[entityFQN(c)/]Repository
+[/template]
+
+
+
+
+[template public entityDeclaration(c : Class) post (trim())]
+[entityAbstract(c)/]class [c.name/][entityExtends(c)/]
+{
+[/template]
+
+[template public entityId() post (trim())]
+/**
+ * @ORM\Id
+ * @ORM\Column(type="integer")
+ * @ORM\GeneratedValue(strategy="AUTO")
+ */
+protected $id;
+[/template]
+
+
+[template public entityAbstract(c : Class)]
+[if (c.isAbstract)]abstract [/if]
+[/template]
+
+
+
+
+[template public entityExtends(c : Class)]
+[if (not c.superClass->isEmpty())] extends [for (sc : Class | c.superClass) separator (', ')]\[entityFQN(sc)/][/for][/if]
+[/template]
+
+
+
+
+[template public entityProperties(c : Class) post(trim())]
+[for (p: Property | c.attribute) separator ('\n')]
+[let typePHP : String = p.type.name.replaceAll('Integer', 'integer').replaceAll('String', 'string').replaceAll('Boolean', 'boolean').replaceAll('EDate', '\\\\DateTime').replaceAll('Date', '\\\\DateTime')]
+[let typeDoc : String = typePHP.replaceAll('\\\\DateTime', 'datetime')]
+/**
+ * @var [typePHP/]
+ *
+ * @ORM\Column(name="[p.name/]", type="[typeDoc/]")
+ */
+protected $[p.name/];
+[/let]
+[/let]
+[/for]
+[/template]
+
+
+
+
+[template public entityAssociations(c : Class) post(trim())]
+[for (p : Property | c.getAssociations().navigableOwnedEnd->select((type <> c) or (opposite <> null and type = c and opposite.type = c))) separator ('\n')]
+	[if not (p.opposite = null)]
+		[if (p.opposite.upper.toString().equalsIgnoreCase('1'))]
+			[if (p.upper.toString().equalsIgnoreCase('-1'))]
+[oneToMany(p, c)/]
+			[else]
+[oneToOne(p, c)/]
+			[/if]
+		[else]
+			[if (p.upper.toString().equalsIgnoreCase('1'))]
+[manyToOne(p, c)/]
+			[else]
+[manyToMany(p, c)/]
+			[/if]
+		[/if]
+	[else]
+		[if (p.upper.toString().equalsIgnoreCase('1'))]
+[oneToOne(p, c)/]
+		[else]
+[oneToManyUni(p, c)/]
+		[/if]
+	[/if]
+[/for]
+[/template]
+
+
+
+
+[template public oneToMany(p : Property, c : Class) post(trim())]
+/**
+ * @var \Doctrine\Common\Collections\ArrayCollection
+ *
+ * @ORM\OneToMany(targetEntity="[entityFQN(p.type.oclAsType(Class))/]"[if not (p.opposite = null)], mappedBy="[p.opposite.name/]"[/if], cascade={"persist"})
+ */
+protected $[p.name/];
+[/template]
+
+
+[template public oneToManyUni(p : Property, c : Class) post(trim())]
+/**
+ * @var \Doctrine\Common\Collections\ArrayCollection
+ *
+ * @ORM\ManyToMany(targetEntity="[entityFQN(p.type.oclAsType(Class))/]", cascade={"persist"})
+ * @ORM\JoinTable(name="[c.name.toLower()/]_[p.name.toLower()/]",
+ *					joinColumns={@ORM\JoinColumn(name="[c.name.toLower()/]_id", referencedColumnName="id")},
+ *					inverseJoinColumns={@ORM\JoinColumn(name="[p.type.name.toLower()/]_id", referencedColumnName="id", unique=true)}
+ * 				)
+ */
+protected $[p.name/];
+[/template]
+
+
+
+
+[template public oneToOne(p : Property, c : Class) post(trim()) {
+	isOwningSide : Boolean = (p.association.memberEnd->select(prop : Property|prop <> null)->first() = p);
+	isNullable : Boolean = p.lower.toString().equalsIgnoreCase('1');
+}]
+/**
+ * @var \[entityFQN(p.type.oclAsType(Class))/]
+ * 
+ * @ORM\OneToOne(targetEntity="[entityFQN(p.type.oclAsType(Class))/]"[if not (p.opposite = null)], [if(isOwningSide)]inversed[else]mapped[/if]By="[p.opposite.name/]"[/if], cascade={"persist"})
+[if (isNullable)]
+ * @ORM\JoinColumn(nullable=false)
+[/if]
+ */
+protected $[p.name/];
+[/template]
+
+
+[template public manyToOne(p : Property, c : Class) post(trim())]
+/**
+ * @var \[entityFQN(p.type.oclAsType(Class))/]
+ *
+ * @ORM\ManyToOne(targetEntity="[entityFQN(p.type.oclAsType(Class))/]"[if not (p.opposite = null)], inversedBy="[p.opposite.name/]"[/if], cascade={"persist"})
+ */
+protected $[p.name/];
+[/template]
+
+[template public manyToMany(p : Property, c : Class) post(trim()) {
+	isOwningSide : Boolean = (p.association.memberEnd->select(prop : Property|prop <> null)->first() = p);
+}]
+/**
+ * @var \Doctrine\Common\Collections\ArrayCollection
+ * 
+ * @ORM\ManyToMany(targetEntity="[entityFQN(p.type.oclAsType(Class))/]"[if not (p.opposite = null)], [if(isOwningSide)]inversed[else]mapped[/if]By="[p.opposite.name/]"[/if], cascade={"persist"})
+ */
+protected $[p.name/];
+[/template]
+
+
+
+[template public entityConstruct(c : Class) post(trim())]
+/**
+ * Constructor
+ */
+public function __construct()
+{
+[for (p : Property | c.getAssociations().navigableOwnedEnd->select((type <> c) or (opposite <> null and type = c and opposite.type = c)))]
+	[if (p.opposite.upper.toString().equalsIgnoreCase('1'))]
+		[if (p.upper.toString().equalsIgnoreCase('-1'))]
+	$this->[p.name/] = new \Doctrine\Common\Collections\ArrayCollection();
+		[/if]
+	[else]
+		[if (not p.upper.toString().equalsIgnoreCase('1'))]
+	$this->[p.name/] = new \Doctrine\Common\Collections\ArrayCollection();
+		[/if]
+	[/if]
+[/for]
+}
+[/template]

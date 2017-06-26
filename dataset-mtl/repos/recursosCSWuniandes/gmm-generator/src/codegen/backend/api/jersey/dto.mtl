@@ -1,0 +1,254 @@
+[comment encoding = UTF-8 /]
+[module dto('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import ::utils /]
+
+[template public mainDTOs(c : Class, path : String)]
+[let dtoPath : String = path.concat('dtos/')]
+    [c.genMinimumDTO(dtoPath.concat('minimum/'))/]
+    [c.genBasicDTO(dtoPath.concat('detail/'))/]
+[/let]
+[/template]
+
+[template protected genMinimumDTO(c : Class, path: String) {className : String = c.getMinimumDTOName();}]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].dtos.minimum;
+
+import [c.getModel().baseGroup()/].entities.[c.getEntityName()/];
+import javax.xml.bind.annotation.XmlRootElement;
+import java.io.Serializable;
+[if (c.hasDateAttribute())]
+import java.util.Date;
+import uk.co.jemos.podam.common.PodamStrategyValue;
+import co.edu.uniandes.csw.crud.api.podam.strategy.DateStrategy;
+[elseif(c.isGeneralization())]
+[if (c.getGeneralizationClass().hasDateAttribute())]
+import java.util.Date;
+import uk.co.jemos.podam.common.PodamStrategyValue;
+import co.edu.uniandes.csw.crud.api.podam.strategy.DateStrategy;
+[/if]
+[/if]
+
+/**
+ * @generated
+ */
+@XmlRootElement
+public class [className/] [if(c.isGeneralization())] extends [c.getGeneralizationClass().getMinimumDTOName()/][/if] implements Serializable{
+
+[if(c.isGeneralization())]
+[for(a : Property | c.getGeneralizationClass().allAttributes())]
+    [if (a.existAttribute(c)=false)]
+    [if(a.isDate())]
+    @PodamStrategyValue(DateStrategy.class)
+    [/if]
+    private [a.type.name/] [a.name/];
+    [/if]
+[/for]
+[/if]
+[for(a : Property | c.allAttributes())]
+    [if(a.isDate())]
+    @PodamStrategyValue(DateStrategy.class)
+    [/if]
+    private [a.type.name/] [a.name/];
+[/for]
+
+
+    /**
+     * @generated
+     */
+    public [className/]() {
+    }
+
+    /**
+     * Crea un objeto [className/] a partir de un objeto [c.getEntityName()/].
+     *
+     * @param entity Entidad [c.getEntityName()/] desde la cual se va a crear el nuevo objeto.
+     * @generated
+     */
+    public [className/]([c.getEntityName()/] entity) {
+	   if (entity!=null){
+    [if(c.isGeneralization())]
+    [for(a : Property | c.getGeneralizationClass().allAttributes())]
+        [if (a.existAttribute(c)=false)]
+        this.[a.name/]=entity.[a.getter()/]();
+        [/if]
+    [/for]
+    [/if]
+    [for(a : Property | c.allAttributes())]
+        this.[a.name/]=entity.[a.getter()/]();
+	[/for]
+       }
+    }
+
+    /**
+     * Convierte un objeto [className/] a [c.getEntityName()/].
+     *
+     * @return Nueva objeto [c.getEntityName()/].
+     * @generated
+     */
+    public [c.getEntityName()/] toEntity() {
+        [c.getEntityName()/] entity = new [c.getEntityName()/]();
+    [if(c.isGeneralization())]
+    [for(a : Property | c.getGeneralizationClass().allAttributes())]
+        [if (a.existAttribute(c)=false)]
+        entity.[a.setter()/](this.[a.getter()/]());
+        [/if]
+    [/for]
+    [/if]
+	[for(a : Property | c.allAttributes())]
+        entity.[a.setter()/](this.[a.getter()/]());
+	[/for]
+    return entity;
+    }
+
+[for (a : Property | c.allAttributes())]
+    /**
+     * Obtiene el atributo [a.name/].
+     *
+     * @return atributo [a.name/].
+     * @generated
+     */
+    public [a.type.name/] [a.getter()/]() {
+        return [a.name/];
+    }
+
+    /**
+     * Establece el valor del atributo [a.name/].
+     *
+     * @param [a.name.toLower()/] nuevo valor del atributo
+     * @generated
+     */
+    public void [a.setter()/]([a.type.name/] [a.name.toLower()/]) {
+        this.[a.name/] = [a.name.toLower()/];
+    }
+
+[/for]
+
+[if(c.isGeneralization())]
+    [for(a : Property | c.getGeneralizationClass().allAttributes())]
+        [if (a.existAttribute(c)=false)]
+    /**
+     * Obtiene el atributo [a.name/].
+     *
+     * @return atributo [a.name/].
+     * @generated
+     */
+    public [a.type.name/] [a.getter()/]() {
+        return [a.name/];
+    }
+
+    /**
+     * Establece el valor del atributo [a.name/].
+     *
+     * @param [a.name.toLower()/] nuevo valor del atributo
+     * @generated
+     */
+    public void [a.setter()/]([a.type.name/] [a.name.toLower()/]) {
+        this.[a.name/] = [a.name.toLower()/];
+    }
+        [/if]
+    [/for]
+[/if]
+}
+[/file]
+[/template]
+
+[template protected genBasicDTO(c : Class, path: String) {className : String = c.getBasicDTOName();}]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].dtos.detail;
+
+import [c.getModel().baseGroup()/].dtos.minimum.*;
+import [c.getModel().baseGroup()/].entities.[c.getEntityName()/];
+import javax.xml.bind.annotation.XmlRootElement;
+[if (c.getRelationshipAttributes()->select(not isComposite())->notEmpty())]
+import uk.co.jemos.podam.common.PodamExclude;
+[/if]
+
+/**
+ * @generated
+ */
+@XmlRootElement
+public class [className/] extends [c.getMinimumDTOName()/]{
+
+
+[for (a : Property | c.getRelationshipAttributes())]   
+[if (a.getUpper() = 1)]
+    [if (not a.isComposite())]@PodamExclude[/if]
+    private [a.getClass().getMinimumDTOName()/] [a.name/];
+[/if]
+[/for]
+
+    /**
+     * @generated
+     */
+    public [className/]() {
+        super();
+    }
+
+    /**
+     * Crea un objeto [className/] a partir de un objeto [c.getEntityName()/] incluyendo los atributos de [c.getMinimumDTOName()/].
+     *
+     * @param entity Entidad [c.getEntityName()/] desde la cual se va a crear el nuevo objeto.
+     * @generated
+     */
+    public [className/]([c.getEntityName()/] entity) {
+        super(entity);
+        [for (a : Property | c.getReferences(true))]
+        if (entity.[a.getter()/]()!=null){
+        this.[a.name/] = new [a.getClass().getMinimumDTOName()/](entity.[a.getter()/]());
+        }
+        [/for]
+        
+    }
+
+    /**
+     * Convierte un objeto [className/] a [c.getEntityName()/] incluyendo los atributos de [c.getMinimumDTOName()/].
+     *
+     * @return Nueva objeto [c.getEntityName()/].
+     * @generated
+     */
+    @Override
+    public [c.getEntityName()/] toEntity() {
+        [c.getEntityName()/] entity = super.toEntity();
+[for (a : Property | c.getReferences(true))]
+        if (this.[a.getter()/]()!=null){
+        entity.[a.setter()/](this.[a.getter()/]().toEntity());
+        }
+[/for]
+        return entity;
+    }
+
+[for (a : Property | c.getReferences(true))]
+    /**
+     * Obtiene el atributo [a.name/].
+     *
+     * @return atributo [a.name/].
+     * @generated
+     */
+    public [a.getClass().getMinimumDTOName()/] [a.getter()/]() {
+        return [a.name/];
+    }
+
+    /**
+     * Establece el valor del atributo [a.name/].
+     *
+     * @param [a.name/] nuevo valor del atributo
+     * @generated
+     */
+    public void [a.setter()/]([a.getClass().getMinimumDTOName()/] [a.name.toLower()/]) {
+        this.[a.name/] = [a.name.toLower()/];
+    }
+
+[/for]
+}
+[/file]
+[/template]
+
+[query public existAttribute(a : Property, cl : Class) : Boolean = 
+cl.allAttributes()->select(a1 | a1.name=a.name)->notEmpty()
+/]

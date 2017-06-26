@@ -1,0 +1,77 @@
+[module testsxml('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(model : Model)]
+[model.pathToTestResources()/]/META-INF/spring/[model.baseImports()/]/applicationContext-tests.xml
+[/template][/comment]
+
+
+[template public generateTestSpringApplicationContext(model : Model)]
+[comment This template is called by the main module file /]
+[file (model.fullFilePath(model.pathToTestResources(), 'META-INF/spring/'.concat(model.baseImports()), 'applicationContext-tests.xml'), false))]
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	     xmlns:jee="http://www.springframework.org/schema/jee"
+	     xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
+           http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-2.0.xsd">
+
+	<bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+	    <property name="driverClassName" value="org.hsqldb.jdbcDriver"/>
+    	<property name="url" value="jdbc:hsqldb:."/>
+	    <property name="username" value="sa"/>
+    	<property name="password" value=""/>
+  	</bean>
+  		
+	<!-- ========================= HIBERNATE CONFIGURATION ====================== -->
+
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource"/>
+		<property name="mappingResources">
+			<list>	
+[for (class:Class|model.entities()->select(superClass->isEmpty()))]
+        		<value>[class.hibernatePackage().toPath()/]/[class.name/].hbm.xml</value>			
+[/for]
+				<!-- [protected ('more values')]
+                 -->				 
+				<!-- [/protected] -->
+			</list>
+		</property>
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.HSQLDialect</prop>
+				<prop key="hibernate.show_sql">true</prop>
+				<prop key="hibernate.generate_statistics">true</prop>
+ 				<prop key="hibernate.hbm2ddl.auto">create</prop> 
+ 				<prop key="hibernate.jdbc.batch_size">1</prop>
+			</props>
+		</property>
+	</bean>
+	
+	<!-- [protected ('test injection')]
+ specific test injection -->	
+	<!-- [/protected] specific test injection -->
+	
+</beans>
+[/file]
+[/template]
+
+
+[template public hibernatePackage(class : Class)]
+[class.daoPackage()/].hibernate
+[/template]

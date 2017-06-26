@@ -1,0 +1,82 @@
+[module uixml('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(model : Model)]
+[if (model.uis()->notEmpty())][model.pathToMainResources()/]/META-INF/spring/[model.baseImports()/]/layer-uis.xml[/if]
+[/template][/comment]
+
+
+[template public springApplicationContext(model : Model)? (model.uis()->notEmpty())]
+[comment This template is called by the main module file /]
+[file (model.fullFilePath(model.pathToMainResources(), 'META-INF/spring/'.concat(model.baseImports()), 'layer-uis.xml'), false))]
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:jee="http://www.springframework.org/schema/jee"
+[if (model.uis().ownedOperation->select(isRemote())->notEmpty())]
+	xmlns:dwr="http://www.directwebremoting.org/schema/spring-dwr"
+[/if]
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.0.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.0.xsd
+[if (model.uis().ownedOperation->select(isRemote())->notEmpty())]
+		http://www.directwebremoting.org/schema/spring-dwr http://www.directwebremoting.org/schema/spring-dwr-2.0.xsd
+[/if]
+		http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-2.0.xsd">		  
+    
+[if (model.uis().viewDependencies()->notEmpty())]
+    <bean id="[model.viewFactoryPackage()/].ViewFactory" class="[model.viewFactoryPackage()/].ViewFactory">
+		<property name="velocityEngine" ref="velocityEngine"/>
+    </bean>
+[/if]
+
+[for (class:Class|model.uis())]
+	<bean id="[class.computeBeanId()/]" class="[class.uiImplPackage()/].[class.name/]Impl">
+	[if (class.viewDependencies()->notEmpty())]
+		<property name="viewFactory" ref="[class.viewFactoryPackage()/].ViewFactory"/>
+	[/if]
+	[for (classifier:Classifier|class.serviceDependencies()->union(class.uiDependencies()))]
+		 	<property name="[classifier.name.toLowerFirst()/]" ref="[classifier.computeBeanId()/]"/>			
+	[/for]
+	[if (class.ownedOperation->select(isRemote())->notEmpty())]
+		<dwr:remote javascript="[computeBeanId()/]">
+[comment for ( ownedOperation[isRemote && (returnResult().isDto || returnResult().isEntity) /]
+		[for (oper:Operation|class.ownedOperation->select(isRemote()))]
+			<dwr:include method="[name/]"/>		
+			<!-- [protected ('manual convert')]
+ [oper.eContainer().oclAsType(NamedElement).computeBeanId()/].[oper.name/] manual convert -->			
+			<dwr:convert type="bean" class="[oper.returnResult().type.getCompleteName()/]"></dwr:convert>
+			<!-- [/protected] [oper.eContainer().oclAsType(NamedElement).computeBeanId()/].[oper.name/] manual convert -->
+		[/for]
+        </dwr:remote>		
+	[/if]
+		 
+	</bean>
+[/for]
+
+</beans>
+[/file]
+[/template]
+
+
+
+[query private returnResult(arg0 : Operation) : Parameter = invoke('org.acceleo.module.pim.uml21.services.Uml2Services', 'returnResult(org.eclipse.uml2.uml.Operation)', Sequence{arg0})/]
+[query private computeBeanId(arg0 : String) : String = invoke('org.acceleo.module.pim.uml21.gen.java.spring.services.SpringServices', 'computeBeanId(java.lang.String)', Sequence{arg0})/]
+[query private computeBeanId(arg0 : Element) : String = invoke('org.acceleo.module.pim.uml21.gen.java.spring.services.SpringServices', 'computeBeanId(org.eclipse.uml2.uml.Element)', Sequence{arg0})/]

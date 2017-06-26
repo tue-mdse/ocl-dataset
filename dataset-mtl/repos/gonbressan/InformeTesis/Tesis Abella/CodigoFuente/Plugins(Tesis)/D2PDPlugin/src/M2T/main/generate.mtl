@@ -1,0 +1,159 @@
+[comment encoding = UTF-8 /]
+[module generate('urn:devs.ecore')]
+
+[template public generate_h(a :AtomicModel)]
+[comment @main/]
+[file (a.name + '.h', false, 'UTF-8')]
+#if !defined [a.name + '_h'/]
+#define [a.name + '_h'/]
+#include "simulator.h"
+#include "event.h"
+#include "stdarg.h"
+
+class [a.name/]: public Simulator { 
+// Declare the state,
+// output variables
+// and parameters
+
+char *s;
+double sigma;
+char *y;
+#define INF 1e20
+
+public:
+    [a.name/](const char *n): Simulator(n) {};
+    void init(double, ...);
+    double ta(double t);
+    void dint(double);
+    void dext(Event , double );
+    Event lambda(double);
+    void exit();
+};
+#endif
+[/file]
+[/template]
+
+[template public generate_pdm(a :AtomicModel)]
+[comment @main/]
+[file (a.name+'.pdm', false, 'UTF-8')]
+Coupled
+	{
+	Type = Root
+	Name = [a.name/]
+	Ports = 0; 0
+	Description = 
+	Graphic
+	    {
+	    Position = 0; 0
+	    Dimension = 600; 600
+	    Direction = Right
+	    Color = 15
+	    Icon = 
+	    Window = 5000; 5000; 5000; 5000
+	    }
+	Parameters
+	    {
+	    }
+	System
+	    {
+	    Atomic
+            {
+            Name = [a.name/]
+            Ports = 1 ; 1
+            Path = discrete/[a.name/].h    
+            Description = Atomic DEVS model
+            Graphic
+                {
+                Position = -6105 ; -2610
+                Dimension = 675 ; 720
+                Direction = Right
+                Color = 15
+                Icon = None
+                }
+            Parameters
+                {
+                }
+            }
+        }
+	}
+[/file]
+[/template]
+
+[template public generate_cpp(a :AtomicModel)]
+[comment @main/]
+[file (a.name+'.cpp', false, 'UTF-8')]
+#include "[a.name/].h"
+void [a.name/]::init(double t,...) {
+    //The 'parameters' variable contains the parameters transferred from the editor.
+    va_list parameters;
+    va_start(parameters,t);
+    //To get a parameter: %Name% = va_arg(parameters,%Type%)
+    //where:
+    //  %Name% is the parameter name
+    //  %Type% is the parameter type
+    s = "";
+    sigma = INF;
+}
+
+double [a.name/]::ta(double t) {
+    //This function returns a double.
+    return sigma;
+}
+
+void [a.name/]::dint(double t) {
+[for (t :InternalTransition | a.eAllContents(InternalTransition))]
+	
+	if (strcmp(s,"[t.source.name/]")== 0) {
+    	s = "[t.target.name/]";
+    	[if (t.target.lifeTime=-1.0)]
+		sigma = INF;		
+		[else]
+		sigma = [t.target.lifeTime/];
+		[/if]
+	};
+[/for]
+}
+
+void [a.name/]::dext(Event x, double t) {
+    //The input event is in the 'x' variable.
+    //where:
+    //     'x.value' is the value (pointer to void)
+    //     'x.port' is the port number
+    //     'e' is the time elapsed since last transition
+[for (t :ExternalTransition | a.eAllContents(ExternalTransition))]
+
+	if ( (strcmp(s,"[t.source.name/]")== 0) && (strcmp((char*)x.value,"[t.inputEvent.name/]")== 0)) {  //creo q va un AND osea un && entre los dos strcmp
+		s = "[t.target.name/]";
+    	[if (t.target.lifeTime=-1.0)]
+		sigma = INF;		
+		[else]
+		sigma = [t.target.lifeTime/];
+		[/if]    
+	};
+[/for]
+}
+
+Event [a.name/]::lambda(double t) {
+    //This function returns an Event:
+    //     Event(%Value%, %NroPort%)
+    //where:
+    //     %Value% points to the variable which contains the value.
+    //     %NroPort% is the port number (from 0 to n-1)
+[for (o :OutputFunction | a.eAllContents(OutputFunction))]
+
+	if (strcmp(s,"[o.source.name/]")== 0) {
+		y = "[o.outputEvent.name/]";
+    	return Event(y,0);
+    };
+
+[/for]
+}
+
+void [a.name/]::exit() {
+	//Code executed at the end of the simulation.
+}
+
+[/file]
+[/template]
+
+

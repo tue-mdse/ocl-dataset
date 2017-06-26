@@ -1,0 +1,128 @@
+[comment encoding = UTF-8 /]
+[module operHarvest('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import dsl3s::mdd3s::templates::services/]
+
+[comment
+Date: 16-08-2012    Author: Luís de Sousa
+Generates the Harvest function to be included in the Animat class.
+Instead of filtering for the Harvest stereotype, this module starts with
+the Animat stereotype, so that it only generates the code for a specific
+class of that type.
+/]
+
+[template public operHarvest(c : Class) ? (c.hasStereotype('Animat'))]
+[comment Iterate through linked Attributes /]
+[for (ass:Association | c.getAssociations())]
+ [for (s:Element | ass.relatedElement) ]
+  [let sClass: Class = s.oclAsType(Class)]
+   [if (sClass.isNotNull())]
+    [if (sClass.hasStereotype('Attribute'))]
+	 [if (sClass.hasLinkedStereotype('Harvest'))]
+	 [comment Get Simulation name /]
+	  [for (assS:Association | c.getAssociations())]
+ 	   [for (e:Element | assS.relatedElement) ]
+  		[let sim: Class = e.oclAsType(Class)]
+   		 [if (sim.isNotNull())]
+    	  [if (sim.hasStereotype('Simulation'))]
+	public void harvest[sClass.name/]([sim.name/] sim) 
+	{
+		  [/if]
+		 [/if]
+        [/let]
+       [/for]
+      [/for]
+	 [comment Iterate through linked Harvest /]
+      [for (assH:Association | sClass.getAssociations())]
+       [for (h:Element | assH.relatedElement) ]
+       [let hClass: Class = h.oclAsType(Class)]
+        [if (hClass.isNotNull())]
+         [if (hClass.hasStereotype('Harvest'))]
+		  [comment Iterate through harvested Attributes /]
+           [for (assHS:Association | hClass.getAssociations())]
+            [for (hs:Element | assHS.relatedElement) ]
+		    [let hsClass: Class = hs.oclAsType(Class)]
+             [if (hsClass.isNotNull())]
+              [if (hsClass.hasStereotype('Supply'))]
+		 	    [comment Iterate through supplied Attribute /]
+           	    [for (assHA:Association | hsClass.getAssociations())]
+                 [for (ha:Element | assHA.relatedElement) ]
+                 [let haClass: Class = ha.oclAsType(Class)]
+                   [if (haClass.isNotNull())]
+                    [if (haClass.hasStereotype('Attribute'))]
+			 	     [comment Iterate through Attribute owner Animat /]
+	           	     [for (assHAn:Association | haClass.getAssociations())]
+	                  [for (han:Element | assHAn.relatedElement) ]
+	                   [let hanClass: Class = han.oclAsType(Class)]
+	                    [if (hanClass.isNotNull())]
+	                     [if (hanClass.hasStereotype('Animat'))]
+		Bag neigh[hanClass.name/] = sim.space[hanClass.name/].getObjectsWithinDistance(this, scope[hClass.name/]);
+		for(Object obj : neigh[hanClass.name/]) 
+		{
+			if(obj != this)
+			{
+				     	[if (hClass.getTaggedValue(hClass, 'Harvest', 'percentHarvested').isNotNull())]
+				attribute[sClass.name/].add( 
+					(([hanClass.name/]) obj).supplyPercent[haClass.name/](percent[hClass.name/]));
+			         	[/if]
+			         	[if (hClass.getTaggedValue(hClass, 'Harvest', 'valueHarvested').isNotNull())]
+				attribute[sClass.name/].add( 
+					(([hanClass.name/]) obj).supplyValue[haClass.name/](value[hClass.name/]));
+			         	[/if]
+
+				(([hanClass.name/]) obj).perish(sim);
+			}
+		}
+                       [/if]
+	                  [/if]
+	                 [/let]
+	                [/for]	 
+	               [/for] [comment Animat /]
+                  [/if]
+                 [/if]
+                [/let]
+                [/for]	 
+               [/for] [comment Animat /]
+             [/if]
+            [/if]
+            [/let]
+           [/for]	 
+          [/for] [comment Attributes /]
+
+		  [comment Iterate through harvested Spatials /]
+          [for (assHE:Association | hClass.getAssociations())]
+           [for (he:Element | assHE.relatedElement) ]
+		    [let heClass: Class = he.oclAsType(Class)]
+            [if (heClass.isNotNull())]
+             [if (heClass.hasStereotype('Spatial'))]
+		Bag neigh[heClass.name/] = sim.space[heClass.name/].getObjectsWithinDistance(this, scope[hClass.name/]);
+		for(Object obj : neigh[heClass.name/]) 
+		{
+			[if (hClass.getTaggedValue(hClass, 'Harvest', 'percentHarvested') <> 'null')]
+				attribute[sClass.name/].add( 
+					(([heClass.name/]) obj).supplyPercent(percent[hClass.name/], null, null));
+			  [/if]
+			  [if (hClass.getTaggedValue(hClass, 'Harvest', 'valueHarvested') <> 'null')]
+				attribute[sClass.name/].add(
+					(([heClass.name/]) obj).supplyValue(value[hClass.name/], null, null));
+				
+			  [/if]
+				(([heClass.name/]) obj).perish(sim);
+		}
+             [/if]
+            [/if]
+           [/let]
+           [/for]	 
+          [/for] [comment Spatial /]
+        [/if]
+       [/if]
+      [/let]
+      [/for]	 
+     [/for] [comment Harvest /]
+	}
+    [/if]
+   [/if]
+  [/if]
+ [/let]
+ [/for]	 
+[/for] [comment Attributes /]
+[/template]

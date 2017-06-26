@@ -1,0 +1,462 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generate.
+ */]
+[module common('uri:rok/model','http://www.eclipse.org/emf/2002/Ecore')]
+
+[import rok::generator::service::texttools/]
+[import rok::generator::service::rokservices /]
+
+[template public domainName(e : Nameable) post(clearSpace())]
+[e.filterNameCapitalized()/]Domain
+[/template]
+
+[template public className_entity(e : Nameable) post(clearSpace())]
+[e.filterNameCapitalized()/]
+[/template]
+
+[template public className_mClass(e : Nameable) post(clearSpace())]
+[comment][e.filterNameCapitalized()/][/comment][e.className_entity()/].MClass
+[/template]
+
+[template public className_ref(e : Nameable) post(clearSpace())]
+[comment][e.filterNameCapitalized()/][/comment][e.className_entity()/].Ref
+[/template]
+
+[template public className_refParser(e : Nameable) post(clearSpace())]
+[comment][e.filterNameCapitalized()/][/comment][e.className_entity()/].RefParser
+[/template]
+
+[**
+ * The documentation of the template generateElement.
+ * @param aDomain
+ */]
+[template public log(message : String)]
+[file ('.tmp.log.txt', true, 'UTF-8')][message/][/file]
+[/template]
+[template public clearLog()]
+[file ('.tmp.log.txt', false, 'UTF-8')][/file]
+[/template]
+
+[template public filterName(n : Domain) post (clearSpace())]
+[n.name.replaceAll('^.*\\.([^.]+)$','$1').filter()/]
+[/template]
+
+[template public filterName(n : Nameable) post (clearSpace())]
+[n.name.replaceAll('\\.',' ').filter()/]
+[/template]
+
+[template public filterNameCapitalized(n : Nameable) post (clearSpace())]
+[n.filterName().toUpperFirst()/]
+[/template]
+
+[**
+ * The documentation of the template generateElement.
+ * @param aDomain
+ */]
+[template public parentDomains(o : Nameable) post (clearSpace())]
+[if (not(o.oclIsUndefined()))]
+	[if (o.oclIsTypeOf(MClass))]
+		[parentDomains(o.eContainer(Nameable))/]
+	[elseif (o.oclIsKindOf(NestedEntityProperty))]
+		[parentDomains(o.eContainer(Nameable))/]
+	[elseif (o.oclIsTypeOf(Domain))]
+		[if (not(o.eContainer(Domain).oclIsUndefined()))]
+			[parentDomains(o.eContainer(Nameable))/].
+		[/if]
+		[o.oclAsType(Domain).name.filter()/]
+	[/if]
+[/if]
+[/template]
+
+[template public parentDomainsPath(e : Nameable) post (clearSpace())]
+[e.parentDomains().replaceAll('\\.','/')/]
+[/template]
+
+[**
+ * Get type corresponding Property
+ * @param aDomain
+ */]
+[template public javaImports(imports : String) post(replaceAll('\\s',' ').replaceAll('static ','¤').tokenize()->asOrderedSet().prefix('import ').concat(';\n').replaceAll('¤','static '))]
+[imports/]
+[/template]
+
+[**
+ * Get type corresponding Property
+ * @param aDomain
+ */]
+[template public listEntityJavaImports(e : MClass)]
+[for (p : Property | e.getProperties())]
+	[if (p.oclIsTypeOf(DateProperty))]
+		java.util.TimeZone
+		org.joda.time.DateTime
+		org.joda.time.DateTimeZone
+	[elseif (p.oclIsTypeOf(IdProperty))]
+		java.util.UUID
+	[elseif (p.isEntitySingle())]
+		rok.model.EntityRef
+	[elseif (p.isEntityList())]
+		rok.model.ParentListRef
+		rok.model.ParentListRefImpl
+	[elseif (p.oclIsTypeOf(RealNumberProperty))]
+		java.math.BigDecimal
+	[elseif (p.oclIsTypeOf(AmountProperty))]
+		org.joda.money.Money
+	[elseif (p.isPrimitiveList())]
+		java.util.List
+	[/if]
+	[if (p.oclIsKindOf(LinkedEntityProperty))]
+		[let prop : MClass = p.oclAsType(LinkedEntityProperty).type]
+			[prop.parentDomains()/].[prop.filterNameCapitalized()/]
+		[/let]
+	[/if]
+	[if (p.oclIsKindOf(NestedEntityProperty))]
+		[let prop : MClass = p.oclAsType(NestedEntityProperty).type]
+			[prop.parentDomains()/].[prop.filterNameCapitalized()/]
+		[/let]
+	[/if]
+[/for]
+[/template]
+
+[**
+ * Get type corresponding Integer Property
+ * @param aDomain
+ */]
+[template public integerJavaType(p : IntegerProperty, canUsePrimitive : Boolean) post (clearSpace())]
+[integerJavaType2(p,p.isRequired() and canUsePrimitive)/]
+[/template]
+
+[**
+ * Get type corresponding Integer Property
+ * @param aDomain
+ */]
+[template public integerJavaType2(p : IntegerProperty, usePrimitive : Boolean) post (clearSpace())]
+[if (p.min.oclIsUndefined() or p.max.oclIsUndefined())]
+	[if (usePrimitive)]long[else]Long[/if]
+[elseif (p.min() < (-2147483647 - 1) or p.max() > 2147483647)]
+	[if (usePrimitive)]long[else]Long[/if]
+[elseif (p.min() < -32768 or p.max() > 32767)]
+	[if (usePrimitive)]int[else]Integer[/if]
+[elseif (p.min() < -128 or p.max() > 127)]
+	[if (usePrimitive)]short[else]Short[/if]
+[else]
+	[if (usePrimitive)]byte[else]Byte[/if]
+[/if]
+[/template]
+[**
+ * Get type corresponding String Property
+ * @param aDomain
+ */]
+[template public stringJavaType(p : StringProperty, canUsePrimitive : Boolean) post (clearSpace())]
+[if (p.min.oclIsUndefined() or p.max.oclIsUndefined())]
+	String
+[elseif (p.max() > 1)]
+	String
+[else]
+	[if ((p.isRequired() or p.min() = 1) and canUsePrimitive)]char[else]Character[/if]
+[/if]
+[/template]
+
+[**
+ * Get type corresponding Property
+ * @param aDomain
+ */]
+[template public javaType(p : Property) post (clearSpace())]
+[p.javaType(true,'')/]
+[/template]
+
+[**
+ * Get type corresponding Property
+ * @param aDomain
+ */]
+[template public javaType(p : Property, canUsePrimitive : Boolean) post (clearSpace())]
+[javaType(p,canUsePrimitive,'')/]
+[/template]
+
+[**
+ * Get type corresponding Property
+ * @param aDomain
+ */]
+[template public javaType(p : Property, canUsePrimitive : Boolean, suffixe : String) post (clearSpace())]
+[if (p.oclIsTypeOf(StringProperty))][p.oclAsType(StringProperty).stringJavaType(canUsePrimitive)/]
+[elseif (p.isEntitySingle())][p.getType().className_ref()/]
+[elseif (p.isEntityList())]ParentListRef<[p.eContainer(MClass).filterNameCapitalized()/].Ref,[p.getType().filterNameCapitalized()/]>
+[elseif (p.oclIsTypeOf(BooleanProperty))]Boolean
+[elseif (p.oclIsTypeOf(DateProperty))]DateTime
+[elseif (p.oclIsTypeOf(IdProperty))]UUID
+[elseif (p.oclIsTypeOf(RealNumberProperty))]BigDecimal
+[elseif (p.oclIsTypeOf(IntegerProperty))][p.oclAsType(IntegerProperty).integerJavaType(canUsePrimitive)/]
+[elseif (p.oclIsTypeOf(AmountProperty))]Money
+[elseif (p.oclIsTypeOf(EnumerationProperty))][p.oclAsType(EnumerationProperty).type.filterNameCapitalized()/]
+[elseif (p.isPrimitiveList())][p.javaType()/]
+[else]###_NON_GERE_javaType_Property_([p/])###
+[/if]
+[suffixe/]
+[/template]
+
+[**
+ * Get type corresponding Property
+ * @param aDomain
+ */]
+[template public javaGenericType(p : Property) post (clearSpace())]
+[if (p.isEntitySingle())][p.getType().className_ref()/]
+[elseif (p.isPrimitiveList())][p.javaType(false)/]
+[elseif (p.isEntityList())][p.getType().className_ref()/]
+[else]
+[p.javaType(false,'')/]
+[/if]
+[/template]
+
+[**
+ * Get type corresponding Property
+ * @param aDomain
+ */]
+[template public javadoc(d : Documentable) post (replaceAll('(^\\s*)|(\\s*$)',''))]
+[if (d.descriptions->size()>0)]
+[let inf : Info = d.descriptions->first()]
+[if (inf.locale.oclIsUndefined())]
+[inf.info/]
+[else]
+<div lang="[inf.locale/]">[inf.info/]</div>
+[/if]
+[/let]
+[/if]
+[/template]
+
+[template public getUriPattern(e : MClass) post (clearSpace().replaceAll('/-', '/'))]
+[if (not(e.createPropertyFromContainer().oclIsUndefined()))]
+	{[e.createPropertyFromContainer().filterName()/]}/
+	[e.eContainer(EntityProperty).filterName()/]
+[else]
+	[e.filterName()/]
+[/if]
+[for (p : Property | e.keyProperties(false)) before('/') separator ('-')]
+	{[p.filterName()/]}
+[/for]
+[/template]
+
+[template public getUriPatternForAllInstance(e : MClass) post (clearSpace().replaceAll('\\{.+?\\}', '*'))]
+[if (not(e.createPropertyFromContainer().oclIsUndefined()))]
+	[e.createPropertyFromContainer().getType().getUriPattern()/]/
+	[e.eContainer(EntityProperty).filterName()/]
+[else]
+	[e.filterName()/]
+[/if]
+[for (p : Property | e.keyProperties(false)) before('/') separator ('-')]
+	*
+[/for]
+[/template]
+
+[template public contraintAnnotations(p : Property) post (replaceAll('(^\\s*)|(\\s*$)', ''))]
+[if (p.isKey() or p.isRequired())]
+@NotNull
+[/if]
+[if (p.oclIsKindOf(StringProperty))]
+	[let s : StringProperty = p.oclAsType(StringProperty)]
+		[if (not(s.max.oclIsUndefined()) and s.max <= 1)]
+			/* // TODO @Pattern and @Size not supported on Character */
+		[else]
+			[if (not(s.pattern.oclIsUndefined()) and s.pattern.size() > 0)]
+@Pattern(regexp = "[s.pattern.escapeString()/]")
+			[elseif (not(s.multiline))]
+@Pattern(regexp = "[ '[^\\\\n\\\\r\\\\t]*' /]")
+			[/if]
+			[if (not(s.min.oclIsUndefined()) or not(s.max.oclIsUndefined()))]
+@Size(
+				[if (not(s.min.oclIsUndefined()))]min=[if(s.min<0)]0[else][s.min/][/if][/if]
+				[if (not(s.min.oclIsUndefined()) and not(s.max.oclIsUndefined()))],[/if]
+				[if (not(s.max.oclIsUndefined()))]max=[s.max/][/if]
+)
+			[/if]
+		[/if]
+	[/let]
+[elseif (p.oclIsKindOf(IntegerProperty))]
+	[let s : IntegerProperty = p.oclAsType(IntegerProperty)]
+		[if (not(s.min.oclIsUndefined()))]
+@Min([s.min/]L)
+		[/if]		
+		[if (not(s.max.oclIsUndefined()))]
+@Max([s.max/]L)
+		[/if]
+	[/let]
+[elseif (p.oclIsKindOf(RealNumberProperty))]
+	[let s : RealNumberProperty = p.oclAsType(RealNumberProperty)]
+		[if (not(s.min.oclIsUndefined()))]
+@DecimalMin("[s.min/]")
+		[/if]		
+		[if (not(s.max.oclIsUndefined()))]
+@DecimalMax("[s.max/]")
+		[/if]
+	[/let]
+[/if]
+[/template]
+
+[query public isInSingleProperty(e : MClass) : EBoolean = (
+	not(e.eContainer(EntityProperty).oclIsUndefined()) and not(isList(e.eContainer(EntityProperty)))
+) /]
+
+[**
+ * Permet de récupérer les propriétés "clefs"
+ * @param e MClass
+ */]
+[query public getProperties(e : MClass) : OrderedSet(Property) = e.getProperties(true)/]
+
+[**
+ * Création d'une propriété "ID" si besoin
+ */]
+[query public getProperties(e : MClass,includeParent : Boolean) : OrderedSet(Property) = (
+	if (
+		isInSingleProperty(e)
+		or e.properties->select(p:Property | p.isKey())->size() > 0
+	)
+	then
+		getRawProperties(e,includeParent)
+	else
+		getRawProperties(e,includeParent)->append(createIdProperty('id'))
+	endif
+) /]
+
+
+[**
+ * Création d'une propriété "ID" si besoin
+ */]
+[query public getRawProperties(e : MClass,includeParent : Boolean) : OrderedSet(Property) = (
+	if(not(includeParent) or e.createPropertyFromContainer().oclIsUndefined())
+	then
+		e.properties
+	else
+		e.properties->asOrderedSet()->prepend(e.createPropertyFromContainer())->asOrderedSet()
+	endif
+) /]
+
+
+
+[**
+ * Permet de retourner la liste des propriétés définies comme "clefs", y compris l'entité parente dans le cas d'une InnerProperty ou ComposedEntity
+ * 
+ * @param e 
+ */]
+[query public keyProperties(e : MClass) : OrderedSet(Property) = e.keyProperties(true) /]
+[query public keyProperties(e : MClass,includeParent : Boolean) : OrderedSet(Property) = (
+	e.getProperties(includeParent)
+	->select(p:Property | p.isKey())
+) /]
+[query public keyPropertiesWithoutIdProperty(e : MClass) : OrderedSet(Property) = (
+	e.keyProperties()
+	->select(pr : Property | not(pr.oclIsKindOf(IdProperty)))
+) /]
+
+[**
+ * Permet de récupérer les propriétés "en lecture seules"
+ * @param e MClass
+ */]
+[query public readOnlyProperties(e : MClass) : OrderedSet(Property) = 
+		e.getProperties()->select(p:Property | p.isReadOnly()) /]
+
+[**
+ * Renvoi les propriétés à utiliser en tant que paramètre du constructeur.
+ * Liste constituée des :
+ * 
+ * <ul>
+ * 	<li>propriétés "clefs"</li>
+ * 	<li>propriétés en lecture seule</li>
+ * </ul>
+ * 
+ * @param e Entité métier concerné
+ */]
+[query public constructorParams(e : MClass) : OrderedSet(Property) =
+		e.keyProperties()
+		->union(e.readOnlyProperties())->asOrderedSet()
+	 /]
+
+
+[**
+ * Renvoi les propriétés à utiliser en tant que paramètre du constructeur pour la création d'une nouvelle instance.
+ * Liste constituée des :
+ * - propriétés "clefs"
+ * 
+ * @param e Entité métier concerné
+ */]
+[query public constructorParamsNewInstance(e : MClass) : OrderedSet(Property) =
+		e.keyProperties()
+	 /]
+
+[query public propertiesWithoutKey(e : MClass) : OrderedSet(Property) =
+	e.getProperties()
+	->select(p : Property | not(p.isKey())) 
+/]
+[**
+ * Retourne la liste des propriétés pouvant être mises à jour.
+*/]
+[query public setableProperties(e : MClass) : OrderedSet(Property) =
+	e.getProperties()
+	->select(p : Property | p.isSetable()) 
+/]
+[query public setableEntityListProperties(e : MClass) : OrderedSet(Property) =
+	e.getProperties()
+	->select(p : Property | p.isEntityList() and not(p.isReadOnly())) 
+/]
+
+[query public isKey(p : Property) : Boolean = (p.kind = PropertyKind::key ) /]
+[query public isReadOnly(p : Property) : Boolean = (p.kind = PropertyKind::readOnly ) /]
+[query public isRequired(p : Property) : Boolean = p.minOccurrences() > 0 /]
+[query public isSetable(p : Property) : Boolean = not(p.isKey() or p.isReadOnly() or p.isEntityList()) /]
+
+[query public getType(property : OclAny) : MClass = (
+	if(property.oclIsKindOf(LinkedEntityProperty))
+	then
+		property.oclAsType(LinkedEntityProperty).type
+	else
+		if(property.oclIsKindOf(NestedEntityProperty))
+		then
+			property.oclAsType(NestedEntityProperty).type 
+		else
+			null
+		endif
+	endif
+) /]
+
+[query public min(r : IntegerProperty) : ELongObject = r.min.min(r.max) /]
+[query public max(r : IntegerProperty) : ELongObject = r.max.max(r.min) /]
+[query public min(r : RealNumberProperty) : EBigDecimal = r.min.min(r.max) /]
+[query public max(r : RealNumberProperty) : EBigDecimal = r.max.max(r.min) /]
+[query public min(r : StringProperty) : ELongObject = r.min.min(r.max) /]
+[query public max(r : StringProperty) : ELongObject = r.max.max(r.min) /]
+[query public min(r : DateProperty) : EDate = r.min /]
+[query public max(r : DateProperty) : EDate = r.max /]
+[query public maxOccurrences(p : Property) : EInt = (
+	if p.maxOccurrences.oclIsUndefined()
+	then
+		1
+	else
+		if p.maxOccurrences < 1
+		then
+			-1
+		else
+			if p.minOccurrences.oclIsUndefined()
+			then
+				p.maxOccurrences
+			else
+				p.maxOccurrences.max(p.minOccurrences)
+			endif
+		endif
+	endif
+) /]
+[query public minOccurrences(p : Property) : EInt = (
+	if p.minOccurrences.oclIsUndefined() or p.minOccurrences < 0
+	then
+		0
+	else
+		if p.maxOccurrences.oclIsUndefined()
+		then
+			p.minOccurrences
+		else
+			p.minOccurrences.min(p.maxOccurrences)
+		endif
+	endif
+) /]
+[query public isList(p : Property) : EBoolean = p.maxOccurrences() <> 1 /]
+[query public isPrimitiveList(p : Property) : EBoolean = p.isList() <> 1 and not(p.oclIsKindOf(EntityProperty)) /]
+[query public isAddressable(p : Property) : EBoolean = p.oclIsKindOf(EntityProperty)/]
+[query public isEntityList(p : Property) : EBoolean = p.isList() and p.oclIsKindOf(EntityProperty)/]
+[query public isEntitySingle(p : Property) : EBoolean = not(p.isList()) and p.oclIsKindOf(EntityProperty)/]

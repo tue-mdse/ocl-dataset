@@ -1,0 +1,270 @@
+[module daohibernatehbm('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::hibernate::daohibernatecommon/]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+[import org::acceleo::module::pim::uml21::gen::sql::services::sqltypeservices /]
+
+[comment][template private fullFilePath(class:Class)]
+	[if (class.isEntity() and class.superClass->isEmpty())]
+[class.pathToMainResources()/]/[class.hibernatePackage().toPath()/]/[class.name/].hbm.xml
+	[/if]
+
+[/template][/comment]
+
+
+[template public generateDaoHibernateHbm(class:Class, arg:String)? (class.isEntity() and class.superClass->isEmpty())]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainResources(), class.hibernatePackage().toPath(), class.name.concat('.hbm.xml')), false))]
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping
+    PUBLIC "-//Hibernate/Hibernate Mapping DTD//EN"
+    "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+
+    <class 
+        name="[class.entityPackage()/].[class.name/]" 
+        table="[class.name.toSqlNotation()/]" 
+        dynamic-update="true">
+
+[if (class.hasPrimaryKey())]
+[for (class.getPKAttribute())]
+        <!-- ID from the model -->
+        <id name="[class.name/]" type="long" column="[class.name.toSqlNotation()/]">
+            <generator class="sequence">
+                <param name="sequence">SEQ_[class.eContainer(Class).name.toSqlNotation()/]</param>
+            </generator>
+        </id>
+[/for]
+[else]
+        <!-- Technical ID -->
+        <id name="id" type="string" unsaved-value="null" column="ID">
+            <generator class="uuid"/>
+        </id>
+[/if]
+
+        <!-- Properties -->
+[class.ownedAttribute->select(not (isPK())).genProperties()/]
+
+        <!-- Associations -->
+[class.getOppositeAttributes().genAssociations(arg)/]
+
+        <!-- Inheritance -->
+[filterWithStereotype(class.subClass(), getProperty('Entity'))->filter(Class).genInheritance(class, arg)/]
+    </class>
+
+</hibernate-mapping>
+[/file]
+[/template]
+
+
+[template public genProperties(property:Property)]
+[if (not (property.isDerived) and property.upper = 1)]
+        <property name="[property.name/]">
+            <column name="[property.name.toSqlNotation()/]"/>
+        </property>
+[/if]
+
+[/template]
+
+
+[template public genAssociations(property:Property, arg:String)]
+[comment  n---n /]
+[if (property.opposite = null)]
+[comment  |n|-->n /]
+	[if (property.upper = 1)]
+[comment  |n|-->1 /]
+		[if (property.oppositeAttribute().upper = 1)]
+[comment  |1|-->1 /]        
+	[property.genDiagram(arg)/]
+        <many-to-one 
+            name="[property.name/]" 
+            class="[property.type.entityPackage()/].[property.type.name/]" 
+            column="FK_[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_ID"
+            cascade="persist,merge,save-update[if (property.isComposite)],delete[/if]"
+            [if (property.lower > 0)]unique="true"[/if]/>
+		[else]
+[comment  |*|-->1 /]        
+	[property.genDiagram(arg)/]
+        <many-to-one 
+            name="[property.name/]" 
+            class="[property.type.entityPackage()/].[property.type.name/]" 
+            column="FK_[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_ID"
+            />
+		[/if]
+	[else]
+[comment  n-->* /]
+		[if (property.oppositeAttribute().upper = 1)]
+[comment  |1|-->* /]        
+	[property.genDiagram(arg)/]
+			[if (property.isOrdered)]
+        <list name="[property.name/]" lazy="true"[if (property.isComposite or property.aggregation = 'shared')] cascade="all"[/if]>
+            <key column="FK_[class.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_ID"/>             
+            <list-index column="IDX"/>            
+            <one-to-many class="[property.type.entityPackage()/].[property.type.name/]"/>
+        </list>                
+			[else]
+                <!-- Aggregation Type : [property.aggregation/] -->
+        <set name="[property.name/]" lazy="true"[if (property.isComposite or property.aggregation = 'shared')] cascade="all"[/if]> 
+            <key column="FK_[class.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_ID"/>            
+            <one-to-many class="[property.type.entityPackage()/].[property.type.name/]"/>
+        </set>
+			[/if]
+		[else]
+[comment  |*|-->* /]        
+	[property.genDiagram(arg)/]
+			[if (property.isOrdered)]
+        <list name="[name/]" table="[property.oppositeAttribute().type.name.toSqlNotation()/]_[name.toSqlNotation()/]">
+            <key column="[property.oppositeAttribute().type.name.toSqlNotation()/]_ID"/>
+            <index column="IDX"/>
+            <many-to-many                 
+                class="[property.type.entityPackage()/].[property.type.name/]"
+                column="[property.type.name.toSqlNotation() /]_ID"/>
+         </list>                
+			[else]
+        <set name="[property.name/]" table="[property.oppositeAttribute().type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]">
+            <key column="[property.oppositeAttribute().type.name.toSqlNotation()/]_ID"/>
+            <many-to-many                 
+                class="[property.type.entityPackage()/].[property.type.name/]"
+                column="[property.type.name.toSqlNotation()/]_ID"/>
+         </set>
+			[/if]
+		[/if]
+	[/if]
+[else]
+[comment  n<-->n /]
+	[if (property.upper = 1)]
+[comment  n<-->1 /]	
+		[if (property.oppositeAttribute().upper = 1)]
+[comment  1<-->1 /]
+			[if ((property.lower = 0 and property.oppositeAttribute().lower = 1) or (not ((property.lower = 0 and property.oppositeAttribute().lower = 1)) and property.isMainEndPoint() = 'false'))]
+ [comment  test for recursive /]
+[comment  |1|<-->1 /]        
+	[property.genDiagram(arg)/]
+        <one-to-one 
+            name="[property.name/]"             
+            class="[property.type.entityPackage()/].[property.type.name/]" 
+            property-ref="[property.opposite.name/]"
+            cascade="all"/>
+			[else]
+[comment  1<-->|1| /]        
+	[property.genDiagram(arg)/]
+        <many-to-one 
+            name="[property.name/]"             
+            class="[property.type.entityPackage()/].[property.type.name/]" 
+            column="FK_[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_ID"
+            cascade="all"
+				[if (property.lower > 0)]unique="true"[/if]/>
+			[/if]
+		[else]
+[comment  *<-->1 /][comment if (    isMainEndPoint()  == "true" || opposite.upper != 1 ){/][comment  |*|<-->1 /]        
+	[property.genDiagram(arg)/]
+        <many-to-one             
+            class="[property.type.entityPackage()/].[property.type.name/]"
+            column="FK_[property.type.name.toSqlNotation()/]_[property.name.toSqlNotation()/]_ID"
+            name="[property.name/]"
+			[if (property.opposite.isComposite())] cascade="all"[/if]
+			[if (property.opposite.isOrdered)] not-null="true" insert="false" update="false"[/if]
+            />
+[comment  <%}else{%>
+                <%-*<-->|1|-%>
+        <%genDiagram("* {-} 1")%>
+        <set name="<%name%>" inverse="true">
+            <key column="FK_<%type.name.toSqlNotation()%>_<%name.toSqlNotation()%>_ID"/>
+            <one-to-many class="<%baseImports%>.<%projectName%>.business.<%type.package.normalizedName%>.<%type.name%>"/>
+         </set> /][comment }/]
+		[/if]
+	[else]
+        [comment  n<-->* /] [comment  the case *<-->1 has already be traited /]
+         [if (property.oppositeAttribute().upper = 1)]
+         [comment  |1|<-->* /]        
+	[property.genDiagram(arg)/]
+         	[if (isOrdered)]
+         		        <list name="[property.name/]" [if (property.isComposite())] cascade="all-delete-orphan"[/if]>
+         		            <key column="FK_[property.oppositeAttribute().type.name.toSqlNotation()/]_[property.oppositeAttribute().name.toSqlNotation()/]_ID" not-null="true"/>
+         		            <list-index column="[property.name.toSqlNotation()/]_IDX"/>
+         		            <one-to-many class="[property.type.entityPackage()/].[property.type.name/]"/>
+         		         </list>
+         	[else]
+         		        <set name="[property.name/]" inverse="true"[if (property.isComposite())] cascade="all-delete-orphan"[/if]>
+                     <key column="FK_[property.opposite.type.name.toSqlNotation()/]_[opposite.name.toSqlNotation() /]_ID"/>            
+                     <one-to-many class="[property.type.entityPackage() /].[type.name/]"/>
+                  </set>
+         	[/if]
+         [else]
+         [comment  *<-->* /]            
+         	[if (property.isMainEndPoint() = 'true')]
+         [comment  |*|<-->* /]        
+	[property.genDiagram(arg)/]
+                 <set name="[property.name/]" table="[property.name.toSqlNotation()/]_[property.opposite.name.toSqlNotation()/]">
+                     <key column="FK_[property.name.toSqlNotation()/]_ID"/>
+                     <many-to-many                 
+                         class="[property.type.entityPackage()/].[type.name/]"
+                         column="[property.name.toSqlNotation()/]_ID"/>
+                  </set>
+         	[else]
+         [comment  *<-->|*| /]        
+	[genDiagram(arg)/]
+                 <set name="[property.name/]" inverse="true">
+                     <key column="FK_[property.name.toSqlNotation()/]_ID"/>
+                     <many-to-many                 
+                         class="[property.type.entityPackage()/].[property.type.name/]"
+                         column="[property.name.toSqlNotation()/]_ID"/>
+                  </set>
+         	[/if]
+         [/if]
+     [/if]
+[/if]
+
+[/template]
+
+
+[template public genInheritance(childClass:Class, parentClass:Class, arg:String)]
+
+        <joined-subclass            
+            name="[childClass.entityPackage()/].[childClass.name/]" 
+            table="[childClass.name.toSqlNotation()/]"
+            dynamic-update="true">
+            
+            <key column="FK_INHERITS_[parentClass.name.toSqlNotation()/]_ID"/>
+            
+            <!-- Properties -->
+[childClass.ownedAttribute.genProperties()/]
+
+            <!-- Associations -->
+[childClass.getOppositeAttributes().genAssociations(arg)/]
+
+            <!-- Inheritance -->
+[childClass.subClass().genInheritance(childClass, arg)/]
+        </joined-subclass>
+[/template]
+
+
+[template public genDiagram(property:Property, arg:String)]
+
+        <!--  _[repeat('_', property.oppositeAttribute().type.name.toSqlNotation().size())/]_     [repeat(' ', arg.size())/] _[repeat('_', type.name.toSqlNotation().size())/]_
+             | [property.oppositeAttribute().type.name.toSqlNotation()/] |- [arg/] -| [type.name.toSqlNotation()/] |
+              _[repeat('_', oppositeAttribute().type.name.toSqlNotation().size())/]_     [repeat(' ', arg.size())/] _[repeat('_', type.name.toSqlNotation().size())/]_
+        -->
+[/template]
+
+
+[query public isMainEndPoint(property:Property) : Boolean =
+if (property.aggregation = 'composite' or 
+	(property.oppositeAttribute().aggregation <> 'composite' and 
+	(compare(class.name, property.type.name) > 0 or 
+	(class = type and compare(property.name, property.opposite.name) > 0)))) then 
+	true 
+else 
+	false 
+endif
+/]
+
+
+

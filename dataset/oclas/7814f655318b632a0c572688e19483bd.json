@@ -1,0 +1,504 @@
+[
+  {
+    "name": "Agent",
+    "expressions": [],
+    "properties": [
+      "activities",
+      "eMail",
+      "AgentPool",
+      "projects"
+    ]
+  },
+  {
+    "name": "Location",
+    "expressions": [],
+    "properties": [
+      "type",
+      "project",
+      "rootArtifact"
+    ]
+  },
+  {
+    "name": "State",
+    "expressions": [
+      {
+        "operations": {
+          "or": 2,
+          "excludes": 2,
+          "size": 2,
+          "and": 1,
+          "=": 2
+        },
+        "name": "stateSequence",
+        "body": "(next->excludes(self) or next->size() = 0) and (previous->excludes(self) or previous->size() = 0)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "OperationCallExpImpl": 9,
+          "VariableExpImpl": 6,
+          "IntegerLiteralExpImpl": 2,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "DECENT::State::next",
+          "DECENT::State::previous"
+        ]
+      },
+      {
+        "operations": {"includes": 1},
+        "name": "allowedAttributeValues",
+        "body": "values->forAll(v : Value | artifact.attributes->includes(v.ofAttribute))",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "DECENT::Artifact::attributes",
+          "DECENT::State::artifact",
+          "DECENT::Value::ofAttribute",
+          "DECENT::State::values"
+        ]
+      },
+      {
+        "operations": {
+          "oclAsSet": 1,
+          "isEmpty": 1
+        },
+        "name": "derivedNext",
+        "body": "\n            if (activity->isEmpty()) \n            then OrderedSet{} \n            else self->collect(s : State | self.activity.targetState) \n            endif",
+        "type": "PropertyImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "VariableExpImpl": 4,
+          "OperationCallExpImpl": 2,
+          "CollectionLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "DECENT::Activity::targetState",
+          "DECENT::State::activity"
+        ]
+      },
+      {
+        "operations": {
+          "<=": 1,
+          "size": 1,
+          "=": 1
+        },
+        "name": "uniqueAttributeValues",
+        "body": "artifact.attributes->forAll(a : Attribute | values->select(v : Value | (v.ofAttribute = a))->size() <= 1)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "VariableExpImpl": 4,
+          "OperationCallExpImpl": 3,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "DECENT::Artifact::attributes",
+          "DECENT::State::artifact",
+          "DECENT::Value::ofAttribute",
+          "DECENT::State::values"
+        ]
+      },
+      {
+        "operations": {"isEmpty": 1},
+        "name": "derivedDate",
+        "body": "\n            if (fromActivity->isEmpty())\n            then null\n            else null\n            endif",
+        "type": "PropertyImpl",
+        "constructs": {
+          "OperationCallExpImpl": 1,
+          "VariableExpImpl": 1,
+          "NullLiteralExpImpl": 2,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 1
+        },
+        "properties": ["DECENT::State::fromActivity"]
+      },
+      {
+        "operations": {
+          "isEmpty": 1,
+          "oclAsSet": 1
+        },
+        "name": "derivedPrevious",
+        "body": "\n            if (fromActivity->isEmpty()) \n            then OrderedSet{} \n            else self->collect(s : State | self.fromActivity.state) \n            endif",
+        "type": "PropertyImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "VariableExpImpl": 4,
+          "OperationCallExpImpl": 2,
+          "CollectionLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 3
+        },
+        "properties": [
+          "DECENT::State::fromActivity",
+          "DECENT::Activity::state"
+        ]
+      }
+    ],
+    "properties": [
+      "fromActivity",
+      "derivedNext",
+      "derivedDate",
+      "artifact",
+      "derivedPrevious",
+      "next",
+      "activity",
+      "State",
+      "State",
+      "previous",
+      "values"
+    ]
+  },
+  {
+    "name": "ActivityType",
+    "expressions": [],
+    "properties": []
+  },
+  {
+    "name": "Project",
+    "expressions": [],
+    "properties": [
+      "agents",
+      "location",
+      "Model"
+    ]
+  },
+  {
+    "name": "Artifact",
+    "expressions": [
+      {
+        "operations": {
+          "or": 1,
+          "includes": 1,
+          "=": 1
+        },
+        "name": "allowedAttributes",
+        "body": "attributes->forAll(a : Attribute | a.artifactTypes->includes(self.type)) or type = null",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 4,
+          "OperationCallExpImpl": 3,
+          "NullLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 4
+        },
+        "properties": [
+          "DECENT::Artifact::attributes",
+          "DECENT::Attribute::artifactTypes",
+          "DECENT::Artifact::type"
+        ]
+      },
+      {
+        "operations": {
+          "or": 1,
+          "includes": 1,
+          "=": 1
+        },
+        "name": "typeHierarchy",
+        "body": "type.containerTypes->includes(parent.type) or parent = null",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 3,
+          "NullLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "DECENT::Artifact::parent",
+          "DECENT::ArtifactType::containerTypes",
+          "DECENT::Artifact::type"
+        ]
+      }
+    ],
+    "properties": [
+      "parent",
+      "attributes",
+      "states",
+      "Location",
+      "type",
+      "children"
+    ]
+  },
+  {
+    "name": "EDataType",
+    "expressions": [],
+    "properties": ["Attribute"]
+  },
+  {
+    "name": "Attribute",
+    "expressions": [],
+    "properties": [
+      "ActivityValue",
+      "Delta",
+      "type",
+      "AttributePool",
+      "artifactTypes",
+      "Value",
+      "Artifact"
+    ]
+  },
+  {
+    "name": "ActivityValue",
+    "expressions": [{
+      "operations": {},
+      "name": "name",
+      "body": "ofAttribute.name",
+      "type": "PropertyImpl",
+      "constructs": {
+        "VariableExpImpl": 1,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": [
+        "DECENT::ActivityValue::ofAttribute",
+        "DECENT::Element::name"
+      ]
+    }],
+    "properties": [
+      "activity",
+      "ofAttribute",
+      "content",
+      "stringContent",
+      "name"
+    ]
+  },
+  {
+    "name": "ArtifactTypeHierarchy",
+    "expressions": [],
+    "properties": [
+      "Model",
+      "types"
+    ]
+  },
+  {
+    "name": "AttributePool",
+    "expressions": [],
+    "properties": [
+      "attributes",
+      "Model"
+    ]
+  },
+  {
+    "name": "Activity",
+    "expressions": [
+      {
+        "operations": {
+          "<=": 1,
+          "size": 1,
+          "=": 1
+        },
+        "name": "uniqueValueDeltas",
+        "body": "state.artifact.attributes->forAll(a : Attribute | deltas->select(d : Delta | (d.value.ofAttribute = a))->size() <= 1)",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 2,
+          "VariableExpImpl": 4,
+          "OperationCallExpImpl": 3,
+          "IntegerLiteralExpImpl": 1,
+          "PropertyCallExpImpl": 6
+        },
+        "properties": [
+          "DECENT::Artifact::attributes",
+          "DECENT::Activity::deltas",
+          "DECENT::Activity::state",
+          "DECENT::State::artifact",
+          "DECENT::Value::ofAttribute",
+          "DECENT::Delta::value"
+        ]
+      },
+      {
+        "operations": {"includes": 1},
+        "name": "allowedValueDeltas",
+        "body": "deltas->forAll(d : Delta | state.artifact.attributes->includes(d.value.ofAttribute))",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 6
+        },
+        "properties": [
+          "DECENT::Artifact::attributes",
+          "DECENT::Activity::deltas",
+          "DECENT::Activity::state",
+          "DECENT::State::artifact",
+          "DECENT::Value::ofAttribute",
+          "DECENT::Delta::value"
+        ]
+      },
+      {
+        "operations": {"<>": 1},
+        "name": "activityStates",
+        "body": "state <> targetState",
+        "type": "ConstraintImpl",
+        "constructs": {
+          "VariableExpImpl": 2,
+          "OperationCallExpImpl": 1,
+          "PropertyCallExpImpl": 2
+        },
+        "properties": [
+          "DECENT::Activity::state",
+          "DECENT::Activity::targetState"
+        ]
+      }
+    ],
+    "properties": [
+      "type",
+      "deltas",
+      "agent",
+      "values",
+      "state",
+      "targetState",
+      "date",
+      "description"
+    ]
+  },
+  {
+    "name": "ArtifactType",
+    "expressions": [],
+    "properties": [
+      "ArtifactType",
+      "Artifact",
+      "Location",
+      "containerTypes",
+      "Attribute",
+      "ArtifactTypeHierarchy"
+    ]
+  },
+  {
+    "name": "Model",
+    "expressions": [],
+    "properties": [
+      "name",
+      "attributePool",
+      "agentPool",
+      "projects",
+      "artifactTypeHierarchy"
+    ]
+  },
+  {
+    "name": "Element",
+    "expressions": [],
+    "properties": [
+      "ID",
+      "name"
+    ]
+  },
+  {
+    "name": "AgentPool",
+    "expressions": [],
+    "properties": [
+      "Model",
+      "agents"
+    ]
+  },
+  {
+    "name": "Value",
+    "expressions": [{
+      "operations": {},
+      "name": "name",
+      "body": "ofAttribute.name",
+      "type": "PropertyImpl",
+      "constructs": {
+        "VariableExpImpl": 1,
+        "PropertyCallExpImpl": 2
+      },
+      "properties": [
+        "DECENT::Element::name",
+        "DECENT::Value::ofAttribute"
+      ]
+    }],
+    "properties": [
+      "Delta",
+      "Delta",
+      "inState",
+      "name",
+      "stringContent",
+      "ofAttribute",
+      "content"
+    ]
+  },
+  {
+    "name": "Delta",
+    "expressions": [
+      {
+        "operations": {
+          "last": 1,
+          "=": 1
+        },
+        "name": "value",
+        "body": "activity.state.values->select(v : Value | v.ofAttribute = self.onAttribute)->last()",
+        "type": "PropertyImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 2,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "DECENT::Delta::activity",
+          "DECENT::Activity::state",
+          "DECENT::Delta::onAttribute",
+          "DECENT::Value::ofAttribute",
+          "DECENT::State::values"
+        ]
+      },
+      {
+        "operations": {
+          "last": 1,
+          "=": 1
+        },
+        "name": "targetValue",
+        "body": "activity.targetState.values->select(v : Value | v.ofAttribute = self.onAttribute)->last()",
+        "type": "PropertyImpl",
+        "constructs": {
+          "IteratorExpImpl": 1,
+          "VariableExpImpl": 3,
+          "OperationCallExpImpl": 2,
+          "PropertyCallExpImpl": 5
+        },
+        "properties": [
+          "DECENT::Delta::activity",
+          "DECENT::Activity::targetState",
+          "DECENT::Delta::onAttribute",
+          "DECENT::Value::ofAttribute",
+          "DECENT::State::values"
+        ]
+      },
+      {
+        "operations": {
+          "oclIsUndefined": 2,
+          "or": 1,
+          "-": 1
+        },
+        "name": "change",
+        "body": "if targetValue.oclIsUndefined() or value.oclIsUndefined() then 0 else targetValue.content - value.content endif",
+        "type": "PropertyImpl",
+        "constructs": {
+          "VariableExpImpl": 4,
+          "OperationCallExpImpl": 4,
+          "IntegerLiteralExpImpl": 1,
+          "IfExpImpl": 1,
+          "PropertyCallExpImpl": 6
+        },
+        "properties": [
+          "DECENT::Delta::targetValue",
+          "DECENT::Value::content",
+          "DECENT::Delta::value"
+        ]
+      }
+    ],
+    "properties": [
+      "activity",
+      "targetValue",
+      "change",
+      "onAttribute",
+      "value"
+    ]
+  }
+]

@@ -1,0 +1,162 @@
+[comment encoding = UTF-8 /]
+[module generateClass('http://www.eclipse.org/uml2/4.0.0/UML', 'http://www.eclipse.org/papyrus/0.7.0/SysML', 'http://www.eclipse.org/papyrus/0.7.0/SysML/Blocks')]
+
+
+[template public generateClass(aClass : Class)]
+[file (aClass.name.toUpperFirst() + '.bbj', false, 'UTF-8')]
+[if (aClass.isAbstract)]
+REM Class marked abstract, not used in BBj. Marker ignored.
+[/if]
+class public [aClass.name.toUpperFirst()/] [if (aClass.general -> size() > 0 and aClass.general -> size() < 2)]extends [aClass.superClass.name/] [else] [if  (aClass.general -> size() <> 0)]  REM Classes can only have one superclass. Remove all but the one you need. [/if][/if][if (not aClass.clientDependency->filter(Realization)->isEmpty())] implements [for (element : NamedElement | aClass.getImplementedInterfaces()) separator(', ')] [element.name/][/for][/if]
+
+[for (p : Property | aClass.attribute) separator('\n')]
+	[if (p.isReadOnly)]
+	REM final-Attributes are not supported in BBj. Marker ignored. Please remove it.
+	[/if]
+	[if (p.upper <> 1)]
+		field [p.visibility.toString()/][if (p.isStatic)] static[/if] [p.type.name/]['[]'/] [p.name/]! 
+	[else]
+		field [p.visibility.toString()/][if (p.isStatic)] static[/if] [p.type.name/] [p.name/]!
+	[/if]
+[/for]
+
+[for (a : Association | aClass.getAssociations()) separator('\n')]
+	[if (a.endType->last().name.equalsIgnoreCase(aClass.name))]
+		[if (a.memberEnd->first().upper <> 1)]
+	field [a.visibility.toString()/] [a.endType->first().name/]['[]'/] [a.memberEnd->first().name/]!	 
+		[else]
+	field [a.visibility.toString()/] [a.endType->first().name/] [a.memberEnd->first().name/]!
+		[/if]
+	[else]
+		[if (a.memberEnd->last().upper <> 1)]
+	field [a.visibility.toString()/] [a.endType->last().name/]['[]'/] [a.memberEnd->last().name/]!	 
+		[else]
+	field [a.visibility.toString()/] [a.endType->last().name/] [a.memberEnd->last().name/]!
+		[/if]
+	[/if]
+[/for]
+
+	method public [aClass.name.toUpperFirst()/] ()
+		REM //TODO Generated Constructor, fill as needed
+	methodend
+
+[for (o : Operation | aClass.getOperations()) separator('\n')]
+	[if (o.isAbstract)]
+		REM Method marked abstract in UML, not used in BBj. Marker ignored.
+	[/if]
+	method [o.visibility/] [if (o.isStatic)]static [/if][o.type.name.toString()/] [o.name/] ([for (it : Parameter | o.eContents(Parameter)) separator(', ')][if (not (it.name.equalsIgnoreCase('')))][it.type.name/][if(it.upper<>1)]['[]'/][/if] [it.name/][/if][/for])
+	[if (not o.type.name.toString().matches('void'))]
+		declare [o.type.name.toString()/] var!
+		methodret var
+	[/if]
+	methodend
+[/for]
+
+[for (p : Property | aClass.attribute) separator('\n')]
+	[if (p.upper <> 1)]
+		[if (not(p.isStatic))]
+	method public [p.type.name/]['[]'/] get[p.name.toUpperFirst()/] ()
+		methodret this.[p.name/]
+	methodend
+
+	method public [p.type.name/] getSingle[p.name.toUpperFirst()/] (BBjInt pos%)
+		methodret this.[p.name/]['['/]pos%[']'/]
+	methodend
+
+	method public void setAll[p.name.toUpperFirst()/] ([p.type.name/]['[]'/] var!)
+		LET [p.name/] ['[ALL]'/] = var! ['[ALL]'/]
+	methodend
+
+	method public void setSingle[p.name.toUpperFirst()/] ([p.type.name/] var!, BBjInt pos%)
+		LET [p.name/]['['/]pos%[']'/] = var!
+	methodend
+		[else]
+	method public [p.type.name/]['[]'/] get[p.name.toUpperFirst()/] ()
+		methodret this.[p.name/]
+	methodend
+
+	method public [p.type.name/] getSingle[p.name.toUpperFirst()/] (BBjInt pos%)
+		methodret this.[p.name/]['['/]pos%[']'/]
+	methodend
+		[/if]
+	[else]
+		[if (not(p.isStatic))]
+	method public [p.type.name/] get[p.name.toUpperFirst()/] ()
+		methodret this.[p.name/]
+	methodend
+
+	method public void set[p.name.toUpperFirst()/] ([p.type.name/] [p.name/])
+		this.[p.name/] = [p.name/]
+	methodend
+		[else]
+	method public [p.type.name.toString()/] get[p.name.toUpperFirst()/] ()
+		methodret this.[p.name/]
+	methodend
+		[/if]
+	[/if]
+[/for]
+
+[for (a : Association | aClass.getAssociations()) separator('\n')]
+	[if (a.endType->last().name.equalsIgnoreCase(aClass.name))]
+		[if (a.memberEnd->first().upper <> 1)]
+	method public [a.endType->first().name/]['[]'/] get[a.memberEnd->first().name.toUpperFirst()/]()
+		methodret this.[a.memberEnd->first().name/]!
+	methodend
+
+	method public [a.endType->first().name/] getSingle[a.memberEnd->first().name.toUpperFirst()/](BBjInt pos%)
+		methodret this.[a.memberEnd->first().name/]!['['/]pos%[']'/]
+	methodend
+
+	method public void set[a.memberEnd->first().name.toUpperFirst()/] ([a.endType->first().name/]['[]'/] var!)
+		LET [a.memberEnd->first().name/]! ['[ALL]'/] = var! ['[ALL]'/]
+	methodend
+
+	method public void setSingle[a.memberEnd->first().name.toUpperFirst()/] ([a.endType->first().name/] var!, BBjInt pos%)
+		LET [a.memberEnd->first().name/] ['['/]pos%[']'/] = var!
+	methodend
+		[else]
+	method public [a.endType->first().name/] get[a.memberEnd->first().name.toUpperFirst()/]()
+		methodret this.[a.memberEnd->first().name/]!
+	methodend
+
+	method public void set[a.memberEnd->first().name.toUpperFirst()/] ([a.endType->first().name/] var!)
+		[a.memberEnd->first().name/]! = var!
+	methodend
+		[/if]
+	[else]
+		[if (a.memberEnd->last().upper <> 1)]
+	method public [a.endType->last().name/]['[]'/] get[a.memberEnd->last().name.toUpperFirst()/]()
+		methodret this.[a.memberEnd->last().name/]!
+	methodend
+
+	method public [a.endType->last().name/] getSingle[a.memberEnd->last().name.toUpperFirst()/](BBjInt pos%)
+		methodret this.[a.memberEnd->last().name/]!['['/]pos%[']'/]
+	methodend
+
+	method public void set[a.memberEnd->last().name.toUpperFirst()/] ([a.endType->last().name/]['[]'/] var!)
+		LET [a.memberEnd->last().name/]! ['[ALL]'/] = var! ['[ALL]'/]
+	methodend
+
+	method public void setSingle[a.memberEnd->last().name.toUpperFirst()/] ([a.endType->last().name/] var!, BBjInt pos%)
+		LET [a.memberEnd->last().name/] ['['/]pos%[']'/] = var!
+	methodend
+		[else]
+	method public [a.endType->last().name/] get[a.memberEnd->last().name.toUpperFirst()/]()
+		methodret this.[a.memberEnd->last().name/]!
+	methodend
+
+	method public void set[a.memberEnd->last().name.toUpperFirst()/] ([a.endType->last().name/] var!)
+		[a.memberEnd->last().name/]! = var!
+	methodend
+		[/if]
+	[/if]
+[/for]
+
+	method public BBjString toString()
+		declare BBjString string$ = "test"
+		methodret string$
+	methodend
+
+classend
+[/file]
+[/template]

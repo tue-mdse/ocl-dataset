@@ -1,0 +1,144 @@
+[comment encoding = UTF-8 /]
+[module stores('http://iwz/appmodel')]
+
+[import iwz::appmodel::acceleo::templates::common/]
+
+[template private generateCustomStore(c : Client)]
+var createStore = function createStore () {
+
+	var store = {};
+	store._sendRequest = function _sendRequest (url, type, data) {
+	
+		data = data || {};
+
+		var deferred = new $.Deferred();
+	
+		var requestSettings = {};
+	    requestSettings.url = $.trim(url);
+		requestSettings.type = type;
+		requestSettings.data = data;
+		requestSettings.dataType = 'json';
+		requestSettings.success = function (data) {
+
+			//console.log(data);
+	        deferred.resolve(data);
+
+	    };
+		requestSettings.error = function (error) {
+			
+			//console.log(url);
+			//console.log(data);
+			//console.log(error)
+			//console.log(error.responseText);
+			DX.ui.notify("Server Error", "error", 3000);
+			throw error.responseText;
+
+	    };
+		
+		$.ajax(requestSettings);
+	
+		return deferred;
+	};
+	store._totalCount = function totalCount (url,loadOptions) {
+
+    	var d = new $.Deferred();
+
+        $.getJSON(store.url, function(data){
+            
+			d.resolve(data.length);
+        
+		});
+
+        return d.promise();
+
+    }
+
+	return store;
+
+};
+[/template]
+
+[template private generateStore(es : EntityServlet)]
+var [es.entity.name.toLower()/]Store = createStore();
+[es.entity.name.toLower()/]Store.key = ['["'+es.entity.getPrimaryProperties().name->sep('","')+'"]'/];
+[es.entity.name.toLower()/]Store.totalCount = function [es.entity.name.toLower()/]Store_load (loadOptions) {
+
+	return [es.entity.name.toLower()/]Store._totalCount([es.entity.name.toLower()/]Store.url,loadOptions);
+
+};
+[es.entity.name.toLower()/]Store.load = function [es.entity.name.toLower()/]Store_load () {
+	
+	return [es.entity.name.toLower()/]Store._sendRequest([es.entity.name.toLower()/]Store.url,'GET');
+
+};
+[es.entity.name.toLower()/]Store.byKey = function [es.entity.name.toLower()/]Store_byKey (data) {
+	
+	var url = [es.entity.name.toLower()/]Store.url;
+	if ($.isPlainObject(data)) {
+	[for (p : Property | es.entity.getPrimaryProperties())]
+		url += "/" + data.[p.name/];
+	[/for]
+	}
+	else {
+		url += "/" + data;
+	}
+	//console.log(data);
+	//console.log(url);
+	return [es.entity.name.toLower()/]Store._sendRequest(url,'GET');
+
+};
+[es.entity.name.toLower()/]Store.insert = function [es.entity.name.toLower()/]Store_insert (data) {
+	//return console.log(data);
+	return [es.entity.name.toLower()/]Store._sendRequest([es.entity.name.toLower()/]Store.url,'POST',data);
+
+};
+[es.entity.name.toLower()/]Store.update = function [es.entity.name.toLower()/]Store_update (data) {
+
+	return [es.entity.name.toLower()/]Store._sendRequest([es.entity.name.toLower()/]Store.url,'PUT',data);
+
+};
+[es.entity.name.toLower()/]Store.remove = function [es.entity.name.toLower()/]Store_remove (data) {
+
+	return [es.entity.name.toLower()/]Store._sendRequest([es.entity.name.toLower()/]Store.url,'DELETE',data);
+
+};
+[/template]
+
+[template public generateStores(app : Application)]
+[for (c : Client | app.clients)]
+[file ('/client/devextreme/'+c.name.toLower()+'/js/stores.js', false, 'UTF-8')]
+(function ($, DX, [c.name/]) {
+   	
+	// [protected(c.name+':host')]
+
+	var HOST = "";
+
+	// [/protected]
+
+	[c.generateCustomStore()/];
+	
+	//===================================================================================
+	[c.name/].stores = {};
+	
+	[for (es : EntityServlet | app.server.elements->selectByKind(EntityServlet))]
+	//===================================================================================
+	[es.generateStore()/];
+	[es.entity.name.toLower()/]Store.url = HOST + "/entities/[es.entity.name.toLower()/]";
+	[c.name/].stores.[es.entity.name/] = new DevExpress.data.CustomStore([es.entity.name.toLower()/]Store);
+	[/for]
+	
+	
+	//===================================================================================
+	[c.name/].deletees = {};
+
+	[for (es : EntityServlet | app.server.elements->selectByKind(EntityServlet))]
+	//===================================================================================
+	[c.name/].deletees.[es.entity.name/] = new DevExpress.data.ArrayStore();
+	[/for]
+	
+	
+
+}(jQuery, DevExpress, window.[c.name/] = window.[c.name/] || {} ));
+[/file]
+[/for]
+[/template]

@@ -1,0 +1,113 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module new.
+ */]
+[module new('http://www.eclipse.org/uml2/5.0.0/UML') extends frontend::entities::main ]
+[import ::utils /]
+
+[**
+ * Entry point for generation of "New" state code
+ * @param c
+ */]
+[template public mainNewState(c : Class, path : String)]
+[let filePath : String = path.concat('new/')]
+    [c.genController(filePath)/]
+    [c.genTemplate(filePath)/]
+[/let]
+[/template]
+
+[template private genController(c : Class, path : String)]
+[file (path.concat(c.getName()).concat('.new.ctrl.js'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+
+(function (ng) {
+
+    var mod = ng.module("[c.getModule()/]");
+
+    mod.controller("[c.getNewCtrlName()/]", ['['/]"$scope", "$state", "[c.getRecordsName()/]",
+        function ($scope, $state, [c.getRecordsName()/]) {
+            $scope.currentRecord = {};
+            $scope.actions = {
+                save: {
+                    displayName: 'Save',
+                    icon: 'save',
+                    fn: function () {
+                        if ($scope.[c.getFormId()/].$valid) {
+                            [c.getRecordsName()/].post($scope.currentRecord).then(function (rc) {
+                                $state.go('[c.getDetailStateName()/]', {[c.getIdParamName()/]: rc.id}, {reload: true});
+                            });
+                        }
+                    }
+                },
+                cancel: {
+                    displayName: 'Cancel',
+                    icon: 'remove',
+                    fn: function () {
+                        $state.go('[c.getListStateName()/]');
+                    }
+                }
+            };
+        }[']'/]);
+})(window.angular);
+[/file]
+[/template]
+
+[template private genTemplate(c : Class, path : String)]
+[file (path.concat(c.getName()).concat('.new.tpl.html'), false, 'UTF-8')]
+<!--
+[c.getModel().license()/]
+-->
+<div ng-messages="[c.getFormId()/].$error" multiple>
+    <ng-message when="required">
+        <alert type="warning">Please, Fill the required fields!</alert>
+    </ng-message>
+    <ng-message when="url">
+        <alert type="warning">Image field must be a URL</alert>
+    </ng-message>
+</div>
+<header>
+    <toolbar name="model.name" display-name="model.displayName" actions='actions'></toolbar>
+</header>
+<form novalidate name="[c.getFormId()/]" role="form">
+    <fieldset>
+[if (c.getModel().valueOf('form')='true')]
+    <input id="id" class="form-control" type="hidden" ng-model="currentRecord.id"/>
+        [for (a : Property | c.getAllAttribs())]
+    <div class="form-group col-md-12" ng-class="{'has-success': [c.getFormId()/].[a.name/].$valid && [c.getFormId()/].[a.name/].$dirty, 'has-error': [c.getFormId()/].[a.name/].$invalid && [c.getFormId()/].[a.name/].$dirty}" >
+        <label for="[a.name/]" class="col-md-2 control-label">[a.name.toUpperFirst()/]</label>
+        <div class="col-md-10">
+        [if (a.type.name='String')]
+            <input id="[a.name/]" name="[a.name/]" class="form-control" type="text" ng-model="currentRecord.[a.name/]" ng-required="[a.isRequired()/]" />
+        [elseif (a.type.name='Integer' or a.type.name='Long'  or a.type.name='Float')]
+            <input id="[a.name/]" name="[a.name/]" class="form-control" type="number" ng-model="currentRecord.[a.name/]" ng-required="[a.isRequired()/]" />
+        [elseif (a.type.name='Image')]
+            <input id="[a.name/]" name="[a.name/]" class="form-control" type="url" ng-model="currentRecord.[a.name/]" ng-required="[a.isRequired()/]" />
+        [elseif (a.type.name='Boolean')]
+            <input id="[a.name/]" name="[a.name/]" class="form-control" ng-checked="currentRecord.[a.name/]" type="checkbox" ng-model="currentRecord.[a.name/]" ng-required="[a.isRequired()/] && currentRecord.[a.name/].$isEmpty" />
+        [elseif (a.type.name='Date')]
+            <date-picker value="currentRecord.[a.name/]" model="[a.name/]"></date-picker>
+        [/if]
+        </div>
+    </div>
+        [/for]
+        [for (a : Property | c.getReferences(false)->reject(isComposite()))]
+    <div class="form-group col-md-12" ng-class="{'has-success': [c.getFormId()/].[a.name/].$valid && [c.getFormId()/].[a.name/].$dirty, 'has-error': [c.getFormId()/].[a.name/].$invalid && [c.getFormId()/].[a.name/].$dirty}" >
+        <label for="[a.name/]" class="col-md-2 control-label">[a.name.toUpperFirst()/]</label>
+        <div class="col-md-10">
+            <select id="[a.name/]" name="[a.name/]" class="form-control" ng-options="rc.name for rc in references.[a.name/] track by rc.id" ng-model="currentRecord.[a.name/]"></select>
+        </div>
+    </div>
+        [/for]    
+        [else]
+        <crud-form fields='model.fields' record='currentRecord' lists-of-values="references"></crud-form>
+        [/if]
+    </fieldset>
+</form>
+[/file]
+[/template]
+
+[template private getFormId(c : Class)]
+[c.getName()/]Form
+[/template]

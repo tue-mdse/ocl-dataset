@@ -1,0 +1,143 @@
+[comment encoding = UTF-8 /]
+[**
+ * Copyright 2012 jccastrejon
+ * 
+ * This file is part of Model2Roo.
+ * Model2Roo is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ * 
+ * Model2Roo is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Model2Roo.  If not, see <http://www.gnu.org/licenses/>.
+ */]
+[module PolyglotDataModel('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import fr::imag::model2roo::common::Common/]
+[import fr::imag::model2roo::common::GraphDataModel/]
+[import fr::imag::model2roo::common::DocumentDataModel/]
+[import fr::imag::model2roo::common::RelationalDataModel/]
+
+[**
+ * Identifies whether the specified package should be associated with a Polyglot data model
+ * @param aPackage UML2 Package.
+*/]
+[template public isPolyglotDataModel(aPackage : Package) post(trim())]
+[if 'dataModel'.getPropertyValue('', 'rooCommand::RooModelCommand', aPackage) = 'POLYGLOT'] true [else] false [/if]
+[/template]
+
+[**
+ * Generate the appropriate setup for polyglot data models.
+ * @param aPackage UML2 Package
+*/]
+[template public generatePolyglotSetup(aPackage : Package) post(trim())]
+polyglot setup
+[/template]
+
+[template public generatePolyglotEntities(aPackage : Package) post(trim())]
+[comment] Document entities [/comment]
+[comment] The document entities need to be generated before any other entities, [/comment]
+[comment] due to restrictions implemented in the mongodb add-on[/comment]
+[if aPackage.containsStereotypedEntities('DOCUMENT'.getDataModelStereotype()).contains('true')] 
+  [aPackage.generateDocumentSetup()/] 
+  [aPackage.generateBaseClasses('DOCUMENT')/]
+  [aPackage.generateChildClasses('DOCUMENT')/]
+[/if]
+
+[comment] Graph entities [/comment]
+[if aPackage.containsStereotypedEntities('GRAPH'.getDataModelStereotype()).contains('true')] 
+  [aPackage.generateGraphSetup()/]
+  [aPackage.generateBaseClasses('GRAPH')/]
+  [aPackage.generateChildClasses('GRAPH')/]
+[/if]
+
+[comment] Relational entities [/comment]
+[if aPackage.containsStereotypedEntities('RELATIONAL'.getDataModelStereotype()).contains('true')] 
+  [aPackage.generateRelationalSetup()/]
+  [aPackage.generateBaseClasses('RELATIONAL')/]
+  [aPackage.generateChildClasses('RELATIONAL')/]
+[/if]
+
+[comment] Setup for polyglot environments [/comment]
+[aPackage.generatePolyglotSetup()/]
+[/template]
+
+
+[**
+ * Generates the required Spring Roo commands for a UML Class
+ * @param aClass UML2 Class.
+ * @param aPackage UML2 Package.
+*/]
+[template private generateEntity(aClass : Class, aPackage : Package, dataModel : String) post(trim())]
+[if dataModel = 'DOCUMENT']
+  [if aClass.getAppliedStereotype('DOCUMENT'.getDataModelStereotype())->notEmpty()]
+    [comment] In document data model, abstract classes are not generated in the output file [/comment]
+    [if not aClass.isAbstract] 
+      [aClass.generateDocumentEntity()/]
+    [/if]
+  [/if]
+[else] [if dataModel = 'GRAPH']
+  [if aClass.getAppliedStereotype('GRAPH'.getDataModelStereotype())->notEmpty()]
+    [aClass.generateGraphEntity()/]
+  [/if]
+[else] [if dataModel = 'RELATIONAL']
+  [if aClass.getAppliedStereotype('RELATIONAL'.getDataModelStereotype())->notEmpty()]
+    [aClass.generateRelationalEntity()/]
+  [/if]
+[/if] [/if] [/if]
+[/template]
+
+[**
+ * Generates the required Spring Roo commands for each Class contained in a UML package, and that have associated children.
+ * @param aPackage UML2 Package.
+*/]
+[template private generateBaseClasses(aPackage : Package, dataModel : String) post(trim())]
+[for (anElement: Element | aPackage.ownedElement)]
+  [if anElement.oclIsTypeOf(Class)]
+    [let childClass : Class = anElement.oclAsType(Class)]
+      [comment] Only classes that don't have a super class [/comment]
+      [if childClass.superClass->isEmpty()]
+        [anElement.oclAsType(Class).generateEntity(aPackage, dataModel)/] 
+      [/if]
+    [/let] 
+  [/if]
+[/for]
+[/template]
+
+[**
+ * Generates the required Spring Roo commands for each Class contained in a UML package, and that have an associated base class.
+ * @param aPackage UML2 Package.
+*/]
+[template private generateChildClasses(aPackage : Package, dataModel : String) post(trim())]
+[for (anElement: Element | aPackage.ownedElement)]
+  [if anElement.oclIsTypeOf(Class)]
+    [let childClass : Class = anElement.oclAsType(Class)]
+      [if not childClass.superClass->isEmpty()] [anElement.oclAsType(Class).generateEntity(aPackage, dataModel)/] [/if]
+    [/let] [/if]
+[/for]
+[/template]
+
+[template private containsStereotypedEntities(aPackage : Package, stereotypeName : String) post(trim())]
+[for (anElement: Element | aPackage.ownedElement)]
+  [if anElement.oclIsTypeOf(Class)]
+    [let aClass : Class = anElement.oclAsType(Class)]
+      [if aClass.getAppliedStereotype(stereotypeName)->notEmpty()]
+        true
+      [/if]
+    [/let]
+  [/if]
+[/for]
+[/template]
+
+[template private getDataModelStereotype(dataModel : String) post(trim())]
+  [if dataModel = 'DOCUMENT'] rooStructure::DocumentEntity
+  [else] [if dataModel = 'GRAPH'] rooStructure::GraphEntity
+  [else] [if dataModel = 'RELATIONAL'] rooStructure::RelationalEntity
+  [else] rooStructure::RelationalEntity
+  [/if] [/if] [/if]
+[/template]

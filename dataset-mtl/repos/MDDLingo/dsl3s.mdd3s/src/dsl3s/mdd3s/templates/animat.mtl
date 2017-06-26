@@ -1,0 +1,305 @@
+[comment encoding = UTF-8 /]
+[module animat('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import dsl3s::mdd3s::templates::services/]
+
+[comment
+Date: 15-06-2012    Author: Luís de Sousa
+Skeleton of the Animat class. 
+/]
+
+[import dsl3s::mdd3s::templates::operSupply/]
+[import dsl3s::mdd3s::templates::operHarvest/]
+[import dsl3s::mdd3s::templates::operPerish/]
+[import dsl3s::mdd3s::templates::operReplicate/]
+[import dsl3s::mdd3s::templates::operMove/]
+
+[template public animat(c : Class) ? (c.hasStereotype('Animat'))]
+[file (c.name.concat('.java'), false, 'UTF-8')]
+import java.util.List;
+import java.util.ArrayList;
+import java.util.HashMap;
+import ec.util.MersenneTwisterFast;
+import sim.engine.SimState;
+import sim.engine.Steppable;
+import sim.engine.Stoppable;
+import sim.util.Bag;
+import sim.util.geo.MasonGeometry;
+import sim.util.geo.PointMoveTo;
+import com.vividsolutions.jts.geom.Coordinate;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.util.GeometricShapeFactory;
+
+public class [c.name/] extends MasonGeometry implements Steppable, Stoppable 
+{
+ [if c.getTaggedValue(c, 'Animat', 'stop').isNotNull()]
+ 	protected Double stopGoal = new Double([c.getTaggedValue(c, 'Animat', 'stop')/]);
+ [/if]
+
+	public [c.name/](Geometry geom) 
+	{
+		super();
+		this.geometry = geom;
+		location = geom.getCentroid().getCoordinate();
+	}
+	
+ [comment Iterate through linked Attributes /]
+ [for (ass:Association | c.getAssociations())]
+  [for (s:Element | ass.relatedElement) ]
+   [let sClass: Class = s.oclAsType(Class)]
+   [if (sClass.isNotNull())]
+    [if (sClass.hasStereotype('Attribute'))]
+	///////////////////////////////////////////////////////
+    // Attribute: [sClass.name/]
+	[if sClass.getTaggedValue(sClass, 'Attribute', 'minValue').isNotNull()]
+	protected static Double attribute[sClass.name/]Min = new Double([sClass.getTaggedValue(sClass, 'Attribute', 'minValue')/]);
+    [else]
+	protected static Double attribute[sClass.name/]Min = - Double.MAX_VALUE;
+    [/if]
+    [if sClass.getTaggedValue(sClass, 'Attribute', 'maxValue').isNotNull()]
+	protected static Double attribute[sClass.name/]Max = new Double([sClass.getTaggedValue(sClass, 'Attribute', 'maxValue')/]);
+    [else]
+	protected static Double attribute[sClass.name/]Max = Double.MAX_VALUE;
+    [/if]
+    [if sClass.getTaggedValue(sClass, 'Attribute', 'stepVariation').isNotNull()]
+	protected static Double attribute[sClass.name/]Step = new Double([sClass.getTaggedValue(sClass, 'Attribute', 'stepVariation')/]);
+	[/if]
+
+	public Variable attribute[sClass.name/] = new Variable(
+			new Double([sClass.getTaggedValue(sClass, 'Attribute', 'initValue')/]), 
+			attribute[sClass.name/]Min, 
+			attribute[sClass.name/]Max);
+[comment Iterate through linked Replicate /]
+	// Replicate constants
+     [for (assR:Association | sClass.getAssociations())]
+      [for (r:Element | assR.relatedElement) ]
+	   [let rClass: Class = r.oclAsType(Class)]
+       [if (rClass.isNotNull())]
+        [if (rClass.hasStereotype('Replicate'))]
+	     [if rClass.getTaggedValue(rClass, 'Replicate', 'upperThreshold').isNotNull()]
+	protected static Double upperThresh[rClass.name/] = new Double([rClass.getTaggedValue(rClass, 'Replicate', 'upperThreshold')/]);
+         [/if]
+         [if rClass.getTaggedValue(rClass, 'Replicate', 'lowerThreshold').isNotNull()]
+	protected static Double lowerThresh[rClass.name/] = new Double([rClass.getTaggedValue(rClass, 'Replicate', 'lowerThreshold')/]);
+         [/if]
+	     [if rClass.getTaggedValue(rClass, 'Replicate', 'toll').isNotNull()]
+	protected static Double toll[rClass.name/] = new Double([rClass.getTaggedValue(rClass, 'Replicate', 'toll')/]);
+         [/if]
+	     [if rClass.getTaggedValue(rClass, 'Replicate', 'inheritance').isNotNull()]
+	protected static Double inheritance[rClass.name/] = new Double([rClass.getTaggedValue(rClass, 'Replicate', 'inheritance')/]);
+         [/if]
+        [/if]
+       [/if]
+       [/let]
+      [/for]	 
+     [/for] [comment Replicate/]
+
+	[comment Iterate through linked Perish /]
+	// Perish thresholds
+     [for (assP:Association | sClass.getAssociations())]
+      [for (p:Element | assP.relatedElement) ]
+	   [let pClass : Class = p.oclAsType(Class)]
+       [if (pClass.isNotNull())]
+        [if (pClass.hasStereotype('Perish'))]
+	     [if pClass.getTaggedValue(pClass, 'Perish', 'upperThreshold').isNotNull()]
+	protected static Double upperThresh[pClass.name/] = new Double([pClass.getTaggedValue(pClass, 'Perish', 'upperThreshold')/]);
+         [/if]
+         [if pClass.getTaggedValue(pClass, 'Perish', 'lowerThreshold').isNotNull()]
+	protected static Double lowerThresh[pClass.name/] = new Double([pClass.getTaggedValue(pClass, 'Perish', 'lowerThreshold')/]);
+         [/if]
+        [/if]
+       [/if]
+      [/let]
+      [/for]	 
+     [/for] [comment Replicate/]
+
+	[comment Iterate through linked Harvest /]
+	// Harvest constants
+     [for (assP:Association | sClass.getAssociations())]
+      [for (p:Element | assP.relatedElement) ]
+	   [let pClass : Class = p.oclAsType(Class)]
+       [if (pClass.isNotNull())]
+        [if (pClass.hasStereotype('Harvest'))]
+		 [if (pClass.getTaggedValue(pClass, 'Harvest', 'harvested') <> sClass.name)]
+	      [if (pClass.getTaggedValue(pClass, 'Harvest', 'percentHarvested').isNotNull())]  
+ 	protected static Double percent[pClass.name/] = new Double([pClass.getTaggedValue(pClass, 'Harvest', 'percentHarvested')/]);	
+	      [/if]
+	      [if (pClass.getTaggedValue(pClass, 'Harvest', 'valueHarvested').isNotNull())]
+ 	protected static Double value[pClass.name/] = new Double([pClass.getTaggedValue(pClass, 'Harvest', 'valueHarvested')/]);			
+	      [/if]		
+ 	protected static Double scope[pClass.name/] = new Double([pClass.getTaggedValue(pClass, 'Harvest', 'scope')/]);			
+		 [/if]
+        [/if]
+       [/if]
+      [/let]
+      [/for]	 
+     [/for] [comment Harvest/]
+
+	///////////////////////////////////////////////////////
+     [/if]
+    [/if]
+   [/let]
+  [/for]	 
+ [/for]  [comment Attributes/]
+
+	// Movement weights
+ [for (ass:Association | c.getAssociations())]
+  [for (p:Element | ass.relatedElement) ]
+   [let pClass: Class = p.oclAsType(Class)]
+    [if (pClass.isNotNull())]
+     [if (pClass.hasStereotype('Move'))]
+	protected static Double weight[pClass.name/] = new Double([pClass.getTaggedValue(pClass, 'Move', 'weight')/]);
+	protected static Double scope[pClass.name/] = new Double([pClass.getTaggedValue(pClass, 'Move', 'scope')/]);
+     [/if]
+    [/if]
+   [/let]
+  [/for]	 
+ [/for]
+
+	private Boolean stopped = false;
+ 	public Boolean Stopped() {return stopped;}
+	private Stoppable stopper = null;
+    public void setStopper(Stoppable stopper)   {this.stopper = stopper;}
+    public void stop() 
+	{
+    	stopped = true;
+    	stopper.stop();
+    }
+
+	protected Coordinate location;
+	public Coordinate getLocation() {return location;}
+
+	public static Double getMinDisplayValue() 
+    {
+		return new Double(
+ [for (ass:Association | c.getAssociations())]
+  [for (p:Element | ass.relatedElement) ]
+   [let pClass: Class = p.oclAsType(Class)]
+    [if (pClass.isNotNull())]
+     [if (pClass.hasStereotype('Attribute'))]
+      [if (pClass.getTaggedValue(pClass, 'Attribute', 'display') = 'true')]
+       [if pClass.getTaggedValue(pClass, 'Attribute', 'minValue').isNotNull()]
+		 	attribute[pClass.name/]Min +
+       [/if]
+      [/if]
+     [/if]
+    [/if]
+   [/let]
+  [/for]	 
+ [/for]
+			0); // this zero is an artifact of code generation
+}
+
+	public static Double getMaxDisplayValue() 
+    {
+		return new Double(
+ [for (ass:Association | c.getAssociations())]
+  [for (p:Element | ass.relatedElement) ]
+   [let pClass: Class = p.oclAsType(Class)]
+    [if (pClass.isNotNull())]
+     [if (pClass.hasStereotype('Attribute'))]
+      [if (pClass.getTaggedValue(pClass, 'Attribute', 'display') = 'true')]
+       [if pClass.getTaggedValue(pClass, 'Attribute', 'maxValue').isNotNull()]
+		 	attribute[pClass.name/]Max +
+       [/if]
+      [/if]
+     [/if]
+    [/if]
+   [/let]
+  [/for]	 
+ [/for]
+			0); // this zero is an artifact of code generation
+}
+
+	public Double getDisplayValue() 
+    {
+		return new Double(
+ [for (ass:Association | c.getAssociations())]
+  [for (p:Element | ass.relatedElement) ]
+   [let pClass: Class = p.oclAsType(Class)]
+    [if (pClass.isNotNull())]
+     [if (pClass.hasStereotype('Attribute'))]
+      [if (pClass.getTaggedValue(pClass, 'Attribute', 'display') = 'true')]
+		 	attribute[pClass.name/].getValue() +
+      [/if]
+     [/if]
+    [/if]
+   [/let]
+  [/for]	 
+ [/for]
+			0); // this zero is an artifact of code generation
+}
+
+
+	//@Override
+	public void step(SimState state) 
+    {
+ [comment Get Simulation name /]
+  [for (assS:Association | c.getAssociations())]
+   [for (e:Element | assS.relatedElement) ]
+	[let sim: Class = e.oclAsType(Class)]
+	 [if (sim.isNotNull())]
+	  [if (sim.hasStereotype('Simulation'))]
+		[sim.name/] sim = ([sim.name/]) state;
+	  [/if]
+	 [/if]
+    [/let]
+   [/for]
+  [/for]
+
+		// Update attributes
+ [for (ass:Association | c.getAssociations())]
+  [for (p:Element | ass.relatedElement) ]
+   [let pClass: Class = p.oclAsType(Class)]
+    [if (pClass.isNotNull())]
+     [if (pClass.hasStereotype('Attribute'))]
+      [if pClass.getTaggedValue(pClass, 'Attribute', 'stepVariation').isNotNull()]
+		attribute[pClass.name/].add(attribute[pClass.name/]Step);
+      [/if]
+	 [/if]
+    [/if]
+   [/let]
+  [/for]	 
+ [/for]
+
+[comment Iterate through linked Attributes /]
+[for (ass:Association | c.getAssociations())]
+ [for (s:Element | ass.relatedElement) ]
+  [let sClass: Class = s.oclAsType(Class)]
+   [if (sClass.isNotNull())]
+    [if (sClass.hasStereotype('Attribute'))]
+	 [if (sClass.hasLinkedStereotype('Harvest'))]
+		harvest[sClass.name/](sim);
+	 [/if]
+   [/if]
+  [/if]
+ [/let]
+ [/for]	 
+[/for] [comment Attributes /]
+
+		perish(sim);
+		
+		replicate(sim);
+
+		move(sim);
+	}
+
+ [c.operSupply() /]
+
+ [c.operHarvest() /]
+
+ [c.operPerish() /]
+
+ [c.operMove() /]
+
+ [c.operReplicate() /]
+
+	protected double randMove(double val, MersenneTwisterFast randGen, Double scope) 
+	{
+		return val + (randGen.nextDouble() - randGen.nextDouble()) * scope;
+	}
+
+}
+
+[/file]
+
+[/template]

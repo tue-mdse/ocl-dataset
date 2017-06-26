@@ -1,0 +1,38 @@
+[comment encoding = UTF-8 /]
+[module generate_gps('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[comment][import org::eclipse::proteus::generators::acceleo::mmqueries::MMQueries /][/comment]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import generate_system/]
+
+[template public generateGPS(aClass : Class, model : Model)]
+
+[file ('scripts/' + model.name + '/' + aClass.name + '.lua', false, 'UTF-8')]
+require "LuaCycabTK"
+require "LuaGPSSimulator"
+
+--Definition of class [aClass.name/]
+class '[aClass.name/]' (cycabtk.GPSSimulator)
+function [aClass.name/]:__init(name)
+	cycabtk.GPSSimulator.__init(self, name)
+	
+	self:SetActivationPeriod(1./[getAttributeValue(aClass, 'frequency', 'GPSSystem', '10.')/])
+	
+	[generateSystemCommon(aClass, model)/]
+	
+	self:Start()
+	
+	-- Connectors
+	[for( connector: Port | getOutputPortsForElement(aClass) )]
+		[if ( isDataFlowPort(connector))]
+			[if(connector.type.name = 'NavSatFix')]
+	require "LuaGPSRosInterface"
+	self.[connector.name/] = cycabtk.GPSRosInterface( name..".[connector.name/]" )
+	self:AddPostProcessing( name..".[connector.name/]")
+			[/if]
+		[/if]
+	[/for]
+end
+[/file]
+[/template]

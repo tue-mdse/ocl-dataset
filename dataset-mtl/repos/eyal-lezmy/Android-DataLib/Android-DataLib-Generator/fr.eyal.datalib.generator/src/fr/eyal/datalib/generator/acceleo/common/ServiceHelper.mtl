@@ -1,0 +1,117 @@
+[comment encoding = UTF-8 /]
+[module ServiceHelper('http://www.eyal.fr/android/datalib')]
+[import fr::eyal::datalib::generator::acceleo::common::Tools /]
+[import fr::eyal::datalib::generator::acceleo::common::HelperTool /]
+
+[template public serviceHelper(aProject : DataLibProject){
+_package:String = aProject._package+'.service';
+_directory:String = getDirectoryFromPackage(_package);
+}]
+
+[file (_directory + aProject.name.toUpperFirst() + 'ServiceHelper.java', false, 'UTF-8')]
+package [_package/];
+
+import java.io.UnsupportedEncodingException;
+import java.text.MessageFormat;
+
+import android.content.Context;
+import fr.eyal.lib.data.communication.rest.ParameterMap;
+import fr.eyal.lib.data.service.ServiceHelper;
+import fr.eyal.lib.data.service.model.DataLibRequest;
+import fr.eyal.lib.data.service.model.ComplexOptions;
+// [protected (aProject.name.toUpperFirst()+'ServiceHelper imports')]
+// You can add here your personal imports
+// DO NOT MODIFY THE GENERATED COMMENTS "Start of user code" and "End of user code"
+// [/protected]
+
+
+public class [aProject.name.toUpperFirst()/]ServiceHelper extends ServiceHelper {
+
+	[listURLs(aProject)/]
+
+    protected [aProject.name.toUpperFirst()/]ServiceHelper(final Context context) {
+        super(context);
+    }
+
+    /**
+     * Get the instance of the {@link [aProject.name.toUpperFirst()/]ServiceHelper}
+     * 
+     * @param context The context of execution. Any Context can be put here, the application context
+     * will be automatically used for the {@link [aProject.name.toUpperFirst()/]ServiceHelper}
+     * 
+     * @return Returns the singleton
+     */
+    public static [aProject.name.toUpperFirst()/]ServiceHelper getInstance(final Context context) {
+        synchronized ([aProject.name.toUpperFirst()/]ServiceHelper.class) {
+			if (sInstance == null) {
+            	sInstance = new [aProject.name.toUpperFirst()/]ServiceHelper(context.getApplicationContext());
+        	}
+		}
+        return ([aProject.name.toUpperFirst()/]ServiceHelper) sInstance;
+    }
+
+    /**
+     * Get the instance of the {@link [aProject.name.toUpperFirst()/]ServiceHelper}
+     *  
+     * @return Returns the singleton <b>only if</b> the instance have already been create by the call to 
+     * <code>{@linkplain [aProject.name.toUpperFirst()/]ServiceHelper#getInstance(Context)}</code>. If it has not been called, this 
+     * function returns <b>null</b>
+     */
+    public static [aProject.name.toUpperFirst()/]ServiceHelper getInstance() {
+		if (sInstance == null) {
+        	return null;
+    	}
+        return ([aProject.name.toUpperFirst()/]ServiceHelper) sInstance;
+    }
+
+
+
+[for (webService : WebService | aProject.webservices) ]
+
+    /**
+     * Start {@link [webService.contentResponse.name.toUpperFirst()/]} request
+     * 
+	[for (param : Parameter | webService.parameters)]
+     * @param [param.name.toLowerFirst()/] [param.description/]. To disable the adding of it, just define it as null
+	[/for]
+     * 
+     * @param complexOptionsNetwork a {@link ComplexOptions} you want to use when processing the network request. 
+     * Set this parameter to <code>null</code> if you prefer to ignore this value.
+     *
+     * @return the request's id. If the request have already been sent, it returns the id previously generated. Otherwise it provide a new one that have to be stored.
+     * 
+     * @throws UnsupportedEncodingException
+     */
+	[displayLaunchMethod(webService)/]
+		
+		[declareUrlAndParameters(webService, aProject)/]
+        
+        return launchRequest(options, [aProject.name.toUpperFirst()/]Service.WEBSERVICE_[webService.contentResponse.name.toUpper()/], params, [aProject.name.toUpperFirst()/]Service.class, __url, complexOptionsNetwork);
+    }
+    
+[/for]
+
+// [protected (aProject.name.toUpperFirst()+'ServiceHelper')]
+// You can add here your personal content
+// DO NOT MODIFY THE GENERATED COMMENTS "Start of user code" and "End of user code"
+// [/protected]
+
+
+}
+
+[/file]
+[/template]
+
+[template public listURLs (aProject : DataLibProject) ]
+[for (webService : WebService | aProject.webservices) ]
+    public static final String URL_[webService.contentResponse.name.toUpper()/] = "[webService.url/]";
+[/for]
+[/template]
+
+[template public displayLaunchMethod (webService : WebService) ]
+public int [if (webService.method=HttpMethod::GET)]get[elseif (webService.method=HttpMethod::DELETE)]delete[elseif (webService.method=HttpMethod::HEAD)]head[elseif (webService.method=HttpMethod::POST)]post[elseif (webService.method=HttpMethod::PUT)]put[/if][webService.name.toUpperFirst()/]([listParameters(webService)/] final int options, ComplexOptions complexOptionsNetwork) throws UnsupportedEncodingException {
+[/template]
+
+[template public listParameters (webService: WebService) ]
+[for (param : Parameter | webService.parameters)]final [if (param.type = ParameterType::String)]String[elseif (param.type = ParameterType::int)]int[elseif (param.type = ParameterType::boolean)]boolean[else]float[/if] [param.name.toLowerFirst()/], [/for]
+[/template]

@@ -1,0 +1,139 @@
+[comment encoding = UTF-8 /]
+[module generate_nodes_cpp('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+
+[template public generateNode_cpp(aClass : Class)]
+
+[file (aClass.namespace.name.concat('/src/'.concat(aClass.name.toUpperFirst().concat('.cpp'))), false, 'UTF-8')]
+/*
+ * File: [aClass.name.toUpperFirst().concat('.cpp')/]
+ * node [aClass.name/]
+ *
+ * @author: floribot_acceleo
+ * @generated
+ */
+
+#include "[aClass.name.toUpperFirst()/].h"
+[let lang : EnumerationLiteral = (aClass.getValue(aClass.getAppliedStereotype('ros_profile::node'), 'language')).oclAsType(EnumerationLiteral)]
+	[if (lang.name.equalsIgnoreCase('Simulink'))]
+#include "simulink/[aClass.name/]_ert_rtw/[aClass.name/].h"
+	[/if]
+[/let]
+// [protected ('specific includes')]
+// TODO: include your own headers
+// [/protected] don't delete this line
+
+namespace [aClass.namespace.name/] {
+
+[aClass.name.toUpperFirst()/]::[aClass.name.toUpperFirst()/](ros::NodeHandle n) : n_(n)
+{
+[for (port : Port | aClass.ownedPort)]
+[if (port.isConjugated)]
+	[port.name.replaceAll('/', '_')/]_sub = n_.subscribe("[port.name/]", 1,
+			&[aClass.name.toUpperFirst()/]::[port.name.replaceAll('/', '_')/]_message, this);
+[else]
+	[port.name.replaceAll('/', '_')/]_pub = n_.advertise<[port.type.namespace.name/]::[port.type.name/]>("[port.name/]",1);
+[/if]
+[/for]
+[for (attr : Property | aClass.attribute) ? (attr.type.namespace.name.equalsIgnoreCase('primitive_types'))]
+	[if (attr.type.name.equalsIgnoreCase('Boolean'))]
+    [attr.name/] = [attr.default/];
+	[elseif (attr.type.name.equalsIgnoreCase('Integer')) ]
+    [attr.name/] = [attr.default/];
+	[elseif (attr.type.name.equalsIgnoreCase('Double')) ]
+    [attr.name/] = [attr.default/];
+	[elseif (attr.type.name.equalsIgnoreCase('String')) ]
+    [attr.name/] = "[attr.default/]";
+	[/if]
+    n_.getParam("/[aClass.name/]/[attr.name/]", [attr.name/]);
+[/for]
+[let lang : EnumerationLiteral = (aClass.getValue(aClass.getAppliedStereotype('ros_profile::node'), 'language')).oclAsType(EnumerationLiteral)]
+	[if (lang.name.equalsIgnoreCase('Simulink'))]
+    /* Initialize simulink model */
+    [aClass.name/]_initialize();
+	[/if]
+[/let]
+    // [protected ('constructor')]
+    // TODO: fill with your code
+    // [/protected] don't delete this line
+
+} // end of constructor
+
+[aClass.name.toUpperFirst()/]::~[aClass.name.toUpperFirst()/]()
+{
+[let lang : EnumerationLiteral = (aClass.getValue(aClass.getAppliedStereotype('ros_profile::node'), 'language')).oclAsType(EnumerationLiteral)]
+	[if (lang.name.equalsIgnoreCase('Simulink'))]
+    /* Terminate simulink model */
+    [aClass.name/]_terminate();
+	[/if]
+[/let]
+    // [protected ('destructor')]
+    // TODO: fill with your code
+    // [/protected] don't delete this line
+} // end of destructor
+
+[for (port : Port | aClass.ownedPort)]
+[if (port.isConjugated)]
+/**
+ * process messages from topic [port.name/]
+ *
+ * @generated
+ */
+void [aClass.name.toUpperFirst()/]::[port.name.replaceAll('/', '_')/]_message (const [port.type.namespace.name/]::[port.type.name/]::ConstPtr& msg)
+{
+	// [protected ('process message')]
+	// TODO: fill with your code
+	// [/protected] don't delete this line
+}
+
+[else]
+/**
+ * publish messages to topic [port.name/]
+ *
+ * @generated
+ */
+void [aClass.name.toUpperFirst()/]::publish_[port.name.replaceAll('/', '_')/] ([port.type.namespace.name/]::[port.type.name/] msg)
+{
+	[port.name.replaceAll('/', '_')/]_pub.publish(msg);
+}
+
+[/if]
+[/for]
+/**
+ * tick is triggered 
+ *
+ * @generated
+ */
+void [aClass.name.toUpperFirst()/]::tick ()
+{
+[let lang : EnumerationLiteral = (aClass.getValue(aClass.getAppliedStereotype('ros_profile::node'), 'language')).oclAsType(EnumerationLiteral)]
+	[if (lang.name.equalsIgnoreCase('Simulink'))]
+    /* Step the simulink model */
+    [aClass.name/]_step();
+	[/if]
+[/let]
+	// [protected ('call your own code')]
+	// TODO: fill with your code
+	// [/protected] don't delete this line
+}
+
+/**
+ * returns the tick rate
+ *
+ * @generated
+ */
+int [aClass.name.toUpperFirst()/]::get_tick_rate ()
+{
+	return tick_rate;
+}
+
+// [protected ('additional members')]
+
+// TODO: define your methods
+
+// [/protected] don't delete this line
+
+} // end of namespace
+[/file]
+
+[/template]

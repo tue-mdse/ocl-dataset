@@ -1,0 +1,632 @@
+[comment encoding = UTF-8 /]
+[module generate('http://www.emftext.org/language/evoEmig', 'http://eclipselabs.org/simpleocl/2013/SimpleOCL')]
+
+
+
+[template public generateElement(aMigrationProgram : MigrationProgram)]
+[comment @main/]
+[file (aMigrationProgram.name + '.etl', false, 'UTF-8')]
+pre {
+	"Running ETL\n".println();
+	// GLOBAL VARIABLES
+	var DEBUG_MODE = false;
+}
+post {
+	"\nRunning Successful".println();
+}
+operation Any debug() : Any {
+  if (DEBUG_MODE) {
+    return self.println();
+  }
+}
+operation Any convert() {
+  
+  var equivalent;
+  
+  if (self.isKindOf(Collection)) {
+    // collection -> recursion
+    'Converting Collection '.concat(self.toString()).debug();
+    equivalent = self->collect( element | element.convert() );
+    'Converted: Collection '.concat(equivalent.toString()).debug();
+  } else {
+    // single element
+    equivalent = self.equivalent();
+    if (equivalent.isUndefined()) {
+      // no matching rule(s)
+      equivalent = self;
+    }
+  }
+
+  return equivalent;
+}
+/////////////////////MIGRATION PART /////////////////////////////////// 
+[for (it : Rule | aMigrationProgram.elements)]
+[generatePattern(it)/]
+[generateGuard(it)/]
+rule [it.name/]
+	[for (it2 : RewritingRule | it.rewritingRules)] 
+	transform [it2.left.varName/] : [aMigrationProgram.metamodels.name/]!ocl::ecore::[it2.left.type.name/]
+	to [it2.right.varName/] : evo[aMigrationProgram.metamodels.name/]!ocl::ecore::[it2.right.type.name/] {
+	guard: is_[it.name/]([it.rewritingRules.left.varName/])
+		[generateVariable(it)/]
+		[for (bind : Binding | it2.right.binding)]
+			[if (bind.oclIsTypeOf(OclBinding))]
+				[it2.right.varName/].[bind.oclAsType(OclBinding).property/] <- [bind.oclAsType(OclBinding).expr.oclAsType(PropertyCallExp).source.oclAsType(VariableExp).referredVariable.varName/].[bind.oclAsType(OclBinding).expr.oclAsType(PropertyCallExp).calls.oclAsType(NavigationOrAttributeCall).name/].convert();	
+			[/if]
+			[if (bind.oclIsTypeOf(DynamicBinding))]
+
+				var [bind.oclAsType(DynamicBinding).variable.varName/] = System.user.choose('[bind.oclAsType(DynamicBinding).ask.message/]', Sequence{[for (elements : Feature | bind.oclAsType(DynamicBinding).ask.elements) separator (', ')]Pattern![it.name/][elements.varName/].convert()[/for]});
+
+			[/if]
+		[/for]
+	}	
+	[/for]
+[/for]
+///////////////////////////////////////////////////////////////////////
+///////////////////// CONSERVATIVE COPY ///////////////////////////////
+// Updates everything to the evolved metamodel without doing any other change.
+rule Module
+  transform s : mtl!Module
+  to t : evoMtl!Module {
+  	'Transforming Module'.debug();
+	t.name = s.name;
+	t.nsURI = s.nsURI;
+	t.nsPrefix = s.nsPrefix;
+	t.deprecated = s.deprecated;
+	t.startHeaderPosition = s.startHeaderPosition;
+	t.endHeaderPosition = s.endHeaderPosition;
+	t.eFactoryInstance = s.eFactoryInstance;
+	t.documentation = s.documentation;
+	t.eAnnotations = s.eAnnotations.convert();
+	t.eClassifiers = s.eClassifiers.convert();
+	t.eSubpackages = s.eSubpackages.convert();
+	t.input = s.input.convert();
+	t.`extends` = s.`extends`.convert();
+	t.imports = s.imports.convert();
+	t.ownedModuleElement = s.ownedModuleElement.convert();
+	
+	'Transformed: Module'.debug();
+}
+ 
+rule TypedModel
+  transform s : mtl!TypedModel
+  to t : evoMtl!TypedModel {
+  	'Transforming TypedModel'.debug();
+
+    t.takesTypesFrom = s.takesTypesFrom.convert(); // contains the main metamodel EPackage
+    
+    'Transformed: TypedModel'.debug();
+  }
+
+rule Template
+  transform s : mtl!Template
+  to t : evoMtl!Template {
+  	'Transforming Template'.debug();
+  
+    t.name = s.name;
+    t.ordered = s.ordered;
+    t.unique = s.unique;
+    t.lowerBound = s.lowerBound;
+    t.upperBound = s.upperBound;
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.visibility = s.visibility;
+    t.deprecated = s.deprecated;
+    t.main = s.main;
+    t.eGenericType = s.eGenericType;
+    t.init = s.init;
+    t.documentation = s.documentation;
+    t.`guard` = s.`guard`;
+    t.`post` = s.`post`;
+    
+    t.eAnnotations = s.eAnnotations.convert();
+    t.eType = s.eType.convert();
+    t.body = s.body.convert();
+    t.overrides = s.overrides.convert();
+    t.parameter = s.parameter.convert(); // ocl::ecore::Variable
+    
+    'Transformed: Template'.debug();
+  }
+  
+rule FileBlock
+  transform s : mtl!FileBlock
+  to t : evoMtl!FileBlock {
+  	'Transforming FileBlock'.debug();
+  
+    t.name = s.name;
+    t.ordered = s.ordered;
+    t.unique = s.unique;
+    t.lowerBound = s.lowerBound;
+    t.upperBound = s.upperBound;
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.openMode = s.openMode;
+    t.eGenericType = s.eGenericType;
+    t.init = s.init;
+    t.uniqId = s.uniqId;
+    t.charset = s.charset;
+    
+    t.eAnnotations = s.eAnnotations.convert();
+    t.eType = s.eType.convert();
+    t.body = s.body.convert();
+    t.fileUrl = s.fileUrl.convert();
+    
+    'Transformed: FileBlock'.debug();
+  }
+  
+rule ForBlock
+  transform s : mtl!ForBlock
+  to t : evoMtl!ForBlock {
+  	'Transforming ForBlock'.debug();
+
+    t.name = s.name;
+    t.ordered = s.ordered;
+    t.unique = s.unique;
+    t.lowerBound = s.lowerBound;
+    t.upperBound = s.upperBound;
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.eGenericType = s.eGenericType;
+    t.init = s.init;
+    t.before = s.before;
+    t.each = s.each;
+    t.after = s.after;
+    t.`guard` = s.`guard`;
+    
+    t.eAnnotations = s.eAnnotations.convert();
+    t.eType = s.eType.convert();
+    t.body = s.body.convert();
+    t.loopVariable = s.loopVariable.convert();
+    t.iterSet = s.iterSet.convert();
+    
+    'Transformed: ForBlock'.debug();
+  }
+  
+rule IfBlock
+  transform s : mtl!IfBlock
+  to t : evoMtl!IfBlock {
+    'Transforming IfBlock'.debug(); 
+    t.name = s.name;
+    t.ordered = s.ordered;
+    t.unique = s.unique;
+    t.lowerBound = s.lowerBound;
+    t.upperBound = s.upperBound;
+    //t.many = s.many; // Internal error: java.lang.NullPointerException
+    //t.required = s.required; // Internal error: java.lang.NullPointerException
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.body = s.body.convert();
+    t.ifExpr = s.ifExpr.convert();
+    t.`else` = s.`else`.convert();
+    t.elseIf = s.elseIf.convert();
+    
+    'Transformed: IfBlock'.debug();
+  }
+  
+rule Block
+  transform s : mtl!Block
+  to t : evoMtl!Block {
+    'Transforming Block'.debug();
+    t.name = s.name;
+    t.ordered = s.ordered;
+    t.unique = s.unique;
+    t.lowerBound = s.lowerBound;
+    t.upperBound = s.upperBound;
+    //t.many = s.many; // Internal error: java.lang.NullPointerException
+    //t.required = s.required; // Internal error: java.lang.NullPointerException
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.body = s.body.convert();
+    'Transformed: Block'.debug();
+  }
+  
+rule TemplateInvocation
+  transform s : mtl!TemplateInvocation
+  to t : evoMtl!TemplateInvocation {
+--  guard : not is_changeReferenceTypeBNR3(s)
+  	'Transforming TemplateInvocation'.debug();
+    t.name = s.name;
+    t.ordered = s.ordered;
+    t.unique = s.unique;
+    t.lowerBound = s.lowerBound;
+    t.upperBound = s.upperBound;
+    //t.many = s.many; // is just a Boolean but gives java.lang.NullPointerException
+    //t.required = s.required; // as above
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.super = s.super;
+    t.argument = s.argument.convert();
+    t.definition = s.definition.convert();
+    t.eType = s.eType.convert();
+    'Transformed: TemplateInvocation'.debug();
+  }
+  
+// We need to use the right type here, which is under ocl::ecore,
+// otherwise the rule won't match and won't be called.
+// Don't use @greedy + mtl!StringLiteralExp since would lead to
+// ArrayStoreException and cast errors when copying the transformed object in the parent.
+rule StringLiteralExp
+  transform s : mtl!ocl::ecore::StringLiteralExp
+  to t : evoMtl!ocl::ecore::StringLiteralExp {   
+  	'Transforming StringLiteralExp'.debug();
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.stringSymbol = s.stringSymbol;
+    t.eType = s.eType.convert();
+    'Transformed: StringLiteralExp'.debug();
+  }
+  
+rule PropertyCallExp
+  transform s : mtl!ocl::ecore::PropertyCallExp
+  to t : evoMtl!ocl::ecore::PropertyCallExp {
+  guard : not (is_extractInlineMetaClassBNR1(s) or is_splitAttributeBNR2(s))
+    'Transforming PropertyCallExp'.debug();
+    t.name = s.name;
+    t.ordered = s.ordered;
+    t.unique = s.unique;
+    t.lowerBound = s.lowerBound;
+    t.upperBound = s.upperBound;
+    //t.many = s.many; // is just a Boolean but gives java.lang.NullPointerException
+    //t.required = s.required; // as above
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.propertyStartPosition = s.propertyStartPosition;
+    t.propertyEndPosition = s.propertyEndPosition;
+    t.markedPre = s.markedPre;
+    t.eType = s.eType.convert();
+    t.source = s.source.convert();
+    t.referredProperty = s.referredProperty.convert();
+    'Transformed: PropertyCallExp'.debug();
+  }
+  
+rule OperationCallExp
+  transform s : mtl!ocl::ecore::OperationCallExp
+  to t : evoMtl!ocl::ecore::OperationCallExp {
+  	'Transforming OperationCallExp'.debug();
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.propertyStartPosition = s.propertyStartPosition;
+    t.markedPre = s.markedPre;
+    t.operationCode = s.operationCode;
+    t.propertyEndPosition = s.propertyEndPosition;
+    t.source = s.source.convert();
+    t.argument = s.argument.convert();
+    t.eType = s.eType.convert();
+    t.referredOperation = s.referredOperation.convert();
+    'Transformed: OperationCallExp'.debug();
+  }
+  
+rule TypeExp
+  transform s : mtl!ocl::ecore::TypeExp
+  to t : evoMtl!ocl::ecore::TypeExp {
+    'Transforming TypeExp'.debug();
+    t.name = s.name;
+    t.ordered = s.ordered;
+    t.unique = s.unique;
+    t.lowerBound = s.lowerBound;
+    t.upperBound = s.upperBound;
+    //t.many = s.many; // is just a Boolean but gives java.lang.NullPointerException
+    //t.required = s.required; // as above
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.eType = s.eType.convert();
+    t.referredType = s.referredType.convert();
+    'Transformed: TypeExp'.debug();
+  }
+
+rule VariableExp
+  transform s : mtl!ocl::ecore::VariableExp
+  to t : evoMtl!ocl::ecore::VariableExp {
+    'Transforming VariableExp'.debug();
+	t.name = s.name;
+	t.ordered = s.ordered;
+	t.unique = s.unique;
+	t.lowerBound = s.lowerBound;
+	t.upperBound = s.upperBound;
+	//t.many = s.many; // Internal error: java.lang.NullPointerException
+	//t.required = s.required; // as above
+	t.startPosition = s.startPosition;
+	t.endPosition = s.endPosition;
+	
+	t.eType = s.eType.convert();
+	t.referredVariable = s.referredVariable.convert();
+	
+	'Transformed: VariableExp'.debug();
+  }
+
+rule Variable
+  transform s : mtl!ocl::ecore::Variable
+  to t : evoMtl!ocl::ecore::Variable {
+    'Transforming Variable'.debug();
+    t.name = s.name;
+    t.ordered = s.ordered;
+    t.unique = s.unique;
+    t.lowerBound = s.lowerBound;
+    t.upperBound = s.upperBound;
+    //t.many = s.many; // Internal error: java.lang.NullPointerException
+    //t.required = s.required; // Internal error: java.lang.NullPointerException
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.typeStartPosition = s.typeStartPosition;
+    t.typeEndPosition = s.typeEndPosition;
+    t.eType = s.eType.convert();
+    'Transformed: Variable'.debug();
+  }
+  
+rule SetType
+  transform s : mtl!ocl::ecore::SetType
+  to t : evoMtl!ocl::ecore::SetType {
+    'Transforming SetType'.debug();
+    t.name = s.name;
+    t.instanceClassName = s.instanceClassName;
+    //t.instanceClass = s.instanceClass; // Internal error: java.lang.NullPointerException
+    //t.defaultValue = s.defaultValue; // Internal error: java.lang.NullPointerException
+    t.instanceTypeName = s.instanceTypeName;
+    t.serializable = s.serializable;
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.typeStartPosition = s.typeStartPosition;
+    t.typeEndPosition = s.typeEndPosition;
+    //t.kind = s.kind; // Internal error: java.lang.NullPointerException
+    
+    t.elementType = s.elementType.convert();
+    
+    'Transformed: SetType'.debug();
+  }
+
+rule OrderedSetType
+  transform s : mtl!ocl::ecore::OrderedSetType
+  to t : evoMtl!ocl::ecore::OrderedSetType {
+    'Transforming OrderedSetType'.debug();
+    t.name = s.name;
+    t.instanceClassName = s.instanceClassName;
+    //t.instanceClass = s.instanceClass; // Internal error: java.lang.NullPointerException
+    //t.defaultValue = s.defaultValue; // Internal error: java.lang.NullPointerException
+    t.instanceTypeName = s.instanceTypeName;
+    t.serializable = s.serializable;
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.typeStartPosition = s.typeStartPosition;
+    t.typeEndPosition = s.typeEndPosition;
+    //t.kind = s.kind; // Internal error: java.lang.NullPointerException
+    t.elementType = s.elementType.convert();
+    'Transformed: OrderedSetType'.debug();
+  }
+  
+rule CollectionLiteralExp
+  transform s : mtl!ocl::ecore::CollectionLiteralExp
+  to t : evoMtl!ocl::ecore::CollectionLiteralExp {
+    'Transforming CollectionLiteralExp'.debug();
+    t.name = s.name;
+    t.ordered = s.ordered;
+    t.unique = s.unique;
+    t.lowerBound = s.lowerBound;
+    t.upperBound = s.upperBound;
+    //t.many = s.many; // Internal error: java.lang.NullPointerException
+    //t.required = s.required; // Internal error: java.lang.NullPointerException
+    t.startPosition = s.startPosition;
+    t.endPosition = s.endPosition;
+    t.kind = s.kind;
+    //t.simpleRange = s.simpleRange; // Internal error: java.lang.NullPointerException
+    t.eType = s.eType.convert();
+    t.eAnnotations = s.eAnnotations.convert();
+    t.part = s.part.convert(); // TODO: CollectionItem
+    
+    'Transformed: CollectionLiteralExp'.debug();
+  }
+  
+rule CollectionItem
+  transform s : mtl!ocl::ecore::CollectionItem
+  to t : evoMtl!ocl::ecore::CollectionItem {
+    'Transforming CollectionItem'.debug();
+    t.name = s.name;
+    t.ordered = s.ordered;
+    t.unique = s.unique;
+    t.lowerBound = s.lowerBound;
+    t.upperBound = s.upperBound;
+    //t.many = s.many; // Internal error: java.lang.NullPointerException
+    //t.required = s.required; // Internal error: java.lang.NullPointerException
+    t.eType = s.eType.convert();
+    t.item = s.item.convert();
+    'Transformed: CollectionItem'.debug();
+  }
+  
+// Metamodel instances are converted without transformation rules since their counterpart
+// already exists in the evoMetamodel, it just need to be retrieved.
+
+operation Metamodel!ecore::EPackage convert() : evoMetamodel!ecore::EPackage {
+  'Converting EPackage '.concat(self.name).debug();
+  // get the relative package from the evolved metamodel
+  var evoPackage = evoMetamodel!ecore::EPackage.allInstances()->selectOne(package | package.name == self.name);  
+  'Converted: EPackage '.concat(self.name).debug();
+  return evoPackage;
+}
+
+operation Metamodel!ecore::EClass convert() : evoMetamodel!ecore::EClass {
+  'Converting EClass '.concat(self.name).debug();
+  // get the relative class from the evolved metamodel
+  var evoClass = evoMetamodel!ecore::EClass.allInstances()->selectOne(metaclass | metaclass.name == self.name);  
+  'Converted: EClass '.concat(self.name).debug();
+  return evoClass;
+}
+
+// EAttribute is converted by using the PropertyCallExp since otherwise there is no reliable way to get the parent class
+// (comparison with allInstances() returns always false), while with it the source.eType can be used.
+operation Metamodel!ecore::EAttribute convert() : evoMetamodel!ecore::EAttribute {
+  // (self is the PropertyCallExp referredProperty)  
+  'Converting EAttribute '.concat(self.name).debug();
+  var parentClass = self.eContainingClass;
+  var evoParentClass = parentClass.convert();
+  var evoAttribute = evoParentClass.eAllAttributes->selectOne(evoAttribute | evoAttribute.name == self.name);
+  return evoAttribute;
+}
+operation Delta!AddedEAttribute convert() : evoMetamodel!ecore::EAttribute {
+  // (self is the PropertyCallExp referredProperty)  
+  'Converting EAttribute '.concat(self.name).debug();
+  var parentClass = self.eContainingClass;
+  if(self.eContainingClass.isTypeOf(Delta!ChangedEClass))
+  	parentClass = self.eContainingClass.applicationElement;
+  var evoParentClass = parentClass.convert();
+  var evoAttribute = evoParentClass.eAllAttributes->selectOne(evoAttribute | evoAttribute.name == self.name);
+  return evoAttribute;
+}
+operation Delta!AddedEClass convert() : evoMetamodel!ecore::EClass {
+  // (self is the PropertyCallExp referredProperty)  
+  'Converting EAttribute '.concat(self.name).debug();
+  var evoParentClass = evoMetamodel!ecore::EClass.allInstances()->selectOne(metaclass | metaclass.name == self.name);
+  return evoParentClass;
+}
+// EReference is converted by using the PropertyCallExp since otherwise there is no reliable way to get the parent class
+// (comparison with allInstances() returns always false), while with it the source.eType can be used.
+operation Metamodel!ecore::EReference convert() : evoMetamodel!ecore::EReference {
+  'Converting EReference '.concat(self.name).debug();
+  var parentClass = self.eContainingClass;
+  var evoParentClass = parentClass.convert();
+  var evoReference = evoParentClass.eAllReferences->selectOne(evoReference | evoReference.name == self.name);
+  return evoReference;
+}
+
+operation Metamodel!ecore::EEnum convert() : evoMetamodel!ecore::EEnum {
+  'Converting EEnum '.concat(self.name).debug();
+  // get the relative enum from the evolved metamodel
+  var evoEnum = evoMetamodel!ecore::EEnum.allInstances()->selectOne(enum | enum.name == self.name);
+  'Converted: EEnum '.concat(self.name).debug();
+  return evoEnum;
+}
+
+[/file]
+[/template]
+
+[template public generatePattern(it : Rule)]
+[file ('Pattern.epl', true, 'UTF-8')]
+pattern [it.name/]
+[if (it.filter.oclIsTypeOf(ClassOpDef))]
+	[it.filter.oclAsType(ClassOpDef).classPar.varName/] : Delta![if (it.filter.op = 'changeClass')]ChangedEClass[/if][if (it.filter.op = 'addClass')]AddedEClass[/if][if (it.filter.op = 'deleteClass')]DeletedEClass[/if][if (it.filter.oclAsType(ClassOpDef).featureOp->size()>0)], [/if]
+[for (featureOp : FeatureOpDef | it.filter.oclAsType(ClassOpDef).featureOp) separator (',')]
+		[if (featureOp.oclIsTypeOf(AttributeOpDef))]
+			[featureOp.oclAsType(AttributeOpDef).attributePar.varName/] : Delta![if (featureOp.op = 'changeAttribute')]ChangedEAttribute[/if][if (featureOp.op = 'addAttribute')]AddedEAttribute[/if][if (featureOp.op = 'deleteAttribute')]DeletedEAttribute[/if]
+		[/if]
+		[if (featureOp.oclIsTypeOf(ReferenceOpDef))]
+			[featureOp.oclAsType(ReferenceOpDef).referencePar.varName/] : Delta![if (featureOp.op = 'changeReference')]ChangedEReference[/if][if (featureOp.op = 'addReference')]AddedEReference[/if][if (featureOp.op = 'deleteReference')]DeletedEReference[/if]
+		[/if]	
+	[/for]{
+	match : 
+	[for (featureOp : FeatureOpDef | it.filter.oclAsType(ClassOpDef).featureOp) separator ('and')]
+		[if (featureOp.oclIsTypeOf(AttributeOpDef))]
+			[it.filter.oclAsType(ClassOpDef).classPar.varName/].eStructuralFeatures.includes([featureOp.oclAsType(AttributeOpDef).attributePar.varName/])
+		[/if]
+		[if (featureOp.oclIsTypeOf(ReferenceOpDef))]
+			[it.filter.oclAsType(ClassOpDef).classPar.varName/].eStructuralFeatures.includes([featureOp.oclAsType(ReferenceOpDef).referencePar.varName/])
+		[/if]	
+	[/for]
+}
+[/if]
+[if (it.filter.oclIsTypeOf(PackageOpDef))]
+	[it.filter.oclAsType(PackageOpDef).packagePar.varName/] : Delta![if (it.filter.op = 'changePackage')]ChangedEPackage[/if][if (it.filter.op = 'addPackage')]AddedEPackage[/if][if (it.filter.op = 'deletePackage')]DeletedEPackage[/if][if (it.filter.oclAsType(PackageOpDef).classesOp->size()>0)], [/if]
+	[for (cod : ClassOpDef | it.filter.oclAsType(PackageOpDef).classesOp) separator (',')]
+		[if (cod.oclIsTypeOf(ClassOpDef))]
+			[cod.oclAsType(ClassOpDef).classPar.varName/] : Delta![if (cod.op = 'changeClass')]ChangedEClass[/if][if (cod.op = 'addClass')]AddedEClass[/if][if (cod.op = 'deleteClass')]DeletedEClass[/if][if (cod.oclAsType(ClassOpDef).featureOp->size()>0)], [/if]
+		[for (featureOp : FeatureOpDef | cod.oclAsType(ClassOpDef).featureOp) separator (',')]
+				[if (featureOp.oclIsTypeOf(AttributeOpDef))]
+					[featureOp.oclAsType(AttributeOpDef).attributePar.varName/] : Delta![if (featureOp.op = 'changeAttribute')]ChangeEAttribute[/if][if (featureOp.op = 'addAttribute')]AddedEAttribute[/if][if (featureOp.op = 'deleteAttribute')]DeletedEAttribute[/if]
+				[/if]
+				[if (featureOp.oclIsTypeOf(ReferenceOpDef))]
+					[featureOp.oclAsType(ReferenceOpDef).referencePar.varName/] : Delta![if (featureOp.op = 'changeReference')]ChangeEReference[/if][if (featureOp.op = 'addReference')]AddedEReference[/if][if (featureOp.op = 'deleteReference')]DeletedEReference[/if]
+				[/if]	
+			[/for]
+		[/if]
+	[/for]{
+	match : 
+		[for (cod : ClassOpDef | it.filter.oclAsType(PackageOpDef).classesOp) separator('and')]
+		[it.filter.oclAsType(PackageOpDef).packagePar.varName/].eClassifiers.includes([cod.oclAsType(ClassOpDef).classPar.varName/])[if (it.filter.oclAsType(PackageOpDef).classesOp->size()>0)]and [/if]
+			[for (featureOp : FeatureOpDef | cod.oclAsType(ClassOpDef).featureOp) separator ('and')]
+				[if (featureOp.oclIsTypeOf(AttributeOpDef))]
+					[cod.oclAsType(ClassOpDef).classPar.varName/].eStructuralFeatures.includes([featureOp.oclAsType(AttributeOpDef).attributePar.varName/])
+				[/if]
+				[if (featureOp.oclIsTypeOf(ReferenceOpDef))]
+					[cod.oclAsType(ClassOpDef).classPar.varName/].eStructuralFeatures.includes([featureOp.oclAsType(ReferenceOpDef).referencePar.varName/])
+				[/if]	
+			[/for]
+		[/for]
+		}
+[/if]
+[/file]
+[/template]
+
+
+
+[template public generateVariable(it : Rule)]
+[if (it.filter.oclIsTypeOf(ClassOpDef))]
+var [it.filter.oclAsType(ClassOpDef).classPar.varName/] = Delta![if (it.filter.op = 'addClass')]AddedEClass[/if][if (it.filter.op = 'changeClass')]ChangedEClass[/if][if (it.filter.op = 'deleteClass')]DeletedEClass[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][it.filter.oclAsType(ClassOpDef).classPar.varName/]))->first();
+[for (featureOp : FeatureOpDef | it.filter.oclAsType(ClassOpDef).featureOp)]
+[if (featureOp.oclIsTypeOf(AttributeOpDef))]var [featureOp.oclAsType(AttributeOpDef).attributePar.varName/] = Delta![if (featureOp.op = 'addAttribute')]AddedEAttribute[/if][if (featureOp.op = 'changeAttribute')]ChangedEAttribute[/if][if (featureOp.op = 'deleteAttribute')]DeletedEAttribute[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][featureOp.oclAsType(AttributeOpDef).attributePar.varName/]))->first();[/if]
+[if (featureOp.oclIsTypeOf(ReferenceOpDef))]var [featureOp.oclAsType(AttributeOpDef).attributePar.varName/] = Delta![if (featureOp.op = 'addReference')]AddedEReference[/if][if (featureOp.op = 'changeReference')]ChangedEReference[/if][if (featureOp.op = 'deleteReference')]DeletedReference[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][featureOp.oclAsType(ReferenceOpDef).referencePar.varName/]))->first();[/if]	
+	[/for]
+[/if]
+[if (it.filter.oclIsTypeOf(PackageOpDef))]
+var [it.filter.oclAsType(PackageOpDef).packagePar.varName/] = Delta![if (it.filter.op = 'addPackage')]AddedEPackage[/if][if (it.filter.op = 'changePackage')]ChangedEPackage[/if][if (it.filter.op = 'deletePackage')]DeletedEPackage[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][it.filter.oclAsType(PackageOpDef).packagePar.varName/]));
+	[for (classeOp : ClassOpDef | it.filter.oclAsType(PackageOpDef).classesOp)]
+[if (classeOp.op = 'changeClass' or it.filter.op = 'deleteClass')][if (classeOp.op = 'changeClass' or classeOp.op = 'deleteClass')]var [classeOp.oclAsType(ClassOpDef).classPar.varName/] = Delta![if (classeOp.op = 'changeClass')]ChangedEClass[/if][if (classeOp.op = 'deleteClass')]DeletedEClass[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][classeOp.oclAsType(ClassOpDef).classPar.varName/]))->first();[/if][/if]
+		[for (featureOp : FeatureOpDef | classeOp.oclAsType(ClassOpDef).featureOp)]
+			[if (featureOp.oclIsTypeOf(AttributeOpDef))]
+var [featureOp.oclAsType(AttributeOpDef).attributePar.varName/] = Delta![if (featureOp.op = 'addAttribute')]AddedEAttribute[/if][if (featureOp.op = 'changeAttribute')]ChangedEAttribute[/if][if (featureOp.op = 'deleteAttribute')]DeletedEAttribute[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][featureOp.oclAsType(AttributeOpDef).attributePar.varName/]))->first();				 
+			[/if]
+			[if (featureOp.oclIsTypeOf(ReferenceOpDef))]
+var [featureOp.oclAsType(AttributeOpDef).attributePar.varName/] = Delta![if (featureOp.op = 'addReference')]AddedEReference[/if][if (featureOp.op = 'changeReference')]ChangedEReference[/if][if (featureOp.op = 'deleteReference')]DeletedReference[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][featureOp.oclAsType(ReferenceOpDef).referencePar.varName/]))->first();
+			[/if]	
+		[/for]
+	[/for]
+[/if]
+[/template]
+
+[template public generateGuard(it : Rule)]
+operation is_[it.name/] ([it.rewritingRules.left.varName/] : [it.eContainer().oclAsType(MigrationProgram).metamodels.name/]![it.rewritingRules.left.type.name/]) : Boolean {
+[if (it.filter.oclIsTypeOf(ClassOpDef))]
+[if (it.filter.op = 'changeClass' or it.filter.op = 'deleteClass')]var [it.filter.oclAsType(ClassOpDef).classPar.varName/] = Delta![if (it.filter.op = 'changeClass')]ChangedEClass[/if][if (it.filter.op = 'deleteClass')]DeletedEClass[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][it.filter.oclAsType(ClassOpDef).classPar.varName/]))->first();[/if]
+[for (featureOp : FeatureOpDef | it.filter.oclAsType(ClassOpDef).featureOp)]
+[if (featureOp.oclIsTypeOf(AttributeOpDef))]var [featureOp.oclAsType(AttributeOpDef).attributePar.varName/] = Delta![if (featureOp.op = 'changeAttribute')]ChangedEAttribute[/if][if (featureOp.op = 'addAttribute')]AddedEAttribute[/if][if (featureOp.op = 'deleteAttribute')]DeletedEAttribute[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][featureOp.oclAsType(AttributeOpDef).attributePar.varName/]))->first();[/if]
+[if (featureOp.oclIsTypeOf(ReferenceOpDef))]var [featureOp.oclAsType(AttributeOpDef).attributePar.varName/] = Delta![if (featureOp.op = 'changeReference')]ChangedEReference[/if][if (featureOp.op = 'addAttribute')]AddedEAttribute[/if][if (featureOp.op = 'deleteReference')]DeletedReference[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][featureOp.oclAsType(ReferenceOpDef).referencePar.varName/]))->first();[/if]	
+	[/for]
+[/if]
+[if (it.filter.oclIsTypeOf(PackageOpDef))]
+[if (it.filter.op = 'changePackage' or it.filter.op = 'deletePackage')]var [it.filter.oclAsType(PackageOpDef).packagePar.varName/][/if] = Delta![if (it.filter.op = 'changePackage')]ChangedEPackage[/if][if (it.filter.op = 'deletePackage')]DeletedEPackage[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][it.filter.oclAsType(PackageOpDef).packagePar.varName/]));
+	[for (classeOp : ClassOpDef | it.filter.oclAsType(PackageOpDef).classesOp)]
+var [classeOp.oclAsType(ClassOpDef).classPar.varName/] = Delta![if (classeOp.op = 'addClass')]AddedEClass[/if][if (classeOp.op = 'changeClass')]ChangedEClass[/if][if (classeOp.op = 'deleteClass')]DeletedEClass[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][classeOp.oclAsType(ClassOpDef).classPar.varName/]))->first();
+		[for (featureOp : FeatureOpDef | classeOp.oclAsType(ClassOpDef).featureOp)]
+			[if (featureOp.oclIsTypeOf(AttributeOpDef))]
+var [featureOp.oclAsType(AttributeOpDef).attributePar.varName/] = Delta![if (featureOp.op = 'addAttribute')]AddedEAttribute[/if][if (featureOp.op = 'changeAttribute')]ChangedEAttribute[/if][if (featureOp.op = 'deleteAttribute')]DeletedEAttribute[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][featureOp.oclAsType(AttributeOpDef).attributePar.varName/]))->first();				 
+			[/if]
+			[if (featureOp.oclIsTypeOf(ReferenceOpDef))]
+var [featureOp.oclAsType(AttributeOpDef).attributePar.varName/] = Delta![if (featureOp.op = 'addReference')]AddedEReference[/if][if (featureOp.op = 'changeReference')]ChangedEReference[/if][if (featureOp.op = 'deleteReference')]DeletedReference[/if].allInstances()->select(c | c.instanceOf(Pattern![it.name/][featureOp.oclAsType(ReferenceOpDef).referencePar.varName/]))->first();
+			[/if]	
+		[/for]
+	[/for]
+[/if]
+
+return (Pattern![it.name/].isUndefined()) and  
+[if (it.filter.oclIsTypeOf(ClassOpDef))]
+[if (it.filter.op = 'changeClass' or it.filter.op = 'deleteClass')][it.filter.oclAsType(ClassOpDef).classPar.varName/][/if].applicationElement = [it.rewritingRules.left.varName/].source.eType [if (it.filter.oclAsType(ClassOpDef).featureOp->size()>0)] and [/if] 
+[for (featureOp : FeatureOpDef | it.filter.oclAsType(ClassOpDef).featureOp) separator ('and ' )]
+		[if (featureOp.oclIsTypeOf(AttributeOpDef))]
+			[if (featureOp.op = 'changeAttribute' or featureOp.op = 'deleteAttribute')][featureOp.oclAsType(AttributeOpDef).attributePar.varName/].applicationElement = [it.rewritingRules.left.varName/].referredProperty[else] 1 = 1 [/if][/if]
+		[if (featureOp.oclIsTypeOf(ReferenceOpDef))]
+			[if (featureOp.op = 'changeAttribute' or featureOp.op = 'deleteAttribute')][featureOp.oclAsType(ReferenceOpDef).referencePar.varName/].applicationElement = [it.rewritingRules.left.varName/].referredProperty[else] 1 = 1 [/if][/if]	
+	[/for]
+[/if]
+[if (it.filter.oclIsTypeOf(PackageOpDef))]
+	[if (it.filter.op = 'changePackage' or it.filter.op = 'deletePackage')][it.filter.oclAsType(PackageOpDef).packagePar.varName/][/if].applicationElement = [it.rewritingRules.left.varName/].source.eType [if (it.filter.oclAsType(PackageOpDef).classesOp->size()>0)] and [/if]
+	[for (classeOp : ClassOpDef | it.filter.oclAsType(PackageOpDef).classesOp) separator ('and')]
+	[if (classeOp.op = 'changeClass' or it.filter.op = 'deleteClass')]Pattern![it.name/][classeOp.oclAsType(ClassOpDef).classPar.varName/].applicationElement = [it.rewritingRules.left.varName/].source.eType [if (classeOp.oclAsType(ClassOpDef).featureOp->size()>0)] and [/if] [/if]
+		[for (featureOp : FeatureOpDef | classeOp.oclAsType(ClassOpDef).featureOp) separator ('and')]
+			[if (featureOp.oclIsTypeOf(AttributeOpDef))]
+				[if (featureOp.op = 'changeAttribute' or featureOp.op = 'deleteAttribute')][featureOp.oclAsType(AttributeOpDef).attributePar.varName/].applicationElement = [it.rewritingRules.left.varName/].referredProperty [else] 1 = 1 [/if]
+			[/if]
+			[if (featureOp.oclIsTypeOf(ReferenceOpDef))]
+				[if (featureOp.op = 'changeAttribute' or featureOp.op = 'deleteAttribute')][it.name/][featureOp.oclAsType(ReferenceOpDef).referencePar.varName/].applicationElement = [it.rewritingRules.left.varName/].referredProperty [else] 1 = 1 [/if]
+			[/if]	
+		[/for]
+	[/for]
+[/if]
+[if (not it.where.oclIsUndefined())] and [it.where.oclAsType(EqOpCallExp).argument.oclAsType(VariableExp).referredVariable.varName/] = [it.where.oclAsType(EqOpCallExp).source.oclAsType(PropertyCallExp).source.oclAsType(VariableExp).referredVariable.varName/].[it.where.oclAsType(EqOpCallExp).source.oclAsType(PropertyCallExp).calls.oclAsType(NavigationOrAttributeCall).name/][else][/if];
+}
+[/template]

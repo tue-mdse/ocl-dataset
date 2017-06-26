@@ -1,0 +1,57 @@
+[comment encoding = UTF-8 /]
+[module generate_system('http://www.eclipse.org/uml2/3.0.0/UML')]
+[comment][import org::eclipse::robotml::generators::acceleo::mmqueries::MMQueries /][/comment]
+
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+
+[template public generateSystemCommonRequires(aClass : Class, model : Model)]
+[for (component : NamedElement | getLevel1SubComponentsForComponentWithStereotype(aClass, 'RoboticSystem'))]
+	[let prop : Property = component.oclAsType(Property)]
+require "[model.name+'/'+prop.type.name/]"
+	[/let]
+[/for]
+[/template]
+
+[template public generateSystemCommon(aClass : Class, model : Model)]
+[if inheritsFrom(aClass, 'RoboticSystem')]
+-- generic system functions
+	[let stname : String = getStereotypeInheritedFrom(aClass, 'RoboticSystem')]
+	[let position : String = getAttributeValue(aClass, 'localPosition', stname)] 
+self:SetLocalPosition([removeBrackets(position)/])
+	[/let]
+	[let rotation : String = getAttributeValue(aClass, 'localOrientation', stname)] 
+self:SetLocalRotation([removeBrackets(rotation)/])
+	[/let]
+	[/let]
+
+--[protected (aClass.name + ' common')]
+
+--[/protected]
+
+[/if]
+[comment]-- instanciate subcomponents
+[for (component : NamedElement | getLevel1SubComponentsForComponentWithStereotype(aClass, 'RoboticSystem'))]
+	[let prop : Property = component.oclAsType(Property)]
+self.[prop.name/] = [prop.type.name/]( name..".[prop.name/]")
+self.[prop.name/]:MakeChildOf(self)
+	[/let]
+[/for][/comment]
+[/template]
+
+[template public generateSystem(aClass : Class, model : Model)]
+[file ('scripts/' + model.name + '/' + aClass.name + '.lua', false, 'UTF-8')]
+require "LuaCycabTK"
+require "mgLuaMeshActor"
+[generateSystemCommonRequires(aClass, model)/]
+
+--Definition of class [aClass.name/]
+class '[aClass.name/]' (mge.MeshActor)
+function [aClass.name/]:__init(name)
+	mge.MeshActor.__init(self, name)
+	
+	[generateSystemCommon(aClass, model)/]
+end
+[/file]
+[/template]
+

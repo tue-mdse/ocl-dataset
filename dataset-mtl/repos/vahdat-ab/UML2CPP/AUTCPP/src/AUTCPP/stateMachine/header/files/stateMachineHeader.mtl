@@ -1,0 +1,82 @@
+[comment encoding = UTF-8 /]
+[module stateMachineHeader('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import AUTCPP::javaWrapper::files::StateMachineFunctions /]
+
+[template public generateState(aStateMachine : StateMachine)]
+[for (aRegion : Region | region) separator ('\n') ]
+enum [name.toUpperFirst()/] {[for (aState : State | subvertex->filter(State)) separator (', ')] [name/][/for]};[/for]
+[/template]
+
+[template public generateStateVriables(aStateMachine : StateMachine)]
+[for (aRegion : Region | region) separator ('\n')]
+[name.toUpperFirst()/] _[name/];[/for]
+[/template]
+
+[template public generateStateSetFunctions(aStateMachine : StateMachine)]
+[for (aRegion : Region | region) separator ('\n')]
+bool set[name.toUpperFirst()/]([name.toUpperFirst()/] in[name.toUpperFirst()/]);[/for]
+[/template]
+
+[template public generateStateGetFunctions(aStateMachine : StateMachine)]
+[for (aRegion : Region | region) separator ('\n')]
+[name.toUpperFirst()/] get[name.toUpperFirst()/]();[/for]
+[/template]
+
+[template public generateStateTransitionFunctionHeaders(aStateMachine : StateMachine)]
+[for (transName : String | PureTransitions(aStateMachine)) separator ('\n')]
+bool [transName/]();[/for]
+[/template]
+
+[template public generateSettingEntryDoFunctions(aRegion : Region)]
+[if (not subvertex->filter(State)->select(entry->isEmpty() = false or doActivity->isEmpty() = false)->isEmpty()  )]
+	switch (in[name.toUpperFirst()/]) { 
+	[for (aState : State | subvertex->filter(State)->select(entry->isEmpty() = false or doActivity->isEmpty() = false )) ]
+		case [aRegion.name.toUpperFirst()/]::[name/]:
+		[if (not aState.entry->isEmpty()) ]
+				[aState.entry.name/]();
+		[/if]
+		[if (not aState.doActivity->isEmpty())]
+				[aState.doActivity.name/]();
+		[/if]		
+			break;
+	[/for]
+		}
+[/if]
+[/template]
+
+[template public generateSMDoActivities(aStateMachine : StateMachine) post (trim())]
+[for (aRegion : Region | region)]
+[if (subvertex->filter(State)->select(doActivity->isEmpty() = false )->size()>0)]
+[for (aState : State | subvertex->filter(State)->select(doActivity->isEmpty() = false )) separator ('\n')]
+[generateSMDoActivity(aState.doActivity)/][/for]
+[/if][/for]
+[/template]
+
+[template private generateSMDoActivity(aBehavior : Behavior)]
+bool [name/]();
+[/template]
+
+[template public generateSMEntries(aStateMachine : StateMachine) post (trim())]
+[for (aRegion : Region | region) separator ('\n')]
+[if (subvertex->filter(State)->select(entry->isEmpty() = false )->size()>0)]
+[for (aState : State | subvertex->filter(State)->select(entry->isEmpty() = false )) separator ('\n')]
+[generateSMEntry(aState.entry)/][/for]
+[/if][/for]
+[/template]
+
+[template private generateSMEntry(aBehavior : Behavior)]
+bool [name/]();
+[/template]
+
+[template public generateSMExits(aStateMachine : StateMachine) post (trim())]
+[for (aRegion : Region | region) separator ('\n')]
+[if (subvertex->filter(State)->select(exit->isEmpty() = false )->size()>0)]
+[for (aState : State | subvertex->filter(State)->select(exit->isEmpty() = false )) separator ('\n')]
+[generateSMExit(aState.exit)/][/for]
+[/if][/for]
+[/template]
+
+[template private generateSMExit(aBehavior : Behavior)]
+bool [name/]();
+[/template]

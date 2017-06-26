@@ -1,0 +1,170 @@
+[comment encoding = UTF-8 /]
+[module generateJPAAnnotations('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::name::tableColumnNameQueries/]
+[import com::thales::momoko2::pim::uml2::gen::request::inheritanceQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::services::uml2Queries /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationClassQueries/]
+[import com::thales::momoko2::pim::uml2::gen::common::attributes::datatypeAttributes/]
+[import com::thales::momoko2::pim::uml2::gen::common::textprocessing::textProcessing/]
+[** 
+ * This template is used to generated the JPA Annotations for associations attributes.
+ * @param aClass 						: the source class of the association
+*/]
+[template public generateAssocationAnnotations (aClass : Class, anAssociation: Association, aDestinationProperty : Property , aSourceProperty : Property)] 
+[generateEmbeddedAnnotation(aDestinationProperty)/][if aDestinationProperty.isEmbedded()._not()][generateOneToOneAnnotations(aClass, anAssociation, aDestinationProperty , aSourceProperty)/][generateOneToManyAnnotations(aClass, anAssociation, aDestinationProperty , aSourceProperty)/][generateManyToOneAnnotations(aClass, anAssociation, aDestinationProperty , aSourceProperty)/][generateManyToManyAnnotations(aClass, anAssociation, aDestinationProperty , aSourceProperty)/][/if]
+[/template]
+
+[template private generateOneToOneAnnotations(aClass : Class, anAssociation: Association, aDestinationProperty : Property , aSourceProperty : Property)
+ ? (isOneToOne(aDestinationProperty, aSourceProperty))]
+@OneToOne(fetch=FetchType.LAZY[generateCascadeAll(aClass,aDestinationProperty, anAssociation)/])
+@JoinColumn(name="[getOneToOneColumnName(aClass, aDestinationProperty, anAssociation)/]")
+[/template]
+
+[template private generateOneToManyAnnotations(aClass : Class, anAssociation: Association, aDestinationProperty : Property , aSourceProperty : Property)
+ ? (isOneToMany(aDestinationProperty, aSourceProperty)or(isAssociationClassOneToMany(aDestinationProperty, aSourceProperty)))]
+@OneToMany(fetch=FetchType.LAZY[generateCascadeAll(aClass,aDestinationProperty, anAssociation)/])
+@JoinColumn(name="[getOneToManyColumnName(aClass)/]")
+[/template]
+
+[template private generateManyToOneAnnotations(aClass : Class, anAssociation: Association, aDestinationProperty : Property , aSourceProperty : Property)
+ ? (isManyToOne(aDestinationProperty, aSourceProperty))]
+@ManyToOne(fetch=FetchType.LAZY[generateCascadeAll(aDestinationProperty, anAssociation)/])
+@JoinColumn(name="[getManyToOneColumnName(aClass, aDestinationProperty, anAssociation)/]")				
+[/template]
+
+[template private generateManyToManyAnnotations(aClass : Class, anAssociation: Association, aDestinationProperty : Property , aSourceProperty : Property)
+ ? (isManyToMany(aDestinationProperty, aSourceProperty))]
+@ManyToMany (fetch=FetchType.LAZY[generateCascadeAll(aClass,aDestinationProperty, anAssociation)/])
+@JoinTable(name="[getJoinTableName(aClass, aDestinationProperty, anAssociation)/]", schema=[if isNamedByClient(aClass.eContainer(Package))]"[generateSchemaName(aClass.eContainer(Package))/]"[else]"[getSchemaName()/]"[/if],
+          joinColumns = @JoinColumn(name="[getManyToManyColumnName(aClass)/]"),
+          inverseJoinColumns = @JoinColumn(name="[getManyToManyColumnName(getDestinationClass(aDestinationProperty, anAssociation))/]"))
+[/template] 
+
+[template public generateAssociationClassManyToOneAnnotations(aClass : Class, anAssociation: Association, aDestinationProperty : Property , aSourceProperty : Property)
+ ? (isAssociationClassManyToOne(aDestinationProperty, aSourceProperty))]
+@ManyToOne(fetch=FetchType.LAZY)
+@JoinColumn(name="[getManyToOneColumnName(aClass, aDestinationProperty, anAssociation)/]")				
+[/template]
+
+[**
+ * Cascade  property
+*/]
+[template private generateCascadeAll(aClass:Class, aDestinationProperty : Property, anAssociation : Association)
+ ? (isCascadeAllAssociation(aDestinationProperty, anAssociation))]
+, cascade=CascadeType.ALL
+[/template]
+
+
+[**
+ * This template generates the class annotations
+*/]
+[template public generateClassAnnotations(aClass : Class)post(generateTextProcessingBlock())]
+[if aClass.isAbstract]@MappedSuperclass[else]
+@Entity
+[generateStrategyAnnotation()/]
+@Table (name=[if isObjectClass()]"[getFeatureTableName(aClass)/]" [elseif isNamedByClient() ] "[getFeatureTableNameNamedByClient(aClass)/]"[else] "[getFeatureTableName()/]"[/if] ,schema=[if isNamedByClient(aClass.eContainer(Package))]"[generateSchemaName(aClass.eContainer(Package))/]"[else]"[getSchemaName()/]"[/if])
+[for (aProperty : Property | aClass.attribute->asSequence()->sortedBy(name)) ? (aProperty.name.equalsIgnoreCase('')._not())]
+[generateSecondaryTableAnnotation (aClass, aProperty)/][/for]
+[if aClass.isShared()._not()][generateEmbeddableAnnotation()/][/if][/if]
+[/template]
+
+
+[**
+ * This template generates the @Embeddable annotations
+*/]
+[template public generateStrategyAnnotation (aClass : Class)?(aClass.isFeatureClass())]
+[if aClass.getValue(getStereotype(aClass, 'feature'), 'joined').toString().equalsIgnoreCase('true')]@Inheritance(strategy = InheritanceType.JOINED)
+[elseif aClass.getValue(getStereotype(aClass, 'feature'), 'singleClass').toString().equalsIgnoreCase('true')]@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+[elseif aClass.getValue(getStereotype(aClass, 'feature'), 'tablePerClass').toString().equalsIgnoreCase('true')]@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
+[/if]
+[/template]
+
+[**
+ * This template generates the new class annotations
+*/]
+[template public generateClassAnnotationsForPartClass(aClass : Class)]
+[if aClass.isAbstract]@MappedSuperclass[/if]
+@Embeddable
+[/template]
+
+
+[**
+ * This template generates the @SecondaryTable annotations
+*/]
+[template public generateSecondaryTableAnnotation (aClass : Class, aProperty : Property) ? (aProperty.isAssociationAttribute())]
+[if getDestinationClass(aProperty, aProperty.getAssociation()).isFeature_partClass()]
+@SecondaryTable(name="[if isFPNamedByClient(getDestinationClass(aProperty, aProperty.getAssociation())) ]
+[getFeature_partTableNameNamedByClient(getDestinationClass(aProperty, aProperty.getAssociation()))/][else]
+[getFeatureTableName(getDestinationClass(aProperty, aProperty.getAssociation()))/][/if]")[/if]
+[/template]
+
+[**
+ * This template generates the @Embeddable annotations
+*/]
+[template public generateEmbeddableAnnotation (aClass : Class)?(aClass.isObjectClass())]
+[for (aProperty:Property | (aClass.getAssociations().endType.oclAsType(Class)).attribute->asSequence()->sortedBy(name))]
+[if isEmbedded(aProperty) ]@Embeddable[/if][/for]
+[/template]
+
+[**
+ * This template generates the @Embedded annotations
+*/]
+[template public generateEmbeddedAnnotation (aProperty : Property)]
+[if isEmbedded(aProperty)]@Embedded[/if]
+[/template]
+
+[**
+ * This template generates the @Column annotations
+*/]
+[template public generateColumnAnnotation (aProperty : Property)]
+@Column (name="[getDatatypeColumnName(aProperty)/]")
+[/template]
+
+[**
+ * This template generates the @SecondaryTableColumn annotations
+*/]
+[template public generateSecondaryTableColumnAnnotation (aProperty : Property)]
+@Column (table="[if isFPNamedByClient(getDestinationClass(aProperty, aProperty.getAssociation())) ]
+[getFeature_partTableNameNamedByClient(getDestinationClass(aProperty, aProperty.getAssociation()))/][else]
+[getFeatureTableName(getDestinationClass(aProperty, aProperty.getAssociation()))/][/if]")
+[/template]
+
+[**
+ * This template generates the @Basic annotations
+*/]
+[template public generateBasicAnnotation(aProperty : Property) ]
+[if isLobClass(getDatatypeByProperty(aProperty))]
+@Basic(fetch=FetchType.LAZY, optional = true)
+[else]@Basic(fetch=FetchType.EAGER, optional = [isMandatoryProperty(aProperty)/])[/if]
+[/template]
+
+[**
+ * This template generates the @Temporal annotations
+*/]
+[template public generateTemporalAnnotation(aClass : Class)? (isDateClass() or isTimeClass())]
+[if isDateClass()]@Temporal (TemporalType.DATE)[elseif isTimeClass() and aClass.getValue(getStereotype(aClass, 'time'), 'timestamp').toString().equalsIgnoreCase('true')]@Temporal (TemporalType.TIMESTAMP)[else]@Temporal (TemporalType.TIME)[/if]
+[/template]
+
+[**
+ * This template generates the @Lob annotations
+*/]
+[template public generateLobAnnotation(aClass : Class)? (isLobClass()) ]
+@Lob
+[/template]
+
+[**
+ * This template generates the @Id annotations
+*/]
+[template public generateIdAnnotation(aClass : Class) ]
+[if hasSuperClass(aClass)][else]@Id private long id;[/if]
+[/template]
+
+[**
+ * This template generates the @Enumerated annotations
+*/]
+[template public generateEnumeratedAnnotation(aClass : Class)? (isEnumerateClass())]
+[if isAsString()]@Enumerated(EnumType.STRING)[else]@Enumerated(EnumType.ORDINAL)[/if]
+[/template]

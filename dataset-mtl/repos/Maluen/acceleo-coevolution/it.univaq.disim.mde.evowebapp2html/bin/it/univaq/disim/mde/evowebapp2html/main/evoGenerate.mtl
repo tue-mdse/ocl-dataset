@@ -1,0 +1,154 @@
+[comment encoding = UTF-8 /]
+[module evoGenerate('http://www.disim.univaq.it/mde/evowebapp')/]
+
+[template public Generate(aWebApp : WebApp)]
+[comment @main /]
+[file ('index.html', false, 'UTF-8')]
+<html>
+	<head>
+		<title>[ aWebApp.name /]</title>
+	</head>
+	<body>
+		<script type="text/javascript">
+		window.app = {
+			models: {},
+			collections: {},
+			templates: {},
+			views: {},
+			controllers: {},
+			router: null
+		};
+		</script>
+
+		[for (model : Model | aWebApp.models)]
+		[generateModel(model)/]
+		[/for]
+		
+		[for (collection : Collection | aWebApp.collections)]
+		[generateCollection(collection)/]
+		[/for]
+		
+		[for (aTemplate : Template | aWebApp.templates)]
+		[generateTemplate(aTemplate)/]
+		[/for]
+		
+		[for (view : View | aWebApp.views)]
+		[generateView(view)/]
+		[/for]
+		
+		[for (controller : Controller | aWebApp.controllers)]
+		[generateController(controller)/]
+		[/for]
+		
+		[generateRouter(aWebApp.router)/]
+	</body>
+</html>
+[/file]
+
+[/template]
+
+[template public generateModel(model : Model)]
+[file ('models/'.concat(model.name).concat('.js'), false, 'UTF-8')]
+app.models.[model.name/] = (function() {
+  var [model.name/] = {
+    endpoint: '[model.endpoint/]',
+    props: {
+    [for (attribute : Attribute | model.attributes)]
+      [generateModelAttribute(attribute)/]
+    [/for]
+    }
+  };
+  return [model.name/];
+})();
+[/file]
+<script type="text/javascript" src="models/[model.name/].js"></script>
+[/template]
+
+[template public generateCollection(collection : Collection)]
+[file ('collections/'.concat(collection.name).concat('.js'), false, 'UTF-8')]
+app.collections.[collection.name/] = (function() {
+  var [collection.name/] = {
+    endpoint: '[collection.endpoint/]',
+    model: app.models.[collection.model.name/]
+  };
+  return [collection.name/];
+})();
+[/file]
+<script type="text/javascript" src="collections/[collection.name/].js"></script>
+[/template]
+
+[template public generateTemplate(aTemplate : Template)]
+[file ('templates/'.concat(aTemplate.name).concat('.html'), false, 'UTF-8')]
+<style>
+[aTemplate.style.src/]
+</style>
+
+[aTemplate.structure/]
+[/file]
+[comment a build script that will compile templates to js is required/]
+<script type="text/javascript" src="templates/[aTemplate.name/].js"></script>
+[/template]
+
+[template public generateView(view : View)]
+[file ('views/'.concat(view.name).concat('.js'), false, 'UTF-8')]
+app.views.[view.name/] = (function() {
+  var [view.name/] = {
+    subviews: ['['/][for (subview : View | view.subviews)] app.views.[subview.name/], [/for][']'/],
+    template: app.templates.[view.template.name/],
+    data: {
+      [generateAttribute(view.data)/]
+    }
+  };
+  return [view.name/];
+})();
+[/file]
+<script type="text/javascript" src="views/[view.name/].js"></script>
+[/template]
+
+[template public generateController(controller : Controller)]
+[file ('controllers/'.concat(controller.name).concat('.js'), false, 'UTF-8')]
+app.controllers.[controller.name/] = (function() {
+  var [controller.name/] = { 
+    parameters: {
+    [for (parameter : Attribute | controller.parameters)]
+      [generateAttribute(parameter)/]
+    [/for]
+    }
+  };
+  return [controller.name/];
+})();
+[/file]
+<script type="text/javascript" src="controllers/[controller.name/].js"></script>
+[/template]
+
+[template public generateRouter(router : Router)]
+[file ('router.js', false, 'UTF-8')]
+app.router = (function() {
+  var router = {
+    routes: {
+    [for (binding : RouterBinding | router.bindings)]
+      '[binding.requestURL /]': app.controllers.[binding.controller.name/],
+    [/for]
+    }
+  };
+  return router;
+})();
+[/file]
+<script type="text/javascript" src="router.js"></script>
+[/template]
+
+[template public generateViewData(data : Data)]
+'[data.name/]': app.[if (data.oclIsTypeOf(Model))]model[else]collection[/if].[data.name/],
+[/template]
+
+[template public generateAttribute(attribute : Attribute)]
+'[attribute.name/]': {
+  baseType: '[attribute.baseType/]',
+  customType: '[attribute.customType/]'
+},
+[/template]
+
+[comment Model only has base types for database limitations /]
+[template public generateModelAttribute(attribute : Attribute)]
+'[attribute.name/]': '[attribute.baseType/]',
+[/template]

@@ -1,0 +1,250 @@
+[comment encoding = UTF-8 /]
+[module instanceDocument(
+	'http://www.eclipse.org/xsd/2002/XSD')/]
+[comment]
+NIEM UML 
+Copyright © 2011, ModelDriven.org and Tom Digre, all rights reserved worldwide.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see http://www.gnu.org/licenses/gpl-3.0-standalone.html.
+
+There are also commercial licenses available for this software.
+Contact ModelDriven.org for more information.
+[/comment]	
+[import commonQuery/]
+[template public instanceDocument(xsd : XSDSchema){
+	elements:OrderedSet(XSDElementDeclaration)=xsd.elementDeclarations->select(e|e.targetNamespace=xsd.targetNamespace);
+}]
+[comment @main /]
+[('instanceDocument schema '+xsd.targetNamespace).log()/]
+[comment] for each top level element of schema [/comment]
+[elements.topLevelElement()/]	
+[/template]
+[template public topLevelElement(element : XSDElementDeclaration){
+	elementType:XSDTypeDefinition=element.typeDefinition;
+	maxElementDepth:Integer= 10 ;
+	namespaceMap:OclAny=element.schema.getQNamePrefixToNamespaceMap();
+}]
+[('topLevelElement  '+element.name).log()/]
+[file('XMLSamples/'+element.name+'.xml',false, 'UTF-8')]
+[comment]
+<[element.qName/][namespaceMap.xmlnsAttribues()/] [elementType.AttributeContents(namespaceMap,element.name)/]>
+	[elementType.TypeDefinition(maxElementDepth,namespaceMap,element.name)/]
+</[element.qName/]>	
+[/comment]
+[comment]
+<[element.instanceQName(namespaceMap)/] [namespaceMap.xmlnsAttribues()/] [elementType.AttributeContents(namespaceMap,element.name)/]>
+	[elementType.TypeDefinition(maxElementDepth,namespaceMap,element.name)/]
+</[element.instanceQName(namespaceMap)/]>	
+[/comment]
+[/file]
+[/template]
+[query public instanceQName(element : XSDNamedComponent,namespaceMap:OclAny):String=
+	element.getPrefix(namespaceMap)+':'+element.name
+/]	
+
+[template public TypeDefinition(typeDefinition : XSDTypeDefinition,maxElementDepth : Integer,namespaceMap : OclAny,qualifiedName:String)
+][if(typeDefinition.oclIsKindOf(XSDComplexTypeDefinition))][typeDefinition.oclAsType(XSDComplexTypeDefinition).TypeDefinitionComplex(maxElementDepth,namespaceMap,qualifiedName)/][else][typeDefinition.oclAsType(XSDSimpleTypeDefinition).TypeDefinitionSimple(maxElementDepth,namespaceMap,qualifiedName)/][/if][/template]
+[template public TypeDefinitionComplex(typeDefinition : XSDComplexTypeDefinition,maxElementDepth : Integer,namespaceMap : OclAny,qualifiedName:String){
+	baseTypeDefinition:XSDTypeDefinition=if(typeDefinition.baseTypeDefinition=typeDefinition) then null else typeDefinition.baseTypeDefinition endif;
+	isSimpleContent:Boolean=(typeDefinition.content<>null) and not(typeDefinition.content.oclIsUndefined()) and typeDefinition.content.oclIsKindOf(XSDSimpleTypeDefinition);
+}][if((baseTypeDefinition<>null)and not(baseTypeDefinition.oclIsUndefined()) and not(isSimpleContent))][baseTypeDefinition.TypeDefinition(maxElementDepth,namespaceMap,qualifiedName)/][/if][typeDefinition.content.XSDComplexTypeContent(maxElementDepth,namespaceMap,qualifiedName)/][/template]
+[template public TypeDefinitionSimple(typeDefinition : XSDSimpleTypeDefinition,maxElementDepth : Integer,namespaceMap : OclAny,qualifiedName:String)
+][typeDefinition.simpleTypeValue(namespaceMap,qualifiedName)/][/template]
+
+[query public hasEnumerationFacet(typeDefinition : XSDSimpleTypeDefinition):Boolean=
+	not(typeDefinition.effectiveEnumerationFacet.oclIsUndefined())
+	and typeDefinition.effectiveEnumerationFacet.value->notEmpty()
+/]	
+[query public hasMinInclusiveFacet(typeDefinition : XSDSimpleTypeDefinition):Boolean=
+	not(typeDefinition.effectiveMinFacet.oclIsUndefined())
+	and typeDefinition.effectiveMinFacet.inclusive
+/]	
+[query public hasMaxInclusiveFacet(typeDefinition : XSDSimpleTypeDefinition):Boolean=
+	not(typeDefinition.effectiveMaxFacet.oclIsUndefined())
+	and typeDefinition.effectiveMaxFacet.inclusive
+/]	
+[comment]
+TODO: duration
+	dateTime
+	time
+	date
+	gYearMonth
+	gYear
+	gMonthDay
+	gDay
+	gMonth
+	base64Binary
+	QName
+	NOTATION
+        3.3.9 IDREF
+        3.3.10 IDREFS
+        3.3.11 ENTITY
+        3.3.12 ENTITIES
+    by default:    
+		anyURI
+		string
+		3.3.1 normalizedString
+        3.3.2 token
+        3.3.4 NMTOKEN
+        3.3.5 NMTOKENS
+        3.3.6 Name
+        3.3.7 NCName
+[/comment]
+[query public simpleTypeValue(typeDefinition : XSDSimpleTypeDefinition,namespaceMap:OclAny,qualifiedName:String):String=
+	if(typeDefinition.hasEnumerationFacet())
+	then typeDefinition.effectiveEnumerationFacet.value.toString()->first()
+	else 
+		if(typeDefinition.hasMinInclusiveFacet())
+		then typeDefinition.effectiveMinFacet.value.toString()
+		else 
+			if(typeDefinition.hasMaxInclusiveFacet())
+			then typeDefinition.effectiveMaxFacet.value.toString()
+			else 
+				if(typeDefinition.name='ID')then ('ID'+qualifiedName) 
+				else
+					if(typeDefinition.name='boolean')then 'false' 
+					else
+						if(typeDefinition.name='positiveInteger')then '1' 
+						else
+							if(typeDefinition.name='negativeInteger')then '-1' 
+							else
+								if(
+									(typeDefinition.name='integer')
+									or (typeDefinition.name='int') 
+									or (typeDefinition.name='decimal') 
+									or (typeDefinition.name='float') 
+									or (typeDefinition.name='double') 
+									or (typeDefinition.name='long') 
+									or (typeDefinition.name='short') 
+									or (typeDefinition.name='double') 
+									or (typeDefinition.name='nonNegativeInteger') 
+									or (typeDefinition.name='unsignedLong') 
+									or (typeDefinition.name='unsignedInt') 
+									or (typeDefinition.name='unsignedShort') 
+									or (typeDefinition.name='byte') 
+									or (typeDefinition.name='unsignedByte') 
+									or (typeDefinition.name='nonPositiveInteger') 
+								) then '0' 
+								else
+									if(typeDefinition.name='language') then 'en' 
+									else
+										if(typeDefinition.name='date') then getXmlDate() 
+										else
+											if(typeDefinition.name='dateTime') then getXmlDateTime() 
+											else
+												if(typeDefinition.name='time') then getXmlTime() 
+												else
+													if(typeDefinition.name='gYearMonth') then getXmlGYearMonth() 
+													else
+														if(typeDefinition.name='gYear') then getXmlGYear() 
+														else
+															if(typeDefinition.name='gMonthDay') then getXmlGMonthDay() 
+																else
+																	if(typeDefinition.name='gDay') then getXmlGDay() 
+																	else
+																		if(typeDefinition.name='gMonth') then getXmlGMonth() 
+																		else
+																			if(typeDefinition.name='hexBinary') then '00' 
+																			else (typeDefinition.simpleTypeValueName(namespaceMap,qualifiedName))
+																			endif
+																		endif
+																	endif
+															endif
+														endif
+													endif
+												endif
+											endif
+										endif
+									endif
+								endif
+	
+							endif
+						endif
+					endif
+				endif
+			endif	
+		endif	
+	endif	
+/]
+[query public simpleTypeValueName(typeDefinition : XSDSimpleTypeDefinition,namespaceMap:OclAny,qualifiedName:String):String=
+	if((typeDefinition.name=null)or typeDefinition.name.oclIsUndefined())then typeDefinition.baseTypeDefinition.simpleTypeValue(namespaceMap,qualifiedName)
+		else typeDefinition.name
+	endif	
+/]
+
+[template public XSDComplexTypeContent(content : XSDComplexTypeContent,maxElementDepth : Integer,namespaceMap : OclAny,,qualifiedName:String)
+][if((content<>null) and content.oclIsKindOf(XSDParticle))][content.oclAsType(XSDParticle).content.XSDParticleContent(maxElementDepth,namespaceMap,qualifiedName)/][elseif(content<>null)][content.oclAsType(XSDSimpleTypeDefinition).TypeDefinitionSimple(maxElementDepth,namespaceMap,qualifiedName)/][/if][/template]
+
+
+[template public XSDParticleContent(content : XSDParticleContent,maxElementDepth : Integer,namespaceMap : OclAny,qualifiedName:String)
+][if(content.oclIsKindOf(XSDElementDeclaration))][content.oclAsType(XSDElementDeclaration).XSDParticleContentElement(maxElementDepth,namespaceMap,qualifiedName)/][elseif(content.oclIsKindOf(XSDModelGroup))][content.oclAsType(XSDModelGroup).XSDParticleContentGroup(maxElementDepth,namespaceMap,qualifiedName)/][elseif(content.oclIsKindOf(XSDModelGroupDefinition))][content.oclAsType(XSDModelGroupDefinition).XSDParticleContentGroupDefinition(maxElementDepth,namespaceMap,qualifiedName)/][elseif(content.oclIsKindOf(XSDWildcard))][content.oclAsType(XSDWildcard).XSDParticleContentWildcard(maxElementDepth,namespaceMap,qualifiedName)/][/if][/template]
+
+[template public XSDParticleContentElement(element : XSDElementDeclaration,maxElementDepth : Integer,namespaceMap : OclAny,qualifiedName:String){
+	resolvedElement:XSDElementDeclaration=element.resolvedElementDeclaration.concreteElement();
+	resolvedTypeDefinition:XSDTypeDefinition=resolvedElement.typeDefinition;
+	isComplexType:Boolean=resolvedTypeDefinition.oclIsKindOf(XSDComplexTypeDefinition);
+	hasSimpleContent:Boolean=(resolvedTypeDefinition<>null)
+		and not(resolvedTypeDefinition.oclIsUndefined())
+		and (resolvedTypeDefinition.oclAsType(XSDComplexTypeDefinition).content<>null)
+		and not(resolvedTypeDefinition.oclAsType(XSDComplexTypeDefinition).content.oclIsUndefined())
+		and resolvedTypeDefinition.oclAsType(XSDComplexTypeDefinition).content.oclIsKindOf(XSDSimpleTypeDefinition);
+}][if(maxElementDepth>0)][if(isComplexType)][if(hasSimpleContent)][resolvedElement.XSDParticleContentElementSimple(maxElementDepth,namespaceMap,qualifiedName)/][else][resolvedElement.XSDParticleContentElementComplex(maxElementDepth,namespaceMap,qualifiedName)/][/if][else][resolvedElement.XSDParticleContentElementSimple(maxElementDepth,namespaceMap,qualifiedName)/][/if][/if][/template]
+[query public concreteElement(element : XSDElementDeclaration):XSDElementDeclaration=
+	if(element.abstract and element.substitutionGroup->notEmpty())then element.substitutionGroup->first() else element endif
+/]	
+
+[template public XSDParticleContentElementSimple(element : XSDElementDeclaration,maxElementDepth : Integer,namespaceMap : OclAny,qualifiedName:String){
+	resolvedElement:XSDElementDeclaration=element.resolvedElementDeclaration;
+	resolvedTypeDefinition:XSDTypeDefinition=resolvedElement.typeDefinition;
+}]
+<[resolvedElement.instanceQName(namespaceMap)/] [resolvedTypeDefinition.AttributeContents(namespaceMap,(qualifiedName+'_'+resolvedElement.name))/]>[resolvedTypeDefinition.TypeDefinition(maxElementDepth-1,namespaceMap,(qualifiedName+'_'+resolvedElement.name))/]</[resolvedElement.instanceQName(namespaceMap)/]>
+[/template]
+[template public XSDParticleContentElementComplex(element : XSDElementDeclaration,maxElementDepth : Integer,namespaceMap : OclAny,qualifiedName:String){
+	resolvedElement:XSDElementDeclaration=element.resolvedElementDeclaration;
+	resolvedTypeDefinition:XSDTypeDefinition=resolvedElement.typeDefinition;
+}]
+<[resolvedElement.instanceQName(namespaceMap)/] [resolvedTypeDefinition.AttributeContents(namespaceMap,(qualifiedName+'_'+resolvedElement.name))/]>
+   [resolvedTypeDefinition.TypeDefinition(maxElementDepth-1,namespaceMap,(qualifiedName+'_'+resolvedElement.name))/]
+</[resolvedElement.instanceQName(namespaceMap)/]>
+[/template]
+[template public XSDParticleContentGroup(modelGroup : XSDModelGroup,maxElementDepth : Integer,namespaceMap : OclAny,qualifiedName:String){
+	particles:OrderedSet(XSDParticle)=modelGroup.contents;
+}]
+[for(particle:XSDParticle|particles)]
+[particle.content.XSDParticleContent(maxElementDepth,namespaceMap,qualifiedName)/]
+[/for]
+[/template]
+
+
+[template public XSDParticleContentGroupDefinition(content : XSDModelGroupDefinition,maxElementDepth : Integer,namespaceMap : OclAny,qualifiedName:String)]
+[/template]
+[template public XSDParticleContentWildcard(content : XSDWildcard,maxElementDepth : Integer,namespaceMap : OclAny,qualifiedName:String)]
+[/template]
+
+[template public AttributeContents(typeDefinition : XSDTypeDefinition , namespaceMap : OclAny,qualifiedName:String)
+][if(typeDefinition.oclIsKindOf(XSDComplexTypeDefinition))][typeDefinition.oclAsType(XSDComplexTypeDefinition).AttributeContentsComplex(namespaceMap,qualifiedName)/][/if][/template]
+[template public AttributeContentsComplex(typeDefinition : XSDComplexTypeDefinition,namespaceMap:OclAny,qualifiedName:String){
+	baseTypeDefinition:XSDTypeDefinition=if(typeDefinition.baseTypeDefinition=typeDefinition) then null else typeDefinition.baseTypeDefinition endif;
+	attributeContents:Sequence(XSDAttributeGroupContent)=typeDefinition.attributeContents->asSequence();
+}][if((baseTypeDefinition<>null) and not(baseTypeDefinition.oclIsUndefined()))][baseTypeDefinition.AttributeContents(namespaceMap,qualifiedName)/][/if][for(attributeContent:XSDAttributeGroupContent|attributeContents)][attributeContent.XSDAttributeGroupContent(namespaceMap,qualifiedName)/][/for][/template]
+
+[template public XSDAttributeGroupContent(typeDefinition : XSDAttributeGroupContent,namespaceMap : OclAny,qualifiedName:String)
+][if(typeDefinition.oclIsKindOf(XSDAttributeUse))][typeDefinition.oclAsType(XSDAttributeUse).XSDAttributeGroupContentUse(namespaceMap,qualifiedName)/][else][typeDefinition.oclAsType(XSDAttributeGroupDefinition).XSDAttributeGroupContentDefinition(namespaceMap,qualifiedName)/][/if][/template]
+[template public XSDAttributeGroupContentUse(attributeUse : XSDAttributeUse,namespaceMap : OclAny,qualifiedName:String){
+	attributeDeclaration:XSDAttributeDeclaration=attributeUse.attributeDeclaration.resolvedAttributeDeclaration;
+}] [attributeDeclaration.instanceQName(namespaceMap)/]="[attributeDeclaration.typeDefinition.TypeDefinition(1,namespaceMap,(qualifiedName+'_'+attributeDeclaration.name))/]" [/template]
+[template public XSDAttributeGroupContentDefinition(attributeGroupDefinition : XSDAttributeGroupDefinition,namespaceMap : OclAny,qualifiedName:String){
+	resolvedAttributeGroupDefinition:XSDAttributeGroupDefinition=attributeGroupDefinition.resolvedAttributeGroupDefinition;
+	attributeContents:Sequence(XSDAttributeGroupContent)=resolvedAttributeGroupDefinition.contents->asSequence();
+}][for(attributeContent:XSDAttributeGroupContent|attributeContents)][attributeContent.XSDAttributeGroupContent(namespaceMap,qualifiedName)/][/for][/template]

@@ -1,0 +1,243 @@
+[comment encoding = UTF-8 /]
+[module commonMethods(
+	'http://www.eclipse.org/emf/2002/Ecore',
+	'http://cs.manchester.ac.uk/mdsd/Expression',
+	'http://cs.manchester.ac.uk/mdsd/ObjectRelationalMapping',
+	'http://cs.manchester.ac.uk/mdsd/Service',
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::criteria::m2t::criteria/]
+[import uk::ac::man::cs::mdsd::orm::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::featureProperties/]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::uriRoutes/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::files/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::names/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::uriRoutes/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::expression::controller/]
+
+
+[template public translate(message : String) post(trim())]
+$this->get('translator')->trans('[message/]')
+[/template]
+
+[template public routeAnnotation(unit : ContentUnit) post(trim())]
+[unit.routeAnnotation(unit.uriElement, '', false)/]
+[/template]
+
+[template public routeAnnotation(unit : ContentUnit, uriSuffix : String, nameSuffix : String, parentPath : Boolean) post(trim())]
+[if (unit.isHomeUnit() and unit.uriPath(uriSuffix, parentPath) <> '')]
+* @Route("", name="Home")
+[/if]
+* @Route("[unit.uriPath(uriSuffix, parentPath)/]", name="[unit.routeName(nameSuffix)/]"[if (unit.hasValidatedRouteParameters(parentPath))]
+, requirements={[for (key : Attribute | unit.uriPathValidatedKeys(parentPath)) separator(', ')]"[key.routeParameterName(unit.oclAsType(DynamicUnit).contentType())/]" = "[key.validationPattern/]"[/for]}[/if])
+[/template]
+
+
+[template public actionMethodParameters(page : Page, unit : DynamicUnit, entityOrView : EntityOrView) post(trim())]
+[if (entityOrView.oclIsUndefined())]
+	[if (page.hasFilterParameters() or unit.oclIsKindOf(EditUnit))]
+Request $request
+	[/if]
+[else]
+[if (page.hasFilterParameters() or unit.oclIsKindOf(EditUnit))]
+Request $request[if (entityOrView.hasRouteParameters())]
+, [/if][/if][entityOrView.routeParameters()/]
+[/if]
+[/template]
+
+[template public renderActualParameters(page : Page, entityOrView : EntityOrView) post(trim())]
+[if (entityOrView.oclIsUndefined())]
+	[if (page.hasFilterParameters())]
+$request
+	[/if]
+[else]
+[if (page.hasFilterParameters())]
+$request[if (page.uriCommonPathKeys()->notEmpty())]
+, [/if][/if][for (key : Attribute | page.uriCommonPathKeys()) separator(', ')]
+$[key.routeParameterName(entityOrView)/][/for]
+[/if]
+[/template]
+
+
+[template public getContentService(unit : DynamicUnit) post(trim())]
+$this->get('[unit.contentService().name/]')
+
+[/template]
+
+[template public getSelectionService(unit : CollectionUnit) post(trim())]
+$this->get('[unit.selectionService().name/]')
+
+[/template]
+
+[template public findActualParameters(entityOrView : EntityOrView) post(trim())]
+[for (key : Attribute | entityOrView.uriPathKeys()) separator (', ')]
+[let parameterName : String = key.routeParameterName(entityOrView)]
+	[if (key.encodeUriKey)]
+urldecode($[parameterName/])[else]
+$[parameterName/][/if]
+[/let]
+[/for]
+[/template]
+
+[template public loadInstance(entityOrView : EntityOrView, unit : DynamicUnit) post(trim())]
+[unit.getContentService()/]->find([entityOrView.findActualParameters()/])
+[/template]
+
+[template public loadSelectedInstance(unit : DataUnit) post(trim())]
+[if (unit.defaultSelection.oclIsUndefined())]
+$this->[unit.instanceName()/] = [unit.selectType().loadInstance(unit)/];
+[else]
+$this->[unit.instanceName()/] = [unit.getContentService()/]->[unit.defaultSelection.instanceName()/]();
+[/if]
+[/template]
+
+[template public loadSelectedInstance(unit : EditUnit) post(trim())]
+[if (unit.defaultSelection.oclIsUndefined())]
+$[unit.instanceName()/] = [unit.selectType().loadInstance(unit)/];
+[else]
+$[unit.instanceName()/] = [unit.getContentService()/]->[unit.defaultSelection.instanceName()/]();
+[/if]
+[/template]
+
+[template public loadSelectedInstance(unit : ImageUnit) post(trim())]
+[if (unit.defaultSelection.oclIsUndefined())]
+$this->[unit.instanceName()/] = [unit.selectType().loadInstance(unit)/];
+[else]
+$this->[unit.instanceName()/] = [unit.getContentService()/]->[unit.defaultSelection.instanceName()/]();
+[/if]
+[/template]
+
+[template public createInstance(unit : DynamicUnit) post(trim())]
+new [unit.modelName()/]()
+[/template]
+
+
+[template public unitDefaultValues(unit : DynamicUnit) post(trim())]
+[for (field : UnitField | unit.defaultValueFields())]
+[if (field.oclIsTypeOf(UnitAttribute))]
+$this->[unit.instanceName()/]->[field.modelPropertyName()/] = [field.oclAsType(UnitAttribute).defaultValue.valueExpression()/];
+[else]
+$this->[unit.instanceName()/]->[field.modelPropertyName()/] = [field.oclAsType(InterfaceField).defaultValue.valueExpression()/];
+[/if]
+[/for]
+[/template]
+
+[template public handleCancel(unit : DynamicUnit) post(trim())]
+[let cancelDestination : Page = 
+	if unit.oclIsKindOf(ControlUnit) then
+		unit.oclAsType(ControlUnit).cancelDestination
+	else
+		unit.oclAsType(EditUnit).cancelDestination
+	endif]
+if ($this->[unit.instanceName()/]->isSubmitted() && $this->[unit.instanceName()/]->get('cancel')->isClicked())
+	return $this->redirectToRoute('[comment cancelDestination routeName()/]');
+[/let]
+[/template]
+
+[template public forcedFeatureValues(unit : DynamicUnit) post(trim())]
+[for (feature : UnitField | unit.forcedValueFeatures())]
+[let value : Expression = feature.oclAsType(UnitFeature).forcedValue]
+$this->[unit.instanceName()/]->[feature.formName()/] = [value.valueExpression()/];
+[/let]
+[/for]
+[/template]
+
+[template public generateInterfaceFieldValidation(unit : DynamicUnit) post(trim())]
+$extra_validation = Validation::factory($_POST);
+[for (field : InterfaceField | unit.interfaceFields())]
+	[if (field.isRequired())]
+$extra_validation->rule('[field.modelPropertyName()/]', 'not_empty');
+	[/if]
+	[if (field.oclIsTypeOf(DateField))]
+$extra_validation->rule('[field.modelPropertyName()/]', 'date');
+	[/if]
+	[if (not field.mustMatch.oclIsUndefined())]
+$extra_validation->rule('[field.modelPropertyName()/]', 'matches', array(':validation', ':field', '[field.mustMatch.modelPropertyName()/]'));
+	[/if]
+[/for]
+[/template]
+
+
+[template public generateClearEncryptedFeatures(unit : DynamicUnit) post(trim())]
+[for (field : UnitField | unit.encryptedFeatures())]
+$this->[unit.instanceName()/]->[field.modelPropertyName()/] = '';
+[/for]
+[/template]
+
+[template public generateRememberInterfaceFields(unit : DynamicUnit) post(trim())]
+$this->[unit.instanceName()/]->unit_fields($this->request->post(), array([for
+	(field : UnitField | unit.interfaceFields())
+	separator (', ')]'[field.formName()/]'[/for]));
+[/template]
+
+
+[template public generateRemoveParameter(eObject : EObject, parameterName : String) post(trim())]
+unset($this->query_parameters['['/]'[parameterName/]'[']'/]);
+[/template]
+
+
+[template public templateParameters(page : Page) post(trim())]
+$parameters['['/]'title'[']'/] = $this->get('translator')->trans('label.[page.id()/]', array(), '[page.translationDomain()/]');
+[if (page.useInputJQuery() or page.hasImageUnits())]
+[page.templateStyleParameters()/]
+[/if]
+[if (page.hasJavascript() or page.useInputJQuery())]
+[page.templateScriptParameters()/]
+[/if]
+[/template]
+
+[template private templateStyleParameters(page : Page) post(trim())]
+$parameters['['/]'styles'[']'/] = array(
+	[if (page.useInputJQuery())]
+    'https://code.jquery.com/ui/1.12.0/themes/cupertino/jquery-ui.css',
+    'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/css/select2.min.css',
+		[if (page.formUnits()->collect(u | u.displayFields)->select(f | f.isDate())->notEmpty())]
+    'css/wickedpicker.css',
+		[/if]
+	[/if]
+	[if (page.hasSliderUnits() or page.hasChildSliderUnits())]
+    'css/blueimp-gallery.min.css',
+	[/if]
+	[if (page.hasGalleryUnits() or page.hasChildGalleryUnits())]
+    'css/unite-gallery.css',
+	[/if]
+);
+[/template]
+
+[template public templateScriptParameters(page : Page) post(trim())]
+$parameters['['/]'scripts'[']'/] = array(
+    array(
+        'src'=>'https://code.jquery.com/jquery-1.12.4.min.js',
+        'integrity' => 'sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=',
+        'crossorigin' => 'anonymous',
+    ),
+[if (page.useInputJQuery())]
+    array(
+        'src'=>'https://code.jquery.com/ui/1.12.0/jquery-ui.min.js',
+        'integrity' => 'sha256-eGE6blurk5sHj+rmkfsGYeKyZx3M4bG+ZlFyA7Kns7E=',
+        'crossorigin' => 'anonymous',
+    ),
+    'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/js/select2.min.js',
+[comment     '[page.partOf.autocompleteFilename()', /]
+	[if (page.formUnits()->collect(u | u.displayFields)->select(f | f.isDate())->notEmpty())]
+    'js/wickedpicker.js',
+	[/if]
+[/if]
+[if (page.hasSliderUnits() or page.hasChildSliderUnits())]
+[comment    'js/jssor.slider.mini.js', /]
+[comment    'js/jquery.blueimp-gallery.min.js', /]
+[/if]
+[if (page.hasGalleryUnits() or page.hasChildGalleryUnits())]
+    'js/unitegallery.min.js',
+    'themes/ug-theme-tilesgrid.js',
+[/if]
+[if ((page.useInputJQuery() and page.formUnits()->select(u | not u.contentType().oclIsUndefined())->notEmpty()))]
+    '[page.partOf.javascriptFormFilename()/]',
+[/if]
+[if (page.hasChangableCollections() or page.hasSliderUnits())]
+    '[page.partOf.javascriptImageFilename()/]',
+[/if]
+[if (page.partOf.responsiveTopMenu)]
+    'js/responsive-nav.min.js',
+[/if]
+);
+[/template]

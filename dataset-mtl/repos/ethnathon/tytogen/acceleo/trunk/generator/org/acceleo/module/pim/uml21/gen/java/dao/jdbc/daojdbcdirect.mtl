@@ -1,0 +1,357 @@
+[module daojdbcdirect('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::jdbc::daojdbcconnection /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::services::stringservice /] 
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::sql::services::sqltypeservices /]
+
+[comment][template private fullFilePath(class:Class)]
+	[if (class.isEntity())]
+[class.pathToMainJava()/]/[class.jdbcPackage().toPath()/]/Jdbc[class.name/]Dao.java
+	[/if]
+
+[/template][/comment]
+
+
+[template public generateDaoJdbcDirect(class:Class)? (class.isEntity())]
+[comment This template is called by the main module file /]
+	[file (class.fullFilePath(class.pathToMainJava(),class.jdbcPackage().toPath(), 'Jdbc'.concat(class.name).concat('Dao.java')), false))]
+package [class.jdbcPackage()/];
+
+// [protected ('imports')]
+// for import 
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collection;
+
+[class.importDaoException()/]
+import [class.utilPackage()/].[class.projectName().toUpperFirst()/]ConnectionUtils;
+import [class.entityQualifiedName()/];
+	[for (prop:Property|class.getOppositeAttributes())]
+import [prop.type.entityQualifiedName()/];
+	[/for]
+
+import [class.daoInterfaceQualifiedName()/];
+
+// [/protected] for import 
+
+/**
+ * This class provides the data access layer to the [class.name/] entity class.
+ * This is the JDBC implementation.
+ */
+public class Jdbc[class.name/]Dao implements [class.daoInterfaceName()/] {
+
+[comment  Generates static declaration for database fields /]    
+protected static final String TABLE_NAME = "[class.name.toSqlNotation()/]";
+
+	[for (prop:Property|class.ownedAttribute)] 
+		[if (not (prop.isDerived))]
+    protected static final String [prop.name.toUpper()/] = "[prop.name.toSqlNotation()/]";
+		[/if]
+	[/for]
+	[for (prop:Property|class.getOppositeAttributes())]
+    protected static final String [prop.name.toUpper()/] = "[prop.name.toSqlNotation()/]_ID";
+	[/for]
+    
+    // [protected ('sqls')]
+	
+	protected static final String CREATE_QUERY = 
+        "INSERT INTO " + TABLE_NAME + 
+        " ([class.attribute.name.toSqlNotation()->sep(', ')/]) VALUES ( [for (class.attribute)]? [/for])";
+        
+    protected static final String UPDATE_QUERY = 
+        "UPDATE " + TABLE_NAME + 
+        " SET  [filterWithOutStereotype(class.attribute->asSequence(),'id')->filter(Property).genComparator()->sep(', ')/]" +
+        " WHERE [filterWithStereotype(class.attribute->asSequence(), 'id')->filter(Property).genComparator()->sep(' and ')/]";
+    
+    protected static final String DELETE_QUERY = 
+        "DELETE FROM " + TABLE_NAME + 
+        " WHERE [filterWithStereotype(class.attribute->asSequence(), 'id')->filter(Property).genComparator()->sep(' and ')/]";
+        
+    protected static final String FIND_ALL_QUERY = 
+        "SELECT * FROM " + TABLE_NAME;
+        
+    protected static final String FIND_BY_ID = 
+        "SELECT * FROM " + TABLE_NAME +
+        " WHERE ID = ?";
+        
+	[if (filterWithStereotype(class.attribute->asSequence(), 'id')->size() > 1)]
+		[for (prop:Property|filterWithStereotype(class.attribute->asSequence(), 'id')->filter(Property))]
+    protected static final String FIND_BY_[prop.name.toSqlNotation()/] = 
+        "SELECT * FROM " + TABLE_NAME +
+        " WHERE [prop.name.toSqlNotation()/] = ?";
+		[/for]
+	[/if]
+    // [/protected]
+
+    protected Collection<[class.name/]> createList(ResultSet rs) throws SQLException {
+        Collection<[class.name/]> result = new ArrayList<[class.name/]>();
+        [class.name/] [class.name.toLowerFirst()/] = null;
+        while (rs.next()) {
+            [class.name.toLowerFirst()/] = new [class.name/]();
+	[for (prop:Property|class.ownedAttribute)]
+		[if (not (prop.isDerived))]
+			[if (prop.upper = 1)]
+            [class.name.toLowerFirst()/].set[prop.name.toUpperFirst()/]( rs.get[prop.genRsType()/]([prop.name.toUpper()/]) );
+			[/if]
+		[/if]
+	[/for]
+	[for (prop:Property|class.getOppositeAttributes())]
+            [prop.type.name/] [prop.type.name.toLowerFirst()/] = new [prop.type.name/]();
+            [prop.type.name.toLowerFirst()/].setId( rs.getString([prop.name.toUpper()/]) );
+		[if (prop.upper = 1)]
+            [class.name.toLowerFirst()/].set[prop.name.toUpperFirst()/]( [prop.type.name.toLowerFirst()/] );
+		[else]
+            [class.name.toLowerFirst()/].get[prop.name.toUpperFirst()/]().add( [prop.type.name.toLowerFirst()/] );
+		[/if]
+	[/for]
+
+            result.add([class.name.toLowerFirst()/]);
+        }
+        return result;
+    }
+
+    public void create[class.name/]([class.name/] element) throws DaoException {
+        Connection cnx = null;
+        PreparedStatement statement = null;
+
+        try {
+            cnx = [class.projectName().toUpperFirst()/]ConnectionUtils.getInstance().getConnection();
+            statement = cnx.prepareStatement(CREATE_QUERY);
+			//[protected ('create')]
+            // create
+            // 
+	[for (prop:Property|class.attribute)]
+		[if (not (prop.isDerived))]
+			[if (prop.upper = 1)]
+				[if (prop.type.name = 'String')]
+            statement.setString([i + 1/], element.get[prop.name.toUpperFirst()/]());
+				[elseif (prop.type.name = 'Date')]
+            statement.setDate([i + 1/], new Date(element.get[prop.name.toUpperFirst()/]().getTime()));
+				[elseif (prop.type.name = 'Integer')]
+            statement.setInt([i + 1/], element.get[prop.name.toUpperFirst()/]());
+				[/if]
+			[/if]
+		[/if]
+	[/for]
+            // [/protected]
+
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new DaoException("Erreur requete", e);
+        } finally {
+            try {
+                if(statement!=null){statement.close();}
+                if(cnx!=null){cnx.close();}
+            } catch (SQLException e) {
+                throw new DaoException("Erreur de fermeture JDBC", e);
+            }
+        }
+    }
+    
+    public void update[class.name/]([class.name/] element) throws DaoException {
+        Connection cnx = null;
+        PreparedStatement statement = null;
+
+        try {
+            cnx = [class.projectName().toUpperFirst()/]ConnectionUtils.getInstance().getConnection();
+            statement = cnx.prepareStatement(UPDATE_QUERY);
+             // [protected ('update')]
+	[for (prop:Property|class.attribute)]
+		[if (not (prop.isDerived))]
+			[if (prop.upper = 1)]
+				[if (prop.type.name = 'String')]
+	        statement.setString([i + 1/], element.get[prop.name.toUpperFirst()/]());
+				[elseif (prop.type.name = 'Date')]
+            statement.setDate([i + 1/], new Date(element.get[prop.name.toUpperFirst()/]().getTime()));
+				[elseif (prop.type.name = 'Integer')]
+            statement.setInt([i + 1/], element.get[prop.name.toUpperFirst()/]());
+				[/if]
+			[/if]
+		[/if]
+	[/for]
+            // [/protected]
+
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new DaoException("Erreur requete", e);
+        } finally {
+            try {
+                if(statement!=null){statement.close();}
+                if(cnx!=null){cnx.close();}
+            } catch (SQLException e) {
+                throw new DaoException("Erreur de fermeture JDBC", e);
+            }
+        }
+    }
+    
+    public void delete[class.name/]([class.name/] element) throws DaoException {
+        Connection cnx = null;
+        PreparedStatement statement = null;
+
+        try {
+            cnx = [class.projectName().toUpperFirst()/]ConnectionUtils.getInstance().getConnection();
+            statement = cnx.prepareStatement(DELETE_QUERY);
+            // [protected ('delete')]
+	[for (prop:Property|filterWithStereotype(class.attribute->asSequence(), 'id')->filter(Property))]
+		[if (not (prop.isDerived))]
+			[if (prop.upper = 1)]
+				[if (prop.type.name = 'String')]
+        statement.setString([i + 1/], element.get[prop.name.toUpperFirst()/]());
+				[elseif (prop.type.name = 'Date')]
+        statement.setDate([i + 1/], new Date(element.get[prop.name.toUpperFirst()/]().getTime()));
+				[elseif (prop.type.name = 'Integer')]
+        statement.setInt([i + 1/], element.get[prop.name.toUpperFirst()/]());
+				[/if]
+			[/if]
+		[/if]
+	[/for]
+            // [/protected]
+
+
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new DaoException("Erreur requete", e);
+        } finally {
+            try {
+                if(statement!=null){statement.close();}
+                if(cnx!=null){cnx.close();}
+            } catch (SQLException e) {
+                throw new DaoException("Erreur de fermeture JDBC", e);
+            }
+        }
+    }
+    
+    public Collection<[class.name/]> findAll[class.name/]s() throws DaoException {
+        Connection cnx = null;
+        Statement statement = null;
+        ResultSet rs = null;
+
+        try {
+            cnx = [class.projectName().toUpperFirst()/]ConnectionUtils.getInstance().getConnection();
+            statement = cnx.createStatement();
+            rs = statement.executeQuery(FIND_ALL_QUERY);
+
+            Collection<[class.name/]> result = createList(rs);
+            return result;
+        } catch (SQLException e) {
+            throw new DaoException("Erreur requete", e);
+        } finally {
+            try {
+                if(rs!=null){rs.close();}
+                if(statement!=null){statement.close();}
+                if(cnx!=null){cnx.close();}
+            } catch (SQLException e) {
+                throw new DaoException("Erreur de fermeture JDBC", e);
+            }
+        }
+    }    
+    
+    public [class.name/] find[class.name/]ById(String id) throws DaoException {
+        Connection cnx = null;
+        Statement statement = null;
+        ResultSet rs = null;
+
+        try {
+            cnx = [class.projectName().toUpperFirst()/]ConnectionUtils.getInstance().getConnection();
+            statement = cnx.createStatement();
+            rs = statement.executeQuery(FIND_BY_ID);
+
+            [class.name/] result = new [class.name/]();
+	[for (prop:Property|class.ownedAttribute)]
+		[if (not (prop.isDerived))]
+			[if (prop.upper = 1)]
+            result.set[prop.name.toUpperFirst()/]( rs.get[prop.genRsType()/]([prop.name.toUpper()/]) );
+			[/if]
+		[/if]
+	[/for]
+            return result;
+        } catch (SQLException e) {
+            throw new DaoException("Erreur requete", e);
+        } finally {
+            try {
+                if(rs!=null){rs.close();}
+                if(statement!=null){statement.close();}
+                if(cnx!=null){cnx.close();}
+            } catch (SQLException e) {
+                throw new DaoException("Erreur de fermeture JDBC", e);
+            }
+        }
+    }
+    
+	[if (filterWithStereotype(class.attribute->asSequence(), 'id')->size() > 1)]
+		[for (prop:Property|filterWithStereotype(class.attribute->asSequence(), 'id')->filter(Property))]
+    public Collection<[prop.name/]> find[prop.name/]sBy[prop.name/]([prop.type.name/] [prop.name/]) throws DaoException {
+        Connection cnx = null;
+        Statement statement = null;
+        ResultSet rs = null;
+
+        try {
+            cnx = [prop.projectName().toUpperFirst()/]ConnectionUtils.getInstance().getConnection();
+            statement = cnx.createStatement();
+            rs = statement.executeQuery(FIND_BY_[prop.name.toSqlNotation()/]);
+
+            Collection<[prop.name/]> result = createList(rs);
+            return result;
+        } catch (SQLException e) {
+            throw new DaoException("Erreur requete", e);
+        } finally {
+            try {
+                if(rs!=null){rs.close();}
+                if(statement!=null){statement.close();}
+                if(cnx!=null){cnx.close();}
+            } catch (SQLException e) {
+                throw new DaoException("Erreur de fermeture JDBC", e);
+            }
+        }
+    }
+		[/for]
+	[/if]
+
+    
+[comment  Generate additional methods declaration /]
+	[for (oper:Operation|class.ownedOperation)]
+[comment  Generate methods with find stereotypes /]
+		[if (oper.hasStereotype('find'))]
+    [oper.generateJavadoc()/]
+    public [oper.returnResult().convertToJavaType()/] [oper.name/]([oper.generateParameters()/]) throws DaoException {
+        // [protected ('return')]        
+		return null;
+        // [/protected]
+    }
+		[/if]
+	[/for]
+
+    // [protected ('free')]   
+	// [/protected]
+}
+	[/file]
+[/template]
+
+
+[template public jdbcPackage(class:Class)]
+[class.daoPackage()/].jdbc
+[/template]
+
+
+[template public genComparator(prop:Property)]
+[prop.name.toSqlNotation()/] = ? 
+[/template]
+
+
+[template public genRsType(prop:Property)]
+[prop.convertToJavaType().toUpperFirst()/]
+[/template]
+
+
+

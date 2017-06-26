@@ -1,0 +1,78 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generate.
+ */]
+[module testingTemplateInterface('http://www.obeonetwork.org/dsl/soa/2.0.0')]
+[import org::eclipse::acceleo::module::model2play::soaws::requests::requests/]
+[import org::eclipse::acceleo::module::model2play::soaws::common::operationTestForm/]
+
+
+[**
+ * The documentation of the template generateWebServices.
+ * @param aSystem
+ */]
+[template public generateTemplate(anInterface : Interface)]
+
+[file ( get_test_templates_folder() + get_test_template_filename(), false, 'UTF-8')]
+
+<html>
+<head>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+[comment TODO : Mettre tout ca dans un .js /]
+<script type="text/javascript">
+
+    $("form .send").live("click", function(){
+    
+       	var response_area = $(this).siblings("textarea.result");
+    
+    
+    	var url = $(this).parent().attr('action');
+    	var id = $(this).siblings("input.id").val();
+    	if ( typeof(id) !== 'undefined' ) {
+    		url += '/'+id;
+    	}
+    	
+    	
+    	var data = '';
+    	$.each($(this).siblings("input"),function(i,field){
+    		if ( field.className != 'id' && field.value != '' ) {
+    			data += '&'+field.className+'='+field.value;
+    		}
+    	})    	
+    	
+		$.ajax({
+		    url: url,
+		    type: $(this).parent().attr('method'),
+		    data: data,
+		    dataType: 'text',
+		    success: function(result) {
+       			response_area.val('URL : '+url+' | '+data+'\n\n'+result);
+    		},
+    		error: function(response) {
+    			response_area.val('URL : '+url+' | '+data+'Bad response status  : ' + response.status);
+    		}
+
+		})
+
+    	return false;
+    });
+</script>du 
+</head>
+
+<body>
+[for(anInterface.ownedOperations)]
+<!-- Operation [name/] -->
+[generateTestForm()/]
+
+[/for]
+
+
+[if not(includes_method_of_type('getter'))]
+[generateDefaultGetterTestForm()/]
+[/if]
+
+</body>
+</html>
+[/file]
+[/template]

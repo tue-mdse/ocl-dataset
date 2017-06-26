@@ -1,0 +1,227 @@
+[comment encoding = UTF-8 /]
+[module HandlerHelpers('platform:/plugin/PIM2DotNetPlugin/metamodels/PSMMetamodel.ecore')]
+
+[template public genHandlerFilePath(aHTTPActionHandler : HTTPActionHandler , aRESTfulServicePSM : RESTfulServicePSM)]
+[aRESTfulServicePSM.name/]/[aRESTfulServicePSM.name/]/Handlers/[aHTTPActionHandler.getCurrentResource().name/]/[aHTTPActionHandler.name/].cs
+[/template]
+
+[template public genHandlerParameters(aHTTPActionHandler : HTTPActionHandler)]
+[let aHTTPAction : HTTPAction = aHTTPActionHandler.eContainer(HTTPAction)]
+[for(parameter : FunctionParameter | aHTTPAction.HTTPActionHasParameter->select(p | not p.bIsReturnParameter))] , [parameter.type/] [parameter.name/][/for][/let]
+[/template]
+
+[template public returnParameterInstatiation(aHTTPActionHandler : HTTPActionHandler)]
+[if (aHTTPActionHandler.entityParameterExists())][aHTTPActionHandler.getEntityParameter().name/][else]new [aHTTPActionHandler.getReturnType()/]()[/if]
+[/template]
+
+[template public SuccessCode(aHTTPActionHandler : HTTPActionHandler)]
+[if ( aHTTPActionHandler.HandlerHTTPVerb.toString() = 'POST')]
+Created[else]
+OK[/if]
+[/template]
+
+[template public rootExists(aHTTPActionHandler : HTTPActionHandler)]
+[if (aHTTPActionHandler.hasParent() and aHTTPActionHandler.currentIsManager())]
+this.[aHTTPActionHandler.DbController().name.toLowerFirst()/].[aHTTPActionHandler.getParentResource().name/].exists((int)this.parent[aHTTPActionHandler.getParentResource().name/].[aHTTPActionHandler.getParentResourcePK().name/])[elseif (aHTTPActionHandler.hasParent() and not aHTTPActionHandler.currentIsManager() and aHTTPActionHandler.HandlerHTTPVerb.toString() = 'PUT')]
+this.[aHTTPActionHandler.DbController().name.toLowerFirst()/].[aHTTPActionHandler.getParentResource().name/].exists((int)this.[aHTTPActionHandler.getCurrentResource().name.toLowerFirst()/].[aHTTPActionHandler.getCurrentResourceFK().name/])[/if]
+[/template]
+
+[template public resourceExists(aHTTPActionHandler : HTTPActionHandler)]
+[if (not aHTTPActionHandler.currentIsManager())]
+[if (aHTTPActionHandler.HandlerHTTPVerb.toString() <> 'GET' and aHTTPActionHandler.HandlerHTTPVerb.toString() <> 'DELETE' and aHTTPActionHandler.hasParent())]
+ && [/if]this.[aHTTPActionHandler.DbController().name.toLowerFirst()/].[aHTTPActionHandler.getCurrentResource().name/].exists((int)this.[aHTTPActionHandler.getReturnType().toLowerFirst()/].[aHTTPActionHandler.getCurrentResourcePK().name/])[/if]
+[/template]
+
+[template public handlerBody2(aHTTPActionHandler : HTTPActionHandler , aRESTfulServicePSM : RESTfulServicePSM)]
+using ( this.[aRESTfulServicePSM.hasEntityDatabaseController.name.toLowerFirst()/] = new [aRESTfulServicePSM.hasEntityDatabaseController.name.toUpperFirst()/]()) {
+	
+	[if (aHTTPActionHandler.hasParent() or not aHTTPActionHandler.currentIsManager())]
+	if ( [aHTTPActionHandler.rootExists()/][aHTTPActionHandler.resourceExists()/])
+	{ 
+		[aHTTPActionHandler.handlerBody()/]
+    }
+    else
+    {		
+        _code = HttpStatusCode.NotFound ;
+    }
+	[else]
+	[aHTTPActionHandler.handlerBody()/]
+	[/if]
+}
+[/template]
+
+[template public handlerBody(aHTTPActionHandler : HTTPActionHandler)]
+[if (aHTTPActionHandler.currentIsManager() and aHTTPActionHandler.HandlerHTTPVerb.toString() = 'GET')]
+[if (aHTTPActionHandler.fKParameterExists())]
+this.parent[aHTTPActionHandler.getParentResource().name/] = this.[aHTTPActionHandler.DbController().name.toLowerFirst()/].[aHTTPActionHandler.getParentResource().name/].getWithCollections( this.parent[aHTTPActionHandler.getParentResource().name/].[aHTTPActionHandler.getParentResourcePK().name/] ) ;
+this.[aHTTPActionHandler.getCurrentResource().name.toLowerFirst()/]List = this.parent[aHTTPActionHandler.getParentResource().name/].[aHTTPActionHandler.getParentResourceNavProperty().name/] ;
+[else]
+this.[aHTTPActionHandler.getCurrentResource().name.toLowerFirst()/]List = this.[aHTTPActionHandler.DbController().name.toLowerFirst()/].[aHTTPActionHandler.getCurrentResource().name/].getAll() ;
+[/if]
+[else]
+this.[aHTTPActionHandler.getReturnType().toLowerFirst()/] = this.[aHTTPActionHandler.DbController().name.toLowerFirst()/].[aHTTPActionHandler.getCurrentResource().name/].[aHTTPActionHandler.HandlerHTTPVerb.toString().toLowerCase()/]( this.[aHTTPActionHandler.getReturnType().toLowerFirst()/][if (aHTTPActionHandler.HandlerHTTPVerb.toString() <> 'POST' and aHTTPActionHandler.HandlerHTTPVerb.toString() <> 'PUT')].[aHTTPActionHandler.getCurrentResourcePK().name/][/if] ) ;
+[if(aHTTPActionHandler.getParentResources()->size() > 1 and aHTTPActionHandler.HandlerHTTPVerb.toString() = 'POST')]
+this.parent[aHTTPActionHandler.getParentResource().name/] = this.[aHTTPActionHandler.DbController().name.toLowerFirst()/].[aHTTPActionHandler.getParentResource().name/].getWithCollections(this.parent[aHTTPActionHandler.getParentResource().name/].[aHTTPActionHandler.getParentResourcePK().name/]);
+[/if]
+[/if]
+
+if ([if (aHTTPActionHandler.HandlerHTTPVerb.toString() = 'GET')]this.[if (aHTTPActionHandler.currentIsManager())][aHTTPActionHandler.getCurrentResource().name.toLowerFirst()/]List[else][aHTTPActionHandler.getReturnType().toLowerFirst()/][/if] != null[else]this.[aHTTPActionHandler.DbController().name.toLowerFirst()/].Commit() != -1[/if])
+{
+    _code = HttpStatusCode.[aHTTPActionHandler.SuccessCode()/] ;
+}
+else
+{
+	this.[aHTTPActionHandler.getReturnType().toLowerFirst()/] = new [aHTTPActionHandler.getReturnType()/]() ;
+    _code = HttpStatusCode.InternalServerError ;
+}
+[/template]
+
+[query public getAction(aHTTPActionHandler : HTTPActionHandler) : HTTPAction = 
+	aHTTPActionHandler.eContainer(HTTPAction)
+/]
+
+[query public getReturnType(aHTTPActionHandler : HTTPActionHandler) : String = 
+	aHTTPActionHandler.getAction().HTTPActionHasParameter -> select(p | p.bIsReturnParameter) -> first().type
+/]
+
+[query public getCurrentResource(aHTTPActionHandler : HTTPActionHandler) : CSharpResourceModel =
+	if (aHTTPActionHandler.getCurrentController().oclIsTypeOf(CSharpResourceController))
+	then
+		aHTTPActionHandler.getAction().eContainer(CSharpResourceController).hasAssociatedCSharpRModel
+	else
+		aHTTPActionHandler.getAction().eContainer(CSharpResourceManagerController).hasAssociatedCSharpRMManager.hasRelatedCSharpRModel
+	endif
+/]
+
+[query public hasParent(aHTTPActionHandler : HTTPActionHandler) : Boolean =
+	not CSharpResourceModel.allInstances() 
+				-> select(r|r.hasRelatedCSharpRMManager -> collect(rm|rm.hasRelatedCSharpRModel) -> exists(r|r = aHTTPActionHandler.getCurrentResource()))
+				-> isEmpty()
+/]
+
+[comment EDW ELEGXW STRINGS /]
+[query public getParentResources(aHTTPActionHandler : HTTPActionHandler) : Set(CSharpResourceModel) =
+	CSharpResourceModel.allInstances() 
+			-> select(r|r.hasRelatedCSharpRMManager -> collect(rm|rm.hasRelatedCSharpRModel) -> exists(r|r = aHTTPActionHandler.getCurrentResource()))
+/]
+
+[comment EDW ELEGXW STRINGS /]
+[query public getParentResource(aHTTPActionHandler : HTTPActionHandler) : CSharpResourceModel =
+	let parents : OrderedSet(CSharpResourceModel) = aHTTPActionHandler.getParentResources()->asOrderedSet()
+	in
+		if parents -> size() = 1 then
+			parents->first()
+		else
+			parents -> select(r|r.getPk().name = aHTTPActionHandler.getFkParameter().name)->first()
+		endif
+/]
+
+[query public getCurrentController(aHTTPActionHandler : HTTPActionHandler) : OclAny =
+	aHTTPActionHandler.getAction().eContainer()
+/]
+
+[query public currentIsManager(aHTTPActionHandler : HTTPActionHandler) : Boolean =
+	aHTTPActionHandler.getCurrentController().oclIsTypeOf(CSharpResourceManagerController)
+/]
+
+[query public getParametersFromUri(aHTTPActionHandler : HTTPActionHandler) : Sequence(String) =
+	if aHTTPActionHandler.getAction().HTTPActionURI <> '/' then 
+		aHTTPActionHandler.getAction().HTTPActionURI.tokenize('/') -> select(s|s.startsWith('{')) 
+																   -> collect(s|s.substring(2 , s.size()-1))
+	else
+		if aHTTPActionHandler.currentIsManager() then 
+			aHTTPActionHandler.getCurrentController().oclAsType(CSharpResourceManagerController).controllerURI.tokenize('/') -> select(s|s.startsWith('{')) 
+																   -> collect(s|s.substring(2 , s.size()-1))
+		else
+			aHTTPActionHandler.getCurrentController().oclAsType(CSharpResourceController).controllerURI.tokenize('/') -> select(s|s.startsWith('{')) 
+																   -> collect(s|s.substring(2 , s.size()-1))
+		endif
+	endif
+/]
+
+[query public fKParameterExists(aHTTPActionHandler : HTTPActionHandler) : Boolean =
+	(aHTTPActionHandler.currentIsManager() and aHTTPActionHandler.getParametersFromUri() -> size() = 1
+		 and aHTTPActionHandler.getAction().HTTPActionHasParameter ->exists(p|p.name = aHTTPActionHandler.getParametersFromUri()->at(1)))
+	or
+	(aHTTPActionHandler.getParametersFromUri() -> size() = 2 
+		and aHTTPActionHandler.getAction().HTTPActionHasParameter ->exists(p|p.name = aHTTPActionHandler.getParametersFromUri()->at(1)))
+/]
+
+[query public getFkParameter(aHTTPActionHandler : HTTPActionHandler) : FunctionParameter =
+	aHTTPActionHandler.getAction().HTTPActionHasParameter 
+		-> select(p|p.name = aHTTPActionHandler.getParametersFromUri()->at(1))->first() 
+/]
+
+[query public pKParameterExists(aHTTPActionHandler : HTTPActionHandler) : Boolean =
+	not aHTTPActionHandler.currentIsManager()
+/]
+
+[query public getPkParameter(aHTTPActionHandler : HTTPActionHandler) : FunctionParameter =
+	if (not aHTTPActionHandler.currentIsManager()) and (aHTTPActionHandler.getParametersFromUri() -> size() = 1) then
+		aHTTPActionHandler.getAction().HTTPActionHasParameter -> select(p|p.name = aHTTPActionHandler.getParametersFromUri()->at(1))->first() 
+	else
+		aHTTPActionHandler.getAction().HTTPActionHasParameter -> select(p|p.name = aHTTPActionHandler.getParametersFromUri()->at(2))->first() 
+	endif
+/]
+
+[query public entityParameterExists(aHTTPActionHandler : HTTPActionHandler) : Boolean =
+	aHTTPActionHandler.HandlerHTTPVerb.toString() = 'PUT' or aHTTPActionHandler.HandlerHTTPVerb.toString() = 'POST'
+/]
+
+[query public getEntityParameter(aHTTPActionHandler : HTTPActionHandler) : FunctionParameter =
+	aHTTPActionHandler.getAction().HTTPActionHasParameter -> select(p|not p.bIsReturnParameter and CSharpResourceModel.allInstances()->exists(r|r.name = p.type)) -> first()
+/]
+
+[query public getCurrentResourceFks(aHTTPActionHandler : HTTPActionHandler) : OrderedSet(PSMComponentProperty) =
+	aHTTPActionHandler.getCurrentResource().CSharpRModelHasProperty->select(p | p.bIsForeignKey)
+/]
+
+[query public getCurrentResourceFK(aHTTPActionHandler : HTTPActionHandler) : PSMComponentProperty =
+	aHTTPActionHandler.getCurrentResourceFks()->select(p | p.name.contains(aHTTPActionHandler.getFkParameter().name))->first()
+/]
+
+[query public getCurrentResourcePK(aHTTPActionHandler : HTTPActionHandler) : PSMComponentProperty =
+	aHTTPActionHandler.getCurrentResource().CSharpRModelHasProperty -> select(p|p.bIsPrimaryIdentifier) -> first()
+/]
+
+[query public getParentResourcePK(aHTTPActionHandler : HTTPActionHandler) : PSMComponentProperty =
+	aHTTPActionHandler.getParentResource().CSharpRModelHasProperty -> select(p|p.bIsPrimaryIdentifier) -> first()
+/]
+
+[comment -------------------------------For HypermediaLink Helpers---------------------------------/]
+
+[query public getParentResourceNavProperty(aHTTPActionHandler : HTTPActionHandler) : PSMComponentProperty = 
+	aHTTPActionHandler.getParentResource().CSharpRModelHasProperty -> select(p | p.type = aHTTPActionHandler.getCurrentResource().name and (not p.bIsUnique) and p.bIsNavigationProperty) -> first()
+/]
+
+[query public getPk(aCSharpResourceModel : CSharpResourceModel) : PSMComponentProperty = 
+	aCSharpResourceModel.CSharpRModelHasProperty->select(p | p.bIsPrimaryIdentifier) -> first()
+/]
+
+[query public getParentResourceFks(aHTTPActionHandler : HTTPActionHandler) : Set(PSMComponentProperty) =
+	aHTTPActionHandler.getCurrentResource().getFks()
+/]
+
+[query public getFks(aCSharpResourceModel : CSharpResourceModel) : Set(PSMComponentProperty) = 
+	aCSharpResourceModel.CSharpRModelHasProperty->select(p | p.bIsForeignKey)
+/]
+
+[query public getParentResourceParents(aHTTPActionHandler : HTTPActionHandler) : Set(CSharpResourceModel) = 
+	CSharpResourceModel.allInstances()->select(rm | rm.hasRelatedCSharpRMManager->one(rmm | rmm.hasRelatedCSharpRModel = aHTTPActionHandler.getParentResource()))
+/]
+
+[query public getChildController(aHTTPActionHandler : HTTPActionHandler) : CSharpResourceController =
+	aHTTPActionHandler.hasHypermediaFunction.hasPSMHypermediaLink -> asOrderedSet() -> select(l | l.linkType.toString() = 'Child') -> first().hasTargetCSharpRController
+/]
+
+[query public getParentRController(aHTTPActionHandler : HTTPActionHandler) : CSharpResourceController =
+	aHTTPActionHandler.hasHypermediaFunction.hasPSMHypermediaLink -> asOrderedSet() -> select(l | l.linkType.toString() = 'Parent') -> first().hasTargetCSharpRController
+/]
+
+[query public getParentRMController(aHTTPActionHandler : HTTPActionHandler) : CSharpResourceManagerController =
+	aHTTPActionHandler.hasHypermediaFunction.hasPSMHypermediaLink -> asOrderedSet() -> select(l | l.linkType.toString() = 'Parent') -> first().hasTargetCSharpRMController
+/]
+
+[query public DbController(aHTTPActionHandler : HTTPActionHandler) : EntityDatabaseController =
+	EntityDatabaseController.allInstances()->asOrderedSet()->first()
+/]

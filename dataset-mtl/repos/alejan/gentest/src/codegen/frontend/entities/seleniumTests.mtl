@@ -1,0 +1,614 @@
+[comment encoding = UTF-8 /]
+[module seleniumTests('http://www.eclipse.org/uml2/5.0.0/UML')]
+[import ::utils /]
+
+[template public mainSeleniumTests(m : Model, path : String)]
+[let genPath : String = path.concat('tests/selenium/')]
+[m.getLoginPage(genPath.concat('pages/'))/]
+[for (c : Class | m.getClasses())]
+[c.getCreatePage(genPath.concat('pages/'+c.getName()+'/'))/]
+[c.getDeletePage(genPath.concat('pages/'+c.getName()+'/'))/]
+[c.getDetailPage(genPath.concat('pages/'+c.getName()+'/'))/]
+[c.getEditPage(genPath.concat('pages/'+c.getName()+'/'))/]
+[c.getListPage(genPath.concat('pages/'+c.getName()+'/'))/]
+[c.getIntegrationTests(genPath)/]
+[c.getCompositeIntegrationTests(genPath)/]
+[/for]
+
+[/let]
+[/template]
+
+[template public getLoginPage(m : Model, path : String) ] 
+[file (path.concat('LoginPage.java'), false, 'UTF-8')]
+/*
+[m.license()/]
+*/
+
+package [m.baseGroup()/].tests.selenium.pages;
+
+import [m.baseGroup()/].tests.Utils;
+import static org.jboss.arquillian.graphene.Graphene.guardAjax;
+import static org.jboss.arquillian.graphene.Graphene.waitModel;
+import org.jboss.arquillian.graphene.page.Location;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+
+@Location("#/login")
+public class LoginPage {
+
+    @FindBy(id = "username-input")
+    private WebElement usernameInput;
+
+    @FindBy(id = "password-input")
+    private WebElement passwordInput;
+
+    @FindBy(id = "log-in-btn")
+    private WebElement registerBtn;
+
+    public void login() {
+        login(Utils.username, Utils.password);
+    }
+
+    public void login(String username, String password) {
+        waitModel().until().element(usernameInput).is().visible();
+        usernameInput.clear();
+        passwordInput.clear();
+        usernameInput.sendKeys(username);
+        passwordInput.sendKeys(password);
+        guardAjax(registerBtn).click();
+    }
+}
+
+[/file]
+[/template]
+
+[template public getCreatePage(c : Class, path : String)]
+[file (path.concat(c.name+'CreatePage.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/];
+
+import [c.getModel().baseGroup()/].dtos.minimum.[c.getMinimumDTOName()/];
+import static org.jboss.arquillian.graphene.Graphene.guardAjax;
+import static org.jboss.arquillian.graphene.Graphene.waitGui;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+
+public class [c.name/]CreatePage {
+
+    [for (a : Property | c.attribute->reject(isID()))]
+    @FindBy(id = "[a.name/]")
+    private WebElement [a.getInputName()/];
+    [/for]
+
+    @FindBy(id = "save-[c.getName()/]")
+    private WebElement saveBtn;
+
+    @FindBy(id = "cancel-[c.getName()/]")
+    private WebElement cancelBtn;
+
+    public void save[c.name/]([c.getMinimumDTOName()/] [c.getName()/]) {
+         [for (a : Property | c.attribute->reject(isID()))]
+         waitGui().until().element([a.getInputName()/]).is().visible();
+         [a.getInputName()/].clear();
+         [if (a.type.name<>'String' and a.type.name<>'Image')]
+         [a.getInputName()/].sendKeys([c.getName()/].[a.getter()/]().toString());
+         [else]
+         [a.getInputName()/].sendKeys([c.getName()/].[a.getter()/]());
+         [/if]
+         [/for]        
+        guardAjax(saveBtn).click();
+    }
+}
+[/file]
+[/template]
+
+[template public getDeletePage(c : Class, path : String)]
+[file (path.concat(c.name+'DeletePage.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/];
+
+import static org.jboss.arquillian.graphene.Graphene.guardAjax;
+import static org.jboss.arquillian.graphene.Graphene.waitGui;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+
+public class [c.name/]DeletePage {
+
+    @FindBy(id = "confirm-delete")
+    private WebElement confirmDeleteBtn;
+
+    @FindBy(id = "cancel-delete")
+    private WebElement cancelDeleteBtn;
+
+    public void confirm() {
+        waitGui().until().element(confirmDeleteBtn).is().visible();
+        guardAjax(confirmDeleteBtn).click();
+    }
+
+    public void cancel() {
+        waitGui().until().element(cancelDeleteBtn).is().visible();
+        cancelDeleteBtn.click();
+    }
+}
+[/file]
+[/template]
+
+[template public getDetailPage(c : Class, path : String)]
+[file (path.concat(c.name+'DetailPage.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/];
+
+import [c.getModel().baseGroup()/].dtos.minimum.[c.getMinimumDTOName()/];
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+[if(c.hasDateAttribute())]
+import java.sql.Date;
+[/if]
+
+public class [c.name/]DetailPage {
+
+    @FindBy(id = "delete-[c.getName()/]")
+    private WebElement deleteBtn;
+
+    @FindBy(id = "edit-[c.getName()/]")
+    private WebElement editBtn;
+
+    @FindBy(id = "list-[c.getName()/]")
+    private WebElement listBtn;
+
+    
+    [for (a : Property | c.attribute->reject(isID()))]
+    @FindBy(id = "[a.name/]")
+    private WebElement [a.name/];
+    [/for]
+
+    public void list() {
+        listBtn.click();
+    }
+
+    public void edit() {
+        editBtn.click();
+    }
+
+    public void delete() {
+        deleteBtn.click();
+    }
+
+    public [c.getMinimumDTOName()/] getData() {
+        [c.getMinimumDTOName()/] [c.getName()/] = new [c.getMinimumDTOName()/]();        
+        [for (a : Property | c.attribute->reject(isID()))]
+        [if (a.type.name='String' or a.type.name='Image')]
+        [c.getName()/].[a.setter()/](this.[a.name/].getText());        
+        [elseif (a.type.name='Date')]
+        [c.getName()/].[a.setter()/]([a.type.name/].valueOf(this.[a.name/].getText()));
+        [elseif (a.type.name='Integer')]
+        [c.getName()/].[a.setter()/]([a.type.name/].parseInt(this.[a.name/].getText()));
+        [else]
+        [c.getName()/].[a.setter()/]([a.type.name/].parse[a.type.name/](this.[a.name/].getText()));
+        [/if]
+        [/for]
+        return [c.getName()/];
+    }
+}
+[/file]
+[/template]
+
+[template public getEditPage(c : Class, path : String)]
+[file (path.concat(c.name+'EditPage.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/];
+
+import [c.getModel().baseGroup()/].dtos.minimum.[c.getMinimumDTOName()/];
+import static org.jboss.arquillian.graphene.Graphene.guardAjax;
+import static org.jboss.arquillian.graphene.Graphene.waitGui;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+
+public class [c.name/]EditPage {
+
+    [for (a : Property | c.attribute->reject(isID()))]
+    @FindBy(id = "[a.name/]")
+    private WebElement [a.getInputName()/];
+    [/for]
+
+    @FindBy(id = "save-[c.getName()/]")
+    private WebElement saveBtn;
+
+    @FindBy(id = "cancel-[c.getName()/]")
+    private WebElement cancelBtn;
+
+    public void save[c.name/]([c.getMinimumDTOName()/] [c.getName()/]) {
+         [for (a : Property | c.attribute->reject(isID()))]
+         waitGui().until().element([a.getInputName()/]).is().visible();
+         [a.getInputName()/].clear();
+         [if (a.type.name<>'String' and a.type.name<>'Image')]
+         [a.getInputName()/].sendKeys([c.getName()/].[a.getter()/]().toString());
+         [else]
+         [a.getInputName()/].sendKeys([c.getName()/].[a.getter()/]());
+         [/if]
+         [/for]        
+        guardAjax(saveBtn).click();
+    }
+}
+[/file]
+[/template]
+
+[template public getListPage(c : Class, path : String)]
+[file (path.concat(c.name+'ListPage.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/];
+
+import static org.jboss.arquillian.graphene.Graphene.waitGui;
+import org.jboss.arquillian.drone.api.annotation.Drone;
+import static org.jboss.arquillian.graphene.Graphene.guardAjax;
+import org.jboss.arquillian.graphene.page.Location;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.FindBy;
+
+@Location("#/[c.getURI()/]/list")
+public class [c.name/]ListPage {
+
+    @Drone
+    private WebDriver browser;
+
+    @FindBy(id = "create-[c.getName()/]")
+    private WebElement createBtn;
+
+    @FindBy(id = "refresh-[c.getName()/]")
+    private WebElement refreshBtn;
+
+    private String findNameByIndex(Integer index) {
+        return browser.findElement(By.id(index + "-name")).getText();
+    }
+
+    private WebElement findDetailsBtnByIndex(Integer index) {
+        By selector = By.id(index + "-detail-btn");
+        waitGui().until().element(selector).is().visible();
+        return browser.findElement(selector);
+    }
+
+    private WebElement findEditBtnByIndex(Integer index) {
+        By selector = By.id(index + "-edit-btn");
+        waitGui().until().element(selector).is().visible();
+        return browser.findElement(selector);
+    }
+
+    private WebElement findDeleteBtnByIndex(Integer index) {
+        By selector = By.id(index + "-delete-btn");
+        waitGui().until().element(selector).is().visible();
+        return browser.findElement(selector);
+    }
+
+    public void edit[c.name/](Integer index) {
+        WebElement editButton = findEditBtnByIndex(index);
+        editButton.click();
+    }
+
+    public void delete[c.name/](Integer index) {
+        WebElement deleteButton = findDeleteBtnByIndex(index);
+        deleteButton.click();
+    }
+
+    public void view[c.name/]Details(Integer index) {
+        WebElement detailsButton = findDetailsBtnByIndex(index);
+        detailsButton.click();
+    }
+
+    public void refresh() {
+        waitGui().until().element(createBtn).is().visible();
+        guardAjax(refreshBtn).click();
+    }
+
+    public void create() {
+        waitGui().until().element(createBtn).is().visible();
+        createBtn.click();
+    }
+
+    public Integer count[c.name/]s() {
+        return browser.findElements(By.cssSelector("tbody > tr")).size();
+    }
+}
+[/file]
+[/template]
+
+[template public getIntegrationTests(c : Class, path : String)  ? (not c.isChild()) {className : String = c.getTestName();}]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].tests.selenium;
+
+import [c.getModel().baseGroup()/].dtos.minimum.[c.getMinimumDTOName()/];
+import [c.getModel().baseGroup()/].resources.[c.name/]Resource;
+import [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/].[c.name/]CreatePage;
+import [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/].[c.name/]ListPage;
+import [c.getModel().baseGroup()/].tests.selenium.pages.LoginPage;
+import [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/].[c.name/]DeletePage;
+import [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/].[c.name/]DetailPage;
+import [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/].[c.name/]EditPage;
+import java.io.File;
+import java.net.URL;
+import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.arquillian.drone.api.annotation.Drone;
+import org.jboss.arquillian.graphene.page.InitialPage;
+import org.jboss.arquillian.graphene.page.Page;
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.arquillian.junit.InSequence;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.jboss.shrinkwrap.api.GenericArchive;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.importer.ExplodedImporter;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.jboss.shrinkwrap.resolver.api.maven.Maven;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.openqa.selenium.WebDriver;
+import uk.co.jemos.podam.api.PodamFactory;
+import uk.co.jemos.podam.api.PodamFactoryImpl;
+
+@RunWith(Arquillian.class)
+public class [className/] {
+
+    private static PodamFactory factory = new PodamFactoryImpl();
+
+    @ArquillianResource
+    private URL deploymentURL;
+
+    @Drone
+    private WebDriver browser;
+
+    @Page
+    private [c.name/]CreatePage createPage;
+
+    @Page
+    private [c.name/]DetailPage detailPage;
+
+    @Page
+    private [c.name/]EditPage editPage;
+
+    @Page
+    private [c.name/]DeletePage deletePage;
+
+    @Deployment(testable = false)
+    public static WebArchive createDeployment() {
+        return ShrinkWrap.create(WebArchive.class)
+                // Se agrega las dependencias
+                .addAsLibraries(Maven.resolver().loadPomFromFile("pom.xml")
+                        .importRuntimeDependencies().resolve()
+                        .withTransitivity().asFile())
+                // Se agregan los compilados de los paquetes de servicios
+                .addPackage([c.name/]Resource.class.getPackage())
+                // El archivo que contiene la configuracion a la base de datos.
+                .addAsResource("META-INF/persistence.xml", "META-INF/persistence.xml")
+                // El archivo beans.xml es necesario para injeccion de dependencias.
+                .addAsWebInfResource(new File("src/main/webapp/WEB-INF/beans.xml"))
+                // El archivo shiro.ini es necesario para injeccion de dependencias
+                .addAsWebInfResource(new File("src/main/webapp/WEB-INF/shiro.ini"))
+                // El archivo web.xml es necesario para el despliegue de los servlets
+                .setWebXML(new File("src/main/webapp/WEB-INF/web.xml"))
+                .merge(ShrinkWrap.create(GenericArchive.class).as(ExplodedImporter.class)
+                        .importDirectory("src/main/webapp").as(GenericArchive.class), "/");
+    }
+
+    @Before
+    public void setup() {
+        browser.manage().window().maximize();
+        browser.get(deploymentURL.toExternalForm());
+    }
+
+    @Test
+    @InSequence(0)
+    public void login(@InitialPage LoginPage loginPage) {
+        browser.manage().deleteAllCookies();
+        loginPage.login();
+    }
+
+    @Test
+    @InSequence(1)
+    public void create[c.name/](@InitialPage [c.name/]ListPage listPage) {
+        Integer expected = 0;
+        Assert.assertEquals(expected, listPage.count[c.name/]s());
+
+        listPage.create();
+
+        [c.getMinimumDTOName()/] [c.getExpectectName()/] = factory.manufacturePojo([c.getMinimumDTOName()/].class);
+        createPage.save[c.name/]([c.getExpectectName()/]);
+
+        [c.getMinimumDTOName()/] [c.getActualName()/] = detailPage.getData();
+
+        Assert.assertEquals([c.getExpectectName()/].getName(), [c.getActualName()/].getName());
+    }
+
+    @Test
+    @InSequence(2)
+    public void edit[c.name/](@InitialPage [c.name/]ListPage listPage) {
+        [c.getMinimumDTOName()/] [c.getExpectectName()/] = factory.manufacturePojo([c.getMinimumDTOName()/].class);
+
+        listPage.edit[c.name/](0);
+
+        editPage.save[c.name/]([c.getExpectectName()/]);
+
+        [c.getMinimumDTOName()/] [c.getActualName()/] = detailPage.getData();
+
+        Assert.assertEquals([c.getExpectectName()/].getName(), [c.getActualName()/].getName());
+    }
+
+    @Test
+    @InSequence(3)
+    public void delete[c.name/](@InitialPage [c.name/]ListPage listPage) {
+        listPage.delete[c.name/](0);
+        deletePage.confirm();
+        Integer expected = 0;
+        Assert.assertEquals(expected, listPage.count[c.name/]s());
+    }
+
+}
+[/file]
+[/template]
+
+[template public getCompositeIntegrationTests(c : Class, path : String)  ? (c.isChild()) {className : String = c.getTestName();}]
+[file (path.concat(className+'.java'), false, 'UTF-8')]
+/*
+[c.getModel().license()/]
+*/
+package [c.getModel().baseGroup()/].tests.selenium;
+
+import [c.getModel().baseGroup()/].dtos.minimum.[c.getMinimumDTOName()/];
+import [c.getModel().baseGroup()/].resources.[c.name/]Resource;
+import [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/].[c.name/]CreatePage;
+import [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/].[c.name/]ListPage;
+import [c.getModel().baseGroup()/].tests.selenium.pages.LoginPage;
+import [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/].[c.name/]DeletePage;
+import [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/].[c.name/]DetailPage;
+import [c.getModel().baseGroup()/].tests.selenium.pages.[c.getName()/].[c.name/]EditPage;
+import java.io.File;
+import java.net.URL;
+import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.arquillian.drone.api.annotation.Drone;
+import org.jboss.arquillian.graphene.page.InitialPage;
+import org.jboss.arquillian.graphene.page.Page;
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.arquillian.junit.InSequence;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.jboss.shrinkwrap.api.GenericArchive;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.importer.ExplodedImporter;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.jboss.shrinkwrap.resolver.api.maven.Maven;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.openqa.selenium.WebDriver;
+import uk.co.jemos.podam.api.PodamFactory;
+import uk.co.jemos.podam.api.PodamFactoryImpl;
+
+@RunWith(Arquillian.class)
+public class [className/] {
+
+    private static PodamFactory factory = new PodamFactoryImpl();
+
+    @ArquillianResource
+    private URL deploymentURL;
+
+    @Drone
+    private WebDriver browser;
+
+    @Page
+    private [c.name/]CreatePage createPage;
+
+    @Page
+    private [c.name/]DetailPage detailPage;
+
+    @Page
+    private [c.name/]EditPage editPage;
+
+    @Page
+    private [c.name/]DeletePage deletePage;
+
+    @Deployment(testable = false)
+    public static WebArchive createDeployment() {
+        return ShrinkWrap.create(WebArchive.class)
+                // Se agrega las dependencias
+                .addAsLibraries(Maven.resolver().loadPomFromFile("pom.xml")
+                        .importRuntimeDependencies().resolve()
+                        .withTransitivity().asFile())
+                // Se agregan los compilados de los paquetes de servicios
+                .addPackage([c.name/]Resource.class.getPackage())
+                // El archivo que contiene la configuracion a la base de datos.
+                .addAsResource("META-INF/persistence.xml", "META-INF/persistence.xml")
+                // El archivo beans.xml es necesario para injeccion de dependencias.
+                .addAsWebInfResource(new File("src/main/webapp/WEB-INF/beans.xml"))
+                // El archivo shiro.ini es necesario para injeccion de dependencias
+                .addAsWebInfResource(new File("src/main/webapp/WEB-INF/shiro.ini"))
+                // El archivo web.xml es necesario para el despliegue de los servlets
+                .setWebXML(new File("src/main/webapp/WEB-INF/web.xml"))
+                .merge(ShrinkWrap.create(GenericArchive.class).as(ExplodedImporter.class)
+                        .importDirectory("src/main/webapp").as(GenericArchive.class), "/");
+    }
+
+    @Before
+    public void setup() {
+        browser.manage().window().maximize();
+        browser.get(deploymentURL.toExternalForm());
+    }
+
+    @Test
+    @InSequence(0)
+    public void login(@InitialPage LoginPage loginPage) {
+        browser.manage().deleteAllCookies();
+        loginPage.login();
+    }
+
+    @Test
+    @InSequence(1)
+    public void create[c.name/](@InitialPage [c.name/]ListPage listPage) {
+        Integer expected = 0;
+        Assert.assertEquals(expected, listPage.count[c.name/]s());
+
+        listPage.create();
+
+        [c.getMinimumDTOName()/] [c.getExpectectName()/] = factory.manufacturePojo([c.getMinimumDTOName()/].class);
+        createPage.save[c.name/]([c.getExpectectName()/]);
+
+        [c.getMinimumDTOName()/] [c.getActualName()/] = detailPage.getData();
+
+        Assert.assertEquals([c.getExpectectName()/].getName(), [c.getActualName()/].getName());
+    }
+
+    @Test
+    @InSequence(2)
+    public void edit[c.name/](@InitialPage [c.name/]ListPage listPage) {
+        [c.getMinimumDTOName()/] [c.getExpectectName()/] = factory.manufacturePojo([c.getMinimumDTOName()/].class);
+
+        listPage.edit[c.name/](0);
+
+        editPage.save[c.name/]([c.getExpectectName()/]);
+
+        [c.getMinimumDTOName()/] [c.getActualName()/] = detailPage.getData();
+
+        Assert.assertEquals([c.getExpectectName()/].getName(), [c.getActualName()/].getName());
+    }
+
+    @Test
+    @InSequence(3)
+    public void delete[c.name/](@InitialPage [c.name/]ListPage listPage) {
+        listPage.delete[c.name/](0);
+        deletePage.confirm();
+        Integer expected = 0;
+        Assert.assertEquals(expected, listPage.count[c.name/]s());
+    }
+
+}
+[/file]
+[/template]
+
+[template private getInputName(a : Property)]
+[a.name/]Input
+[/template]
+
+[template private getTestName(c : Class)]
+[c.name/]IT
+[/template]
+
+[template private getExpectectName(c : Class)]
+expected_[c.getName()/]
+[/template]
+
+[template private getActualName(c : Class)]
+actual_[c.getName()/]
+[/template]

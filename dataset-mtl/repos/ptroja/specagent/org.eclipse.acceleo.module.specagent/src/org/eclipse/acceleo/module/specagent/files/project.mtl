@@ -1,0 +1,53 @@
+[comment encoding = UTF-8 /]
+[module project('http://multirobotsystem/1.0')/]
+
+[template public project(aSystem : System)]
+
+[comment @main /]
+[file ('gnat.adc', false, 'UTF-8')]
+pragma Profile (Ravenscar);
+[/file]
+	
+[comment @main /]
+[file (aSystem.name+'.gpr', false, 'UTF-8')]
+project [aSystem.name/] is
+
+   --  Set the Ada 2005 mode
+   package Compiler is
+      for Default_Switches ("ada") use ("-g", "-O2", "-gnat05");
+   end Compiler;
+
+   --  Enable the Ravenscar profile
+   package Builder is
+      for Global_Configuration_Pragmas use "./gnat.adc";
+   end Builder;
+
+   --  Set the main file for the system
+   for Main use ("system_[aSystem.name/].adb");
+
+end [aSystem.name/];
+
+[/file]
+
+[comment @main /]
+[file ('distributed.cfg', false, 'UTF-8')]
+configuration Distributed is
+   -- pragma Starter (None);
+   -- Use Embedded name server for DSA applications.
+   -- Note that this currently also requires pragma Starter (Ada).
+   -- pragma Name_Server (Embedded);
+   -- pragma Starter (Ada);
+
+   System_Partition : Partition := (System_[aSystem.name/]);
+   procedure System_[aSystem.name/] is in System_Partition;
+   for System_Partition'Termination use Deferred_Termination;
+
+   [for (anAgent : Agent | agents)]
+   Agent_[anAgent.name/]_Partition : Partition := (Agent_[anAgent.name/]);
+   for Agent_[anAgent.name/]_Partition'Termination use Deferred_Termination;
+
+   [/for]
+end Distributed;
+[/file]
+	
+[/template]

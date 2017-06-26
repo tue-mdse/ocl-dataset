@@ -1,0 +1,184 @@
+[module daohibernatedirect('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::hibernate::daohibernatecommon/]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(class:Class)]
+[if (class.isEntity())]
+[class.pathToMainJava()/]/[class.hibernatePackage().toPath()/]/Hibernate[class.name/]Dao.java
+[/if]
+
+[/template][/comment]
+
+
+[template public generateDaoHibernateDirect(class:Class)]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(), class.hibernatePackage().toPath(), 'Hibernate'.concat(class.name).concat('Dao.java')), false))]
+package [class.hibernatePackage()/];
+
+// [protected ('imports')]
+ for import
+import java.util.Collection;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.hibernate.Criteria;
+import org.hibernate.HibernateException;
+import org.hibernate.Session;
+import org.hibernate.criterion.Restrictions;
+
+[class.importDaoException()/]
+[class.importHibernateUtil()/]
+import [class.entityQualifiedName()/];
+import [class.daoInterfaceQualifiedName()/];
+
+// [/protected] for import
+
+/**
+ * Implementation of DAO interface [class.daoInterfaceName()/] based on the hibernate
+ * persistence framework.
+ * @see [class.daoInterfaceQualifiedName()/]
+ */
+public class Hibernate[class.name/]Dao implements [class.daoInterfaceName()/] {
+
+    /**
+     * The logger of this class.
+     */
+    private static final Log LOG =
+        LogFactory.getLog(Hibernate[class.name/]Dao.class);
+
+    /**
+     * Creates a new element.
+     * @param [class.name.toLowerFirst()/] Element to create.
+     * @throws DaoException If an HibernateException occurs.
+     * @see [class.daoInterfaceQualifiedName()/].create[class.name/]
+     */
+    public void create[class.name/](final [class.name/] [class.name.toLowerFirst()/]) throws DaoException {
+        LOG.debug("Create a new [class.name/] entity");
+    
+        try {
+            Session session = HibernateUtil.currentSession();
+            session.save([class.name.toLowerFirst()/]);
+        } catch (HibernateException e) {
+            throw new DaoException(e);
+        }
+    }
+
+    /**
+     * Updates an existing element.
+     * @param [class.name.toLowerFirst()/]
+     *            Element to update. If the element has an id,it may use it.
+     * @throws DaoException If an HibernateException occurs.
+     * @see [class.daoInterfaceQualifiedName()/].update[class.name/]
+     */
+    public void update[class.name/](final [class.name/] [class.name.toLowerFirst()/]) throws DaoException {
+        LOG.debug("Update the entity [class.name/] with [class.getPKName() /] = " + [class.name.toLowerFirst()/].get[class.getPKName().toLowerFirst()/]());
+        
+        try {
+            Session session = HibernateUtil.currentSession();
+            session.update([class.name.toLowerFirst()/]);
+        } catch (HibernateException e) {
+            throw new DaoException(e);
+        }
+    }
+
+    /**
+     * Deletes an element.
+     * Only [class.getPKName()/] can be used to find which element must be deleted.
+     * @param [class.name.toLowerFirst()/] Element which will be delete.
+     * @throws DaoException If an HibernateException occurs.
+     * @see [class.daoInterfaceQualifiedName()/].delete[class.name/]
+     */
+    public void delete[class.name/](final [class.name/] [class.name.toLowerFirst()/]) throws DaoException {
+        LOG.debug("Delete the entity [class.name/] with [class.getPKName()/] =" + [class.name.toLowerFirst()/].get[class.getPKName().toUpperFirst()/]());
+
+        try {
+            Session session = HibernateUtil.currentSession();
+            session.delete([class.name.toLowerFirst()/]);
+        } catch (HibernateException e) {
+            throw new DaoException(e);
+        }
+    }
+
+    /**
+     * Finds all elements.
+     * @return A list with all elements, without any filter.
+     * @throws DaoException If an HibernateException occurs.
+     * @see [class.daoInterfaceQualifiedName()/].findAll[class.name/]s
+     */
+    public Collection<[class.name/]> findAll[class.name/]s() throws DaoException {
+        LOG.debug("Find all instance of [class.name/] entity");
+        
+        try {
+            Session session = HibernateUtil.currentSession();
+            Criteria criteria = session.createCriteria([class.name/].class);
+            Collection<[class.name/]> resultList = criteria.list();
+
+            LOG.debug("Found " + resultList.size()
+                    + " instances of [class.name/] entity");
+            return resultList;
+        } catch (HibernateException e) {
+            throw new DaoException(e);
+        }
+    }
+
+    /**
+     * Finds one entity by its primary key.
+     * @param some[class.getPKName().toUpperFirst()/] The PK of the entity
+     * @return Return the entity found.
+     * @throws DaoException If an HibernateException occurs.
+     * @see [class.daoInterfaceQualifiedName()/].[class.findByPKMethodName()/]
+     */
+    public [class.findByPKSignature()/] {
+        LOG.debug("Looking for instance of [class.name/] entity by [class.getPKName()/] : "
+                + some[class.getPKName().toUpperFirst()/]);
+        
+        try {
+            Session session = HibernateUtil.currentSession();
+            Criteria criteria = session.createCriteria([class.name/].class)
+                .add(Restrictions.eq("[class.getPKName()/]", some[class.getPKName().toUpperFirst()/]));
+            [class.name/] result = ([class.name/]) criteria.uniqueResult();
+
+            return result; 
+        } catch (HibernateException e) {
+            throw new DaoException(e);
+        }
+    }
+    
+
+[comment  Generate additional methods declarations /]
+	[for (oper:Operation|class.ownedOperation)]
+[comment  Generate methods with find stereotypes /]
+		[if (oper.hasStereotype(getProperty('find')))]
+    [oper.generateJavadoc()/]
+    public [oper.returnResult().convertToJavaType()/] [oper.name/]([oper.generateParameters()/]) throws DaoException {        
+        // [protected ('convert')]
+        // for [name/]         
+		LOG.debug("Call [name/] on [class.name/] entity");        
+        try {
+            Session session = HibernateUtil.currentSession();
+            // TODO implementation with Hibernate of criteria search
+            return null;
+        } catch (HibernateException e) {
+            throw new DaoException(e);
+        }
+        // [/protected] for [name/]
+    }
+		[/if]
+	[/for]
+
+    //[protected ('additions')]    
+	//[/protected]
+}
+
+[/file]
+[/template]
+
+
+

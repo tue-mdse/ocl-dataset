@@ -1,0 +1,121 @@
+[comment encoding = UTF-8 /]
+[module generateFormBody('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::common::components::compositeComponent/]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries/]
+
+[**
+ * This templates generates the form for a class without the buttons
+ * @param aClass
+ * @param aFormType (ex:Edit, Create...)
+*/]
+[template public generateFormBody (aClass : Class, aFormType : String) ]
+<p:panel id="mainPanel" styleClass="mainPanel" header="#{bundle.[aFormType/][aClass.name/]Title}">
+	[generateFieldset(aClass, aClass.name.toLowerFirst().concat('Controller.selected'), 'mainFieldset', 'mainTab', 'MainFieldsetTitle')/]
+ </p:panel>
+[/template]
+
+
+[**
+ * This template generates the fielset for a class
+ * @param aClass
+ * @param anInputValue
+ * @param aFielsetId
+ * @param aTabId
+ * @param aLegendKey
+*/]
+[template private generateFieldset (aClass : Class, anInputValue : String, aFieldsetId : String, aTabId : String, aLegendKey :String) ]
+[generateFields(aClass, anInputValue, aFieldsetId, aTabId, aLegendKey)/]
+[for (aProperty : Property | getOneAssociationObjectProperties(aClass))]
+[generateFieldset(
+	getDestinationClass(aProperty, aProperty.getAssociation()),  
+	anInputValue.concat('.').concat(aProperty.name), 
+	aProperty.name.concat('Fieldset'), aProperty.name.concat('Tab'),
+	aClass.name.concat('_').concat(aProperty.name))/]
+[/for]
+[for (aProperty : Property | getManyAssociationObjectProperties(aClass)) ]
+[generateDataTable(aClass, getDestinationClass(aProperty, aProperty.getAssociation()), aProperty, anInputValue.concat('.').concat(aProperty.name))/]
+[/for]
+[for (aProperty : Property | aClass.getAllProperties()) 
+? (isAssociationAttribute(aProperty) and getDestinationClass(aProperty, aProperty.association).isFeatureClass())]
+[generateSelectDataTable(aClass, getDestinationClass(aProperty, aProperty.getAssociation()), aProperty, anInputValue.concat('.').concat(aProperty.name))/]
+[/for]
+[/template]
+
+[**
+ * This template generates the fields for a class
+ * @param aClass
+ * @param anInputValue
+ * @param aFielsetId
+ * @param aTabId
+ * @param aLegendKey
+*/]
+[template private generateFields (aClass : Class, anInputValue : String, aFieldsetId : String, aTabId : String, aLegendKey :String) ]
+<p:fieldset id="[aFieldsetId/]" legend="#{bundle.[aLegendKey/]}"> 
+[for (aProperty : Property | aClass.getAllProperties()) 
+? (isAssociationAttribute(aProperty)._not())]
+[generateCompositeComponent(aProperty, anInputValue.concat('.').concat(aProperty.name), 'formPanelGrid')/]
+[/for]
+</p:fieldset>
+[/template]
+
+
+[**
+ * This template generates the editing table for the Many Object association
+ * @param aSourceClass
+ * @param aDestinationClass
+ * @param aProperty
+*/]
+[template private generateDataTable(aSourceClass : Class, aDestinationClass : Class, aProperty : Property, anInputValue : String)]
+<p:fieldset id="[aProperty.name/]Fieldset" legend="#{bundle.[aSourceClass.name/]_[aProperty.name/]}"> 
+    <h:panelGrid columns="2">
+        <p:commandButton oncomplete="[aProperty.name/]CreateDlg.show()" 
+                         process="@this" 
+                         actionListener="#{[aDestinationClass.name.toLowerFirst()/]Controller.prepareCreate()}" 
+                         update=":[aProperty.name/]CreateDialog" 
+                         icon="ui-icon-circle-plus" />
+        <h:outputText escape="false" value="#{bundle.List[aDestinationClass.name/]Empty}" rendered="#{empty [anInputValue/]}"/>
+        <p:dataTable rendered="#{not empty [anInputValue/]}" var="item" value="#{[anInputValue/]}" >  
+[for (p: Property | aDestinationClass.getAllProperties()) ? (isAssociationAttribute(p)._not())]
+            <p:column headerText="#{bundle.[aDestinationClass.name/]_[p.name/]}">  
+                <h:outputText value="#{item.[p.name/]}" />
+            </p:column>
+[/for] 		
+            <p:column headerText="&nbsp;">
+                <p:commandButton 
+                    update=":[aProperty.name/]EditDialog" 
+                    oncomplete="[aProperty.name/]EditDlg.show()"
+                    icon="ui-icon-pencil" process="@this"
+                    title="#{bundle.EditLink}" 
+                    actionListener="#{[aDestinationClass.name.toLowerFirst()/]Controller.prepareEdit(item)}"/>  
+                <p:commandButton
+                    update=":contentForm:[aProperty.name/]Fieldset"
+                    icon="ui-icon-trash" process="@this"
+                    title="#{bundle.DestroyLink}" 
+                    actionListener="#{[anInputValue.first(anInputValue.index('.'))/]remove[aProperty.name.toUpperFirst()/](item)}"/>
+            </p:column>
+        </p:dataTable> 
+    </h:panelGrid>
+</p:fieldset>
+[/template]
+
+[**
+ * This template generates the table for the Many or One Feature association
+ * @param aSourceClass
+ * @param aDestinationClass
+ * @param aProperty
+*/]
+[template private generateSelectDataTable(aSourceClass : Class, aDestinationClass : Class, aProperty : Property, anInputValue :String)]
+<p:fieldset id="[aProperty.name/]Fieldset" legend="#{bundle.[aSourceClass.name/]_[aProperty.name/]}"> 
+    <h:outputText escape="false" value="#{bundle.List[aDestinationClass.name/]Empty}" rendered="#{empty [aDestinationClass.name.toLowerFirst()/]Controller.all}"/>
+    <p:dataTable rowKey="#{item.id}" rendered="#{not empty [aDestinationClass.name.toLowerFirst()/]Controller.all}" var="item" value="#{[aDestinationClass.name.toLowerFirst()/]Controller.all}" selection="#{[anInputValue/]}">  
+		<p:column selectionMode="[if (isOneToOne(aSourceClass, aProperty, getMemberEndAssociation(aProperty)) or isManyToOne(aSourceClass, aProperty, getMemberEndAssociation(aProperty)))]single[else]multiple[/if]" style="width:18px" />  
+[for (p: Property | aDestinationClass.getAllProperties()) ? (isAssociationAttribute(p)._not())]
+        <p:column headerText="#{bundle.[aDestinationClass.name/]_[p.name/]}">  
+            <h:outputText value="#{item.[p.name/]}" />
+        </p:column>
+[/for] 		
+    </p:dataTable> 
+</p:fieldset>
+[/template]

@@ -1,0 +1,187 @@
+[comment encoding = UTF-8 /]
+[module generateActivities('http:///uiandroid.ecore', 'http:///uiandroid/DataTypes.ecore')]
+
+[import pjeacceleo::common::generateScripts/]
+[import pjeacceleo::common::generateValues/]
+
+[template public generateActivities(ui : UIAndroid)]
+[for(affichage : Affichage | ui.affichages)]
+[file('src/'+ui.paquetage.replaceAll('[.]', '/')+'/'+affichage.id+'.java', false, 'UTF-8')]
+package [ui.paquetage/];
+[treatAffichage(affichage)/]
+[/file]
+[/for]
+[/template]
+
+[template public treatAffichage(affichage : Affichage)]
+import android.os.Bundle;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.TextView;
+import android.app.Activity;
+import android.content.Intent;
+import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.SimpleAdapter;
+import android.widget.ImageView;
+
+public class [affichage.id/] extends Activity {
+    private [affichage.id/] selfContext;
+    // variables locales
+    [generateLocalValues(affichage)/]
+    // les déclarations spéciales
+    [generateSpecials(affichage.déclarationsSpéciales)/]
+
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        selfContext = this;
+        setContentView(R.layout.[affichage.id/]);
+
+        // initialisation dynamique des attributs des éléments de l'UI
+        [treatInit(affichage.root)/]
+
+        // appels des scripts de démarrage
+        [if (affichage.actionsDémarrage->notEmpty())]doInitActions();[/if]
+    }
+
+    // méthodes correspondant aux différentes actions des éléments et des actions de démarrage
+    [generateActions(affichage.root)/]
+    [generateInitActions(affichage)/]
+
+    // méthodes correspondant aux scripts locaux
+    [generateLocalScripts(affichage)/]
+}
+[/template]
+
+[comment ========================================= gestion des déclarations spéciales /]
+[template public generateSpecials(dsp : DéclarationsSpéciales) ? (dsp->notEmpty()) ]
+[for (ligne : String | dsp.lignes)]
+[ligne/]
+[/for]
+[/template]
+
+[comment ========================================= création des actions automatiques (démarrage) /]
+[template public generateInitActions(affichage : Affichage) ? (affichage.actionsDémarrage->notEmpty()) ]
+private void doInitActions() {
+    [for (action : Action | affichage.actionsDémarrage)]
+    [generateAction(action)/]
+    [/for]
+};
+[/template]
+
+[comment ========================================= création des actions /]
+[template public generateActions(afficheur : Afficheur)]
+[for (élément : Elément | afficheur.contenu) separator('\n')]
+[generateActions(élément)/]
+[/for]
+[/template]
+
+[template public generateActions(lv : ListView)]
+private void [lv.listLoader.id/](ListView listView, int layoutId) {
+    [lv.listLoader.corps/]
+}
+[/template]
+
+[template public generateActions(élément : Elément) ? (élément.actions->notEmpty()) ]
+private OnClickListener doActions_[élément.id/] = new OnClickListener() {
+    public void onClick(View view) {
+        [for (action : Action | élément.actions)]
+        [generateAction(action)/]
+        [/for]
+    }
+};
+[/template]
+
+[template public generateAction(action : Action)]
+// Attention action non traitée !
+[/template]
+
+[template public generateAction(action : AfficherEcran)]
+// action : Afficher Ecran
+Intent intent = new Intent(selfContext, [action.écran.id/].class);
+startActivity(intent);
+[/template]
+
+[template public generateAction(action : RafraichirElément)]
+// action : RafraîchirElément
+[refreshElement(action.élément)/]
+[/template]
+
+[template public generateAction(action : ExécuterScript) post(replaceAll('\n',''))]
+[if (not action.valeurCalculée.oclIsUndefined())][getValue(action.valeurCalculée)/][comment JValues.[action.valeurCalculée.nom/] = [/if]
+[if (action.script.oclIsTypeOf(ScriptGlobal))]
+JScripts.[action.script.id/]
+[else]
+[action.script.id/]
+[/if]
+[if (action.script.oclIsTypeOf(Ecouteur))]
+(view[for (vp : Valeur | action.valeursParamètres) before(', ') separator(', ')][getValue(vp)/][/for]);
+[else]
+([for (vp : Valeur | action.valeursParamètres) separator(', ')][getValue(vp)/][/for]);
+[/if]
+[/template]
+
+[comment =======================================  rafraichissement des éléments /]
+[template public refreshElement(élément : Elément)]
+// Attention: rafraichissement non implémenté !
+[/template]
+
+[template public refreshElement(bouton : Bouton)]
+((Button)findViewById(R.id.[bouton.id/])).setText([getValue(bouton.label)/]);
+[/template]
+
+[template public refreshElement(texte : Texte)]
+((TextView)findViewById(R.id.[texte.id/])).setText([getValue(texte.texte)/]);
+[/template]
+
+[comment ========================================= initialisations des attributs/]
+[template public treatInit(afficheur : Afficheur)]
+[for (élément : Elément | afficheur.contenu)]
+[treatInit(élément)/]
+[subscribeActions(élément)/]
+[/for]
+[/template] 
+
+[template public treatInit(élément : Elément)]
+// Attention: initialisation non traitée!
+[/template]
+
+[template public treatInit(bouton : Bouton)]
+((Button)findViewById(R.id.[bouton.id/])).setText([getValue(bouton.label)/]);
+[/template]
+
+[template public treatInit(texte : Texte)]
+((TextView)findViewById(R.id.[texte.id/])).setText([getValue(texte.texte)/]);
+[/template]
+
+[template public treatInit(boiteDeSaisie : BoiteDeSaisie)]
+// boite de saisie: pas d'initialisation
+[/template]
+
+[template public treatInit(lv : ListView)]
+[lv.listLoader.id/]((ListView)findViewById(R.id.[lv.id/]), R.layout.[lv.afficheurContenu.id/]);
+[/template]
+
+[template public treatInit(image : Image)]
+// image: rien à faire
+[/template]
+
+[comment ======================================== abonnement aux actions /]
+[template public subscribeActions(élément : Elément) ? (élément.actions->notEmpty())]
+findViewById(R.id.[élément.id/]).setOnClickListener(doActions_[élément.id/]);
+[/template]
+
+
+[comment ======================================== obtention des valeurs /]
+[template public getValue(valeur : Valeur) post(trim()) ]
+[if (valeur.eContainer(UIAndroid).valeursGlobales->includes(valeur))]
+JValues.[valeur.nom/]
+[else]
+selfContext.[valeur.nom/]
+[/if]
+[/template]
+
+[template public getValue(boiteDeSaisie : BoiteDeSaisie)]
+((EditText)findViewById(R.id.[boiteDeSaisie.id/])).getText().toString()
+[/template]

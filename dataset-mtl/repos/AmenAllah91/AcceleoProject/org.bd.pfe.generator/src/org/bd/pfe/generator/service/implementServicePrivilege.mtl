@@ -1,0 +1,138 @@
+[comment encoding = UTF-8 /]
+[module implementServicePrivilege('http://www.businessdecision.fr/Generator')]
+[import org::bd::pfe::generator::persistance::packagePath /]
+
+
+[template public generateImplementServicePrivilege(persistance :PersistanceObject){packageName : String = persistance.eContainer(Application)._package;}]
+
+[file(persistance.eContainer(Application).name.concat('-service/src/main/java/').concat(packageName.convertPackageToPath().concat('/implement/')).concat('PrivilegeServiceImplement').concat('.java'),false,'UTF-8')]
+package [packageName.concat('.implement')/];
+
+import java.util.*;
+
+
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import [packageName.concat('.service')/].PermissionService;
+import [packageName.concat('.repository').concat('.PrivilegeRepository')/];
+import [packageName.concat('.persistance.*')/];
+import [packageName.concat('.service')/].PrivilegeService;
+import [packageName.concat('.exception')/].BDException;
+
+ 
+@Service
+public class PrivilegeServiceImplement implements PrivilegeService {
+
+	@Autowired
+	PrivilegeRepository privilegeRepository;
+	
+	
+	public PrivilegeServiceImplement()
+    {     
+          super();      }
+
+
+
+    @Transactional
+	public Boolean createPrivilege(Privilege privilege)throws  BDException{
+		if(privilegeRepository.save(privilege)!=null){
+		return true;
+	   }else 
+        throw new BDException("");
+    }
+	
+	@Transactional
+	public Boolean updatePrivilege(Privilege privilege)throws  BDException{
+		if(privilegeRepository.save(privilege)!=null){
+		return true;
+        }else
+        throw new BDException("");
+	}
+	
+	@Transactional
+	 public Boolean deletePrivilege(Privilege privilege)throws  BDException{
+		privilegeRepository.delete(privilege);
+       if(privilegeRepository.findOne(privilege.getId())!=null){
+		return true;
+	    }else 
+        throw new BDException("");
+    }
+	@Transactional
+	public List<Privilege> findAll(){
+		return privilegeRepository.findAll();
+	}
+	@Transactional
+	public Privilege findPrivilegeById (Long id) throws  BDException{
+       if(privilegeRepository.findOne(id)!=null){
+        throw new BDException("");
+      }
+      else{
+		return privilegeRepository.findOne(id);
+	}
+	
+}
+
+	
+	public Boolean assign[persistance.name.toUpperFirst()/]ToPrivilege([persistance.name.toUpperFirst()/]  [persistance.name.toLowerFirst()/] ,Privilege privilege ,Boolean create , Boolean delete  ,  Boolean update)
+	{
+		Permission permission = new Permission();
+		permission.set[persistance.name.toUpperFirst()/] ([persistance.name.toLowerFirst()/] );
+		permission.setPrivilege(privilege);
+		permission.setCreate(create);
+		permission.setDelete(delete);
+		permission.setUpdate(update);
+		return null;
+	
+	}
+
+	 
+
+ 
+ 	public Privilege findPrivilegeByName(String name) {
+  		return  privilegeRepository.findPrivilegeByName(name) ;
+ 	}
+
+ 	
+ 	
+	
+	public Privilege findPrivilegeByUrl(String url) {
+		return privilegeRepository.findPrivilegeByUrl(url) ;
+	}
+
+	
+	
+	
+	public List<Privilege> findPrivilegeParent() {
+		List<Privilege> privileges ;
+		List<Privilege> privilegesParent = new ArrayList<Privilege>();
+		privileges = findAll();
+		for (Privilege privilege: privileges ){
+			if( privilege.getPrivilegeSup() == null)
+			{
+				privilegesParent.add(privilege);
+			 }
+		}
+		return privilegesParent;
+	}
+
+	public Set<Privilege> findPrivilegeFils() {
+	    	List<Privilege> privileges =findAll() ;
+		    List<Privilege> privilegesParent = findPrivilegeParent();
+		   privileges.removeAll(privilegesParent);
+		   Set <Privilege> privilegeFils = new HashSet<Privilege>();
+		   for(Privilege p :privileges )
+		   {
+			   privilegeFils.add(p)  ;
+		   }
+		   return privilegeFils ;
+	}
+ 	 //[protected (' : you can write your own code')]
+			
+		//[/protected]
+}
+
+[/file]
+[/template]

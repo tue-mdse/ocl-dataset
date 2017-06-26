@@ -1,0 +1,55 @@
+[comment encoding = UTF-8 /]
+[module generateImports('http://cs.mcgill.ca/sel/ram/3.0')]
+
+[import ca::mcgill::sel::ram::generator::common::commonHelpers /]
+
+
+[**
+ * Generates Java imports for the given class.
+ * @param c The class
+ */]
+[template public generateImports(c : Class) post(trim().removeMarkedNewLines('_#_').replaceAll('_#_', ''))]
+// [protected ('for imports')]
+import java.util.*;
+_#_[generateImplementationClassImports(c)/]
+// [/protected]
+[/template]
+
+
+[**
+ * Generates imports for implementation classes.
+ * @param c The class
+ */]
+[template private generateImplementationClassImports(c : Class) post(trim())]
+[for (ic : ImplementationClass | c.eContainer(StructuralView).classes->filter(ImplementationClass))]
+    [if (ic.isUsedInClass(c)
+        and ic.instanceClassName->size() > 0
+        and not ic.instanceClassName.matches('^java\\.(util|lang)\\..*'))]
+import [ic.instanceClassName/];
+    [/if]
+[/for]
+[/template]
+
+
+[**
+ * Returns whether an implementation class is used in the given class.
+ * @param ic The implementation class
+ * @param c The class
+ */]
+[query private isUsedInClass(ic : ImplementationClass, c : Class) : Boolean =
+    let types : Set(Type) =
+        c.typeParameters.genericType->asSet()
+        ->union( c.operations.returnType->asSet() )
+        ->union( c.operations.parameters.type->asSet() )
+        ->union( c.associationEnds.getType()->asSet() )
+        ->union( c.superTypes )
+        ->union( c.eContainer(Aspect).messageViews->filter(MessageView).specification.messages
+                 ->select(receiveEvent.oclIsKindOf(InteractionFragment)
+                          and receiveEvent.oclAsType(InteractionFragment).getLifelineForFragment().represents.getType() = c)
+                 .localProperties.oclAsType(TypedElement).getType()->asSet() )
+        ->union( c.eContainer(Aspect).messageViews->filter(MessageView).specification.messages
+                 ->select(sendEvent.oclIsKindOf(InteractionFragment)
+                          and sendEvent.oclAsType(InteractionFragment).getLifelineForFragment().represents.getType() = c)
+                 .signature.eContainer(Classifier)->asSet() )
+    in types->includes(ic)
+/]

@@ -1,0 +1,41 @@
+[comment encoding = UTF-8 /]
+[module generate('http://captah/1.0')]
+
+
+[template public generateModel(_m : Model)]
+[comment @main/]
+	[file ('captah.js', false, 'UTF-8')]
+{
+	['"sensors":'/]
+	{[for (_c : Component | _m.elements->selectByKind(Sensor)) separator(',')][let _s : Sensor = _c.oclAsType(Sensor)][genSensor(_s)/][/let][ /for]
+	},
+	['"composite_v" : ['/]
+		[for (_c : Component | _m.elements->selectByKind(Dashboard))][let _d : Dashboard = _c.oclAsType(Dashboard)][genDashboard(_d)/][/let][ /for]
+	[']'/]
+}
+[/file]
+[/template]
+
+[template public genSensor(_s : Sensor)]
+
+"[_s.name/]" : "[_s.sensorUrl/]"
+[/template]
+
+[template public genDashboard(_d : Dashboard)]
+[for (_i : Instance | _d.instances->select(_i | not _i.type.oclIsTypeOf(Sensor))) separator (',')][genInstance(_i)/][/for]
+[/template]
+
+[template public genInstance(_i : Instance)]
+[if (_i.type.oclIsTypeOf(Composite))][genInstComposite(_i)/][/if][if (_i.type.oclIsTypeOf(Widget))][genInstWidget(_i)/][/if]
+[/template]
+
+[template public genInstComposite(_c : Instance)]
+['{"composite_h" : ['/][let _cmp : Composite = _c.type.oclAsType(Composite)][for (_i : Instance | _cmp.instances->select(_i | not _i.type.oclIsTypeOf(Sensor) )) separator(',')]
+[genInstance(_i)/][/for][/let]
+[']}'/]
+[/template]
+
+[template public genInstWidget(_w : Instance)]
+
+['{"composite_v" : [{'/]"[_w.type.name/]" : ['['/][for (_p : Port | _w.type.ports) separator(',')][let _con : Connector = _p.myConnection][if (_con.target.name.equalsIgnoreCase(_w.name))]"[_con.source.type.name/]"[/if][/let][/for][']'/]['}]}'/]
+[/template]

@@ -1,0 +1,59 @@
+[comment encoding = UTF-8 /]
+[module user('http://www.eclipse.org/uml2/5.0.0/UML') extends at::fhv::TimeTracker::java::files::classFile/]
+
+[import at::fhv::TimeTracker::java::common::attributes /]
+[import at::fhv::TimeTracker::java::common::common /]
+[import at::fhv::TimeTracker::java::common::declaration /]
+[import at::fhv::TimeTracker::java::request::request /]
+[import at::fhv::TimeTracker::java::common::type /]
+
+[comment it is important to import the extended class, otherwise the methods cannot be resolved /]
+[import at::fhv::TimeTracker::java::files::classFile /]
+
+
+[template public generateUser(aClass : Class)]
+[if (aClass.hasStereotype('RootElement::User'))]
+[file (aClass.genFullPathFile(), false, 'UTF-8')]
+	[aClass.genFileContent()/]
+[/file]
+[/if]
+[/template]
+
+[**
+ * Generate the java file content
+ * @param aClass The class for which a java file should be generated
+*/]
+[template protected genFileContent(aClass : Class) overrides genFileContent]
+
+[aClass.genPackageDeclaration()/]
+
+import java.io.Serializable;
+
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
+
+[aClass.genBody()/]
+
+[/template]
+
+[**
+ * Generate the java class code
+ * @param aClass The class to generate
+*/]
+[template protected genBody(aClass : Class) overrides genBody]
+@XmlRootElement(name = "[aClass.genName().toLowerCase()/]")
+[aClass.genVisibility()/][aClass.genAbstract()/][aClass.genFinal()/]class [aClass.genName()/][aClass.genInheritance()/][aClass.genInterfaceRealization()/] {
+	private static final long serialVersionUID = 1L;
+    [aClass.genAttributes()/]
+
+	public [aClass.genName()/](){}
+	public [aClass.genName()/]([for (aProperty : Property | aClass.ownedAttribute->union(aClass.getOutgoingNavigableOwnedEnd())) separator(', ')][aProperty.genType()/] [aProperty.genName()/][/for])
+	{
+	[for (aProperty : Property | aClass.ownedAttribute->union(aClass.getOutgoingNavigableOwnedEnd()))]
+		this.[aProperty.genName()/] = [aProperty.genName()/];
+	[/for]
+	}
+
+[aClass.genAccessors()/]
+}
+[/template]

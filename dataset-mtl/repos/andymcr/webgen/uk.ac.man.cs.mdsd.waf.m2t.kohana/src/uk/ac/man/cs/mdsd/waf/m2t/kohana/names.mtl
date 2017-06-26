@@ -1,0 +1,302 @@
+[comment encoding = UTF-8 /]
+[module names(
+	'http://www.eclipse.org/emf/2002/Ecore',
+	'http://cs.manchester.ac.uk/mdsd/ObjectRelationalMapping',
+	'http://cs.manchester.ac.uk/mdsd/Service',
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::featureProperties/]
+
+
+[query public baseControllerClassName(eObject : EObject) : String
+	= 'Controller_Template_Base'
+/]
+
+[query public instanceName(entity : Entity) : String
+	= entity.name.toLowerFirst()
+/]
+
+
+[query public modelClassName(enumerationType : EnumerationType) : String
+	= 'Model_'.concat(enumerationType.modelName())
+/]
+
+[query public modelName(enumerationType : EnumerationType) : String
+	= enumerationType.name
+/]
+
+[query public name(enumerationLiteral : EnumerationLiteral) : String
+	= enumerationLiteral.name.toUpper()
+/]
+
+
+[query public instanceName(entityOrView : EntityOrView) : String
+	= entityOrView.name.toLowerFirst()
+/]
+
+[query public loadMethodName(entityOrView : EntityOrView) : String
+	= 'load_'.concat(entityOrView.instanceName())
+/]
+
+[query public modelClassName(entityOrView : EntityOrView) : String
+	= 'Model_'.concat(entityOrView.modelName())
+/]
+
+[query public modelName(entityOrView : EntityOrView) : String
+	= entityOrView.name
+/]
+
+[query public selectName(entityOrView : EntityOrView) : String
+	= entityOrView.tableName
+/]
+
+
+[query public findMethodName(association : Association) : String
+	= 'find_'.concat(association.name.toLowerFirst().replaceAll('([A-Z])', '_$1'))
+/]
+
+[query public instanceName(feature : Feature) : String
+	= if feature.oclIsKindOf(Attribute) then
+			feature.oclAsType(Attribute).name
+		else
+			feature.oclAsType(Association).name
+		endif
+/]
+
+[query public modelName(association : Association) : String
+	= if association.oclIsKindOf(EntityAssociation) then
+			association.oclAsType(EntityAssociation).modelName()
+		else if association.oclIsTypeOf(EncapsulatedAssociation) then
+			association.oclAsType(EncapsulatedAssociation).association.modelName()
+		else
+			association.oclAsType(ViewAssociation).opposite.partOf.modelName()
+		endif endif
+/]
+
+[query public modelName(association : EntityAssociation) : String
+	= association.oclAsType(EntityAssociation).opposite.partOf.modelName()
+/]
+
+
+[query public selectName(service : Service) : String
+	= service.name.toLowerFirst()
+/]
+
+
+[query public countName(selection : Selection) : String
+	= selection.instanceName().concat('_count')
+/]
+
+[query public instanceName(selection : Selection) : String
+	= selection.name.toLowerFirst()
+/]
+
+
+[query public instanceName(menu : Menu) : String
+	= menu.name.toLowerFirst()
+/]
+
+
+[query public controllerName(page : Page) : String
+	= page.name
+/]
+
+[query public controllerClassName(page : Page) : String
+	= 'Controller_'.concat(page.controllerName())
+/]
+
+[query public instanceName(page : Page) : String
+	= page.name.toLowerFirst()
+/]
+
+[query public routeName(page : Page) : String
+	= if page.indexUnits()->isEmpty() then
+			page.name
+		else
+			page.units->select(u | u.oclIsKindOf(IndexUnit))->first().routeName()
+		endif
+/]
+
+
+[query public actionName(unit : ContentUnit) : String
+	= unit.instanceName()
+/]
+
+[query public controllerName(unit : DynamicUnit) : String
+	= unit.pageDisplayedOn().controllerName()
+/]
+
+[query public countName(unit : DynamicUnit) : String
+	= unit.instanceName().concat('_count')
+/]
+
+[query public errorName(unit : DynamicUnit) : String
+	= unit.instanceName().concat('_error')
+/]
+
+[query public fieldErrorsName(unit : DynamicUnit) : String
+	= unit.instanceName().concat('_field_errors')
+/]
+
+[query public instanceName(unit : ContentUnit) : String
+	= unit.name.toLowerFirst()
+/]
+
+[query public logoutActionName(unit : LoginUnit) : String
+	= 'logout'
+/]
+
+[query public logoutRouteName(unit : LoginUnit) : String
+	= unit.uniqueName().replace(unit.instanceName(), 'logout')
+/]
+
+[query public modelInstanceName(unit : DynamicUnit) : String
+	= if unit.entities->size() < 2 then
+			unit.instanceName()
+		else
+			unit.modelInstanceName(unit.entities->first())
+		endif
+/]
+
+[query public modelInstanceName(unit : DynamicUnit, entityOrView : EntityOrView) : String
+	= if entityOrView.oclIsUndefined() then
+			unit.instanceName()
+		else
+			unit.instanceName().concat('_').concat(entityOrView.instanceName())
+		endif
+/]
+
+[query public modelName(unit : ContentUnit) : String
+	= if unit.oclIsTypeOf(StaticUnit) then
+			if unit.oclAsType(StaticUnit).service.oclIsUndefined() then
+				'None'
+			else
+				unit.oclAsType(StaticUnit).service.serves.modelName()
+			endif
+		else
+			let dynamicUnit : DynamicUnit = unit.oclAsType(DynamicUnit)
+				in if dynamicUnit.entities->isEmpty() then
+						'????????'
+					else
+						dynamicUnit.entities->first().modelName()
+					endif
+		endif
+/]
+
+[query public paginationName(unit : DynamicUnit) : String
+	= unit.instanceName().concat('_pagination')
+/]
+
+[query public parameterName(unit : ContentUnit) : String
+	= unit.instanceName()
+/]
+
+[query public routeName(unit : ContentUnit) : String
+	= unit.routeName(false)
+/]
+
+[query public routeName(unit : ContentUnit, create : Boolean) : String
+	= unit.uniqueName()
+		.concat(if create then
+				'_create'
+			else
+				''
+			endif)
+/]
+
+[query public supportActionName(unit : ContentUnit) : String
+	= unit.instanceName().concat('_support')
+/]
+
+[query public supportRouteName(unit : ContentUnit) : String
+	= unit.uniqueName().concat('_support')
+/]
+
+[query public templateInstanceName(unit : ContentUnit) : String
+	= unit.instanceName().concat('_template')
+/]
+
+[query public uniqueName(unit : ContentUnit) : String
+	= let key : String
+			= if unit.displayedOn.oclIsTypeOf(Page) then
+				unit.displayedOn.oclAsType(Page).instanceName()
+			else
+				unit.displayedOn.oclAsType(UnitAssociation).displayedOn.uniqueName()
+			endif
+		in key.concat('_').concat(unit.instanceName())
+/]
+
+[query public viewName(unit : ContentUnit) : String
+	= unit.name.toLowerFirst()
+/]
+
+
+[query public modelInstanceName(field : UnitField) : String
+	= if field.firstEntityOrView() then
+			field.displayedOn.modelInstanceName()
+		else
+			field.displayedOn.modelInstanceName(field.entityOrView())
+		endif
+/]
+
+[query public optionsName(field : UnitField) : String
+	= field.uniqueName().concat('_options')
+/]
+
+[query public uniqueName(field : UnitField) : String
+	= field.displayedOn.instanceName().concat('_').concat(field.modelPropertyName())
+/]
+
+
+[query public actionName(action : UnitSupportAction) : String
+	= action.name.toLowerFirst()
+/]
+
+
+[query public actionName(action : InlineAction) : String
+	= if action.usedBy.oclIsKindOf(DynamicUnit) then
+			action.usedBy.oclAsType(DynamicUnit).instanceName()
+				.concat(action.name.toUpperFirst())
+		else
+			let association : UnitAssociation
+					= action.usedBy.oclAsType(UnitAssociation)
+				in association.displayedOn.instanceName()
+				.concat(association.name.toUpperFirst())
+				.concat(action.name.toUpperFirst())
+		endif
+/]
+
+[query public instanceName(action : InlineAction) : String
+	= action.name.toLowerFirst()
+/]
+
+[query public modelName(action : DeleteAction) : String
+	= if action.usedBy.oclIsKindOf(DynamicUnit) then
+			action.usedBy.oclAsType(DynamicUnit).modelName()
+		else
+			action.usedBy.oclAsType(UnitAssociation).association.modelName()
+		endif
+/]
+
+
+[query public modelName(action : SelectAction) : String
+	= let unit : DynamicUnit
+		= if action.usedBy.oclIsKindOf(DynamicUnit) then
+				action.usedBy.oclAsType(DynamicUnit)
+			else
+				action.usedBy.oclAsType(UnitAssociation).displayedOn
+			endif
+		in unit.entities->first().modelName()/]
+
+[query public parameterName(action : InlineAction) : String
+	= action.actionName()
+/]
+
+[query public routeName(action : DeleteAction) : String
+	= action.immediateUnit().containingUnit().routeName()
+		.concat('_').concat(action.name.toLowerFirst())
+/]
+
+[query public routeName(action : FeatureSupportAction) : String
+	= action.immediateUnit().containingUnit().routeName()
+		.concat('_').concat(action.name.toLowerFirst())
+/]

@@ -1,0 +1,125 @@
+[comment encoding = UTF-8 /]
+[module generateECore2Java('http://www.eclipse.org/emf/2002/Ecore')/]
+
+[template public generateJavaEnum(e : EEnum)]
+[comment @main /]
+[file (generateFullPathName(e), false)]
+package [e.containingPackages().name->sep('.')/];
+public enum [e.name/] {
+[for (attrib:EEnumLiteral | e.eLiterals) separator(',')]
+	[attrib.name.toUpper()/]
+[/for]
+}
+[/file]
+[/template]
+
+[template public generateJavaClass(c : EClass)]
+[comment @main /]
+[file (generateFullPathName(c), false)]
+package [c.containingPackages().name->sep('.')/];
+[if (c.interface)]
+	public interface [c.name/] 
+[else]
+	public class [c.name/] 
+[/if]
+[if (not c.eAllSuperTypes->select(not interface)->isEmpty())] [comment supertypes /]
+	    extends [c.eAllSuperTypes->select(not interface).name->sep(', ')/]
+[/if]
+
+[if (not c.eAllSuperTypes->select(interface)->isEmpty())] [comment interfaces /]
+		implements [c.eAllSuperTypes->select(interface).name->sep(', ')/]
+[/if]
+	{
+
+[for (p:EAttribute | c.eAllAttributes)] [comment attributes /]
+	private [p.eType.instanceTypeName/] [p.name/];
+[/for]
+[for (r:EReference | c.eReferences)] [comment attributes from associations /]
+	[reference(r)/]
+[/for]
+[if (not c.interface)] [comment constructor if class is not an interface TODO: parameters and constructors from model /]
+	public [c.name/] () {
+	}
+
+[for (o:EOperation | c.eAllOperations) separator('\n')] [comment methods from classes /]
+	[operation(o)/]
+[/for]	
+[/if]
+[comment TODO: methods from abstract classes can be either abstract or concrete /]
+[if (c.interface)] [comment define methods from interfaces as abstract /]
+[for (o:EOperation | c.eAllOperations) separator('\n')]
+	[abstractOperation(o)/]
+[/for]
+[/if]
+
+[for (p:EAttribute | c.eAllAttributes) separator('\n')] [comment getters and setters /]
+	[genGetterSetter(p)/]
+[/for]
+
+[for (r:EReference | c.eReferences)] [comment getters and setters from associations/]
+	[genGetterSetter(r)/]
+[/for]
+} 
+[/file]
+[/template]
+
+[template public reference(r : EReference)]
+[if (r.upperBound > 1)]
+private java.util.List<[r.eType.instanceTypeName/]> [r.name.toLowerFirst()/];
+[else]	
+private [r.eType.instanceTypeName/] [r.name.toLowerFirst()/];
+[/if]
+[/template]
+
+[template public operation(o : EOperation)]
+public [o.eType.instanceTypeName/] [o.name/]() { [comment ToDo: Params/]
+	// [protected ('o.name')]
+	// TODO auto generated method stub
+	// [/protected]
+}
+[/template]
+
+[template public abstractOperation(o : EOperation)]
+	[o.eType.instanceTypeName/] [o.name/]();
+[/template]
+
+[template public genGetterSetter(p : EAttribute)]
+public [p.eType.instanceTypeName/] get[ p.name.toString().toUpperFirst()/]() { [comment ToDo: Params/]
+	return this.[p.name/];
+}
+
+public void set[p.name.toString().toUpperFirst()/]([p.eType.instanceTypeName/] [p.name/]) { [comment ToDo: Params/]
+	this.[p.name/] = [p.name/];
+}
+[/template]
+
+[template public genGetterSetter(r : EReference)]
+[if (r.upperBound > 1)]
+public java.util.List<[r.eType.instanceTypeName/]> getAll[r.name.toUpperFirst()/]() { [comment ToDo: Params/]
+	return this.[r.name.toLowerFirst()/];
+}
+
+public void set(java.util.List<[r.eType.instanceTypeName/]> [r.name.toLowerFirst()/]) { [comment ToDo: Params/]
+	this.[r.name/] = [r.name.toLowerFirst()/];
+}
+[else]	
+public [r.eType.instanceTypeName/] get[r.name.toUpperFirst()/]() { [comment ToDo: Params/]
+	return this.[r.name.toLowerFirst()/];
+}
+
+public void set[r.name.toUpperFirst()/] ([r.eType.instanceTypeName/] [r.name.toLowerFirst()/]) { [comment ToDo: Params/]
+	this.[r.name.toLowerFirst()/] = [r.name.toLowerFirst()/];
+}
+[/if]
+[/template]
+
+[template public generateFullPathName(c : EClass)]
+	[c.containingPackages().name.replaceAll('\\.','/') + '/' + (c.name).concat('.java')/]
+[/template]
+
+[template public generateFullPathName(e : EEnum)]
+	[e.containingPackages().name.replaceAll('\\.','/') + '/' + (e.name).concat('.java')/]
+[/template]
+
+[query public containingPackages(c : EClass) : Sequence(EPackage) = c.ancestors(EPackage)->reject(oclIsKindOf(EClass))/]
+[query public containingPackages(e : EEnum) : Sequence(EPackage) = e.ancestors(EPackage)->reject(oclIsKindOf(EEnum))/]

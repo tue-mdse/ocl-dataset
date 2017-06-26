@@ -1,0 +1,75 @@
+[comment encoding = UTF-8 /]
+[module site(
+	'http://cs.manchester.ac.uk/mdsd/WebApplicationFramework')]
+[import uk::ac::man::cs::mdsd::waf::m2t::core::files/]
+[import uk::ac::man::cs::mdsd::waf::m2t::symfony::files/]
+
+
+[template public generatePage(model : WafModel)]
+[file(model.viewsDirectory().concat('/site').concat(model.htmlExtension()).concat(model.twigExtension()), false)]
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8"/>
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+[if (not model.metaDescription.oclIsUndefined())]
+ <meta name="description" content="[model.metaDescription/]">
+[/if]
+ <title>[model.siteTitle/]{% if title is defined %}: {{ title }}{% endif %}</title>
+ <link rel="stylesheet" type="text/css" href="{{ asset('css/default.css') }}"/>
+ <link rel="stylesheet" type="text/css" href="{{ asset('css/custom.css') }}"/>
+ <link rel="stylesheet" type="text/css" media="not print" href="{{ asset('css/non-print.css') }}"/>
+ <link rel="stylesheet" type="text/css" media="print" href="{{ asset('css/print.css') }}"/>
+{% if styles is defined %}
+{% for style in styles  %}
+{% if style starts with 'http' %}
+ <link rel="stylesheet" type="text/css" href="{{ style }}"/>
+{% else %}
+ <link rel="stylesheet" type="text/css" href="{{ asset(style) }}"/>
+{%   endif %}
+{% endfor %}
+{% endif %}
+[if (not model.textEditorURL.oclIsUndefined())]
+ <script src="[model.textEditorURL/]"></script>
+[/if]
+{% if scripts is defined %}
+{% for script in scripts  %}
+{% if script is iterable %}
+ <script{% for key, value in script %} {{ key }}="{{ value }}"{% endfor %}></script>
+{% else %}
+ <script src="{{ asset(script) }}"></script>
+{% endif %}
+{% endfor %}
+{% endif %}
+</head>
+<body id="page" class="framed">
+<header>
+ <h1 id="banner">[model.siteTitle/]</h1>
+</header>
+{% block topbar %}
+{{ include('Menu/topbar[model.htmlExtension()/][model.twigExtension()/]') }}
+{% endblock %}
+{% block sidebar %}
+<section  class="menu" id="sidebar">
+</section>
+{% endblock %}
+<main {# <?php if (isset($style_class)) { echo 'class="' . $style_class . '" '; } ?>#}id="content">
+{% if page_message is defined %}
+ <p>{{ page_message }}</p>
+{% endif %}
+{% block content %}
+{% endblock %}
+</main>
+<div class="clear"></div>
+<footer>
+ <p>[model.copyrightText/]</p>
+</footer>
+[if (model.responsiveTopMenu)]
+<script>
+  var nav = responsiveNav(".nav-collapse");
+</script>
+[/if]
+</body>
+</html>
+[/file]
+[/template]

@@ -1,0 +1,38 @@
+[comment encoding = UTF-8 /]
+[module toPDL('http://simplepdl/')]
+
+[comment Generation de la syntaxe PDL1 à partir d'un modèle de processus /]
+
+[template public toPDL(proc : Process)]
+[comment @main/]
+[file (proc.name.concat('.pdl1'), false, 'UTF-8')]
+process [proc.name/]{
+[for (wd : WorkDefinition | proc.processElements->getWDs())]
+	wd [wd.name/]
+[/for]
+[for (ws : WorkSequence | proc.processElements->getWSs())]
+	ws [ws.predecessor.name/] [ws.getWSType()/] [ws.successor.name/]
+[/for]
+}
+[/file]
+[/template]
+
+[query public getWDs(elements : OrderedSet(ProcessElement)) : OrderedSet(WorkDefinition) = 
+	elements->select( e | e.oclIsTypeOf(WorkDefinition) )
+		->collect( e | e.oclAsType(WorkDefinition) )
+		->asOrderedSet()
+/]
+
+[query public getWSs(elements : OrderedSet(ProcessElement)) : OrderedSet(WorkSequence) = 
+	elements->select( e | e.oclIsTypeOf(WorkSequence) )
+		->collect( e | e.oclAsType(WorkSequence) )
+		->asOrderedSet()
+/]
+
+[template public getWSType(ws : WorkSequence)]
+[if (ws.linkType = WorkSequenceType::startToStart)]
+s2s[elseif (ws.linkType = WorkSequenceType::startToFinish)]
+s2f[elseif (ws.linkType = WorkSequenceType::finishToStart)]
+f2s[elseif (ws.linkType = WorkSequenceType::finishToFinish)]
+f2f[/if]
+[/template]

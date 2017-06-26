@@ -1,0 +1,185 @@
+[comment encoding = UTF-8 /]
+[module propertyQueries('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import com::thales::momoko2::pim::uml2::gen::services::uml2Queries /]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationClassQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries/]
+[import com::thales::momoko2::pim::uml2::gen::common::textprocessing::textProcessing /]
+[import com::thales::momoko2::pim::uml2::gen::common::attributes::datatypeAttributes/]
+
+[**
+ * Check if this attribute is datatype attribute 
+ * @param aProperty
+*/]
+[query public isDataTypeAttribute(aProperty : Property) : Boolean
+	= getDatatypeByProperty(aProperty)->size()<>0/]
+
+
+[**
+ *  Check if this is a association attribute 
+ *  @param aProperty
+*/]
+[query public isAssociationAttribute(aProperty : Property) : Boolean
+	= aProperty.association->size()<>0/]
+
+
+[**
+ * Get the property name 
+ * @param aProperty
+*/]
+[query public getPropertyName(aProperty : Property) : String 
+	=aProperty.name/]
+
+
+[**
+ *  Check if this attribute is mandatory 
+ *   @param aProperty
+ *   
+*/]
+[query public isMandatoryProperty(aProperty : Property) : Boolean
+	= if getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty), 'text'), 'mandatory').toString().equalsIgnoreCase('true') 
+ or getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty), 'real'), 'mandatory').toString().equalsIgnoreCase('true') 
+ or getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty), 'integer'), 'mandatory').toString().equalsIgnoreCase('true') 
+ or getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty), 'time'), 'mandatory').toString().equalsIgnoreCase('true') 
+ or getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty), 'date'), 'mandatory').toString().equalsIgnoreCase('true') 
+ or getDatatypeByProperty(aProperty).getValue(getStereotype(getDatatypeByProperty(aProperty), 'enumerate'), 'mandatory').toString().equalsIgnoreCase('true') 
+    then false
+    else  true
+    endif  /]
+ 
+
+[**
+ *  Check if this attribute is mandatory 
+ *  @param aClass
+*/]
+[query public hasMandatoryProperties(aClass : Class) : Boolean
+	=aClass.attribute->select(isMandatoryProperty())->notEmpty()/]
+
+
+[**
+ *  Check if this table name is named by client
+ *   @param aClass
+ *   
+*/]
+[query public isNamedByClient(aClass : Class) : Boolean
+   = if hasStereotype(aClass,'feature') then
+       if aClass.getValue(getStereotype(aClass, 'feature'), 'tableName').toString().equalsIgnoreCase('null') then 
+         false
+       else if aClass.getValue(getStereotype(aClass, 'feature'), 'tableName').toString().equalsIgnoreCase('invalid')then
+         false
+       else true
+ endif  endif 
+else true
+endif /]
+
+
+[**
+ *  Check if this table name is named by client
+ *   @param aClass
+ *   
+*/]
+[query public isNamedByClient(aPackage : Package) : Boolean
+   = if generateSchemaName(aPackage).toString().equalsIgnoreCase('') then 
+         false
+       else true
+ endif   
+/]
+
+
+[**
+ *  Check if this table name of feature_part class is named by client
+ *   @param aClass
+ *   
+*/]
+[query public isFPNamedByClient(aClass : Class) : Boolean
+   =if hasStereotype(aClass,'feature_part') then
+       if aClass.getValue(getStereotype(aClass, 'feature_part'), 'tableName').toString().equalsIgnoreCase('null') then 
+         false
+       else if aClass.getValue(getStereotype(aClass, 'feature_part'), 'tableName').toString().equalsIgnoreCase('invalid')then
+         false
+       else true
+      endif endif
+else true
+ endif /]
+
+
+[**
+ *  Check if this association is composition and the stereotype of the destination is Object (Embedded)
+ *   @param aProperty
+ *   
+*/]
+[query public isEmbedded(aProperty : Property) : Boolean
+=if aProperty.isComposite then
+    if getDestinationClass(aProperty, aProperty.getAssociation()).isObjectClass() then
+       true
+    else false
+    endif
+else false
+endif/]
+
+
+[**
+ *  Check if this type of enumeration is String
+ *   @param aClass
+ *   
+*/]
+[query public isAsString(aClass : Class) : Boolean
+   =if hasStereotype(aClass,'enumerate') then
+       if aClass.getValue(getStereotype(aClass, 'enumerate'), 'asString').toString().equalsIgnoreCase('true') then 
+       true                                                                                                          
+       else false
+    endif
+ else false  
+ endif /]
+
+
+[**
+ *  Check if this association is shared
+ *   @param aProperty
+ *   
+*/]
+[query public isShared(aClass : Class) : Boolean
+=aClass.getAssociations().endType.oclAsType(Class).attribute.aggregation->asSequence().toString().contains('shared').toString().tokenize('false')->first().toString().equalsIgnoreCase('tru')/]
+
+
+[**
+ *  Check if the object class has the two associations(composition and aggregation) at the same time
+ *   @param aProperty
+ *   
+*/]
+[query public isPartEmbeddedProperty(aProperty : Property) : Boolean
+=if isEmbedded(aProperty) then
+    if isShared(getDestinationClass(aProperty, aProperty.getAssociation())) then
+    true
+    else false
+    endif
+else false
+endif/]
+
+
+[**
+ *  Check if the auditable type of schema is true
+ *   @param aClass
+ *   
+*/]
+[query public isAuditable(aClass : Class) : Boolean
+   =generateSchemaAutitable(aClass.eContainer(Package)).toString().equalsIgnoreCase('true') /]
+
+
+[**
+ *  Check if the history type of schema is true
+ *   @param aClass
+ *   
+*/]
+[query public isHistory(aClass : Class) : Boolean
+   =generateSchemaHistory(aClass.eContainer(Package)).toString().equalsIgnoreCase('true') /]
+
+
+[**
+ *  Get all the attributes 
+ *   @param aClass
+ *   
+*/]
+[query public getAllProperties(aClass : Class) : OrderedSet(Property)
+	= aClass.getAllAttributes()->asOrderedSet()->sortedBy(name)/]

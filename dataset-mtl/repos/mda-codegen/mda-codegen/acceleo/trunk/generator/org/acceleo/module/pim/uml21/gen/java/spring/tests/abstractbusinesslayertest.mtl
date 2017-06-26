@@ -1,0 +1,92 @@
+[module abstractbusinesslayertest('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(model : Model)]
+[if (model.services()->union(model.daos())->notEmpty())][model.pathToTestJava()/]/[model.baseImports().toPath()/]/AbstractBusinessLayerTests.java[/if]
+[/template][/comment]
+
+
+[template public generateAbstractBusinessLayerTests(model : Model)? (model.services()->union(model.daos())->notEmpty())]
+[comment This template is called by the main module file /]
+[file (model.fullFilePath(model.pathToTestJava(), model.baseImports().toPath(), 'AbstractBusinessLayerTests.java'), false))]
+package [model.baseImports()/];
+// [protected ('imports')] 
+// for import
+[for (class:Class|model.services())]
+import [class.servicePackage()/].I[class.name/];	
+[/for]
+[for (class:Class|model.webservices())]
+import [class.servicePackage()/].I[class.name/]WebService;	
+[/for]
+
+// [/protected] 
+
+public abstract class AbstractBusinessLayerTests extends org.sharengo.tests.AbstractBusinessLayerTests {
+	
+	protected String['['/][']'/] getDefaultConfigLocations() {
+		return new String['['/][']'/] {"classpath:META-INF/spring/component-test.xml"};
+	}
+
+	protected String['['/][']'/] getConfigLocations() {
+		// [protected ('getConfigLocations')] 
+		// of getConfigLocations		
+		return getDefaultConfigLocations();
+		// [/protected] of getConfigLocations
+	}
+
+	@Override
+	protected void onSetUp() throws Exception {
+		// [protected ('onSetUp')]
+		// of onSetUp		
+		super.onSetUp();
+		// [/protected] of onSetUp
+	}
+
+	@Override
+	protected void onTearDown() throws Exception {
+		// [protected ('onTearDown')] 
+		// of onTearDown
+		super.onTearDown();
+		// [/protected] of onTearDown
+	}
+
+[comment  add getter for all services /]
+[for (class:Class|model.services())]
+	protected I[class.name/] get[class.name/]() throws Exception {
+		I[class.name/] [class.name.toLowerFirst()/] = (I[class.name/]) getApplicationContext()
+				.getBean("[class.name.toLowerFirst()/]");
+		assertNotNull([class.name.toLowerFirst()/]);
+		return [class.name.toLowerFirst()/];
+	}
+[/for]
+[for (class:Class|model.webservices())]
+	protected I[class.name/]WebService get[class.name/]WebService()
+			throws Exception {
+		I[class.name/]WebService [class.name.toLowerFirst()/]WebService = (I[class.name/]WebService) [class.baseImports() /].ws.WSClientFactory
+				.getInstance().create[class.name/]WebService(
+						"http://localhost:8191/I[class.name/]WebService");
+		assertNotNull([class.name.toLowerFirst()/]WebService);
+		return [class.name.toLowerFirst()/]WebService;
+	}
+[/for]
+	
+	// [protected ('specific tests code')]
+	// of specific tests code
+	// [/protected] 
+}
+[/file]
+[/template]

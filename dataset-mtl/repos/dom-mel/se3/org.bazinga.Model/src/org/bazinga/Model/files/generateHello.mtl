@@ -1,0 +1,123 @@
+[comment encoding = UTF-8 /]
+[module generateHello('http://www.eclipse.org/emf/2002/Ecore')/]
+
+[template public generateHello(class : EClass)]
+	
+	[comment @main /]
+	
+	[file (class.ePackage.name.replaceAll('\\.', '/').concat('/').concat(class.name.toUpperFirst()).concat('.java'), false, 'UTF-8')]
+package [class.ePackage.name /];
+[for (reference : EReference | class.eAllReferences) ]
+[if (not (reference.eType.ePackage.name = class.ePackage.name))]
+
+import [reference.eType.ePackage.name/].[reference.eType.name/];
+[/if]
+
+[/for]
+public [getStruct(class) /] [class.name.toUpperFirst()/] [getSuperClasses(class) /] {
+
+[generateAttributes(class) /]
+
+[generateReferenceValues(class) /]
+
+[generateMethods(class) /]
+
+[generateGetterSetters(class) /]
+[generateSuperMethods(class) /]
+
+}
+	[/file]
+[/template]
+
+[template public generateGetterSetters(class : EClass)]
+[for (reference : EReference | class.eAllReferences) ]
+	public [getSetType(reference) /] get[referenceName(reference) /]() {
+		return [referenceName(reference) /];
+	}
+	public void set[referenceName(reference) /]([getSetType(reference) /] newValue) {
+		[referenceName(reference) /] = newValue;
+    }
+[/for]
+[for (attribute : EAttribute | class.eAllAttributes) ]
+	public [getListType(attribute) /] get[attribute.name.toUpperFirst() /]() {
+		return [attribute.name /];
+	}
+	public void set[attribute.name.toUpperFirst() /]([getListType(attribute) /] newValue) {
+		[attribute.name /] = newValue;
+    }
+[/for]
+[/template]
+
+[template public generateMethods(class : EClass)]
+[for (operation : EOperation | class.eAllOperations)]
+	public [getListType(operation) /] [operation.name /]([generateParameters(operation) /])[if class.interface];[else] {
+		throw new UnsupportedOperationException();
+	}
+	[/if]
+[/for]
+[/template]
+
+[template public referenceName(reference : EReference)]
+[if reference.name.size() > 0][reference.name /][else][reference.eReferenceType.name.toUpperFirst() /][/if]
+[/template]
+
+[template public generateParameters(operation : EOperation)]
+[ operation.eParameters->collect(e| getListType(e) + ' ' + e.name)->sep(',') /]
+[/template]
+
+[template public generateReferenceValues(class : EClass)]
+[for (reference : EReference | class.eAllReferences) ]
+	private [getSetType(reference) /] [referenceName(reference) /];
+[/for]
+[/template]
+
+[template public getSuperClasses( class : EClass)]
+[if class.eSuperTypes->select(e : EClass | not e.interface)->size() = 1] extends
+[class.eSuperTypes->select(e : EClass | not e.interface)->collect(e|e.name)->asSet()->sep(',') /] 
+[/if]
+[if class.eSuperTypes->select(e : EClass | e.interface)->notEmpty()] implements
+[class.eSuperTypes->select(e : EClass | e.interface)->collect(e|e.name)->asSet()->sep(',') /] 
+[/if]
+[/template]
+
+[template public generateSuperMethods(class:EClass)]
+[if not class.interface and not class.abstract]
+[for (superClass : EClass | class.eSuperTypes->select(e:EClass|e.interface)->asSet())]
+[for (operation : EOperation | superClass.eAllOperations)]
+	public [getListType(operation) /] [operation.name /]([generateParameters(operation) /]){
+		throw new UnsupportedOperationException();
+	}
+[/for]
+[generateSuperMethods(superClass) /]
+[/for]
+[/if]
+[/template]
+
+[template public getStruct(class : EClass)]
+[if class.interface]interface[else][if class.abstract]abstract [/if]class[/if]
+[/template]
+
+[template public generateAttributes(class : EClass)]
+[if not class.interface]
+	[for (attribute : EAttribute | class.eAllAttributes)]
+	private [getType(attribute) /] [attribute.name /]; 
+	[/for]
+[/if]
+[/template]
+
+[template public getSetType(type : ETypedElement)]
+[if type.many or type.upperBound > 1]Set<[/if][getType(type) /][if type.many or type.upperBound > 1]>[/if]
+[/template]
+
+[template public getListType(type : ETypedElement)]
+[if type.many or type.upperBound > 1]List<[/if][getType(type) /][if type.many or type.upperBound > 1]>[/if]
+[/template]
+
+[template public getType(type : ETypedElement)]
+[if type.eType=EBoolean]boolean
+[elseif type.eType=EInt]int
+[elseif type.eType=EString]String
+[elseif type.eType.oclIsUndefined()]void
+[else][type.eType.name /]
+[/if]
+[/template]

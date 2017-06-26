@@ -1,0 +1,97 @@
+[comment encoding = UTF-8 /]
+[module coreServices('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[template public generateTypeNames(aType : Type)]
+[comment if there is no type name or it is invalid I consider it as string /]
+[if (not name.oclIsInvalid())][name.generateThePlatformDependentName() . trim()/][else]const char * [/if]
+[/template]
+
+[template public generateThePlatformDependentName(aName : String)]
+[if (aName = 'Real')]
+float
+[elseif(aName = 'Boolean') ]
+bool
+[elseif(aName = 'Integer') ]
+int
+[elseif(aName = 'String') ]
+const char * 
+[elseif(aName = '') ] 
+const char * 
+[else]
+[aName/]
+[/if]
+[/template]
+
+[template public generatePlatformDependentVariables(aProperty : Property) post(trim())]
+[if (defaultValue.oclIsTypeOf(LiteralString))] 
+"[defaultValue.stringValue()/]"
+[elseif (defaultValue.oclIsTypeOf(LiteralBoolean))]
+[defaultValue.booleanValue()/]
+[elseif (defaultValue.oclIsTypeOf(LiteralInteger))]
+[defaultValue.integerValue()/]
+[elseif (defaultValue.oclIsTypeOf(LiteralNull))]
+NULL
+[elseif (defaultValue.oclIsTypeOf(LiteralReal))]
+[defaultValue.realValue()/]
+[else]
+[defaultValue.stringValue()/]
+[/if]
+[/template]
+
+
+[template public generateMixiedConstraint(aConstraint : Constraint)]		
+[if (aConstraint.specification.oclIsTypeOf(LiteralBoolean))]
+	[aConstraint.specification.name /] == [aConstraint.specification.booleanValue()/]
+[elseif (aConstraint.specification.oclIsTypeOf(LiteralInteger))]
+	[aConstraint.specification.name /] == [aConstraint.specification.integerValue()/]
+[elseif (aConstraint.specification.oclIsTypeOf(LiteralReal))]
+	[aConstraint.specification.name /] == [aConstraint.specification.realValue()/]
+[elseif (aConstraint.specification.oclIsTypeOf(LiteralString))]
+	[aConstraint.specification.name /] == "[aConstraint.specification.stringValue()/]"
+[elseif (aConstraint.specification.oclIsTypeOf(LiteralNull))]
+	[aConstraint.specification.name /] == NULL
+[/if]
+[/template]
+
+[template public getUsedLibraries(aClass : Class) post (trim())]
+[if (attribute->select(not (lower=upper and lower=1) )->size()>0)]
+#include <vector>
+#include <algorithm>
+using namespace std;[/if]
+[/template]
+
+[template public getClassDependencyLibraries(aClass : Class) post(trim()) ]	
+[for (aProperty : Property | attribute->select(association->size()>0)) separator ('\n')]class [type.name/]; // according to an association.[/for]
+[/template]
+
+[template public getClassInheritanceDependencies(aClass : Class) post(trim()) ]	
+[for (aGeneralization : Generalization | generalization)]
+#include "[general.name /].h"[/for]
+[/template]
+
+[template public Getpath(pPkg : Package)]
+[if ((pPkg<>null))][if (name= nestingPackage)][else][Getpath(nestingPackage)/]./[name/][/if][/if]
+[/template]
+
+
+[comment]----------------------------------------------------------------------------------------------[/comment]
+[query public hasStateMachine(aClass : Class) : Boolean = 
+aClass.allOwnedElements()->filter(StateMachine)->size()>0
+/]
+[comment]----------------------------------------------------------------------------------------------[/comment]
+[query public orderByContents(b : Sequence(Property)) : Sequence (Property) = 
+b->sortedBy(n : Property | n.eContainer().eContents()->indexOf(n))
+/]
+
+[query public orderByContents(b : Sequence(Operation)) : Sequence (Operation) = 
+b->sortedBy(n : Operation | n.eContainer().eContents()->indexOf(n))
+/]
+
+[query public orderByContents(b : Sequence(StateMachine)) : Sequence (StateMachine) = 
+b->sortedBy(n : StateMachine | n.eContainer().eContents()->indexOf(n))
+/]
+
+[query public orderByContents(b : Sequence(uml::NamedElement)) : Sequence (uml::NamedElement) = 
+b->sortedBy(n : uml::NamedElement | n.eContainer().eContents()->indexOf(n))
+/]
+

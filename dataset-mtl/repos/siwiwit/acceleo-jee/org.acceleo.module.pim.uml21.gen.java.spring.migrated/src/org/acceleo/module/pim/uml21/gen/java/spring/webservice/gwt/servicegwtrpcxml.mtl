@@ -1,0 +1,78 @@
+[module servicegwtrpcxml('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template public fullFilePath(model : Model)]
+[if (model.webservices()->notEmpty())][model.pathToMainResources()/]/META-INF/spring/[model.baseImports()/]/layer-gwtrpc-services.xml[/if]
+[/template][/comment]
+
+
+[template public generateServiceGwtRpcSpringApplicationContext(model : Model)? (model.webservices()->notEmpty())]
+[comment This template is called by the main module file /]
+[file (fullFilePath(model.pathToMainResources(), 'META-INF/spring/'.concat(model.baseImports()), 'layer-gwtrpc-services.xml'), false))]
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"	
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
+           http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.0.xsd">
+
+[comment 
+	<aop:config>	  	
+		<!--  configure aspect to provide thread local session for GWT -->		
+		<aop:advisor advice-ref="hibernateInterceptor" pointcut="execution(* org.gwtwidgets.server.spring.GWTRPCServiceExporter.handleRequest(..))" order="1"/>
+	</aop:config>
+	/]	
+	<bean id="[model.baseImports()/].statelessPojoStore" class="net.sf.hibernate4gwt.core.store.stateless.StatelessPojoStore" />
+
+	<bean id="[model.baseImports()/].hibernateBeanManager" class="net.sf.hibernate4gwt.core.HibernateBeanManager">
+			<property name="pojoStore" ref="[model.baseImports()/].statelessPojoStore" />
+			<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+
+[for (class:Class|model.webservices())]
+	<!-- GWT Web Service remoting -->
+	<bean name="[class.name.toLowerFirst()/]Delegator" class="[class._package.getCompleteName()/].impl.Gwt[name.toUpperFirst()/]Impl">
+		<property name="[class.name.toLowerFirst()/]" ref="[class.name.toLowerFirst()/]"/>
+	</bean>
+[comment 
+	<bean name="<%name.toL1Case()%>GWTRPC" class="org.gwtwidgets.server.spring.GWTRPCServiceExporter">
+		<property name="service" ref="<%name.toL1Case()%>Delegator"/>
+		<property name="serviceInterfaces">
+			<value><%package.getCompleteName()%>.IGwt<%name.toU1Case()%></value>
+		</property>
+	</bean>
+	/]	<bean name="[class.name.toLowerFirst()/]GWTRPC" class="org.gwtwidgets.server.spring.hb4gwt.HB4GWTRPCServiceExporter">
+		<property name="beanManager" ref="[class.baseImports()/].hibernateBeanManager" />
+		<property name="service" ref="[class.name.toLowerFirst()/]Delegator" />
+	</bean>							
+[/for]
+ 
+ 	<bean class="org.springframework.web.servlet.handler.SimpleUrlHandlerMapping">			
+    	<property name="urlMap">
+        	<map>
+[for (class:Class|model.webservices())]
+				<entry key="/[name.toUpperFirst()/].gwt.rpc" value-ref="[name.toLowerFirst()/]GWTRPC" />				
+[/for]
+        	</map>
+    	</property>    	
+	</bean>
+	
+</beans>
+[/file]
+[/template]
+
+
+

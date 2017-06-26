@@ -1,0 +1,106 @@
+[comment encoding = UTF-8 /]
+[module Expression2PHP('http://github.com/kanafghan/welipse/joomlagen/1.0', 'http://github.com/kanafghan/welipse/webdsl/1.0', 'http://www.eclipse.org/emf/2002/Ecore')]
+
+[template public generateExpression(expression : Expression, genModel : JoomlaGenModel) post (trim())]
+[if (expression.oclIsKindOf(ConstantExp))]
+	[generateConstantExpression(expression.oclAsType(ConstantExp))/]
+[/if]
+[if (expression.oclIsKindOf(VariableExp))]
+	[generateVariableExpression(expression.oclAsType(VariableExp))/]
+[/if]
+[if (expression.oclIsKindOf(PropertyOperation))]
+	[generatePropertyOperation(expression.oclAsType(PropertyOperation), genModel)/]
+[/if]
+[if (expression.oclIsKindOf(ListExp))]
+	[generateListExpression(expression.oclAsType(ListExp), genModel)/]
+[/if]
+[if (expression.oclIsKindOf(ListElement))]
+	[generateListElement(expression.oclAsType(ListElement), genModel)/]
+[/if]
+[if (expression.oclIsKindOf(OperationExp))]
+	[generateOperationExpression(expression.oclAsType(OperationExp), genModel)/]
+[/if]
+[/template]
+
+[template public generateConstantExpression(expression : ConstantExp) post (trim())]
+[if (expression.oclIsKindOf(BooleanConstant))]
+	[expression.oclAsType(BooleanConstant).value/]
+[/if]
+[if (expression.oclIsKindOf(IntegerConstant))]
+	[expression.oclAsType(IntegerConstant).value/]
+[/if]
+[if (expression.oclIsKindOf(StringConstant))]
+	'[expression.oclAsType(StringConstant).value/]'
+[/if]
+[if (expression.oclIsKindOf(RealConstant))]
+	[expression.oclAsType(RealConstant).value/]
+[/if]
+[/template]
+
+[template public generateVariableExpression(variable : VariableExp) post (trim())]
+$[variable.var/]
+[/template]
+
+[template public generatePropertyOperation(expression : PropertyOperation, genModel : JoomlaGenModel) post (trim())]
+[if (expression.oclIsKindOf(ClassifierOperation))]
+	[generateVariableExpression(expression.source.oclAsType(VariableExp))/]->[expression.identifier/]([generateOperationArguments(expression.oclAsType(ClassifierOperation), genModel)/])
+[/if]
+[if (expression.oclIsKindOf(StructuralExp))]
+	[generateStructuralExpression(expression.oclAsType(StructuralExp))/]
+[/if]
+[if (expression.oclIsKindOf(WebUtilExp))]
+	[genModel.extensionName.toUpperFirst()/]Helper::[expression.oclAsType(WebUtilExp).identifier/]()
+[/if]
+[/template]
+
+[template public generateOperationArguments (operation : ClassifierOperation, genModel : JoomlaGenModel) post (trim())]
+[operation.arguments.generateExpression(genModel)->sep(',')/]
+[/template]
+
+[template public generateStructuralExpression (expression : StructuralExp) post (trim())]
+[generateVariableExpression(expression.source.oclAsType(VariableExp))/]->[if (expression.feature.oclAsType(EStructuralFeature).oclIsKindOf(EAttribute))][expression.identifier/][else]get[expression.identifier.toUpperFirst()/]()[/if]
+[/template]
+
+[template public generateListExpression (listExp : ListExp, genModel : JoomlaGenModel)  post (trim())]
+array([listExp.elements.generateExpression(genModel)->sep(',')/])
+[/template]
+
+[template public generateListElement (listElement : ListElement, genModel : JoomlaGenModel) post (trim())]
+[if (not listElement.key.oclIsUndefined())][generateExpression(listElement.key, genModel)/] => [/if][generateExpression(listElement.value, genModel)/]
+[/template]
+
+[template public generateOperationExpression (expression : OperationExp, genModel : JoomlaGenModel) post (trim())]
+[if (expression.oclIsKindOf(ArithmeticOperation))]
+	[generateArithmeticOperation(expression.oclAsType(ArithmeticOperation), genModel)/]
+[/if]
+[if (expression.oclIsKindOf(ComparisonOperation))]
+	[generateComparisonOperation(expression.oclAsType(ComparisonOperation), genModel)/]
+[/if]
+[if (expression.oclIsKindOf(BooleanOperation))]
+	[generateBooleanOperation(expression.oclAsType(BooleanOperation), genModel)/]
+[/if]
+[if (expression.oclIsKindOf(StringOperation))]
+	[generateStringOperation(expression.oclAsType(StringOperation), genModel)/]
+[/if]
+[/template]
+
+[template public generateArithmeticOperation (expression : ArithmeticOperation, genModel : JoomlaGenModel) post (trim())]
+
+[/template]
+
+[template public generateComparisonOperation (expression : ComparisonOperation, genModel : JoomlaGenModel) post (trim())]
+
+[/template]
+
+[template public generateBooleanOperation (expression : BooleanOperation, genModel : JoomlaGenModel) post (trim())]
+
+[/template]
+
+[template public generateStringOperation (expression : StringOperation, genModel : JoomlaGenModel) post (trim())]
+[if (expression.operator = StringOperator::Length)]
+strlen([generateExpression(expression.operands->first(), genModel)/])
+[/if]
+[if (expression.operator = StringOperator::Concatenation)]
+[generateExpression(expression.operands->first(), genModel)/] . [generateExpression(expression.operands->last(), genModel)/]
+[/if]
+[/template]

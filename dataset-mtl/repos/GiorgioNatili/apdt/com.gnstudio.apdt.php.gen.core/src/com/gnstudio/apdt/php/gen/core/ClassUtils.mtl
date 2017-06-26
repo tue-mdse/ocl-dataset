@@ -1,0 +1,54 @@
+[comment encoding = UTF-8 /]
+[module ClassUtils('http:///org/gnstudio/apdt/model.ecore')/]
+[import CommentUtils /]
+[import AccessUtils /]
+[import ImportUtils /]
+[import SequenceUtils /]
+
+[template public getClassBody(aClass : ClassElement)]
+[if(aClass.members->notEmpty())][for (aMember : ClassMember | aClass.members)]
+[getComment(aMember.description,aMember.note)/]
+[getAccess(aMember.access)/] [getMemberDeclaration(aMember.declaration)/][getMemberName(aMember)/];
+[/for]
+[/if]
+[for (aMethod : Method | aClass.methods)]
+[getComment(aMethod.description,aMethod.note)/]
+[getDeclaration(aMethod.signature.declaration)/][getAccess(aMethod.signature.access)/] function [getMethodName(aMethod)/]([getArgsElement(aMethod)/]) {
+
+    [for (s : Sequence | aMethod.sequences)]
+    [getSequence(s)/]
+    [/for]
+ 
+}
+[/for]
+[/template]
+
+
+
+[template private getMethodName(aMethod : Method)]
+[if ((not aMethod.signature.oclIsUndefined()) and (not aMethod.signature.name.oclIsUndefined()) and aMethod.signature.name.trim().size()>0)][aMethod.signature.name/][else]RENAME_ME[/if]
+[/template]
+
+[template private getMemberName(aMember : ClassMember)]
+[if ((not aMember.name.oclIsUndefined()) and aMember.name.trim().size()>0)][aMember.name/][else]RENAME_ME[/if]
+[/template]
+
+
+
+
+
+[template private  getArgsElement(aMethod : Method)]
+[for (aArg : MethodArgument | aMethod.arguments) separator (', ')][ getBaseType(aArg.type)/] $[aArg.name/][/for]
+[/template]
+
+
+
+[template private  getDeclaration(aDeclaration : DeclarationType)]
+[if (aDeclaration = DeclarationType::FINAL)]final [elseif(aDeclaration = DeclarationType::STATIC)]static [/if]
+[/template]
+
+
+
+[template private  getMemberDeclaration(aDeclaration : DeclarationType)]
+[if (aDeclaration = DeclarationType::FINAL)]const [elseif(aDeclaration = DeclarationType::STATIC)]static $[elseif(aDeclaration = DeclarationType::CONSTANT)]const [else]$[/if]
+[/template]

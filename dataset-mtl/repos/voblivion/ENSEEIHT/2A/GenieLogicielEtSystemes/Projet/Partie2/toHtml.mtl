@@ -1,0 +1,62 @@
+[comment encoding = UTF-8 /]
+[module toHTML('http://www.example.org/scenario')]
+
+
+[template public toHTML(aScenario : Scenario)]
+[comment @main/]
+[file (aScenario.name.concat('.html'), false, 'UTF-8')]
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>[aScenario.name/] - Scénario</title>
+    </head>
+    <body>
+        <h1>[aScenario.name/]</h1>
+        [aScenario.schedule.toHTML()/]
+    </body>
+</html>
+[/file]
+[/template]
+
+[template public toHTML(schedule : Schedule)]
+<ol class='schedule'>
+	[for (component : Component | schedule.components)]
+    	[component.componentToHTML()/]
+	[/for]
+</ol>
+[/template]
+
+[template public componentToHTML(component : Component)]
+<li>
+    [if (component.oclIsKindOf(Activity))]
+    [component.oclAsType(Activity).toHTML()/]
+    [elseif (component.oclIsKindOf(Divergence))]
+    [component.oclAsType(Divergence).toHTML()/]
+    [/if]
+</li>
+[/template]
+
+[template public toHTML(activity : Activity)]
+<div class='activity'>
+    <span class='name'>[activity.name/]</span>
+    [if (activity.schedule <> null)]
+    [activity.schedule.toHTML()/]
+    [/if]
+</div>
+[/template]
+
+[template public toHTML(divergence : Divergence)]
+[if (divergence.type = DivergenceType::Choice)]
+<span>Choix</span>
+<ul class='divergence choice'>
+[elseif (divergence.type = DivergenceType::Parallel)]
+<span>Parallèle</span>
+<ul class='divergence parallel'>
+[/if]
+[for (schedule : Schedule | divergence.schedules)]
+    <li>
+        [schedule.toHTML()/]
+    </li>
+[/for]
+</ul>
+[/template]

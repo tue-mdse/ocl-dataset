@@ -1,0 +1,74 @@
+[comment encoding = UTF-8 /]
+[**
+ * Copyright 2012 jccastrejon
+ * 
+ * This file is part of Model2Roo.
+ * Model2Roo is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ * 
+ * Model2Roo is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Model2Roo.  If not, see <http://www.gnu.org/licenses/>.
+ */]
+[module References('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import fr::imag::model2roo::common::Common /]
+
+[**
+ * Generate the references between the entities contained in the specified package.
+ * @param aPackage UML package.
+ */]
+[template public generateEntitiesReferences(aPackage : Package) post(trim())]
+[for (anElement: Element | aPackage.ownedElement)]
+  [if anElement.oclIsTypeOf(Association)]
+    [let association : Association = anElement.oclAsType(Association)]
+      [association.generateEntityReference()/] --fieldName [association.name/] [association.getRooDetails()/] [association.generateEntityReferenceStartClass()/]
+    [/let]
+  [/if]
+[/for]
+[/template]
+
+[**
+ * Generate the Spring Roo command for the specified UML association.
+ * @param association UML association.
+ */]
+[template public generateEntityReference(association : Association) post(trim())]
+[for (property : Property | association.ownedEnd)]
+[if property.aggregation.toString() = 'composite'] field set --type ~.domain.[property.type.getAssociationEnd(association)/]
+[else] field reference --type ~.domain.[property.type.getAssociationEnd(association)/] [/if]
+[/for]
+[/template]
+
+[**
+ * Obtain the name of the starting point for an UML association.
+ * @param association UML association.
+ */]
+[template public generateEntityReferenceStartClass(association : Association) post(trim())]
+[for (property : Property | association.ownedEnd)]
+--class ~.domain.[property.type.name/] 
+[/for]
+[/template]
+
+[**
+ * Obtain the name of the ending point for an UML association.
+ * @param begin Starting point of the association.
+ * @param association UML association.
+ */]
+[template public generateReference(begin : Type, association : Association) post(trim())]
+[for (end : Type | association.endType)]
+[if not (end.name = begin.name)]
+[end.name/] [/if]
+[/for]
+[/template]
+
+[template private getAssociationEnd(begin : Type, association : Association) post(trim())]
+[let end : String = begin.generateReference(association)]
+  [if end.trim().size() > 0] [end/] [else] [begin.name/] [/if]
+[/let]
+[/template]

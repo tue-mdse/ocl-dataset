@@ -1,0 +1,189 @@
+[comment encoding = UTF-8 /]
+[module task_gen('http://www.eclipse.org/uml2/4.0.0/UML',
+				 'http:///schemas/Functional/_dozfwFO0EeSLefC5vJP4yw/4',
+				 'http://Mapping/schemas/Allocation/_Px3IoFO1EeSj9tgZpcmhcg/3')]
+
+[import org::eclipse::acceleo::module::tres_gen::requests::util_general /]
+[import org::eclipse::acceleo::module::tres_gen::requests::util_sr /]
+
+[**
+ * 
+ */]
+[template public generate_tasks(mdl : Model) post(trim())]
+[comment Preliminary variables /]
+[let mdl_name : String = mdl.name]
+[let mapp : Package = mdl.eContents(Package)->selectSinglePackageByName('Mapping')]
+[let procp : Package = mapp.eContents(Package)->selectSinglePackageByName('ProcessModel')]
+[let f2t_set : Set(Abstraction) = mapp.getFunctionToTaskMapsFromPack()]
+
+[comment ========================= /]
+[comment Generate the file content /]
+[comment ========================= /]
+[file ('task_gen_commands.m', false, 'UTF-8')]
+[ comment FIXME, reason: PeriodicThread should be Thread, but Thread is abstract (in the profile definition)
+  and it results as NOT applicable
+ - NOTE: Applicable stereotypes do not work because also Process and other result to be applicable as Thread
+/]
+[let tsk_set : Sequence(Class) = procp.eContents(Class)->select(e | e.hasStereotypeApplied('Mapping::Concurrency::PeriodicThread'))]
+[for (tsk : Class | tsk_set)]
+%
+%%%%% Commands for generating Task [tsk.name/]
+%
+% - Adding the Task block from tres_simulink_blockset
+[if (i > 1)]
+[generateTaskBlock(mdl_name, tsk, tsk_set->at(i-1))/]
+[else]
+[generateTaskBlock(mdl_name, tsk, tsk)/]
+[/if]
+%
+% - Adding and connecting the Goto block for the Task's next instruction duration
+[generateGotoBlockOfNextDuration(mdl_name, tsk)/]
+%
+% - Adding and connecting the task activation
+[generateTaskActivation(mdl_name, tsk)/]
+%
+% - Adding the 'start/terminate segment' infrastructures
+[generateInfrastructForSegmentManagement(mdl_name, tsk, f2t_set->selectAbstractionsByClient(tsk))/]
+[/for]
+[/let]
+[/file]
+
+[comment Closing the preliminary var. declaration section /]
+[/let]
+[/let]
+[/let]
+[/let]
+[/template]
+
+[**
+ * 
+ */]
+[template public generateTaskBlock(mdl_name : String, tsk : Class, prev_tsk : Class) post(trim())]
+[let tsk_lcn : String = tsk.lowerCaseName()]
+[if (not (tsk = prev_tsk))]
+[tsk_lcn/]_xy = ['['/][prev_tsk.lowerCaseName()/]_pp(3)+145+30, [prev_tsk.lowerCaseName()/]_pp(2)[']'/];
+[tsk_lcn/]_wh = ['['/]90,50[']'/];
+[tsk_lcn/]_pp = ['['/][tsk_lcn/]_xy, [tsk_lcn/]_xy+[tsk_lcn/]_wh[']'/];
+[else]
+[tsk_lcn/]_xy = ['['/]dex1_pp(3)+80, dex1_pp(4)[']'/];
+[tsk_lcn/]_wh = ['['/]90,50[']'/];
+[tsk_lcn/]_pp = ['['/][tsk_lcn/]_xy, [tsk_lcn/]_xy+[tsk_lcn/]_wh[']'/];
+[/if]
+add_block('tres_simulink_blockset/Task', '[mdl_name/]_bn/[tsk.name/]', 'Position', [tsk_lcn/]_pp);
+set_param('[mdl_name/]_bn/[tsk.name/]', 'conf_name', '[tsk_lcn/]_instrs');
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+%
+%%%% Clear the temporary variables defined for managing the generation of Task [tsk.name/]
+%
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/[tsk.name/]
+clear [tsk_lcn/]_xy [tsk_lcn/]_wh [tsk_lcn/]_pp;
+[/file]
+[/let]
+[/template]
+
+[**
+ * 
+ */]
+[template public generateGotoBlockOfNextDuration(mdl_name : String, tsk : Class) post(trim())]
+[let tsk_lcn : String = tsk.lowerCaseName()]
+[let tsk_id : String = tsk.getTaskIdLong()]
+[comment Add, configure and connect the GotoDxxx block /]
+gotod_[tsk_lcn/]_xy = ['['/][tsk_lcn/]_pp(3)+25, [tsk_lcn/]_pp(4)-20[']'/];
+gotod_[tsk_lcn/]_wh = ['['/]35,20[']'/];
+gotod_[tsk_lcn/]_pp = ['['/]gotod_[tsk_lcn/]_xy, gotod_[tsk_lcn/]_xy+gotod_[tsk_lcn/]_wh[']'/];
+add_block('built-in/Goto', '[mdl_name/]_bn/GotoD[tsk_id/]', 'Position', gotod_[tsk_lcn/]_pp);
+set_param('[mdl_name/]_bn/GotoD[tsk_id/]', 'GotoTag', 'D_[tsk_id/]');
+set_param('[mdl_name/]_bn/GotoD[tsk_id/]', 'ShowName', 'off');
+add_line('[mdl_name/]_bn', '[tsk.name/]/2', 'GotoD[tsk_id/]/1', 'autorouting', 'on');
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/GotoD[tsk_id/]
+clear gotod_[tsk_lcn/]_xy gotod_[tsk_lcn/]_wh gotod_[tsk_lcn/]_pp;
+[/file]
+[/let]
+[/let]
+[/template]
+
+[**
+ * 
+ */]
+[template public generateTaskActivation(mdl_name : String, tsk : Class) post(trim())]
+[let tsk_lcn : String = tsk.lowerCaseName()]
+[let tsk_id : String = tsk.getTaskIdLong()]
+[comment Add, configure and connect the FromAxxx block /]
+froma_[tsk_lcn/]_xy = [tsk_lcn/]_xy - ['['/]0,25[']'/];
+froma_[tsk_lcn/]_wh = ['['/]35,20[']'/];
+froma_[tsk_lcn/]_pp = ['['/]froma_[tsk_lcn/]_xy, froma_[tsk_lcn/]_xy+froma_[tsk_lcn/]_wh[']'/];
+add_block('built-in/From', '[mdl_name/]_bn/FromA[tsk_id/]', 'Position', froma_[tsk_lcn/]_pp);
+set_param('[mdl_name/]_bn/FromA[tsk_id/]', 'GotoTag', 'A_[tsk_id/]');
+set_param('[mdl_name/]_bn/FromA[tsk_id/]', 'ShowName', 'off' );
+add_line('[mdl_name/]_bn', 'FromA[tsk_id/]/1', '[tsk.name/]/Trigger', 'autorouting', 'on');
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/FromA[tsk_id/]
+clear froma_[tsk_lcn/]_xy froma_[tsk_lcn/]_wh froma_[tsk_lcn/]_pp;
+[/file]
+[/let]
+[/let]
+[/template]
+
+[**
+ * 
+ */]
+[template public generateInfrastructForSegmentManagement(mdl_name : String, tsk : Class, abst_tsk : Set(Abstraction)) post(trim())]
+[let tsk_lcn : String = tsk.lowerCaseName()]
+[let tsk_id : String = tsk.getTaskIdLong()]
+%     Add, configure and connect to the Demux block
+dex_[tsk_lcn/]_xy  = ['['/]gotod_[tsk_lcn/]_pp(3)+5, [tsk_lcn/]_xy(2)-15[']'/];
+dex_[tsk_lcn/]_wh = ['['/]3,50[']'/];
+dex_[tsk_lcn/]_pp = ['['/]dex_[tsk_lcn/]_xy, dex_[tsk_lcn/]_xy+dex_[tsk_lcn/]_wh[']'/];
+add_block('built-in/Demux', '[mdl_name/]_bn/Demux[tsk_id/]', 'Position', dex_[tsk_lcn/]_pp);
+set_param('[mdl_name/]_bn/Demux[tsk_id/]', 'Outputs', '[2*abst_tsk->size()/]');
+set_param('[mdl_name/]_bn/Demux[tsk_id/]', 'DisplayOption', 'bar');
+set_param('[mdl_name/]_bn/Demux[tsk_id/]', 'ShowName', 'off' );
+add_line('[mdl_name/]_bn', '[tsk.name/]/1', 'Demux[tsk_id/]/1', 'autorouting', 'on');
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/Demux[tsk_id/]
+clear dex_[tsk_lcn/]_xy dex_[tsk_lcn/]_wh dex_[tsk_lcn/]_pp;
+[/file]
+[let ord_abst_tsk : OrderedSet(Abstraction) = abst_tsk->sortFunctionToTaskMapsByMapOrder()]
+[for (a : Abstraction | ord_abst_tsk)]
+[let goto_label : String = '_' + tsk_id + '_' + i.toString() + '_1']
+%     Add, configure and connect the GotoS[goto_label/] block
+[if (i > 1)]
+gotos[goto_label/]_xy  = ['['/]dex_[tsk_lcn/]_xy(1)+25,gotof['_'+tsk_id+'_'+(i-1).toString()+'_1'/]_pp(4)+5[']'/];
+[else]
+gotos[goto_label/]_xy  = ['['/]dex_[tsk_lcn/]_xy(1)+25,dex_[tsk_lcn/]_xy(2)+5[']'/];
+[/if]
+gotos[goto_label/]_wh  = ['['/]55,20[']'/];
+gotos[goto_label/]_pp  = ['['/]gotos[goto_label/]_xy, gotos[goto_label/]_xy+gotos[goto_label/]_wh[']'/];
+add_block('built-in/Goto', '[mdl_name/]_bn/GotoS[goto_label/]', 'Position', gotos[goto_label/]_pp);
+set_param('[mdl_name/]_bn/GotoS[goto_label/]', 'GotoTag', 'S[goto_label/]');
+set_param('[mdl_name/]_bn/GotoS[goto_label/]', 'ShowName', 'off' );
+add_line('[mdl_name/]_bn', 'Demux[tsk_id/]/[2*(i-1)+1/]', 'GotoS[goto_label/]/1', 'autorouting', 'on');
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/GotoS[goto_label/]
+clear gotos[goto_label/]_xy gotos[goto_label/]_wh gotos[goto_label/]_pp;
+[/file]
+%     Add, configure and connect the GotoF[goto_label/] block
+gotof[goto_label/]_xy  = ['['/]gotos[goto_label/]_pp(1),gotos[goto_label/]_pp(4)+5[']'/];
+gotof[goto_label/]_wh  = ['['/]55,20[']'/];
+gotof[goto_label/]_pp  = ['['/]gotof[goto_label/]_xy, gotof[goto_label/]_xy+gotof[goto_label/]_wh[']'/];
+add_block('built-in/Goto', '[mdl_name/]_bn/GotoF[goto_label/]', 'Position', gotof[goto_label/]_pp);
+set_param('[mdl_name/]_bn/GotoF[goto_label/]', 'GotoTag', 'F[goto_label/]');
+set_param('[mdl_name/]_bn/GotoF[goto_label/]', 'ShowName', 'off' );
+add_line('[mdl_name/]_bn', 'Demux[tsk_id/]/[2*i/]', 'GotoF[goto_label/]/1', 'autorouting', 'on');
+[comment Add commands to clear the tmp vars for the definition of block's position /]
+[file ('clear_tmp_vars_commands.m', true, 'UTF-8')]
+% Clearing the tmp vars for the position of block [mdl_name/]_bn/GotoF[goto_label/]
+clear gotof[goto_label/]_xy gotof[goto_label/]_wh gotof[goto_label/]_pp;
+[/file]
+[/let]
+[/for]
+[/let]
+[/let]
+[/let]
+[/template]

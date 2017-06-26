@@ -1,0 +1,124 @@
+[comment encoding = UTF-8 /]
+[module generate('http://stefvanschuylenburg/functionalecore/packagecontainer', 'http://www.eclipse.org/emf/2002/Ecore')]
+
+
+[template public generateTransformation(container : EPackageContainer)]
+[comment @main/]
+
+[let nsURI: EString = container.extension.nsURI]
+[file (container.extension.name.concat('.qvto'), false)]
+modeltype M uses '[container.original.nsURI/]';
+modeltype MFun uses '[container.extension.nsURI/]';
+
+transformation [container.extension.name/](in source: MFun, out target: M);
+
+main() {
+	var root := source.rootObjects();
+
+	// map the root based on its type
+	root.transformAny(null);
+}
+
+/*
+ * Mappings for the referenced classes.
+ * Disjuncts between all possible instances.
+ */
+[for (class: EClass | container.extension.referencedClasses(nsURI))]
+mapping MFun::[class.name/]::transform(in x: Sequence(Element)): M::[class.name/] 
+	[let subclasses: OrderedSet(EClass) = container.extension.subClasses(class)->asOrderedSet()]
+	disjuncts MFun::[subclasses->first().name/]::transform[subclasses->first().name/][for (subclass: EClass | subclasses->excluding(subclasses->first()))],
+		MFun::[subclass.name/]::transform[subclass.name/][/for];
+	[/let]
+[/for]
+
+/*
+ * Mappings for objects from [container.original.nsURI/]
+ */
+[for (class: EClass | container.original.eClasses())]
+mapping MFun::[class.name/]::transform[class.name/](in x: Sequence(Element)): M::[class.name/] {
+	[if (not class.eAllAttributes->isEmpty())]
+
+	// the attributes
+	[for (attr: EAttribute | class.eAllAttributes)]
+	[attr.name/] := self.[attr.name/];
+	[/for]
+	[/if]
+	[if (not class.eAllReferences->isEmpty())]
+
+	// the references
+	[for (ref: EReference | class.eAllReferences)]
+	[ref.name/] := self.[ref.name/].map transform(x);
+	[/for]
+	[/if]
+}
+[/for]
+
+/**
+ * Mappings for the FunctionApply and Param elements
+ */
+[for (class: EClass | container.extension.referencedClasses(nsURI))]
+mapping MFun::FunctionApply[class.name/]::transformFunctionApply[class.name/](in x: Sequence(Element)): M::[class.name/] {
+	init {
+		var function := self.function.body.oclAsType(MFun::[class.name/]);
+		var argument := self.argument.oclAsType(Element).transformAny(x);
+		result := function.map transform(argument);
+	}
+	end {
+		// remove argument again: it is only passed around
+		argument->forEach(arg) {
+			target.removeElement(arg);
+		};
+	}
+}
+mapping MFun::Param[class.name/]::transformParam[class.name/](in x: Sequence(Element)): M::[class.name/]
+	when {x != null && self.index > 0} { // WARNING: OCL uses index 1 as the starting index
+	init{
+		result := x->at(self.index).deepclone().oclAsType(M::[class.name/]);
+	}
+}
+
+[/for]
+
+
+/**
+ * Transforms an element using the mappings defined in this transformation.
+ * The transform is based on the type of the element
+ */
+query Element::transformAny(in x: Sequence(Element)): Element {
+	switch {
+		[for (class: EClass | container.extension.referencedClasses(nsURI))]
+		case (self.oclIsKindOf(MFun::[class.name/])) {
+			return self.oclAsType(MFun::[class.name/]).map transform(null);
+		}
+		[/for]
+	}
+}
+
+[/file]
+[/let]
+[/template]
+
+
+[comment All the concrete EClasses within ePackage, this will not yield the abstract classes /]
+[query public eClasses(ePackage: EPackage): OrderedSet(EClass) =
+	ePackage.eClassifiers->selectByKind(EClass)->reject(abstract)
+/]
+
+[comment Selects all the concrete classes that are a subtype of superClass /]
+[query public subClasses(ePackage: EPackage, superClass: EClass): OrderedSet(EClass) = 
+	ePackage.eClasses()->select(class: EClass | superClass.isSuperTypeOf(class))
+/]
+
+[comment finds the referenced classes by looking at for which classes there is an FunctionApply method. /]
+[query public referencedClasses(extension: EPackage, nsURI: EString): OrderedSet(EClass) = 
+	extension.eClassifiers->selectByKind(EClass)
+		->reject(class: EClass | class.isFunctionApply(nsURI))
+		->select(class: EClass | extension.eClasses()->exists(class2: EClass |
+			class.isSuperTypeOf(class2) and class2.isFunctionApply(nsURI)))
+/]
+
+
+[comment Determines whether the class is a FunctionApply class. /]
+[query public isFunctionApply(elem: EModelElement, nsURI: EString): Boolean =
+	not (elem.getEAnnotation(nsURI + '/FunctionApply') = null)
+/]

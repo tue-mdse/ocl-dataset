@@ -1,0 +1,282 @@
+[comment encoding = UTF-8 /]
+
+[module generate('http://fr.inria.aoste.timemodel.ccslmodel.clockexpressionandrelation', 
+	'http://www.eclipse.org/emf/2002/Ecore', 
+	'http://org.gemoc.moccml/1.0', 
+	'http://fr.inria.aoste.timemodel',
+	'http://org.gemoc.moccml.fsmmodel/1.0',
+	'http://mleduc.fr/gseq') ]
+
+[template public generate(aProgram : Program)]
+[comment @main/]
+[file (aProgram.name+'_withMoC-.clocksystem', false, 'UTF-8')]
+
+"Some global constants"
+|system moccmllibs ccsllibs|
+"MoCCML librairies specifications" 
+
+	"CCSL librairies specifications"
+
+
+"Instanciation" 
+
+
+system := ClockSystem named: '[aProgram.name/]_withMoC-'.
+system addLibrary:moccmllibs asDictionary.
+"system addLibs:ccsllibs asDictionary."
+
+[for (element : gseq::Program| aProgram.eAllContents(gseq::Program))]
+"clocks for Program [element.name/]" 
+system addClocks: #(start[element.name/]).
+
+"internal clocks for gseq::Program [element.name/]" 
+	system addInternalClocks: #(oneStartOnly[element.name/]).
+
+[/for]
+[for (element : gseq::BooleanExpression| aProgram.eAllContents(gseq::BooleanExpression))]
+"clocks for BooleanExpression [element.name/]" 
+system addClocks: #(bvalue[element.name/]).
+
+[/for]
+[for (element : gseq::Method| aProgram.eAllContents(gseq::Method))]
+"clocks for Method [element.name/]" 
+system addClocks: #(callIt[element.name/]).
+system addClocks: #(endOf[element.name/]).
+
+"internal clocks for gseq::Method [element.name/]" 
+	
+[/for]
+[for (element : gseq::Operation| aProgram.eAllContents(gseq::Operation))]
+"clocks for Operation [element.name/]" 
+system addClocks: #(startOfOperation[element.name/]).
+system addClocks: #(execute[element.name/]).
+system addClocks: #(endOfOperation[element.name/]).
+
+[/for]
+[for (element : gseq::Print| aProgram.eAllContents(gseq::Print))]
+"clocks for Print [element.name/]" 
+system addClocks: #(print[element.name/]).
+
+[/for]
+[for (element : gseq::If| aProgram.eAllContents(gseq::If))]
+"clocks for If [element.name/]" 
+system addClocks: #(doEvaluateIf[element.name/]).
+system addClocks: #(evaluateTrue[element.name/]).
+system addClocks: #(evaluateFalse[element.name/]).
+
+"internal clocks for gseq::If [element.name/]" 
+	system addInternalClocks: #(unionsTheElse2[element.name/]).
+
+[/for]
+[for (element : gseq::Assign| aProgram.eAllContents(gseq::Assign))]
+"clocks for Assign [element.name/]" 
+[/for]
+[for (element : gseq::MethodCall| aProgram.eAllContents(gseq::MethodCall))]
+"clocks for MethodCall [element.name/]" 
+[/for]
+[for (element : gseq::Plus| aProgram.eAllContents(gseq::Plus))]
+"clocks for Plus [element.name/]" 
+[/for]
+
+[for (element : gseq::Program| aProgram.eAllContents(gseq::Program))]
+"expressions used by  Program [element.name/]" 
+
+	[if ( ->size()>1) ]
+	system allOneTickAndNoMore: #(start[element.name/]) named: #oneStartOnly[element.name/]. 
+	[/if]
+ 
+"relations for Program [element.name/]" 
+	"initBeforeAll in Program [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(start[element.name/]  callIt[element.startMethod.name/])  constants:{-1} .
+		[/if]
+	"initOnlyOnce in Program [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Coincides clocks: #(start[element.name/]  oneStartOnly[element.name/]) .
+		[/if]
+[/for]
+[for (element : gseq::BooleanExpression| aProgram.eAllContents(gseq::BooleanExpression))]
+"relations for BooleanExpression [element.name/]" 
+	"beBvalueAfterExecute in BooleanExpression [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(execute[element.name/]  bvalue[element.name/])  constants:{-1} .
+		[/if]
+	"beBValueBeforeEnd in BooleanExpression [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(bvalue[element.name/]  endOfOperation[element.name/])  constants:{-1} .
+		[/if]
+[/for]
+[for (element : gseq::Method| aProgram.eAllContents(gseq::Method))]
+"expressions used by  Method [element.name/]" 
+
+	[if ( ) ]
+	system all: #() named: #firstOppMethod[element.name/]. 
+	[/if]
+ 
+
+	[if ( ) ]
+	system allUnion: #() named: #allEventWhichCall0[element.name/]. 
+	[/if]
+ 
+
+	[if ( ) ]
+	system all: #() named: #inps[element.name/]. 
+	[/if]
+ 
+
+	[if ( true) ]
+	system allUnion: #() named: #allEventWhichCall00[element.name/]. 
+	[/if]
+ 
+
+	[if ( ) ]
+	system all: #() named: #inps1[element.name/]. 
+	[/if]
+ 
+
+	[if ( ) ]
+	system allUnion: #() named: #allEventWhichCall1[element.name/]. 
+	[/if]
+ 
+"relations for Method [element.name/]" 
+	"oppOrdered in Method [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #()  constants:{-1} .
+		[/if]
+	"firstOppAfterCall in Method [element.name/]"
+		[if ( ( self.operations->size() > 0) ) ]
+	system library: #Kernel relation: #Precedes clocks: #(callIt[element.name/]  firstOppMethod[element.name/])  constants:{-1} .
+		[/if]
+	"methodStartOnCall0 in Method [element.name/]"
+		[if ( ( self.inProgram.startMethod = self and self.calledBy->size() > 0) ) ]
+	system library: #Kernel relation: #Precedes clocks: #(allEventWhichCall00[element.name/] allEventWhichCall00[element.name/]  callIt[element.name/])  constants:{-1} .
+		[/if]
+	"methodStartOnCall1 in Method [element.name/]"
+		[if ( ( self.inProgram.startMethod = self and self.calledBy->size() = 0) ) ]
+	system library: #Kernel relation: #Precedes clocks: #(inps1[element.name/]  callIt[element.name/])  constants:{-1} .
+		[/if]
+	"methodStartOnCall2 in Method [element.name/]"
+		[if ( ( self.inProgram.startMethod <> self and self.calledBy->size() > 0) ) ]
+	system library: #Kernel relation: #Precedes clocks: #(allEventWhichCall1[element.name/]  callIt[element.name/])  constants:{-1} .
+		[/if]
+	"endOfAfterAll in Method [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(endOfOperation[element.operations->last().name/]  endOf[element.name/])  constants:{-1} .
+		[/if]
+	"endOfAfterAllEndOf in Method [element.name/]"
+		[if ( ( self.operations->select(e | (e).oclIsKindOf(MethodCall))->size() > 0) ) ]
+	system library: #Kernel relation: #Precedes clocks: #(endOf[element.operations->select(e : gseq::Operation|e.oclIsKindOf(gseq::MethodCall))->last().oclAsType(gseq::MethodCall).methodToCall.name/]  endOf[element.name/])  constants:{-1} .
+		[/if]
+[/for]
+[for (element : gseq::Operation| aProgram.eAllContents(gseq::Operation))]
+"relations for Operation [element.name/]" 
+	"openrationStartThenExecute in Operation [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(startOfOperation[element.name/]  execute[element.name/])  constants:{-1} .
+		[/if]
+	"openrationExecuteThenEnd in Operation [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(execute[element.name/]  endOfOperation[element.name/])  constants:{-1} .
+		[/if]
+[/for]
+[for (element : gseq::Print| aProgram.eAllContents(gseq::Print))]
+"relations for Print [element.name/]" 
+	"printToPrintBeforeSelf in Print [element.name/]"
+		[if ( ( self.toPrint.oclIsKindOf(Operation)) ) ]
+	system library: #Kernel relation: #Precedes clocks: #(execute[element.name/]  execute[element.toPrint.oclAsType(gseq::Operation).name/])  constants:{-1} .
+		[/if]
+	"printPrintAfterOperationExecuted in Print [element.name/]"
+		[if ( ( self.toPrint.oclIsKindOf(Operation)) ) ]
+	system library: #Kernel relation: #Precedes clocks: #(execute[element.toPrint.oclAsType(gseq::Operation).name/]  print[element.name/])  constants:{-1} .
+		[/if]
+[/for]
+[for (element : gseq::If| aProgram.eAllContents(gseq::If))]
+"expressions used by  If [element.name/]" 
+
+	[if ( true) ]
+	system allInf: #(execute[element.thenBranch.name/] execute[element.elseBranch.name/]) named: #unionsTheElse2[element.name/]. 
+	[/if]
+ 
+"relations for If [element.name/]" 
+	"ifTrueThenElseElse in If [element.name/]"
+	[if ( true) ]
+	system
+		library: #GSeq
+		relation: #BooleanGuardedTransitionRuleDef
+		clocks: #(doEvaluateIf[element.name/]  evaluateTrue[element.name/]  evaluateFalse[element.name/])
+		constants: {}
+		variables: {}.
+	[/if]
+
+	"doEvaluateIfMoment in If [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Coincides clocks: #(startOfOperation[element.name/]  doEvaluateIf[element.name/]) .
+		[/if]
+	"ifConditionAfterSelfExecute in If [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(execute[element.name/]  execute[element.conditionIf.name/])  constants:{-1} .
+		[/if]
+	"ifThenBranchAfterSelfExecute in If [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(evaluateTrue[element.name/]  execute[element.thenBranch.name/])  constants:{-1} .
+		[/if]
+	"ifElseBranchAfterSelfExecute in If [element.name/]"
+		[if ( ( self.elseBranch <> null) ) ]
+	system library: #Kernel relation: #Precedes clocks: #(evaluateFalse[element.name/]  execute[element.elseBranch.name/])  constants:{-1} .
+		[/if]
+	"ifEndOfConditionBeforeBranching in If [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(endOfOperation[element.conditionIf.name/]  unionsTheElse2[element.name/])  constants:{-1} .
+		[/if]
+[/for]
+[for (element : gseq::Assign| aProgram.eAllContents(gseq::Assign))]
+"relations for Assign [element.name/]" 
+	"startAssignedAfterStartAssign in Assign [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(startOfOperation[element.assignedExpression.name/]  startOfOperation[element.name/])  constants:{-1} .
+		[/if]
+	"assignEvaluteBeforeSelf in Assign [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(execute[element.assignedExpression.name/]  execute[element.name/])  constants:{-1} .
+		[/if]
+	"evaluationFinishBeforeSelf in Assign [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(endOfOperation[element.assignedExpression.name/]  endOfOperation[element.name/])  constants:{-1} .
+		[/if]
+[/for]
+[for (element : gseq::MethodCall| aProgram.eAllContents(gseq::MethodCall))]
+"relations for MethodCall [element.name/]" 
+	"waitForCallEndBeforeNext in MethodCall [element.name/]"
+		[if ( ( (self.methodToCall.operations->size() > 0) and (self.executedBy <> null) and (self.executedBy.operations->size() > self.executedBy.operations->indexOf(self))) ) ]
+	system library: #Kernel relation: #Precedes clocks: #(endOf[element.methodToCall.name/]  execute[element.executedBy.operations->at(element.executedBy.operations->indexOf(self).+(1)).name/])  constants:{-1} .
+		[/if]
+[/for]
+[for (element : gseq::Plus| aProgram.eAllContents(gseq::Plus))]
+"relations for Plus [element.name/]" 
+	"plusLeftStartAfterSelf in Plus [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(startOfOperation[element.name/]  startOfOperation[element.leftPlus.name/])  constants:{-1} .
+		[/if]
+	"plusLeftEndBeforeRightStart in Plus [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(endOfOperation[element.leftPlus.name/]  startOfOperation[element.rightPlus.name/])  constants:{-1} .
+		[/if]
+	"plusRightBeforeSelfExecute in Plus [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(endOfOperation[element.rightPlus.name/]  execute[element.name/])  constants:{-1} .
+		[/if]
+	"plusEvaluateBeforeEnd in Plus [element.name/]"
+		[if ( true) ]
+	system library: #Kernel relation: #Precedes clocks: #(execute[element.name/]  endOfOperation[element.name/])  constants:{-1} .
+		[/if]
+[/for]
+[/file]
+[file ('ClkSysFunctionTest.clocksystem', false, 'UTF-8')]
+SimpleSDF example1 system
+[/file]
+
+
+[/template]
+
+
+

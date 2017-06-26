@@ -1,0 +1,45 @@
+import 'KiamaCS.ecore'
+import 'KiamaAS.ecore'
+
+
+package kiamacs
+
+context TopCS
+def : ast() : kiamaas::Top =
+	kiamaas::Top {
+		node = node.ast()
+	}
+	
+context NodeCS
+def : ast() : kiamaas::Node =
+	invalid -- to be overriden
+	
+context PlusCS
+def : ast() : kiamaas::Plus =
+	kiamaas::Plus {	
+		left = left.ast(),
+		right = right.ast(),
+		depth = let container = ast().oclContainer() in 
+				--if container.oclIsKindOf(kiamaas::Node)  then container.oclAsType(kiamaas::Node).depth + 1 else 0 endif,
+				if container.oclIsKindOf(kiamaas::Top)  then 0 else container.oclAsType(kiamaas::Plus).depth + 1 endif,
+		height = ast().left.height->including(ast().right.height)->max() + 1
+		--height = left.ast().height->including(right.ast().height)->max() + 1
+	}
+
+context NumCS
+def : ast() : kiamaas::Num = 
+	kiamaas::Num {
+		value = value,
+		depth = let container = ast().oclContainer() in 
+				--if container.oclIsKindOf(kiamaas::Node)  then container.oclAsType(kiamaas::Node).depth + 1 else 0 endif,
+				if container.oclIsKindOf(kiamaas::Top)  then 0 else container.oclAsType(kiamaas::Plus).depth + 1 endif,
+		height = 0
+	}
+	
+endpackage
+
+
+-- Needed to initialize maps for AS metamodel
+package kiamacs
+	
+endpackage

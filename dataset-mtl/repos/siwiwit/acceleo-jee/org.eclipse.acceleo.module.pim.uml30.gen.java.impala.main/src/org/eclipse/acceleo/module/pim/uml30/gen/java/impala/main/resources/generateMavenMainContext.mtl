@@ -1,0 +1,48 @@
+[comment encoding = UTF-8 /]
+[module generateMavenMainContext('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::main::common::mainPathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile /]
+[template public generateMavenMainContext(aModel : Model)]
+	[file (aModel.generateProjectFolder().concat(aModel.pathToMainResources()).concat('/').concat(aModel.generateProjectFolder()).concat('-context.xml'), false, 'UTF-8')]
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:service="http://www.impalaframework.org/schema/service"       
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+http://www.impalaframework.org/schema/service http://impala.googlecode.com/svn/schema/service-registry.xsd">
+
+
+ <service:import id = "dataSource" proxyTypes = "javax.sql.DataSource"/>
+    
+ <service:import id = "sessionFactory" proxyTypes = "org.hibernate.SessionFactory"/> 
+    
+ <service:import id = "transactionManager" proxyTypes = "org.springframework.transaction.PlatformTransactionManager"/>  
+[for (aService : Class | aModel.eAllContents(Class)->select(aClass:Class|aClass.isService()))]
+ <service:import id = "[aService.name.toLower()/]" proxyTypes = "[if (aService.generateJavaPackage().size()>0)][aService.generateJavaPackage()/].[/if][aService.name.toUpperFirst()/]"/>
+ <!--  The rest is just variations on a theme - not actually required for the application -->
+ <!--
+ <service:import id = "[aService.name.toLower()/]a" exportName="[aService.name.toLower()/]" proxyTypes =
+	"[if (aService.generateJavaPackage().size()>0)][aService.generateJavaPackage()/].[/if][aService.name.toUpperFirst()/]"/>
+
+ <service:import id = "[aService.name.toLower()/]b" exportTypes =
+	"[if (aService.generateJavaPackage().size()>0)][aService.generateJavaPackage()/].[/if][aService.name.toUpperFirst()/]" proxyTypes =
+	"[if (aService.generateJavaPackage().size()>0)][aService.generateJavaPackage()/].[/if][aService.name.toUpperFirst()/][aService.name.toUpperFirst()/]"/>
+
+ <service:import id = "[aService.name.toLower()/]c" exportTypes =
+	"[if (aService.generateJavaPackage().size()>0)][aService.generateJavaPackage()/].[/if][aService.name.toUpperFirst()/]"/>
+  -->
+[/for]    
+
+[for (aManageableService : Class | aModel.eAllContents(Class)->select(aClass:Class|aClass.isManageableEntity()))]
+ <service:import id = "[aManageableService.name.toLower()/]managebaleservice" proxyTypes = "[if (aManageableService.generateJavaPackage().size()>0)][aManageableService.generateJavaPackage()/].[/if]crud.[aManageableService.name.toUpperFirst()/]ManageableService"/>
+[/for]    
+
+</beans>	
+	[/file]
+[/template]

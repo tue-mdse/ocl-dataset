@@ -1,0 +1,90 @@
+[comment encoding = UTF-8
+ *******************************************************************************
+ * Copyright (c) 2008-2012 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module singlecompositioneditorControl('http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/emf/eef/components/1.0.0', 'http://www.eclipse.org/emf/eef/views/1.0.0', 'http://www.eclipse.org/emf/eef/mapping/1.0.0', 'http://www.eclipse.org/emf/eef/generation/1.0.0') extends org::eclipse::emf::eef::codegen::widgets::api::widgetControl/]
+
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::typeUtils /]
+[import org::eclipse::emf::eef::codegen::services::filters /]
+[import org::eclipse::emf::eef::codegen::services::imports/]
+
+[comment ===== Case : model = Composition(1) - view = SingleCompositionEditor ===== /]
+
+
+[template public declareEObjectUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides declareEObjectUpdater ? (editionElement.validCaseForContainment())] 
+if (event.getKind() == [include('org.eclipse.emf.eef.runtime.impl.notify.PropertiesEditionEvent')/].EDIT) {
+	if ([editionElement.name.toJavaIdentifier()/]Settings.getValue() == "") {
+		[include('org.eclipse.emf.eef.runtime.context.impl.EReferencePropertiesEditionContext')/] context = new EReferencePropertiesEditionContext(editingContext, this, [editionElement.name.toJavaIdentifier()/]Settings, editingContext.getAdapterFactory());
+		[include('org.eclipse.emf.eef.runtime.providers.PropertiesEditingProvider')/] provider = (PropertiesEditingProvider)editingContext.getAdapterFactory().adapt(editingContext.getEObject(), PropertiesEditingProvider.class);
+		Object result = null;
+		if (provider != null) {
+			[include('org.eclipse.emf.eef.runtime.policies.PropertiesEditingPolicy')/] policy = provider.getPolicy(context);
+			if (policy instanceof [include('org.eclipse.emf.eef.runtime.policies.impl.CreateEditingPolicy')/]) {
+				policy.execute();
+				result = ((CreateEditingPolicy) policy).getResult();
+			}
+		}
+		if (result != null) {
+			[editionElement.name.toJavaIdentifier()/]Settings.setToReference(result);
+		}
+	} else {
+		[include('org.eclipse.emf.eef.runtime.context.impl.EObjectPropertiesEditionContext')/] context = new EObjectPropertiesEditionContext(editingContext, this, (EObject) [editionElement.name.toJavaIdentifier()/]Settings.getValue(), editingContext.getAdapterFactory());
+		[include('org.eclipse.emf.eef.runtime.providers.PropertiesEditingProvider')/] provider = (PropertiesEditingProvider)editingContext.getAdapterFactory().adapt([editionElement.name.toJavaIdentifier()/]Settings.getValue(), PropertiesEditingProvider.class);
+		if (provider != null) {
+			[include('org.eclipse.emf.eef.runtime.policies.PropertiesEditingPolicy')/] policy = provider.getPolicy(context);
+			if (policy != null) {
+				policy.execute();
+			}
+		}
+	}
+} else if (event.getKind() == PropertiesEditionEvent.UNSET) {
+	[editionElement.name.toJavaIdentifier()/]Settings.setToReference(null);
+}
+
+[/template]
+
+
+[template public filterUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides filterUpdater ? (editionElement.hasModelNavigation() and editionElement.navigation.oclIsKindOf(navigation::SimpleModelNavigation) and (editionElement.navigation.oclAsType(navigation::SimpleModelNavigation).feature.isContainmentSingle() and editionElement.model.isReferenceSingle() and (editionElement.representationName('SingleCompositionEditor'))))]
+[/template]
+
+[comment ===== Case : model = Containment(1), Simple navigation or not - view = SingleCompositionEditor ===== /]
+[query public validCaseForContainment(editionElement : PropertiesEditionElement) : Boolean = 
+	editionElement.model.isContainmentSingle() 
+	and (editionElement.representationName('SingleCompositionEditor')) /]
+
+[template public additionalComponentField(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides additionalComponentField ? (editionElement.validCaseForContainment())]
+
+/**
+ * Settings for [editionElement.name/] SingleCompositionEditor
+ */
+private [include('org.eclipse.emf.eef.runtime.ui.widgets.eobjflatcombo.EObjectFlatComboSettings')/] [editionElement.name.toJavaIdentifier()/]Settings;
+
+[/template]
+
+[template public liveUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides liveUpdater ? (editionElement.validCaseForContainment())]
+if ([editionElement.metamodelGetter()/].equals(msg.getFeature()) && [view.viewIdentifier(pec)/] != null && isAccessible([editionElement.views->first().editorID()/]))
+	[view.viewIdentifier(pec)/].[editionElement.views->first().viewPackageSetter()/](([editionElement.views->first().toJavaType().trim()/])msg.getNewValue());
+[/template]
+
+
+[template public updater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides updater ? (editionElement.validCaseForContainment() and not editionElement.hasModelNavigation())]
+if (isAccessible([editionElement.views->first().editorID()/])) {
+	// init part
+	[editionElement.name.toJavaIdentifier()/]Settings = new EObjectFlatComboSettings([pec.pecModelClass().toJavaIdentifier()/], [editionElement.metamodelGetter()/]);
+	[view.viewIdentifier(pec)/].init[editionElement.views->first().viewPackageSignature()/]([editionElement.name.toJavaIdentifier()/]Settings);
+}
+[/template]
+
+[template public filterUpdater(editionElement : PropertiesEditionElement, view : View, pec : PropertiesEditionComponent) overrides filterUpdater ? (editionElement.validCaseForContainment())]
+[comment no filters on creation/]
+[/template]

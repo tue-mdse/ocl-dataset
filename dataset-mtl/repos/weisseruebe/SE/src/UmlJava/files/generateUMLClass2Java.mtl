@@ -1,0 +1,137 @@
+[comment encoding = UTF-8 /]
+[module generateUMLClass2Java('http://www.eclipse.org/uml2/2.1.0/UML')/]
+
+[template public generateJavaClass(c : Class)]
+[comment @main /]
+[file (c._package.name + '/' + c.name + '.java', false)]
+package [c._package.name/];
+
+[checkImportList(c)/]
+[if (c.getAppliedStereotype('Profile::xmlroot') <> null)]
+import java.io.File;
+import org.simpleframework.xml.Attribute;
+import org.simpleframework.xml.Element;
+import org.simpleframework.xml.ElementList;
+import org.simpleframework.xml.Root;
+import org.simpleframework.xml.Serializer;
+import org.simpleframework.xml.core.Persister;
+
+@Root
+[/if]
+public[if (c.isAbstract)] abstract[/if] class [c.name/] [generalization(c)/]{
+
+[for (p:Property | c.attribute -> sortedBy(oclAsType(Property).name))]
+	[attributes(p)/]
+[/for]
+
+[for (a:Association | c.getAssociations())]
+	[associations(a, c)/]
+[/for]
+
+[if not (c.isAbstract)]
+	// Constructor
+	public [c.name/]() {
+		super();
+	}
+[/if]
+
+[for (o:Operation | c.getAllOperations() -> sortedBy(oclAsType(Operation).name))]
+	[if o.class <> c]@Override[/if]
+	[operation(o)/]
+[/for]
+
+[for (p:Property | c.attribute -> sortedBy(oclAsType(Property).name))]
+	[if (p.getAppliedStereotypes() -> size() > 0)]
+	[if (p.getAppliedStereotype('Profile::property') <> null)]
+	[genGetterSetter(p)/][/if]
+	[/if]
+[/for]
+
+[if (c.getAppliedStereotype('Profile::xmlroot') <> null)]
+[genPersistenceMethods(c)/]
+[/if]
+
+}
+[/file]
+[/template]
+
+[template public generateJavaInterface(intr : Interface)]
+[comment @main /]
+[file (intr._package.name + '/' + intr.name + '.java', false)]
+package [intr._package.name/];
+
+public interface [intr.name/] {
+[for (o:Operation | intr.getAllOperations() -> sortedBy(oclAsType(Operation).name))]
+	[if o.type.oclIsUndefined()]void[else][o.type.name/][/if] [o.name.toLowerFirst()/]([for (p:Parameter | o.ownedParameter) separator(',') ? (p.direction <> ParameterDirectionKind::return)][p.type.name/] [p.name/][/for]);
+[/for]
+}
+[/file]
+[/template]
+
+[template public checkImportList(c: Class)]
+[if ((attributeMultiplicity(c) -> size()>0) or (assoziationMultiplicity(c) -> size()>0))]
+import java.util.List;
+import java.util.ArrayList;
+[/if]
+[/template]
+
+[query public attributeMultiplicity(c:Class) : Set(Property) = c.attribute -> select(p|p.upper = -1 or p.upper > 1) /]
+[query public assoziationMultiplicity(c:Class) : Set(Association) = c.getAssociations() -> select(a|ownedEndMultiplicity(a) -> size()>1)/]
+[query public ownedEndMultiplicity(a:Association) : Set(Property) = a.navigableOwnedEnd -> select(p|p.upper = -1 or p.upper > 1) /]
+
+[template public generalization(c : Class) ]	
+[for (classifier:Classifier | c.getGenerals()) before(' extends ') separator(', ')][classifier.name/] [/for]
+[for (interf : Interface | c.getImplementedInterfaces()) before(' implements ') separator(',')] [interf.name/][/for]
+[/template]
+
+[template public attributes(p:Property)]	[comment ToDo: multiple attribute types, not only String, int, boolean /]
+[genPersistenceAnnotations(p)/]
+[p.type.visibility/][if (p.upper = -1 or p.upper > 1)] List<[p.type.name/]> [p.name.toLowerFirst()/] = new ArrayList<[p.type.name/]>() [else] [p.type.name/] [p.name.toLowerFirst()/][/if];
+[/template]
+
+[template public genPersistenceAnnotations(p:Property)]
+	[if (p.type.getAppliedStereotype('Profile::xmlroot') <> null)]
+	[if (p.upper = -1 or p.upper > 1)]@ElementList[else]@Element[/if][/if]
+	[if (p.getAppliedStereotype('Profile::xmlattribute') <> null)]
+	@Attribute[/if]
+	[if (p.getAppliedStereotype('Profile::xmlelement') <> null)]
+	[if (p.upper = -1 or p.upper > 1)]@ElementList[else]@Element[/if][/if]
+[/template]
+
+[template public associations(a:Association, c:Class)]	[comment ToDo: Aggregation, nondirectional, etc. /]
+[for (p:Property | a.navigableOwnedEnd)]
+[if (p.type.name <> c.name)][p.visibility/] [if(p.upper > 1 or p.upper = -1)]List<[p.type.name/]>[else][p.type.name/][/if] [p.name/];	// Multiplicity: [p.lower/]..[if (p.upper = -1)]*[else][p.upper/][/if][/if][/for] 
+[/template]
+
+[template public operation(o : Operation)]
+[o.visibility/] [if o.type.oclIsUndefined()]void[else][o.type.name/][/if] [o.name.toLowerFirst()/]([for (p:Parameter | o.ownedParameter) separator(',') ? (p.direction <> ParameterDirectionKind::return)][p.type.name/] [p.name/][/for]) {
+	// TODO: Add your code here
+	[if not o.type.oclIsUndefined()]return [Returntype(o)/];[/if]
+}
+[/template]
+
+[template public genPersistenceMethods(c:Class)]
+	public void save(String path) throws Exception{
+		Serializer serializer = new Persister();
+		serializer.write(this, new File(path));
+	}
+
+	public static [c.name/] load(String path) throws Exception{
+		Serializer serializer = new Persister();
+		return serializer.read([c.name/].class, new File(path));
+	}
+[/template]
+
+[template public Returntype(o : Operation)]
+[if (o.type.name = 'Integer')]0[elseif (o.type.name = 'Boolean')]false[else]null[/if]
+[/template]
+
+[template public genGetterSetter(p : Property)]
+public [if (p.upper = -1 or p.upper > 1)]List<[p.type.name/]>[else][p.type.name/][/if] get[ p.name.toUpperFirst()/]() {
+	return this.[p.name.toLowerFirst()/];
+}
+public void set[p.name.toUpperFirst()/]([if (p.upper = -1 or p.upper > 1)]List<[p.type.name/]>[else][p.type.name/][/if] [p.name.toLowerFirst()/]) {
+	this.[p.name.toLowerFirst()/] = [p.name.toLowerFirst()/];
+}
+
+[/template]

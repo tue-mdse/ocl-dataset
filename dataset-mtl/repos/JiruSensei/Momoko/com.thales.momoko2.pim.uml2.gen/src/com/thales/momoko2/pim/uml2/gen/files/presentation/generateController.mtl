@@ -1,0 +1,272 @@
+[comment encoding = UTF-8 /]
+[module generateController('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::name::fileNameQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::imports::classImports /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationClassQueries /]
+[import com::thales::momoko2::pim::uml2::gen::common::attributes::getterSetterAttributes /]
+[import com::thales::momoko2::pim::uml2::gen::request::name::getterSetterNameQueries/]
+
+[**
+ * This template generates the controller for a class.
+ * @param aClass
+ */]
+[template public generateController(aClass : Class) 
+? ((isFeatureClass(aClass) or isObjectClass(aClass)) and isAbstract._not())]
+[file (getPresentationFileName(aClass), false, 'UTF-8')]
+package [aClass.getModel().name.toLowerFirst()/].presentation;
+
+[generateModelElementImport(aClass)/]
+import [aClass.getModel().name.toLowerFirst()/].presentation.util.JsfUtil;
+import [aClass.getModel().name.toLowerFirst()/].presentation.util.PaginationHelper;
+import [aClass.getModel().name.toLowerFirst()/].persistence.[aClass.name/]Facade;
+import [aClass.getModel().name.toLowerFirst()/].annotations.FeatureType;
+import [aClass.getModel().name.toLowerFirst()/].annotations.Facade;
+[generateAllAssociatedObjectImport(aClass)/]
+[if isFeatureClass(aClass)]
+import [aClass.getModel().name.toLowerCase()/].presentation.util.lazymodels.Lazy[aClass.name/]DataModel;
+[/if]
+import java.io.Serializable;
+import java.util.ResourceBundle;
+import java.util.List;
+import java.util.Map;
+import javax.inject.Named;
+import javax.inject.Inject;
+import javax.annotation.PostConstruct;
+import org.primefaces.context.RequestContext;
+import org.primefaces.model.LazyDataModel;
+import org.primefaces.model.SortOrder;
+import javax.enterprise.context.SessionScoped;
+import javax.faces.component.UIComponent;
+import javax.faces.context.FacesContext;
+import javax.faces.convert.Converter;
+import javax.faces.convert.FacesConverter;
+import javax.faces.model.DataModel;
+import javax.faces.model.ListDataModel;
+import javax.faces.model.SelectItem;
+import javax.interceptor.Interceptors;
+import [aClass.getModel().name.toLowerFirst()/].persistence.logs.LogBusinessMethodInterceptor;
+import [aClass.getModel().name.toLowerFirst()/].persistence.logs.LogLifeCycleMethodInterceptor;
+
+
+@Named("[aClass.name.toLowerFirst()/]Controller")
+@SessionScoped
+@Interceptors({
+	LogLifeCycleMethodInterceptor.class,
+	LogBusinessMethodInterceptor.class }
+)
+public class [aClass.name/]Controller implements Serializable {
+
+    private [aClass.name/] current;
+	[if isFeatureClass(aClass)]
+    //@Inject
+	private Lazy[aClass.name/]DataModel lazyModel;
+	@Inject @Facade(FeatureType.[aClass.name/])
+	[/if]
+    private [aClass.name/]Facade [aClass.name.toLowerFirst()/]Facade;
+    private long selectedItemIndex;
+	[generateAllAssociatedObjectDeclaration(aClass)/]
+	
+    public [aClass.name/]Controller() {
+    }
+
+	[if isFeatureClass(aClass)]
+	@PostConstruct
+    public void initFacade () {
+		lazyModel = new Lazy[aClass.name/]DataModel();
+        lazyModel.setFacade([aClass.name.toLowerFirst()/]Facade);
+    }
+	[/if]
+	public [aClass.name/] getSelected() {
+        if (current == null) {
+            current = new [aClass.name/]();
+            selectedItemIndex = -1;
+        }
+        return current;
+    }
+    [if isFeatureClass(aClass)]
+    public LazyDataModel<[aClass.name/]> getLazyModel() { 
+        return lazyModel;
+    }
+    [/if]
+    private [aClass.name/]Facade getFacade() {
+        return [aClass.name.toLowerFirst()/]Facade;
+    }
+
+    public String prepareList() {
+        return "/[aClass.getModel().name.toLowerFirst()/]/[aClass.name.toLowerFirst()/]/List";
+    }
+
+    public String prepareView() {
+		[if isFeatureClass(aClass)]
+        selectedItemIndex = lazyModel.getRowData().getId();
+    	current = lazyModel.getRowData();
+		[/if]
+        return "View";
+    }
+
+    public String prepareCreate() {
+        current = new [aClass.name/]();
+        selectedItemIndex = -1;
+        return "Create";
+    }
+
+    public String create() {
+        try {
+            getFacade().create(current);
+            JsfUtil.addSuccessMessage(ResourceBundle.getBundle("/Bundle").getString("[aClass.name/]Created"));
+            return prepareCreate();
+        } catch (Exception e) {
+            JsfUtil.addErrorMessage(e, ResourceBundle.getBundle("/Bundle").getString("PersistenceErrorOccured"));
+            return null;
+        }
+    }
+
+ 	public String prepareEdit([if (isObjectClass())][aClass.name/] item[/if]) {
+        [if (isObjectClass(aClass)._not())]current = ([aClass.name/])lazyModel.getRowData();
+        selectedItemIndex = lazyModel.getRowData().getId();
+		[else]
+		current = item; 
+		selectedItemIndex=-1;
+		[/if]
+        return "Edit";
+    }
+
+    public String update() {
+        try {
+            getFacade().edit(current);
+            JsfUtil.addSuccessMessage(ResourceBundle.getBundle("/Bundle").getString("[aClass.name/]Updated"));
+            return "View";
+        } catch (Exception e) {
+            JsfUtil.addErrorMessage(e, ResourceBundle.getBundle("/Bundle").getString("PersistenceErrorOccured"));
+            return null;
+        }
+    }
+
+    public String destroy() {
+		[if isFeatureClass(aClass)]
+    	selectedItemIndex = lazyModel.getRowData().getId();
+    	current = lazyModel.getRowData();
+        performDestroy();
+		[/if]
+        return "List";
+    }
+
+    public String destroyAndView() {
+        performDestroy();
+        updateCurrentItem();
+        if (selectedItemIndex >= 0) {
+            return "View";
+        } else {
+            // all items were removed - go back to list
+            //recreateModel();
+            return "List";
+        }
+    }
+
+    private void performDestroy() {
+        try {
+            getFacade().remove(current);
+            JsfUtil.addSuccessMessage(ResourceBundle.getBundle("/Bundle").getString("[aClass.name/]Deleted"));
+        } catch (Exception e) {
+            JsfUtil.addErrorMessage(e, ResourceBundle.getBundle("/Bundle").getString("PersistenceErrorOccured"));
+        }
+    }
+
+    private void updateCurrentItem() {
+        int count = getFacade().count();
+        if (selectedItemIndex >= count) {
+            // selected index cannot be bigger than number of items:
+            selectedItemIndex = count - 1;
+            // go to previous page if last page disappeared:
+            /*
+            if (pagination.getPageFirstItem() >= count) {
+                pagination.previousPage();
+            }
+            */
+        }
+        if (selectedItemIndex >= 0) {
+            //current = getFacade().findRange(new int['[]'/]{selectedItemIndex, selectedItemIndex + 1}).get(0);
+        }
+    }
+
+	[if isFeatureClass(aClass)]
+	/**
+	 *This method id used in select table to manage the association between a feature
+	**/
+    public List<[aClass.name/]> getAll() {
+        return [aClass.name.toLowerFirst()/]Facade.findAll();
+    }
+	[/if]
+
+	[generateAllAddRemoveOperations(aClass, 'current')/]
+	[generateAllAssociatedObjectGetterSetter(aClass)/]
+}
+[/file]
+[/template]
+
+[template public generateAllAssociatedObjectDeclaration(aClass : Class)]
+[generateAssociatedObjectDeclaration(aClass)/]
+[for (aProperty : Property | aClass.getOneAssociationObjectProperties())]
+[generateAllAssociatedObjectDeclaration(getDestinationClass(aProperty, aProperty.getAssociation()))/]
+[/for]
+[/template]
+
+[template private generateAssociatedObjectDeclaration (aClass : Class)]
+[for (aProperty : Property | aClass.getManyAssociationObjectProperties())]
+@Inject
+private [getDestinationClass(aProperty, aProperty.association).name/]Controller [getDestinationClass(aProperty, aProperty.association).name.toLowerFirst()/] ;
+[/for]
+[/template]
+
+[template public generateAllAssociatedObjectGetterSetter(aClass : Class)]
+[generateAssociatedObjectGetterSetter(aClass)/]
+[for (aProperty : Property | aClass.getOneAssociationObjectProperties())]
+[generateAllAssociatedObjectGetterSetter(getDestinationClass(aProperty, aProperty.getAssociation()))/]
+[/for]
+[/template]
+
+[template private generateAssociatedObjectGetterSetter (aClass : Class)]
+[for (aProperty : Property | aClass.getManyAssociationObjectProperties())]
+[generateGetterSetterOperation(getDestinationClass(aProperty, aProperty.association).name.toLowerFirst(), getDestinationClass(aProperty, aProperty.association).name.concat('Controller'))/] ;
+[/for]
+[/template]
+
+[template private generateAllAddRemoveOperations (aClass : Class, anInputValue :String)]
+[generateAddRemoveOperations(aClass, anInputValue)/]
+[for (aProperty : Property | aClass.getOneAssociationObjectProperties())]
+[generateAllAddRemoveOperations(getDestinationClass(aProperty, aProperty.getAssociation()), anInputValue.concat('.').concat(getGetterName(aProperty.name)).concat('()'))/]
+[/for]
+[/template]
+
+[template private generateAddRemoveOperations(aClass : Class, anInputValue : String)]
+[for (aProperty : Property | aClass.getManyAssociationObjectProperties())]
+public void add[aProperty.name.toUpperFirst()/] (){
+	Boolean success = [anInputValue/].add[aProperty.name.toUpperFirst()/]([getDestinationClass(aProperty, aProperty.association).name.toLowerFirst()/].getSelected());
+	if (success) JsfUtil.addSuccessMessage(ResourceBundle.getBundle("/Bundle").getString("[getDestinationClass(aProperty, aProperty.association).name/]Created"));
+	else JsfUtil.addErrorMessage(ResourceBundle.getBundle("/Bundle").getString("PersistenceErrorOccured"));
+	[getDestinationClass(aProperty, aProperty.association).name.toLowerFirst()/].prepareCreate();
+	RequestContext.getCurrentInstance().addCallbackParam("ok", success);
+}  
+
+public void remove[aProperty.name.toUpperFirst()/] ([getDestinationClass(aProperty, aProperty.association).name/] item){
+	Boolean success = [anInputValue/].remove[aProperty.name.toUpperFirst()/](item);
+	if (success) JsfUtil.addSuccessMessage(ResourceBundle.getBundle("/Bundle").getString("[getDestinationClass(aProperty, aProperty.association).name/]Deleted"));
+	else JsfUtil.addErrorMessage(ResourceBundle.getBundle("/Bundle").getString("PersistenceErrorOccured"));
+}  
+[/for]
+[/template]
+
+[template private generateAllAssociatedObjectImport(aClass : Class)]
+[generateAssociatedObjectImport(aClass)/]
+[for (aProperty : Property | aClass.getOneAssociationObjectProperties())]
+[generateAllAssociatedObjectImport(getDestinationClass(aProperty, aProperty.getAssociation()))/]
+[/for]
+[/template]
+
+[template private generateAssociatedObjectImport(aClass : Class)]
+[for (aProperty : Property | getManyAssociationObjectProperties(aClass))]
+[generateModelElementImport(getDestinationClass(aProperty, aProperty.association))/]
+[/for]
+[/template]

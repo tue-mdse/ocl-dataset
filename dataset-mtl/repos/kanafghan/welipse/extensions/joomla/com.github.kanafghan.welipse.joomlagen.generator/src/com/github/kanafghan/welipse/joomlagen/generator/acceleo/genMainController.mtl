@@ -1,0 +1,172 @@
+[comment encoding = UTF-8 /]
+[module genMainController('http://github.com/kanafghan/welipse/joomlagen/1.0', 'http://github.com/kanafghan/welipse/webdsl/1.0', 'http://www.eclipse.org/emf/2002/Ecore')]
+
+[import com::github::kanafghan::welipse::joomlagen::generator::acceleo::common::common /]
+
+[template public generateMainController (genModel : JoomlaGenModel, isBackEnd : Boolean)]
+[comment @main/]
+[file ('controller.php', false, 'UTF-8')]
+<?php
+// No direct access to this file
+defined('_JEXEC') or die('Restricted access');
+ 
+// import Joomla controller library
+jimport('joomla.application.component.controller');
+ 
+/**
+ * Main controller for [genModel.extensionName.toUpperFirst()/] component
+ * 
+ */
+class [genModel.extensionName.toUpperFirst()/]Controller extends JController
+{
+
+	/**
+     * (non-PHPdoc)
+     * @see JController::display()
+     */
+    function display($cachable = false, $urlparams = false) 
+    {
+		// set default view if not set
+		$input = JFactory::getApplication()->input;
+		$input->set('view', $input->getCmd('view', '[getDefaultView(genModel, isBackEnd)/]'));
+
+	[if (isBackEnd)]
+		require_once JPATH_COMPONENT.'/helpers/[genModel.extensionName.toLower()/].php';		
+	    	  
+	   	// load the submenu.
+	    [genModel.extensionName.toUpperFirst()/]Helper::addSubmenu($input->getCmd('view', '[getDefaultView(genModel, isBackEnd)/]'));			
+	[/if]
+    
+		[generatePHPProtectedRegion('Display')/]
+
+		// call parent behavior
+		parent::display($cachable, $urlparams);
+    }
+
+	[if (not isBackEnd)]
+    function doAction()
+    {
+		// Check for request forgeries.
+		JSession::checkToken() or jexit(JText::_('JINVALID_TOKEN'));
+
+		$app   	= JFactory::getApplication();
+		$session = JFactory::getSession();
+		$jinput	= $app->input;
+		$message = "";
+		$messageType = "message";
+
+		// Get and interpret the request
+		$sourcePage = base64_decode($jinput->get('__source-page__', '', 'STRING'));
+		$targetPage = base64_decode($jinput->get('__target-page__', '', 'STRING'));
+		$data = $jinput->get('__form', array(), 'ARRAY'); 
+		$paramsVars = $jinput->get('__params-vars', array(), 'ARRAY');
+		$performer = $jinput->get('__performer__', null, 'STRING');
+		$validator = $jinput->get('__validator__', null, 'STRING');
+
+		$redirectURL = $targetPage;
+		
+		JModel::addIncludePath(JPATH_COMPONENT.DS.'models');
+		$model = null;
+
+		$valid = true;
+		if ($validator !== null && !empty($validator)) {
+			$validator = explode('.', $validator);
+			if (count($validator) == 2) 
+			{
+				$validatorArgs = $jinput->get('__validator-arguments', array(), 'ARRAY');
+
+				$args = array();
+				foreach ($validatorArgs as $key => $value) 
+				{
+					// First look among parameters and variables of the page
+					if (isset($paramsVars[ '[' /]$value[ ']' /]))
+					{
+						$paramVar = explode('::', $paramsVars[ '[' /]$value[ ']' /]);
+						if (count($paramVar) == 2)
+						{
+							$args[ '[' /]$key[ ']' /] = JModel::getInstance($paramVar[ '[' /]0[ ']' /], '[genModel.extensionName.toUpperFirst()/]Model', array('id' => $paramVar[ '[' /]1[ ']' /]));
+						}
+						else
+						{
+							$args[ '[' /]$key[ ']' /] = $paramVars[ '[' /]$value[ ']' /];
+						}
+					}
+					// Finally, look among the form data,
+					// Notice, that this will override those values having the same name (key) in __form and __params-vars!
+					if (isset($data[ '[' /]$value[ ']' /])) 
+					{
+						$args[ '[' /]$key[ ']' /] = $data[ '[' /]$value[ ']' /];
+					}
+				}
+
+				$model = JModel::getInstance($validator[ '[' /]0[ ']' /], '[genModel.extensionName.toUpperFirst()/]Model');
+				$valid = call_user_func_array(array($model, $validator[ '[' /]1[ ']' /]), $args);
+			}
+		}
+
+		if ($valid && $performer !== null && !empty($performer)) {
+			$performer = explode('.', $performer);
+			if (count($performer) == 2) 
+			{
+				$performerArgs = $jinput->get('__performer-arguments', array(), 'ARRAY');
+
+				$args = array();
+				foreach ($performerArgs as $key => $value) 
+				{
+					// First look among parameters and variables of the page
+					if (isset($paramsVars[ '[' /]$value[ ']' /]))
+					{
+						$paramVar = explode('::', $paramsVars[ '[' /]$value[ ']' /]);
+						if (count($paramVar) == 2)
+						{
+							$args[ '[' /]$key[ ']' /] = JModel::getInstance($paramVar[ '[' /]0[ ']' /], '[genModel.extensionName.toUpperFirst()/]Model', array('id' => $paramVar[ '[' /]1[ ']' /]));
+						}
+						else
+						{
+							$args[ '[' /]$key[ ']' /] = $paramVars[ '[' /]$value[ ']' /];
+						}
+					}
+					// Finally, look among the form data,
+					// Notice, that this will override those values having the same name (key) in __form and __params-vars!
+					if (isset($data[ '[' /]$value[ ']' /])) 
+					{
+						$args[ '[' /]$key[ ']' /] = $data[ '[' /]$value[ ']' /];
+					}
+				}
+
+				$model = JModel::getInstance($performer[ '[' /]0[ ']' /], '[genModel.extensionName.toUpperFirst()/]Model');
+				$result = call_user_func_array(array($model, $performer[ '[' /]1[ ']' /]), $args);
+
+				if ($result) {
+					$message = "Your data was saved successfully.";
+					$session->set('form-state', null, '[genModel.extensionName/]');
+				} else {
+					$message = "Saving Error: ". $model->getError();
+					$messageType = "error";
+					$redirectURL = $sourcePage;
+					$session->set('form-state', $data, '[genModel.extensionName/]');
+				}	
+			}		
+		}
+		else 
+		{
+			$message = implode("</li><li>", $model->getErrors());
+			$messageType = "error";
+			$redirectURL = $sourcePage;
+			$session->set('form-state', $data, '[genModel.extensionName/]');
+		}
+
+		$this->setRedirect($redirectURL, $message, $messageType);
+    }
+	[/if]
+
+	[generatePHPProtectedRegion('End')/]
+}
+[/file]
+[/template]
+
+[template public getDefaultView (genModel : JoomlaGenModel, isBackEnd : Boolean) ]
+[if (isBackEnd)][getDefaultBackEndView(genModel).listMVCName.toLower()/][else][genModel.webmodel.oclAsType(Website).home.name.toLower()/][/if]
+[/template]
+
+[query public getDefaultBackEndView (genModel : JoomlaGenModel) : GenClass = genModel.datamodel.genClasses->first()/]

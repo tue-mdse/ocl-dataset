@@ -1,0 +1,46 @@
+[comment encoding = UTF-8 /]
+[module generateJAXRSParser('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+
+[**
+ * This template generates the application configuration for rest web services
+ * @param aClass
+ */]
+[template public generateJAXRSParser(aModel : Model)]
+ 
+[file ('src/'.concat(aModel.name.toLowerFirst()).concat('/ws/ApplicationConfig.java'), false, 'UTF-8')]
+package [aModel.name.toLowerFirst()/].ws;
+
+import java.util.Set;
+import javax.ws.rs.core.Application;
+
+@javax.ws.rs.ApplicationPath("['/'.concat(aModel.name.toLowerFirst()) /]")
+public class ApplicationConfig extends Application {
+
+    @Override
+    public Set<Class<?>> getClasses() {
+        Set<Class<?>> resources = new java.util.HashSet<>();
+        // following code can be used to customize Jersey 2.0 JSON provider:
+        try {
+            Class jsonProvider = Class.forName("org.glassfish.jersey.jackson.JacksonFeature");
+            // Class jsonProvider = Class.forName("org.glassfish.jersey.moxy.json.MoxyJsonFeature");
+            // Class jsonProvider = Class.forName("org.glassfish.jersey.jettison.JettisonFeature");
+            resources.add(jsonProvider);
+        } catch (ClassNotFoundException ex) {
+            java.util.logging.Logger.getLogger(getClass().getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
+        addRestResourceClasses(resources);
+        return resources;
+    }
+
+    private void addRestResourceClasses(Set<Class<?>> resources) {
+	[for (aClass : Class | aModel.eAllContents(Class)->asSequence()->sortedBy(name)) 
+	? (isObjectClass(aClass) or isFeatureClass(aClass))]
+	[if aClass.isAbstract._not()]
+		resources.add([aModel.name.toLowerFirst()/].ws.[aClass.name/]FacadeREST.class);
+	[/if]
+	[/for]
+    }
+}
+[/file]
+[/template]

@@ -1,0 +1,90 @@
+[comment encoding = UTF-8 /]
+[module tableColumnNameQueries('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::services::uml2Queries /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationClassQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries /]
+
+
+[**
+ * Schema
+*/]
+[query public getSchemaName(aClass : Class) : String 
+	= aClass.eContainer().oclAsType(Package).name /]
+
+
+[**
+ * Feature and Feature_part Table
+*/]
+[query public getFeatureTableName(aClass : Class) : String 
+	= getTableAndColumnName(aClass.name.concat(getSuffix(aClass)))/]
+
+[query public getFeatureTableNameNamedByClient(aClass : Class) : String 
+	=  aClass.getValue(getStereotype(aClass, 'feature'), 'tableName').toString()/]
+
+[query public getFeature_partTableNameNamedByClient(aClass : Class) : String 
+	= aClass.getValue(getStereotype(aClass, 'feature_part'), 'tableName').toString()/]
+
+
+[**
+ * ManyToMany Table: 	JT_sourceClass_destinationClass 
+*/]
+[query public getJoinTableName(aClass : Class, aDestinationProperty : Property, anAssociation : Association) : String
+	=getTableAndColumnName(
+		'JT_'.concat(aClass.name)
+			.concat('_')
+				.concat(getDestinationClass(aDestinationProperty, anAssociation).name))/]
+
+
+[**
+ * Datatype Column
+*/]
+[query public getDatatypeColumnName(aProperty : Property) : String 
+	= getTableAndColumnName(getPropertyName(aProperty)) /]
+
+
+[**
+ * This query is use to get the table 's suffix.
+*/]
+[query private getSuffix (aClass : Class) : String 
+	= if (isAssociationClass()) then  '_AC' 
+		else if (isObjectClass()) then '_O'
+		else if (isFeatureClass()) then '_F'
+         else if (isFeature_partClass()) then '_FP'
+		else '' endif endif endif endif	 /]
+
+
+[**
+ * ManyToMany Column: 	class_type_ID'
+*/]
+[query public getManyToManyColumnName (aClass : Class) : String
+	=getTableAndColumnName(aClass.name.concat(getSuffix(aClass)).concat('_ID'))/]
+
+
+[**
+ * ManyToOne Column: 	propertyName_type_ID
+*/]
+[query public getManyToOneColumnName (aClass : Class, aDestinationProperty : Property, anAssociation : Association) : String
+	=getTableAndColumnName(
+			aDestinationProperty.name
+					.concat(getSuffix(getDestinationClass(aDestinationProperty, anAssociation)))
+						.concat('_ID'))/]
+
+
+[**
+ * OneToOne Column : 		propertyName_type_ID 
+*/]
+[query public getOneToOneColumnName (aClass : Class, aDestinationProperty : Property, anAssociation : Association) : String
+	=getTableAndColumnName(
+			aDestinationProperty.name
+					.concat(getSuffix(getDestinationClass(aDestinationProperty, anAssociation)))
+						.concat('_ID'))/]
+
+
+[**
+ * OneToMany Column: 		sourceClass_JT
+*/]
+[query public getOneToManyColumnName (aClass : Class) : String
+	=getTableAndColumnName(aClass.name.concat('_JT'))
+/]

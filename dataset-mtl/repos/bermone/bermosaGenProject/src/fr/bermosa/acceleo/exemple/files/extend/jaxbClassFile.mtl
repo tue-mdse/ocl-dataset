@@ -1,0 +1,65 @@
+[comment encoding = UTF-8 /]
+[module jaxbClassFile('http://www.eclipse.org/uml2/3.0.0/UML') extends fr::bermosa::acceleo::exemple::files::jaxbClassFile]
+
+[import fr::bermosa::acceleo::exemple::common::common /]
+[import fr::bermosa::acceleo::exemple::common::declaration /]
+[import fr::bermosa::acceleo::exemple::common::imports /]
+[import fr::bermosa::acceleo::exemple::common::type /]
+[import fr::bermosa::acceleo::exemple::request::request /]
+[import fr::bermosa::acceleo::exemple::files::commonFile /]
+[import fr::bermosa::acceleo::exemple::services::commonServices /]
+
+[template public genJAXBFileBody(aClass : Class) overrides genJAXBFileBody]
+[aClass.genPackageDeclaration()/]
+[aClass.genJAXBImport()/]
+[aClass.genImport()/]
+[aClass.genBody()/]
+[/template]
+
+[template public genBody(aClass : Class) overrides genBody]
+[aClass.genJAXBClassAnnotations()/]
+[aClass.genVisibility()/][aClass.genAbstract()/][aClass.genFinal()/]class [aClass.genName()/][aClass.genInheritance()/][aClass.genInterfaceRealization()/] {
+	[aClass.genJAXBAttributes()/]
+	[aClass.genJAXBAccessors()/]
+}
+[/template]
+
+[template public genJAXBAttributes(aClass : Class) overrides genJAXBAttributes]
+[if (aClass.hasStereotype('ViewModel'))]
+
+@XmlElement(name = "id", required = false)
+private Long id;
+
+@XmlElement(name = "version", required = false)
+private Long version;
+[/if]
+[for (aProperty : Property | aClass.ownedAttribute->asSequence()->union(aClass.getOutgoingNavigableOwnedEnd()->asSequence()->sortedBy(name)))]
+
+@XmlElement(name = "[aProperty.genName()/]", required = [if (aProperty.lower = 1 and aProperty.upper = 1)]true[else]false[/if])
+private [aProperty.genFinal()/][aProperty.genStatic()/][aProperty.genType()/] [aProperty.genName()/][aProperty.genDefaultValue()/];
+[/for]
+[/template]
+
+[template public genJAXBAccessors(aClass : Class) overrides genJAXBAccessors]
+[if (aClass.hasStereotype('ViewModel'))]
+
+public Long getId() {
+	return this.id;
+}
+
+public void setId(Long id) {
+	this.id = id;
+}
+
+public Long getVersion() {
+	return this.version;
+}
+
+public void setVersion(Long version) {
+	this.version = version;
+}
+[/if]
+
+[super/]
+
+[/template]

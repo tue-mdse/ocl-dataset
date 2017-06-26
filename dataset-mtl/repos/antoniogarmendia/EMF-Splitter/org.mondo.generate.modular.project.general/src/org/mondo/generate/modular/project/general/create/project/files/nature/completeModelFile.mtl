@@ -1,0 +1,136 @@
+[comment encoding = UTF-8 /]
+[module completeModelFile('http://www.eclipse.org/emf/2002/Ecore','http://mondo.org/runtimePatterns')]
+
+
+[template public generateCompleteModelFile(anProjectName : String, anPatternInstances : PatternInstances)]
+[file ('src/'.concat(anProjectName.toLower() + '.' + getProperty('prefix_name')).replaceAll('\\.','/').concat('/nature/GenerateCompleteModel.java'),false, 'UTF-8')]
+package [anProjectName.toLower()/].[getProperty('prefix_name')/].nature;
+
+import java.io.IOException;
+import java.util.Collection;
+
+import org.eclipse.core.commands.ExecutionEvent;
+import org.eclipse.core.commands.ExecutionException;
+import org.eclipse.core.commands.IHandler;
+import org.eclipse.core.commands.IHandlerListener;
+import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.jface.viewers.TreeSelection;
+import org.eclipse.ui.ISelectionService;
+import org.eclipse.ui.IWorkbenchWindow;
+import org.eclipse.ui.PlatformUI;
+import org.mondo.generate.modular.project.general.create.project.main.api.PerformantXMIUtils;
+import org.mondo.generate.modular.project.general.create.project.main.api.PerformantXMIResourceImpl;
+import org.mondo.generate.modular.project.general.create.project.main.api.PerformantXMIResourceFactoryImpl;
+import org.mondo.generate.modular.project.general.create.project.main.api.CopierReverseEngineering;
+
+public class GenerateCompleteModel implements IHandler {
+
+	@Override
+	public void addHandlerListener(IHandlerListener handlerListener) {
+		
+	}
+
+	@Override
+	public void dispose() {
+		
+	}
+
+	@Override
+	public Object execute(ExecutionEvent event) throws ExecutionException {
+		
+		IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+		if(window!=null)
+		{
+			ISelectionService selectionservice = (ISelectionService)window.getSelectionService();
+			ISelection selection = selectionservice.getSelection();
+			TreeSelection treeselection = (TreeSelection)selection;
+			Object firstelement = treeselection.getFirstElement();
+			
+			if(firstelement instanceof IContainer){
+				
+				IContainer container = (IContainer) firstelement;
+				URI uri_diagram = URI.createFileURI(container.getLocationURI().getPath().toString().concat("/complete_diagram.xmi"));
+				
+				Resource diagram = PerformantXMIUtils.createPerformantResource(uri_diagram);				
+				CopierReverseEngineering copier = new CopierReverseEngineering(true, true);
+				
+				try {
+					
+					 IResource['['/]] members = container.members();
+					 for (int i = 0; i < members.length; i++) {
+						 		
+						 IResource member = members['['/]i];
+						 if(member instanceof IFolder){
+							 
+							diagram.getContents().addAll(createCompleteDiagram((IFolder) member,copier,diagram.getResourceSet()));							 
+						 }
+					 }
+					 
+					 copier.copyReferences();
+					 copier.copyIds();
+					 diagram.save(null);
+					 copier.clear();
+					
+				} catch (CoreException | IOException e) {
+					
+					e.printStackTrace();
+				}
+				
+			}
+		}
+		
+		System.out.println("Generate Complete Model!");
+		return null;		
+	}
+	
+	
+	private Collection<EObject> createCompleteDiagram(IFolder member, CopierReverseEngineering copier, ResourceSet reset) {
+		
+		//Search the root
+		IFile file = member.getFile(member.getName().concat(".xmi"));
+		Resource modelResource = reset.createResource(URI.createPlatformResourceURI(file.getFullPath().toString(),true));		
+					
+		try {
+			
+			modelResource.load(null);
+		} catch (IOException e) {
+			
+			e.printStackTrace();
+		}
+		
+		Collection<EObject> result = copier.copyAll(modelResource.getContents());		  
+		  
+		return result;
+	}
+
+	@Override
+	public boolean isEnabled() {
+		
+		return true;
+	}
+
+	@Override
+	public boolean isHandled() {
+		
+		return true;
+	}
+
+	@Override
+	public void removeHandlerListener(IHandlerListener handlerListener) {		
+
+	}
+
+}
+
+[/file]
+[/template]

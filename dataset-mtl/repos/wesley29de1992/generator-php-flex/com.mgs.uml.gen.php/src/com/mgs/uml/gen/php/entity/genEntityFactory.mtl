@@ -1,0 +1,93 @@
+[comment encoding = UTF-8 /]
+[module genEntityFactory('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::gen::php::entity::entityCommon /]
+[import com::mgs::common::gen::common::files::commonUtils /]
+[import com::mgs::uml::gen::php::proxy::proxyCommon /]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::gen::php::common::phpUtils /]
+[import com::mgs::uml::common::services /]
+[import com::mgs::uml::common::umlUtils /]
+
+
+[template public genEntityFactory(m : Model)]
+	
+[comment @main /]
+[file (entityFactoryFilePath(), false, 'UTF-8')]
+<?php
+[fileHeader('php.entity.factory.mt')/]
+
+class EntityFactory {
+
+	private static $instance = null;
+	
+	/**
+	 * Return the factory.
+	 * @return EntityFactory
+	 */
+	public static function getInstance(){
+		if(self::$instance == null){
+			self::$instance = new EntityFactory();
+		}
+		return self::$instance;
+	}
+[for (c : Class | m.profile_getAllEntities())]
+	
+	/**
+	 * Create an entity [c.entityName()/].
+	 * @return [c.entityName()/]
+	 */
+	public function create[c.entityName()/]($id = -1){
+		return new [c.proxyName()/]($id);
+	}
+	
+	[c.genCreateFromVO()/]
+[/for]
+
+}
+
+?>
+[/file]
+	
+[/template]
+
+[template public genCreateFromVO(c : Class)]
+public function create[c.entityName()/]FromVO([c.genNameVO()/] $vo = null, $object = null, array & $excludes = null, array & $excludesVO = null){
+	if($vo != null){
+		if($object == null){
+			if($excludesVO == null){
+				$excludesVO = array();
+				$excludes = array();
+			}
+			$index = array_search($vo, $excludesVO, true);
+			if($index !== false){
+				return $excludes['[$index]'/];
+			}else{
+				$id = is_numeric($vo->id) ? $vo->id : -1;
+				$object = $this->create[c.entityName()/]($id);
+				array_push($excludesVO, $vo);
+				array_push($excludes, $object);
+			}
+		}
+[if (c.hasBaseClass())]
+		$this->create[c.baseClass().entityName()/]FromVO($vo, $object, $excludes, $excludesVO);
+[/if]
+[for (p : Property | c.profile_propertiesEntity())]
+[if (p.upper = 1 and p.type.oclIsKindOf(PrimitiveType))]
+		$object->[p.setterName()/]($vo->[p.genName()/]);
+[elseif (p.upper = 1)]
+		$relatedObject = $this->create[p.type->filter(Class).entityName()/]FromVO($vo->[p.genName()/], null, $excludes, $excludesVO);
+		$object->[p.setterName()/]($relatedObject);
+[else]
+		if($vo->[p.genName()/] != null){
+			foreach($vo->[p.genName()/] as $relatedVo){
+				$relatedObject = $this->create[p.type->filter(Class).entityName()/]FromVO($relatedVo, null, $excludes, $excludesVO);
+				$object->[p.adderName()/]($relatedObject);
+			}
+		}
+[/if]
+[/for]
+	}
+	return $object;
+}
+[/template]
+

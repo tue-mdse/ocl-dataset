@@ -1,0 +1,31 @@
+[comment encoding = UTF-8 /]
+[module sensors_impl('http://multirobotsystem/1.0')/]
+
+[template public sensors_impl(aAgent : Agent)]
+	
+[comment @main /]
+[for (aSensor : Sensor | aAgent.sensors)]
+[file ('agent_'+aAgent.name+'_sensor_'+aSensor.name+'.ads', false, 'UTF-8')]
+with Agent_[aAgent.name/]_Data_Types;
+
+package Agent_[aAgent.name/]_sensor_[aSensor.name/] is
+   --  This is remote interface to the agent
+   pragma Remote_Call_Interface;
+
+   --  remote access to the buffers of the effector
+   [for (buffer : OutputBuffer | aSensor.outputs)]
+   package [buffer.name/] is
+      use Agent_[aAgent.name/]_Data_Types.effector.outputs.[buffer.name/];
+      procedure Send (item : in Data_Type);
+   end [buffer.name/];
+   [/for]
+
+   --  Note: this is up to the body implementation to handle
+   --  the incoming requests and to send the data periodically
+   --  or after harware event has been received.
+
+end Agent_[aAgent.name/]_sensor_[aSensor.name/];
+[/file]
+[/for]
+	
+[/template]

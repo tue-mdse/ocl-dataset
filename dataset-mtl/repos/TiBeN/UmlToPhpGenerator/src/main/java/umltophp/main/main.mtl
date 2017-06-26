@@ -1,0 +1,44 @@
+[comment encoding = UTF-8 /]
+[module main('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import umltophp::main::genClasses /]
+[import umltophp::main::genEmptyClasses /]
+[import umltophp::main::genTests /]
+[import umltophp::main::genEmptyTests /]
+[import umltophp::main::genInterfaces /]
+[import umltophp::main::commons /]
+
+[template public launch(root : Package) ? (root.name = 'Model')]
+[comment @main /]
+
+[for (aClass: Class | root.eAllContents(Class))
+	? ( aClass.owningTemplateParameter->isEmpty()
+		and aClass._package.name <> 'Model'
+	)
+]
+
+	[if (aClass.getAppliedStereotypes()->select(s : Stereotype | s.name = 'PlateformSpecific')->isEmpty())]
+		[aClass.genPhpClassFile() /]
+		[if (getProperty('generate-tests') = '1')]
+			[aClass.genPhpClassTestFile() /]
+		[/if]
+	[else]
+		[aClass.genPhpEmptyClassFile() /]
+		[if (getProperty('generate-tests') = '1')]
+			[aClass.genPhpEmptyClassTestFile() /]
+		[/if]
+	[/if]
+		
+[/for]
+
+[for (aInterface: Interface | root.eAllContents(Interface)) 
+	? ( aInterface._package.name <> 'Model' 
+		and aInterface.getAppliedStereotypes()->select(s : Stereotype | s.name = 'PlateformSpecific')->isEmpty()
+		and not aInterface.isInNativePhpLibrary()
+	)  
+]
+
+	[aInterface.genPhpInterfaceFile() /]
+	
+[/for]
+
+[/template]

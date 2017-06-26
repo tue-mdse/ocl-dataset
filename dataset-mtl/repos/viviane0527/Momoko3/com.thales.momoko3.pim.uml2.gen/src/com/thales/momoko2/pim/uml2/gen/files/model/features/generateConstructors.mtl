@@ -1,0 +1,143 @@
+[comment encoding = UTF-8 /]
+[module generateConstructors('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::common::comments::operationComments/]
+[import com::thales::momoko2::pim::uml2::gen::request::associationQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::propertyQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::name::getterSetterNameQueries /]
+[import com::thales::momoko2::pim::uml2::gen::services::uml2Queries /]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries/]
+
+[**
+ * This template generates the constructors
+ * @param aClass
+*/] 
+[template public generateConstructors(aClass : Class)]
+[generateConstructorsComment()/]
+[generateDefaultConstructor()/]
+[generateConstructorByCopy()/]
+[/template]
+
+
+[**
+ * This template generates the constructors for part classes
+ * @param aClass
+*/] 
+[template public generateConstructorsForPartClass(aClass : Class)]
+[generateConstructorsComment()/]
+[generateDefaultConstructorForPartClass()/]
+[generateConstructorByCopyForPartClass()/]
+[/template]
+
+
+[**
+ * This template generates the default constructor.
+ * @param aClass
+*/] 
+[template private generateDefaultConstructor (aClass: Class)]
+/**
+ * Default constructor 
+*/
+public [aClass.name/](){
+	super();
+	[for (aProperty : Property | aClass.attribute->asSequence()->sortedBy(name)) 
+? (aProperty.isAssociationAttribute() and isObjectEndAssociation(aProperty) and isAbstractEndAssociation(aProperty)._not() )]
+	[if (isListProperty(aProperty))]	this.[aProperty.name/] = new ArrayList<[getDestinationClass(aProperty, aProperty.getAssociation()).name/]>();
+	[else]	
+    this.[aProperty.name/] = new [if getDestinationClass(aProperty, aProperty.getAssociation()).isShared() and aProperty.isEmbedded()][getDestinationClass(aProperty, aProperty.getAssociation()).name.concat('Part')/][else][getDestinationClass(aProperty, aProperty.getAssociation()).name/][/if]();
+	[/if]
+	[/for]
+}
+[/template]
+
+[**
+ * This template generates the default constructor for part class
+ * @param aClass
+*/] 
+[template private generateDefaultConstructorForPartClass (aClass: Class)]
+/**
+ * Default constructor 
+*/
+public [aClass.name.concat('Part')/](){
+	super();
+	[for (aProperty : Property | aClass.attribute->asSequence()->sortedBy(name)) 
+? (aProperty.isAssociationAttribute() and isObjectEndAssociation(aProperty) and isAbstractEndAssociation(aProperty)._not() )]
+	[if (isListProperty(aProperty))]	this.[aProperty.name/] = new ArrayList<[getDestinationClass(aProperty, aProperty.getAssociation()).name/]>();
+	[else]	this.[aProperty.name/] = new [getDestinationClass(aProperty, aProperty.getAssociation()).name/]();
+	[/if]
+	[/for]
+}
+[/template]
+
+
+[**
+ * This template generates the constructor by copy
+ * @param aClass
+*/] 
+[template private generateConstructorByCopy(aClass : Class)]
+
+/**
+ * Constructor by copy
+ * @param element : the element to copy 
+*/
+public [aClass.name/]([aClass.name/] element) {	
+	super(element);
+[if aClass.attribute->asSequence()->sortedBy(name)->notEmpty()]
+    if (element != null) {
+		[for (aProperty : Property | aClass.attribute->asSequence()->sortedBy(name))]       
+		[generateObjectAssociationCopy(aProperty, aClass)/][generateDatatypeAttributeCopy(aProperty, aClass)/]
+		[/for]
+ 	 }
+[/if]
+}
+[/template]
+
+[**
+ * This template generates the constructor by copy for part class
+ * @param aClass
+*/] 
+[template private generateConstructorByCopyForPartClass(aClass : Class)]
+
+/**
+ * Constructor by copy
+ * @param element : the element to copy 
+*/
+public [aClass.name.concat('Part')/]([aClass.name.concat('Part')/] element) {	
+	super(element);
+[if aClass.attribute->asSequence()->sortedBy(name)->notEmpty()]
+    if (element != null) {
+		[for (aProperty : Property | aClass.attribute->asSequence()->sortedBy(name))]       
+		[generateObjectAssociationCopy(aProperty, aClass)/][generateDatatypeAttributeCopy(aProperty, aClass)/]
+		[/for]
+ 	 }
+[/if]
+}
+[/template]
+
+
+[**
+ * This template is called in the copy constructor template to generate the object association copy.
+ * @param aProperty
+ * @param aClass
+*/]
+[template private generateObjectAssociationCopy(aProperty : Property, aClass : Class) 
+? (isAssociationAttribute(aProperty) and isFeatureEndAssociation(aProperty)._not() and getDestinationClass(aProperty, aProperty.getAssociation()).isFeature_partClass()._not() and getDestinationClass(aProperty, aProperty.getAssociation()).isEnumerateClass()._not())]
+[if (isListProperty(aProperty))]
+this.[aProperty.name/] = new ArrayList<[getDestinationClass(aProperty, aProperty.getAssociation()).name/]>();
+for ([getDestinationClass(aProperty, aProperty.getAssociation()).name/] c : element.[getGetterName(aProperty.name)/]()) {
+	this.[aProperty.name/].add([if (isAbstractEndAssociation(aProperty)._not())]new [getDestinationClass(aProperty, aProperty.getAssociation()).name/](c)[else][getDestinationClass(aProperty, aProperty.getAssociation()).name/].copy(c)[/if]);
+}
+[else]
+[if (isAbstractEndAssociation(aProperty)._not())]this.[aProperty.name/]= (element.[getGetterName(aProperty.name)/]() !=null)? new [if getDestinationClass(aProperty, aProperty.getAssociation()).isShared() and aProperty.isEmbedded()][getDestinationClass(aProperty, aProperty.getAssociation()).name.concat('Part')/][else][getDestinationClass(aProperty, aProperty.getAssociation()).name/][/if](element.[getGetterName(aProperty.name)/]()) : null;
+[else]this.[aProperty.name/]=[getDestinationClass(aProperty, aProperty.getAssociation()).name/].copy(element.[getGetterName(aProperty.name)/]());[/if]
+[/if]
+[/template]
+
+
+[**
+ * This template is called in the copy constructor template to generate the datatype attribute copy.
+ * @param aProperty
+ * @param aClass
+*/]
+[template private generateDatatypeAttributeCopy(aProperty : Property, aClass : Class) ? (aProperty.isAssociationAttribute()._not())]
+this.[aProperty.name/]= element.[getGetterName(aProperty.name)/]();
+[/template]

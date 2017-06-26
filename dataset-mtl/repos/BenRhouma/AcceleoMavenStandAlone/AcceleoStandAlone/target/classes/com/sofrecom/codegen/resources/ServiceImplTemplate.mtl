@@ -1,0 +1,106 @@
+[comment encoding = UTF-8 /]
+[module ServiceImplTemplate('http://wwww.sofrecom.codegen')]
+
+
+[template public generateServiceImpl(entity : Entity)]
+
+[file ('./service/'.concat(entity.name.concat('ServiceImpl.java')), false, 'UTF-8')]
+package service;
+
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
+import dto.[entity.name/];
+import mappers.[entity.name/]Mapper;
+import play.api.mybatis.guice.paginator.Page;
+import play.Logger;
+import play.api.mybatis.AutoBind;
+import play.libs.F;
+
+import java.sql.SQLIntegrityConstraintViolationException;
+ 
+@Singleton
+@AutoBind(service = [entity.name/]Service.class)
+public class [entity.name/]ServiceImpl implements [entity.name/]Service {
+
+    @Inject
+    private [entity.name/]Mapper [entity.name.toLower()/]Mapper;
+
+
+    @Override
+    public void insert[entity.name/]([entity.name/] [entity.name.toLower()/]) {
+        [entity.name.toLower()/]Mapper.insert([entity.name.toLower()/]);
+    }
+
+    @Override
+    public [entity.name/] select[entity.name/](Long [entity.name.toLower()/]Id) {
+        return [entity.name.toLower()/]Mapper.selectByPrimaryKey([entity.name.toLower()/]Id);
+    }
+
+
+    @Override
+    public Page getPage(int index) {
+        return new Page([entity.name/].class, index);
+    }
+
+    /**
+     * this method is more optimized than the simple getPage, a less sql query is used here, because getPage, make a select count before returning result
+     *
+     * @param index : index of the page
+     * @param from  : page used as start point of the seek operation
+     * @return : [entity.name.toLower()/] mybatis result
+     */
+    @Override
+    public Page getPage(int index, Page from) {
+        return from.seekPage(index);
+    }
+    @Override
+    public F.Tuple<Boolean, String> create[entity.name/]FromRequest([entity.name/] [entity.name.toLower()/]) {
+        try {
+            this.insert[entity.name/]([entity.name.toLower()/]);
+            return F.Tuple(true, "");
+        } catch (Exception e) {
+            Logger.error("Error during [entity.name.toLower()/] insertion", e);
+            return F.Tuple(false, "could not save the [entity.name.toLower()/] please verify the use informations");
+        }
+    }
+
+    @Override
+    public F.Tuple<Boolean, String> update[entity.name/]([entity.name/] [entity.name.toLower()/]) {
+        try {
+            Logger.info("updating [entity.name.toLower()/] " + [entity.name.toLower()/].getId());
+            [entity.name.toLower()/]Mapper.updateByPrimaryKeySelective([entity.name.toLower()/]);
+            return F.Tuple(true, null);
+        } catch (Exception e) {
+            Logger.error("Error during person update", e);
+            String message = e.getMessage();
+            if (e instanceof SQLIntegrityConstraintViolationException) {
+                SQLIntegrityConstraintViolationException d = (MySQLIntegrityConstraintViolationException) e.getCause();
+                message = d.getMessage();
+            }
+            return F.Tuple(false, message);
+        }
+    }
+
+    @Override
+    public F.Tuple<Boolean, String> delete[entity.name/]ById(Long id) {
+        try {
+            Logger.info("updating [entity.name.toLower()/] " + id);
+            [entity.name.toLower()/]Mapper.deleteByPrimaryKey(id);
+            return F.Tuple(true, null);
+        } catch (Exception e) {
+            Logger.error("Error during person update", e);
+            String message = e.getMessage();
+            if (e instanceof SQLIntegrityConstraintViolationException) {
+                SQLIntegrityConstraintViolationException d = (MySQLIntegrityConstraintViolationException) e.getCause();
+                message = d.getMessage();
+            }
+            return F.Tuple(false, message);
+        }
+    }
+
+
+}
+
+[/file]
+[/template]

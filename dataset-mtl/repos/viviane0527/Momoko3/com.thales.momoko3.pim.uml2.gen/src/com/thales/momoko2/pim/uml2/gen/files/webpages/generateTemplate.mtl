@@ -1,0 +1,96 @@
+[comment encoding = UTF-8 /]
+[module generateTemplate('http://www.eclipse.org/uml2/4.0.0/UML')]
+[import com::thales::momoko2::pim::uml2::gen::request::classQueries /]
+[import com::thales::momoko2::pim::uml2::gen::request::menuQueries /]
+
+[template public generateTemplate(aModel : Model)]
+[file ('src/main/webapp/template.xhtml', false, 'UTF-8')]
+<?xml version='1.0' encoding='UTF-8' ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:p="http://primefaces.org/ui">
+
+    <h:head>
+        <title><ui:insert name="title">Default Title</ui:insert></title>
+        <h:outputStylesheet library="css" name="jsfcrud.css"/>
+        <h:outputScript library="js" name="jsfcrud.js"/>
+    </h:head>
+
+    <h:body>
+
+        <p:growl id="growl" life="3000" />
+
+        <p:layout fullPage="true">
+            <p:layoutUnit position="north" size="65" header="#{bundle.[aModel.name/]}">
+                <h:form id="menuForm">
+                    <p:menubar>
+                        <p:menuitem value="#{bundle.Home}" outcome="/index" icon="ui-icon-home"/>
+							<p:submenu label="#{bundle.Maintenance}">
+                            [for (aClass : Class | aModel.eAllContents(Class)->asOrderedSet()->sortedBy(name)) ? (isFeatureClass(aClass))]
+								<p:menuitem value="#{bundle.[aClass.name/]}" outcome="/[aClass.name.toLowerFirst()/]/List.xhtml" />
+							[/for]                          
+                            </p:submenu>
+                    </p:menubar>
+                </h:form>
+            </p:layoutUnit>
+
+            <p:layoutUnit position="south" size="60">
+                <ui:insert name="footer"/>
+            </p:layoutUnit>
+
+            <p:layoutUnit position="center">
+                <ui:insert name="body"/>
+            </p:layoutUnit>
+
+        </p:layout>
+
+    </h:body>
+</html>
+[/file]
+[/template]
+
+[template public generateMenu(aModel:Model)]
+	[generateFlatMenu(aModel)/]	
+[/template]
+
+[template public generateFlatMenu(aModel:Model)]
+	<p:menu style="width:190px;" >  
+		<p:submenu label="#{bundle.ShowLink}"  >  
+	[for (aClass : Class | aModel.eAllContents(Class)->asOrderedSet()->sortedBy(name)) ? (isFeatureClass(aClass))]
+			<p:menuitem value="#{bundle.[aClass.name/]LeftLink}" immediate="true" ajax="false" action="#{[aClass.name.toLowerFirst()/]Controller.prepareList}" icon="ui-icon-extlink"  />
+	[/for]
+		</p:submenu>  
+	</p:menu>
+[/template]
+
+[template public generateTreeMenu(aModel: Model)]
+	<h3>#{bundle.ShowLink}</h3>
+	<p:tree value="#{treeMenuBean.root}" var="node" id="tree" style="width:100%;" cache="true" dynamic="true">
+		<p:treeNode id="treeNode"> 
+	    	<p:commandLink   immediate="true" ajax="false" disabled="#{!treeMenuBean.isFeatureNode(node)}"  action="#{treeMenuBean.linkToFeatureList(node)}">  
+	        	<h:outputText style="color:#045491;font-weight: bold;" value="#{node}"/>
+			</p:commandLink>
+		</p:treeNode>
+	</p:tree>
+[/template]
+
+[template public generateTieredMenu(aModel : Model)]
+	<h3>#{bundle.ShowLink}</h3>
+	<p:tieredMenu style="width:190px;">
+	[generateTieredMenuItems(getRootPackage(aModel))/]	
+	</p:tieredMenu>
+[/template]
+
+[template public generateTieredMenuItems(aPackage : Package)]
+	[for(item : Package | getPackagesDirectChildren(aPackage))]
+	<p:submenu label="[item.name/]">
+		[generateTieredMenuItems(item)/]	
+	</p:submenu>
+	[/for]
+	[for(aClass : Class | getFeaturesDirectChildren(aPackage))]
+		<p:menuitem value="#{bundle.[aClass.name/]LeftLink}" immediate="true" ajax="false" action="#{[aClass.name.toLowerFirst()/]Controller.prepareList}" icon="ui-icon-extlink"  />
+	[/for]
+[/template]
+

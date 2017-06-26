@@ -1,0 +1,151 @@
+[module daointerfacecustomized('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon/]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[comment][template private fullFilePath(class:Class)]
+[if (class.hasStereotype('Dao'))]
+[class.pathToMainJava()/]/[class.daoInterfacePackage().toPath()/]/[class.daoInterfaceName()/].java
+[/if]
+
+[/template][/comment]
+
+
+[template public generateDaoInterfaceCustomized(class:Class)? (class.hasStereotype('Dao'))]
+[comment This template is called by the main module file /]
+[file (class.fullFilePath(class.pathToMainJava(),class.daoInterfacePackage().toPath(),class.daoInterfaceName().concat('.java')), false))]
+package [class.daoInterfacePackage()/];
+
+// [protected ('imports')]
+// for import
+import java.util.List;
+
+[class.importDaoException()/]
+[for (class:Class|class.clientDependency.target->filter(Class))]
+import [class.entityQualifiedName()/];
+[/for]
+
+// [/protected] for import
+
+/**
+ * This class provides the data access layer to the [class.name/] entity class.<br/>
+ * This is the interface which represents the contract of the DAO access.
+ */
+public interface [class.daoInterfaceName()/] {
+
+[class.ownedOperation.generate()/]
+[for (class:Class|class.clientDependency.target->filter(Class))]
+
+    // Data Access Operations for [class.name/]
+    
+    /**
+     * Creates a new element.
+     * @param [class.name.toLowerFirst()/] Element to create.
+     */
+    public void create[class.name/]([class.name/] [class.name.toLowerFirst()/]) throws DaoException;
+
+    /**
+     * Updates an existing element.
+     * @param [class.name.toLowerFirst()/] Element to update. If the element has an id, it may use it.
+     */
+    public void update[class.name/]([class.name/] [class.name.toLowerFirst()/]) throws DaoException;
+
+    /**
+     * Deletes an element.
+     * Only id can be used to find which element must be deleted.
+     * @param [class.name.toLowerFirst()/] Element which will be delete. 
+     */
+    public void delete[class.name/]([class.name/] [class.name.toLowerFirst()/]) throws DaoException;
+
+    /**
+     * Finds all elements.
+     * @return A list with all elements, without any filter.
+     */
+    public List<[class.name/]> findAll[class.name/]s() throws DaoException;
+
+[/for]
+}'
+'
+[/file]
+[/template]
+
+
+[template public generate(oper:Operation)]
+[if (oper.hasStereotype('create'))]
+[oper.create()/]
+[/if]
+[if (oper.hasStereotype('update'))]
+[oper.update()/]
+[/if]
+[if (oper.hasStereotype('delete'))]
+[oper.delete()/]
+[/if]
+[if (oper.hasStereotype('find'))]
+[oper.find()/]
+[/if]
+
+[/template]
+
+
+[template public create(oper:Operation)]
+    /**
+     * Creates a new element.
+     * @param [oper.ownedParameter.name/] Element to create.
+     */
+    public void [oper.name/]([oper.generateParameters()/]) throws DaoException;
+    
+[/template]
+
+
+[template public update(oper:Operation)]
+    /**
+     * Updates an existing element.
+     * @param [oper.ownedParameter.name/] Element to update. If the element has an id, it may use it.
+     */
+    public void [oper.name/]([oper.generateParameters()/]) throws DaoException;
+    
+[/template]
+
+
+[template public delete(oper:Operation)]
+    /**
+     * Deletes an element.
+     * @param [oper.ownedParameter.name/] Element which will be delete.
+     */
+    public void [oper.name/]([oper.generateParameters()/]) throws DaoException;
+    
+[/template]
+
+
+[template public find(oper:Operation)]
+    [oper.generateJavadoc()/]
+    public [oper.type.name/][oper.type.suffixe()/] [oper.name/]([oper.generateParameters()/]) throws DaoException;
+
+[/template]
+
+
+[template public genDeclare(param:Parameter)]
+[param.type.name/][param.type.suffixe()/] [param.name/]
+[/template]
+
+
+[template public suffixe(type:Type)]
+
+[/template]
+
+
+[template public suffixe(class : Class) post(trim())]
+[if (class.hasStereotype('Dto'))]
+    Dto
+[elseif (class.isEntity())]
+    Entity
+[/if]
+
+[/template]
+
+
+

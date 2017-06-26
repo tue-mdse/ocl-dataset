@@ -1,0 +1,82 @@
+[module servletcontrollerxml('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::profile /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::ioc/]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::uml2services /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::services::springservices /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::tests::entitytesthelper /]
+
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::acceleo::module::pim::uml21::gen::java::dao::api::daocommon /]
+
+[comment][template private fullFilePath(model : Model)]
+[if (model.controllers()->notEmpty())][model.pathToMainResources() /]/META-INF/spring/[model.baseImports()/]/layer-controllers.xml[/if]
+[/template][/comment]
+
+
+[template public generateSevletControllerSpringApplicationContext(model : Model)? (model.controllers()->notEmpty())]
+[comment This template is called by the main module file /]
+[file (model.fullFilePath(model.pathToMainResources(), 'META-INF/spring/'.concat(model.baseImports()), 'layer-controllers.xml'), false))]
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:jee="http://www.springframework.org/schema/jee"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.0.xsd
+           http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.0.xsd
+           http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.0.xsd
+           http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-2.0.xsd">
+
+[for (class:Class|model.controllers())]
+ 	<!-- controller -->
+ 	<bean id="[class.name.toLowerFirst()/]Delegation" class="org.springframework.web.servlet.mvc.multiaction.MultiActionController">
+	  <property name="delegate" ref="[class.name.toLowerFirst()/]"/>
+	</bean>
+
+	<bean id="[class.name.toLowerFirst()/]" 
+		class="[class.servicePackage()/].[class.name/]">		
+	[for (class.serviceDependencies()->union(class.uiDependencies()))]
+	 	<property name="[name.toLowerFirst()/]" ref="[computeBeanId()/]"/>			
+	[/for]
+	</bean>
+[/for]
+
+[comment  FIXME maybe use PropertiesMethodNameResolver /]<bean id="urlMapping"  class="org.springframework.web.servlet.handler.SimpleUrlHandlerMapping">
+   <property name="mappings">
+      <props>
+[for (model.controllers())]
+        <prop key="/[name.toLowerFirst()/]/**">[name.toLowerFirst()/]Delegation</prop> 
+[/for]
+		<!-- [protected ('urlMapping mappings')]
+        urlMapping mappings -->		
+		<!-- [/protected] urlMapping mappings -->			
+      </props>
+   </property>   
+   <property name="interceptors">
+		<list>
+			<!-- [protected ('urlMapping interceptors')]
+            urlMapping interceptors -->			
+			<!-- <ref bean="openSessionInViewInterceptor" /> --> 
+			<!-- [/protected] urlMapping interceptors -->			
+		</list>
+	</property>
+	<!-- [protected ('urlMapping custom')]
+      urlMapping custom -->	
+	<!-- [/protected] urlMapping custom -->	
+</bean>
+
+<!-- [protected ('custom')]
+ custom -->
+<!-- [/protected] custom -->
+	
+</beans>
+[/file]
+[/template]

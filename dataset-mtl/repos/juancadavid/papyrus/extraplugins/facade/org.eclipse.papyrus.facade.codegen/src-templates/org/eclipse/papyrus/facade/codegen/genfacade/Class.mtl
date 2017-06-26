@@ -1,0 +1,1029 @@
+[comment]Copyright (c) 2013 CEA LIST.
+
+All rights reserved. This program and the accompanying materials
+are made available under the terms of the Eclipse Public License v1.0
+which accompanies this distribution, and is available at
+http://www.eclipse.org/legal/epl-v10.html
+
+Contributors:
+ Obeo - Initial API and implementation
+ CEA LIST - Modification to support Facade code generation[/comment]
+[comment encoding = UTF-8 /]
+[module Class('http://www.eclipse.org/emf/2002/GenModel')/]
+
+[import org::eclipse::emf::eef::codegen::ecore::services::common /]
+[import org::eclipse::emf::eef::codegen::ecore::services::header /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenModel /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenPackage /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenClass /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenOperation /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenParameter /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenFeature /]
+[import org::eclipse::emf::eef::codegen::ecore::services::wrappers::GenDataType /]
+[import org::eclipse::papyrus::facade::codegen::genclass::genDeclaredFields /]
+[import org::eclipse::papyrus::facade::codegen::genclass::genFeature /]
+[import org::eclipse::papyrus::facade::codegen::genclass::genOperation /]
+[import org::eclipse::papyrus::facade::codegen::genclass::eUnset /]
+[import org::eclipse::papyrus::facade::codegen::genclass::eIsSet /]
+[import org::eclipse::emf::eef::codegen::ecore::services::StringUtil /]
+[import org::eclipse::papyrus::facade::codegen::utils::FacadeCodegenUtils /]
+
+[template public genGenClass(genClass : GenClass, isInterface : Boolean, isImplementation : Boolean)]
+[let genPackage : GenPackage = genClass.genPackage]
+[let genModel : GenModel = genPackage.genModel]
+[let isJDK50 : Boolean = genModel.isJDK50()]
+[comment the two following booleans are passed as arguments to this template/]
+[comment] final boolean isInterface = Boolean.TRUE.equals(((Object['[]'/])argument)[1]); final boolean isImplementation = Boolean.TRUE.equals(((Object['[]'/])argument)[2]);[/comment]
+[let isGWT : Boolean = genModel.runtimePlatform = GenRuntimePlatform::GWT]
+[let publicStaticFinalFlag : String = if isImplementation then 'public static final ' else '' endif]
+[let singleWildcard : String = if isJDK50 then '<?>' else '' endif]
+[let negativeOffsetCorrection : String = if genClass.hasOffsetCorrection() then ' - ' + genClass.getDefaultOffsetCorrectionField(genClass) else '' endif]
+[let positiveOffsetCorrection : String = if genClass.hasOffsetCorrection() then ' + ' + genClass.getDefaultOffsetCorrectionField(genClass) else '' endif]
+[let negativeOperationOffsetCorrection : String = if genClass.hasOffsetCorrection() then ' - EOPERATION_OFFSET_CORRECTION' + genClass.getDefaultOffsetCorrectionField(genClass) else '' endif]
+[let positiveOperationOffsetCorrection : String = if genClass.hasOffsetCorrection() then ' + EOPERATION_OFFSET_CORRECTION' + genClass.getDefaultOffsetCorrectionField(genClass) else '' endif]
+
+[let packageName : String = if (isInterface) then
+		genPackage.getInterfacePackageName()
+	else
+		genPackage.getClassPackageName()
+	endif]
+[let className : String = if (isImplementation) then
+		genClass.getClassName()
+	else
+		genClass.getInterfaceName()
+	endif]
+
+[genModel.initializeImportManager(genPackage, packageName, className)/]
+[if (isImplementation)]
+	[genClass.addClassPseudoImports()/]
+[/if]
+
+
+
+[file (genClass.classFilePath(isInterface, isImplementation), false, 'UTF-8')]
+[genClass.includeHeader()/]
+[if (isInterface) ]
+package [genPackage.getInterfacePackageName()/];
+[else]
+package [genPackage.getClassPackageName()/];
+[/if]
+[let content : String = genClass.classFileContent(isInterface, isImplementation, genPackage, genModel, isJDK50, isGWT, publicStaticFinalFlag, singleWildcard, negativeOffsetCorrection, positiveOffsetCorrection, negativeOperationOffsetCorrection, positiveOperationOffsetCorrection)]
+
+[genClass.genSortedImports(isInterface, isImplementation).trim()/]
+
+[content/]
+[/let]
+[/file]
+
+
+
+[/let]
+[/let]
+
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/template]
+
+[template protected classFileContent(genClass : GenClass, isInterface : Boolean, isImplementation : Boolean, genPackage : GenPackage, genModel : GenModel, isJDK50 : Boolean, isGWT : Boolean, publicStaticFinalFlag : String, singleWildcard : String, negativeOffsetCorrection : String, positiveOffsetCorrection : String, negativeOperationOffsetCorrection : String, positiveOperationOffsetCorrection : String) post(trim())]
+[if (isInterface)]
+/**
+ * <!-- begin-user-doc -->
+ * A representation of the model object '<em><b>[genClass.getFormattedName()/]</b></em>'.
+ * <!-- end-user-doc -->
+  [if (genClass.hasDocumentation())]
+ *
+ * <!-- begin-model-doc -->
+ * [genClass.getDocumentation(genModel.getIndentation())/]
+ * <!-- end-model-doc -->
+  [/if]
+ *
+  [if (not genClass.genFeatures->isEmpty())]
+ * <p>
+ * The following features are supported:
+ * <ul>
+    [for (genFeature : GenFeature | genClass.genFeatures)]
+      [if (not genFeature.isSuppressedGetVisibility())]
+ *   <li>{@link [genClass.getQualifiedInterfaceName()/]#[genFeature.getGetAccessor()/] <em>[genFeature.getFormattedName()/]</em>}</li>
+      [/if]
+    [/for]
+ * </ul>
+ * </p>
+  [/if]
+ *
+  [if (not genModel.suppressEMFMetaData)]
+ * @see [genPackage.getQualifiedPackageInterfaceName()/]#get[genClass.getClassifierAccessorName()/]()
+  [/if]
+  [if (not genModel.suppressEMFModelTags)]
+    [let modelInfoLines : Sequence(String) = genClass.getModelInfo().tokenize(genModel.getLineDelimiter() + '\r')]
+      [if (modelInfoLines->isEmpty())]
+ * @model
+      [else]
+ * @model [modelInfoLines->sep(genModel.getLineDelimiter() + ' *        ')/]
+      [/if]
+    [/let]
+  [/if]
+  [if (genClass.needsRootExtendsInterfaceExtendsTag())]
+ * @extends [genModel.getImportedName(genModel.rootExtendsInterface)/]
+  [/if]
+ * @generated
+ */
+[else]
+/**
+ * <!-- begin-user-doc -->
+ * An implementation of the model object '<em><b>[genClass.getFormattedName()/]</b></em>'.
+ * <!-- end-user-doc -->
+ * <p>
+  [if (not genClass.getImplementedGenFeatures()->isEmpty())]
+ * The following features are implemented:
+ * <ul>
+    [for (genFeature : GenFeature | genClass.getImplementedGenFeatures())]
+ *   <li>{@link [genClass.getQualifiedClassName()/]#[genFeature.getGetAccessor()/] <em>[genFeature.getFormattedName()/]</em>}</li>
+    [/for]
+ * </ul>
+  [/if]
+ * </p>
+ *
+ * @generated
+ */
+[/if]
+[if (isImplementation) ]
+public[if (genClass.isAbstract()) ] abstract[/if] class [genClass.getClassName()/][genClass.getTypeParameters().trim()/][if (genClass.ecoreClass.eSuperTypes->isEmpty()) ] extends [genModel.getImportedName(genPackage.getUtilitiesPackageName()+'.AbstractRepresentingElement')/] [else] [genClass.getClassExtends()/] [/if][genClass.getClassImplements()/] {
+
+
+[else]
+public interface [genClass.getInterfaceName()/][genClass.getTypeParameters().trim()/][genClass.getInterfaceExtends()/], [genModel.getImportedName('org.eclipse.papyrus.facade.utils.RepresentingElement')/]  {
+
+	[comment]public [genModel.getImportedName('org.eclipse.uml2.uml.Element')/] get__Represented();
+
+	public void set__Represented([genModel.getImportedName('org.eclipse.uml2.uml.Element')/] represented);[/comment]
+
+[/if]
+[if (genModel.hasCopyrightField()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	[publicStaticFinalFlag/][genModel.getImportedName('java.lang.String')/] copyright = [genModel.getCopyrightFieldLiteral()/];[genModel.getNonNLS()/]
+
+[/if]
+[if (isImplementation and genModel.getDriverNumber() <> null) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public static final [genModel.getImportedName('java.lang.String')/] mofDriverNumber = "[genModel.getDriverNumber()/]";[genModel.getNonNLS()/]
+
+[/if]
+[if (isImplementation and genClass.isJavaIOSerializable()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private static final long serialVersionUID = 1L;
+
+[/if]
+[if (isImplementation and genModel.isVirtualDelegation())]
+  [let eVirtualValuesField : String = genClass.getEVirtualValuesField()]
+  [if (genClass.getEVirtualValuesField() <> null) ]
+	/**
+	 * An array of objects representing the values of non-primitive features.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+      [if (isGWT) ]
+	@[genModel.getImportedName('com.google.gwt.user.client.rpc.GwtTransient')/]
+      [/if]
+	protected Object['[]'/] [genClass.getEVirtualValuesField()/];
+
+  [/if]
+  [let eVirtualIndexBitFields : Sequence(String) = genClass.getEVirtualIndexBitFields()]
+    [if (not eVirtualIndexBitFields->isEmpty()) ]
+      [for (eVirtualIndexBitField : String | eVirtualIndexBitFields)]
+	/**
+	 * A bit field representing the indices of non-primitive feature values.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+      [if (isGWT) ]
+	@[genModel.getImportedName('com.google.gwt.user.client.rpc.GwtTransient')/]
+      [/if]
+	protected int [eVirtualIndexBitField/];
+
+      [/for]
+    [/if]
+  [/let]
+  [/let]
+[/if]
+[if (isImplementation and genClass.isModelRoot() and genModel.isBooleanFlagsEnabled() and genModel.booleanFlagsReservedBits = -1) ]
+	/**
+	 * A set of bit flags representing the values of boolean attributes and whether unsettable features have been set.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+      [if (isGWT) ]
+	@[genModel.getImportedName('com.google.gwt.user.client.rpc.GwtTransient')/]
+      [/if]
+	protected int [genModel.booleanFlagsField/] = 0;
+
+[/if]
+[if (isImplementation and not genModel.reflectiveDelegation) ]
+  [for (genFeature : GenFeature | genClass.getDeclaredFieldGenFeatures())]
+[genFeature.genDeclaredFields(genClass, genModel, isGWT, isJDK50)/][/for]
+[/if]
+[if (isImplementation and genClass.hasOffsetCorrection() and not genClass.getImplementedGenFeatures()->isEmpty()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private static final int [genClass.getDefaultOffsetCorrectionField()/] = [genClass.getQualifiedClassifierAccessor()/].getFeatureID([genClass.getImplementedGenFeatures()->at(1).oclAsType(GenFeature).getQualifiedFeatureAccessor()/]) - [genClass.getQualifiedFeatureID(genClass.getImplementedGenFeatures()->at(1).oclAsType(GenFeature))/];
+
+[/if]
+[if (isImplementation and not genModel.reflectiveDelegation) ]
+  [for (genFeature : GenFeature | genClass.getImplementedGenFeatures())]
+    [let reverseFeature : GenFeature = genFeature.getReverse()]
+      [if (reverseFeature <> null and reverseFeature.genClass.hasOffsetCorrection()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private static final int [genClass.getOffsetCorrectionField(genFeature)/] = [reverseFeature.genClass.getQualifiedClassifierAccessor()/].getFeatureID([reverseFeature.getQualifiedFeatureAccessor()/]) - [reverseFeature.genClass.getQualifiedFeatureID(reverseFeature)/];
+
+      [/if]
+    [/let]
+  [/for]
+[/if]
+[if (genModel.operationReflection and isImplementation and genClass.hasOffsetCorrection() and not genClass.getImplementedGenOperations()->isEmpty()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private static final int "EOPERATION_OFFSET_CORRECTION" = [genClass.getQualifiedClassifierAccessor()/].getOperationID([genClass.getImplementedGenOperations()->at(1).oclAsType(GenOperation).getQualifiedOperationAccessor()/]) - [genClass.getQualifiedOperationID(genClass.getImplementedGenOperations()->at(1).oclAsType(GenOperation))/];
+
+[/if]
+[if (isImplementation) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	[if (genModel.publicConstructors) ]public[else]protected[/if] [genClass.getClassName()/]() {
+		super();
+		[if (not genClass.isAbstract()) ] 
+		__representedElement =  [genClass.ecoreClass.getUMLFactory(genModel)/].eINSTANCE.create[genClass.ecoreClass.getUMLMetaElement(genModel)/]();
+
+		boolean adapterExists = false;
+		for([genModel.getImportedName('org.eclipse.emf.common.notify.Adapter')/] adapter : __representedElement.eAdapters()) {
+			if(adapter instanceof [genModel.getImportedName(genPackage.getUtilitiesPackageName()+'.RepresentingElementAdapter')/]) {
+				(([genModel.getImportedName(genPackage.getUtilitiesPackageName()+'.RepresentingElementAdapter')/])adapter).set__Representing(this);
+				adapterExists = true;
+			}
+		}
+
+		if(!adapterExists) {
+			[genModel.getImportedName(genPackage.getUtilitiesPackageName()+'.RepresentingElementAdapter')/] adapter = new [genModel.getImportedName(genPackage.getUtilitiesPackageName()+'.RepresentingElementAdapter')/]();
+			adapter.set__Representing(this);
+			__representedElement.eAdapters().add(adapter);
+		}
+		[/if]
+
+
+
+  [for (genFeature : GenFeature | genClass.getFlagGenFeaturesWithDefault()) ]
+		[genClass.getFlagsField(genFeature)/] |= [genFeature.getUpperName()/]_EFLAG[if (not genFeature.isBooleanType()) ]_DEFAULT[/if];
+  [/for]
+	}
+
+
+	[if ( genClass.ecoreClass.getNonAssociationStereotypeQualifiedNames(genModel) <> '' )]
+
+	@Override
+	public [genModel.getImportedName('org.eclipse.emf.common.notify.NotificationChain')/]  eBasicSetContainer([genModel.getImportedName('org.eclipse.emf.ecore.InternalEObject')/] newContainer, int newContainerFeatureID, [genModel.getImportedName('org.eclipse.emf.common.notify.NotificationChain')/] msgs) {
+		[genModel.getImportedName('org.eclipse.emf.common.notify.NotificationChain')/] chain = super.eBasicSetContainer(newContainer, newContainerFeatureID, msgs);
+		if(newContainer != null) {
+			String['[]'/] stereotypesQualifiedNames = { [genClass.ecoreClass.getNonAssociationStereotypeQualifiedNames(genModel)/] };
+
+			for([genModel.getImportedName('java.lang.String')/] stereoQualifiedName : stereotypesQualifiedNames) {
+				if((([genModel.getImportedName('org.eclipse.uml2.uml.Element')/])__representedElement).getAppliedStereotype(stereoQualifiedName) == null) {
+					[genModel.getImportedName('org.eclipse.uml2.uml.Stereotype')/] stereotype = (([genModel.getImportedName('org.eclipse.uml2.uml.Element')/])__representedElement).getApplicableStereotype(stereoQualifiedName);
+					if(stereotype != null) {
+						(([genModel.getImportedName('org.eclipse.uml2.uml.Element')/])__representedElement).applyStereotype(stereotype);
+					} else {
+						System.err.println("Problem: cannot apply stereotype " + stereoQualifiedName);
+					}
+				}
+			}
+		}
+
+		return chain;
+	}
+
+	[/if]
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+  [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+  [/if]
+	protected [genModel.getImportedName('org.eclipse.emf.ecore.EClass')/] eStaticClass() {
+		return [genClass.getQualifiedClassifierAccessor()/];
+	}
+
+[/if]
+
+[for (genFeature : GenFeature | if isImplementation then genClass.getImplementedGenFeatures() else genClass.getDeclaredGenFeatures() endif)]
+[genFeature.genFeature(genClass, genPackage, genModel, isJDK50, isInterface, isImplementation, positiveOffsetCorrection, negativeOffsetCorrection, singleWildcard)/][/for]
+
+[for (genOperation : GenOperation | if isImplementation then genClass.getImplementedGenOperations() else genClass.getDeclaredGenOperations() endif)]
+[genOperation.genOperation(genClass, genPackage, genModel, isJDK50, isInterface, isImplementation, isGWT)/][/for]
+[if (isImplementation and not genModel.reflectiveDelegation and genClass.implementsAnyEInverseAddGenFeatures()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+  [if (genModel.useGenerics())]
+    [if (genClass.getEInverseAddGenFeatures()->filter(GenFeature)->select(f : GenFeature | f.isUncheckedCast(genClass))->size() > 0)]
+	@SuppressWarnings("unchecked")
+    [/if]
+  [/if]
+  [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+  [/if]
+	public [genModel.getImportedName('org.eclipse.emf.common.notify.NotificationChain')/] eInverseAdd([genModel.getImportedName('org.eclipse.emf.ecore.InternalEObject')/] otherEnd, int featureID, [genModel.getImportedName('org.eclipse.emf.common.notify.NotificationChain')/] msgs) {
+		switch (featureID[negativeOffsetCorrection/]) {
+[for (genFeature : GenFeature | genClass.getEInverseAddGenFeatures())]
+			case [genClass.getQualifiedFeatureID(genFeature)/]:
+  [if (genFeature.isListType())]
+    [let cast : String = '('
+        + genModel.getImportedName('org.eclipse.emf.ecore.util.InternalEList')
+        + if (not genModel.useGenerics()) then
+            ')'
+          else
+            '<'
+            + genModel.getImportedName('org.eclipse.emf.ecore.InternalEObject')
+   	        + '>)('
+   	        + genModel.getImportedName('org.eclipse.emf.ecore.util.InternalEList')
+   	        + '<?>)'
+          endif]
+      [if (genFeature.isMapType() and genFeature.isEffectiveSuppressEMFTypes()) ]
+				return (([cast/]([genModel.getImportedName('org.eclipse.emf.common.util.EMap')/].InternalMapView[genFeature.getImportedMapTemplateArguments(genClass)/])[genFeature.getGetAccessor()/]()).eMap()).basicAdd(otherEnd, msgs);
+      [else]
+				return ([cast/][genFeature.getGetAccessor()/]()).basicAdd(otherEnd, msgs);
+      [/if]
+    [/let]
+  [else][if (genFeature.isContainer()) ]
+				if (eInternalContainer() != null)
+					msgs = eBasicRemoveFromContainer(msgs);
+    [if (genFeature.isBasicSet()) ]
+				return basicSet[genFeature.getAccessorName()/](([genFeature.getImportedType(genClass)/])otherEnd, msgs);
+    [else]
+				return eBasicSetContainer(otherEnd, [genClass.getQualifiedFeatureID(genFeature)/][positiveOffsetCorrection/], msgs);
+    [/if]
+  [else]
+    [if (genClass.getImplementingGenModel(genFeature).isVirtualDelegation()) ]
+				[genFeature.getImportedType(genClass)/] [genFeature.getSafeName()/] = ([genFeature.getImportedType(genClass)/])eVirtualGet([genClass.getQualifiedFeatureID(genFeature)/][positiveOffsetCorrection/]);
+    [else][if (genFeature.isVolatile() or genClass.getImplementingGenModel(genFeature).isDynamicDelegation()) ]
+				[genFeature.getImportedType(genClass)/] [genFeature.getSafeName()/] = [if (genFeature.isResolveProxies()) ]basicGet[genFeature.getAccessorName()/][else][genFeature.getGetAccessor()/][/if]();
+    [/if][/if]
+				if ([genFeature.getSafeName()/] != null)
+    [if (genFeature.isEffectiveContains()) ]
+					msgs = (([genModel.getImportedName('org.eclipse.emf.ecore.InternalEObject')/])[genFeature.getSafeName()/]).eInverseRemove(this, EOPPOSITE_FEATURE_BASE - [genClass.getQualifiedFeatureID(genFeature)/][negativeOffsetCorrection/], null, msgs);
+    [else]
+      [let reverseFeature : GenFeature = genFeature.getReverse()]
+        [let targetClass : GenClass = reverseFeature.genClass]
+          [let reverseOffsetCorrection : String = if (targetClass.hasOffsetCorrection()) then ' + ' + genClass.getOffsetCorrectionField(genFeature) else '' endif]
+					msgs = (([genModel.getImportedName('org.eclipse.emf.ecore.InternalEObject')/])[genFeature.getSafeName()/]).eInverseRemove(this, [targetClass.getQualifiedFeatureID(reverseFeature)/][reverseOffsetCorrection/], [targetClass.getRawImportedInterfaceName()/].class, msgs);
+          [/let]
+        [/let]
+      [/let]
+    [/if]
+				return basicSet[genFeature.getAccessorName()/](([genFeature.getImportedType(genClass)/])otherEnd, msgs);
+  [/if][/if]
+[/for]
+		}
+[if (genModel.minimalReflectiveMethods) ]
+		return super.eInverseAdd(otherEnd, featureID, msgs);
+[else]
+		return eDynamicInverseAdd(otherEnd, featureID, msgs);
+[/if]
+	}
+
+[/if]
+[if (isImplementation and not genModel.reflectiveDelegation and genClass.implementsAnyEInverseRemoveGenFeatures()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+  [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+  [/if]
+	public [genModel.getImportedName('org.eclipse.emf.common.notify.NotificationChain')/] eInverseRemove([genModel.getImportedName('org.eclipse.emf.ecore.InternalEObject')/] otherEnd, int featureID, [genModel.getImportedName('org.eclipse.emf.common.notify.NotificationChain')/] msgs) {
+		switch (featureID[negativeOffsetCorrection/]) {
+[for (genFeature : GenFeature | genClass.getEInverseRemoveGenFeatures())]
+			case [genClass.getQualifiedFeatureID(genFeature)/]:
+  [if (genFeature.isListType()) ]
+    [if (genFeature.isMapType() and genFeature.isEffectiveSuppressEMFTypes()) ]
+				return (([genModel.getImportedName('org.eclipse.emf.ecore.util.InternalEList')/][singleWildcard/])(([genModel.getImportedName('org.eclipse.emf.common.util.EMap')/].InternalMapView[genFeature.getImportedMapTemplateArguments(genClass)/])[genFeature.getGetAccessor()/]()).eMap()).basicRemove(otherEnd, msgs);
+    [else][if (genFeature.isWrappedFeatureMapType()) ]
+				return (([genModel.getImportedName('org.eclipse.emf.ecore.util.InternalEList')/][singleWildcard/])(([genModel.getImportedName('org.eclipse.emf.ecore.util.FeatureMap')/].Internal.Wrapper)[genFeature.getGetAccessor()/]()).featureMap()).basicRemove(otherEnd, msgs);
+    [else]
+				return (([genModel.getImportedName('org.eclipse.emf.ecore.util.InternalEList')/][singleWildcard/])[genFeature.getGetAccessor()/]()).basicRemove(otherEnd, msgs);
+    [/if][/if]
+  [else ][if (genFeature.isContainer() and not genFeature.isBasicSet()) ]
+				return eBasicSetContainer(null, [genClass.getQualifiedFeatureID(genFeature)/][positiveOffsetCorrection/], msgs);
+  [else][if (genFeature.isUnsettable()) ]
+				return basicUnset[genFeature.getAccessorName()/](msgs);
+  [else]
+				return basicSet[genFeature.getAccessorName()/](null, msgs);
+  [/if][/if][/if]
+[/for]
+		}
+[if (genModel.minimalReflectiveMethods) ]
+		return super.eInverseRemove(otherEnd, featureID, msgs);
+[else]
+		return eDynamicInverseRemove(otherEnd, featureID, msgs);
+[/if]
+	}
+
+[/if]
+[if (isImplementation and not genModel.reflectiveDelegation and genClass.implementsAnyEBasicRemoveFromContainerGenFeatures()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+  [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+  [/if]
+	public [genModel.getImportedName('org.eclipse.emf.common.notify.NotificationChain')/] eBasicRemoveFromContainerFeature([genModel.getImportedName('org.eclipse.emf.common.notify.NotificationChain')/] msgs) {
+		switch (eContainerFeatureID()[negativeOffsetCorrection/]) {
+[for (genFeature : GenFeature | genClass.getEBasicRemoveFromContainerGenFeatures())]
+  [let reverseFeature : GenFeature = genFeature.getReverse()]
+    [let targetClass : GenClass = reverseFeature.genClass]
+      [let reverseOffsetCorrection : String = if (targetClass.hasOffsetCorrection()) then ' + ' + genClass.getOffsetCorrectionField(genFeature) else '' endif]
+			case [genClass.getQualifiedFeatureID(genFeature)/]:
+				return eInternalContainer().eInverseRemove(this, [targetClass.getQualifiedFeatureID(reverseFeature)/][reverseOffsetCorrection/], [targetClass.getRawImportedInterfaceName()/].class, msgs);
+      [/let]
+    [/let]
+  [/let]
+[/for]
+		}
+[if (genModel.minimalReflectiveMethods) ]
+		return super.eBasicRemoveFromContainerFeature(msgs);
+[else]
+		return eDynamicBasicRemoveFromContainer(msgs);
+[/if]
+	}
+
+[/if]
+[if (isImplementation and not genModel.reflectiveDelegation and genClass.implementsAnyEGetGenFeatures()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+  [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+  [/if]
+	public Object eGet(int featureID, boolean resolve, boolean coreType) {
+		switch (featureID[negativeOffsetCorrection/]) {
+[for (genFeature : GenFeature | genClass.getEGetGenFeatures())]
+			case [genClass.getQualifiedFeatureID(genFeature)/]:
+  [if (genFeature.isPrimitiveType()) ]
+    [if (isJDK50) ]
+				return [genFeature.getGetAccessor()/]();
+    [else][if (genFeature.isBooleanType()) ]
+				return [genFeature.getGetAccessor()/]() ? Boolean.TRUE : Boolean.FALSE;
+    [else]
+				return new [genFeature.getObjectType(genClass)/]([genFeature.getGetAccessor()/]());
+    [/if][/if]
+  [else][if (genFeature.isResolveProxies() and not genFeature.isListType()) ]
+				if (resolve) return [genFeature.getGetAccessor()/]();
+				return basicGet[genFeature.getAccessorName()/]();
+  [else][if (genFeature.isMapType()) ]
+    [if (genFeature.isEffectiveSuppressEMFTypes()) ]
+				if (coreType) return (([genModel.getImportedName('org.eclipse.emf.common.util.EMap')/].InternalMapView[genFeature.getImportedMapTemplateArguments(genClass)/])[genFeature.getGetAccessor()/]()).eMap();
+				else return [genFeature.getGetAccessor()/]();
+    [else]
+				if (coreType) return [genFeature.getGetAccessor()/]();
+				else return [genFeature.getGetAccessor()/]().map();
+    [/if]
+  [else][if (genFeature.isWrappedFeatureMapType()) ]
+				if (coreType) return (([genModel.getImportedName('org.eclipse.emf.ecore.util.FeatureMap')/].Internal.Wrapper)[genFeature.getGetAccessor()/]()).featureMap();
+				return [genFeature.getGetAccessor()/]();
+  [else][if (genFeature.isFeatureMapType()) ]
+				if (coreType) return [genFeature.getGetAccessor()/]();
+				return (([genModel.getImportedName('org.eclipse.emf.ecore.util.FeatureMap')/].Internal)[genFeature.getGetAccessor()/]()).getWrapper();
+  [else]
+				return [genFeature.getGetAccessor()/]();
+  [/if][/if][/if][/if][/if]
+[/for]
+		}
+[if (genModel.minimalReflectiveMethods) ]
+		return super.eGet(featureID, resolve, coreType);
+[else]
+		return eDynamicGet(featureID, resolve, coreType);
+[/if]
+	}
+
+[/if]
+[if (isImplementation and not genModel.reflectiveDelegation and genClass.implementsAnyESetGenFeatures()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+  [if (genModel.useGenerics()) ]
+    [if (genClass.getESetGenFeatures()->filter(GenFeature)->select(f : GenFeature| f.isUncheckedCast(genClass) and not f.isFeatureMapType() and not f.isMapType())->notEmpty()) ]
+	@SuppressWarnings("unchecked")
+    [/if]
+  [/if]
+  [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+  [/if]
+	public void eSet(int featureID, Object newValue) {
+		switch (featureID[negativeOffsetCorrection/]) {
+  [for (genFeature : GenFeature | genClass.getESetGenFeatures())]
+			case [genClass.getQualifiedFeatureID(genFeature)/]:
+    [if (genFeature.isListType()) ]
+      [if (genFeature.isWrappedFeatureMapType()) ]
+				(([genModel.getImportedName('org.eclipse.emf.ecore.util.FeatureMap')/].Internal)(([genModel.getImportedName('org.eclipse.emf.ecore.util.FeatureMap')/].Internal.Wrapper)[genFeature.getGetAccessor()/]()).featureMap()).set(newValue);
+      [else][if (genFeature.isFeatureMapType()) ]
+				(([genModel.getImportedName('org.eclipse.emf.ecore.util.FeatureMap')/].Internal)[genFeature.getGetAccessor()/]()).set(newValue);
+      [else][if (genFeature.isMapType()) ]
+        [if (genFeature.isEffectiveSuppressEMFTypes()) ]
+				(([genModel.getImportedName('org.eclipse.emf.ecore.EStructuralFeature')/].Setting)(([genModel.getImportedName('org.eclipse.emf.common.util.EMap')/].InternalMapView[genFeature.getImportedMapTemplateArguments(genClass)/])[genFeature.getGetAccessor()/]()).eMap()).set(newValue);
+        [else]
+				(([genModel.getImportedName('org.eclipse.emf.ecore.EStructuralFeature')/].Setting)[genFeature.getGetAccessor()/]()).set(newValue);
+        [/if]
+      [else]
+				[genFeature.getGetAccessor()/]().clear();
+				[genFeature.getGetAccessor()/]().addAll(([genModel.getImportedName('java.util.Collection')/][if (isJDK50) ]<? extends [genFeature.getListItemType(genClass)/]>[/if])newValue);
+      [/if][/if][/if]
+    [else][if (not isJDK50 and genFeature.isPrimitiveType()) ]
+				set[genFeature.getAccessorName()/]((([genFeature.getObjectType(genClass)/])newValue).[genFeature.getPrimitiveValueFunction()/]());
+    [else]
+				set[genFeature.getAccessorName()/]([if (genFeature.getTypeGenDataType() = null or not genFeature.getTypeGenDataType().isObjectType() or genFeature.getRawType() <> genFeature.getType(genClass)) ]([genFeature.getObjectType(genClass)/])[/if]newValue);
+    [/if][/if]
+				return;
+  [/for]
+		}
+  [if (genModel.minimalReflectiveMethods) ]
+		super.eSet(featureID, newValue);
+  [else]
+		eDynamicSet(featureID, newValue);
+  [/if]
+	}
+
+[/if]
+[if (isImplementation and not genModel.reflectiveDelegation and genClass.implementsAnyEUnsetGenFeatures()) ]
+[genClass.eUnset(genModel, negativeOffsetCorrection)/]
+[/if]
+[if (isImplementation and not genModel.reflectiveDelegation and genClass.implementsAnyEIsSetGenFeatures()) ]
+[genClass.eIsSet(genModel, positiveOffsetCorrection, negativeOffsetCorrection)/]
+[/if]
+[if (isImplementation and (not genClass.getMixinGenFeatures()->isEmpty() or genClass.hasOffsetCorrection() and not genClass.genFeatures->isEmpty())) ]
+  [if (not genClass.getMixinGenFeatures()->isEmpty()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+    [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+    [/if]
+	public int eBaseStructuralFeatureID(int derivedFeatureID, Class[singleWildcard/] baseClass) {
+    [for (mixinGenClass : GenClass | genClass.getMixinGenClasses())]
+		if (baseClass == [mixinGenClass.getRawImportedInterfaceName()/].class) {
+			switch (derivedFeatureID[negativeOffsetCorrection/]) {
+      [for (genFeature : GenFeature | mixinGenClass.genFeatures)]
+				case [genClass.getQualifiedFeatureID(genFeature)/]: return [mixinGenClass.getQualifiedFeatureID(genFeature)/];
+      [/for]
+				default: return -1;
+			}
+		}
+    [/for]
+		return super.eBaseStructuralFeatureID(derivedFeatureID, baseClass);
+	}
+  [/if]
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+  [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+  [/if]
+	public int eDerivedStructuralFeatureID(int baseFeatureID, Class[singleWildcard/] baseClass) {
+  [for (mixinGenClass : GenClass | genClass.getMixinGenClasses())]
+		if (baseClass == [mixinGenClass.getRawImportedInterfaceName()/].class) {
+			switch (baseFeatureID) {
+    [for (genFeature : GenFeature | mixinGenClass.genFeatures)]
+				case [mixinGenClass.getQualifiedFeatureID(genFeature)/]: return [genClass.getQualifiedFeatureID(genFeature)/][positiveOffsetCorrection/];
+    [/for]
+				default: return -1;
+			}
+		}
+  [/for]
+  [if (genClass.hasOffsetCorrection() and not genClass.genFeatures->isEmpty()) ]
+		if (baseClass == [genClass.getRawImportedInterfaceName()/].class) {
+			switch (baseFeatureID[negativeOffsetCorrection/]) {
+    [for (genFeature : GenFeature | genClass.genFeatures)]
+				case [genClass.getQualifiedFeatureID(genFeature)/]: return [genClass.getQualifiedFeatureID(genFeature)/][positiveOffsetCorrection/];
+    [/for]
+				default: return -1;
+			}
+		}
+  [/if]
+		return super.eDerivedStructuralFeatureID(baseFeatureID, baseClass);
+	}
+
+[/if]
+[if (genModel.operationReflection
+		and isImplementation
+		and (not genClass.getMixinGenOperations()->isEmpty()
+			or not genClass.overridesGenOperations()
+			or genClass.hasOffsetCorrection() and not genClass.genOperations->isEmpty()))]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+  [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+  [/if]
+	public int eDerivedOperationID(int baseOperationID, Class[singleWildcard/] baseClass) {
+  [for (extendedGenClass : GenClass | genClass.getExtendedGenClasses())]
+    [let extendedImplementedGenOperations : Sequence(GenOperation) = extendedGenClass.getImplementedGenOperations()]
+	  [let implementedGenOperations : Sequence(GenOperation)  = genClass.getImplementedGenOperations()]
+    [if (not genClass.overridesExtendedGenOperations(extendedGenClass)) ]
+		if (baseClass == [extendedGenClass.getRawImportedInterfaceName()/].class) {
+			switch (baseOperationID) {
+      [for (genOperation : GenOperation | extendedImplementedGenOperations)]
+        [let overrideGenOperation : GenOperation = genClass.getOverrideGenOperation(genOperation)]
+          [if (implementedGenOperations->includes(overrideGenOperation)) ]
+				case [extendedGenClass.getQualifiedOperationID(genOperation)/]: return [genClass.getQualifiedOperationID(overrideGenOperation)/][positiveOperationOffsetCorrection/];
+          [/if]
+        [/let]
+      [/for]
+				default: return super.eDerivedOperationID(baseOperationID, baseClass);
+			}
+		}
+    [/if]
+      [/let]
+    [/let]
+  [/for]
+  [for (mixinGenClass : GenClass | genClass.getMixinGenClasses())]
+		if (baseClass == [mixinGenClass.getRawImportedInterfaceName()/].class) {
+			switch (baseOperationID) {
+    [for (genOperation : GenOperation | mixinGenClass.genOperations)]
+      [let overrideGenOperation : GenOperation = genClass.getOverrideGenOperation(genOperation)]
+				case [mixinGenClass.getQualifiedOperationID(genOperation)/]: return [genClass.getQualifiedOperationID(if (overrideGenOperation <> null) then overrideGenOperation else genOperation endif)/][positiveOperationOffsetCorrection/];
+      [/let]
+    [/for]
+				default: return -1;
+			}
+		}
+  [/for]
+  [if (genClass.hasOffsetCorrection() and not genClass.genOperations->isEmpty()) ]
+		if (baseClass == [genClass.getRawImportedInterfaceName()/].class) {
+			switch (baseOperationID[negativeOperationOffsetCorrection/]) {
+    [for (genOperation : GenOperation | genClass.genOperations)]
+				case [genClass.getQualifiedOperationID(genOperation)/]: return [genClass.getQualifiedOperationID(genOperation)/][positiveOperationOffsetCorrection/];
+    [/for]
+				default: return -1;
+			}
+		}
+  [/if]
+		return super.eDerivedOperationID(baseOperationID, baseClass);
+	}
+
+[/if]
+[if (isImplementation and genModel.isVirtualDelegation())]
+  [comment][let eVirtualValuesField : String = genClass.getEVirtualValuesField()][/comment]
+    [if (genClass.getEVirtualValuesField() <> null) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+      [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+      [/if]
+	protected Object['[]'/] eVirtualValues() {
+		return [genClass.getEVirtualValuesField()/];
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+      [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+      [/if]
+	protected void eSetVirtualValues(Object['[]'/] newValues) {
+		[genClass.getEVirtualValuesField()/] = newValues;
+	}
+
+    [/if]
+    [let eVirtualIndexBitFields : Sequence(String) = genClass.getEVirtualIndexBitFields()]
+      [if (not eVirtualIndexBitFields->isEmpty())]
+        [let allEVirtualIndexBitFields : Sequence(String) = genClass.getAllEVirtualIndexBitFields()]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+        [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+        [/if]
+	protected int eVirtualIndexBits(int offset) {
+		switch (offset) {
+        [for (field : String | allEVirtualIndexBitFields)]
+			case [i - 1/] :
+				return [field/];
+        [/for]
+			default :
+				throw new IndexOutOfBoundsException();
+		}
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+        [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+        [/if]
+	protected void eSetVirtualIndexBits(int offset, int newIndexBits) {
+		switch (offset) {
+        [for (field : String | allEVirtualIndexBitFields)]
+			case [i - 1/] :
+				[field/] = newIndexBits;
+				break;
+        [/for]
+			default :
+				throw new IndexOutOfBoundsException();
+		}
+	}
+
+        [/let]
+      [/if]
+    [/let]
+  [comment][/let][/comment]
+[/if]
+[if (genModel.operationReflection and isImplementation and not genClass.getImplementedGenOperations()->isEmpty()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+  [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+  [/if]
+  [let genOpList : Sequence(GenOperation) = if (genModel.minimalReflectiveMethods) then genClass.getImplementedGenOperations() else genClass.getAllGenOperations() endif]
+    [if (genOpList.genParameters
+		->flatten()
+		->filter(GenParameter)
+		->select(genParameter : GenParameter | genParameter.isUncheckedCast())
+		->notEmpty())]
+	@SuppressWarnings("unchecked")
+    [/if]
+	public Object eInvoke(int operationID, [genModel.getImportedName('org.eclipse.emf.common.util.EList')/][singleWildcard/] arguments) throws [genModel.getImportedName(if (isGWT) then 'org.eclipse.emf.common.util.InvocationTargetException' else 'java.lang.reflect.InvocationTargetException' endif)/] {
+		switch (operationID[negativeOperationOffsetCorrection/]) {
+[for (genOperation : GenOperation | genOpList)]
+  [let genParameters : OrderedSet(GenParameter) = genOperation.genParameters]
+    [let size : Integer = genParameters->size()]
+			case [genClass.getQualifiedOperationID(genOperation)/]:
+      [if (genOperation.isVoid()) ]
+				[genOperation.getName()/]([for (genParameter : GenParameter | genParameters)][if (not isJDK50 and genParameter.isPrimitiveType()) ]([/if][if (genParameter.getTypeGenDataType() = null or not genParameter.getTypeGenDataType().isObjectType() or genParameter.getRawType() <> genParameter.getType(genClass)) ]([genParameter.getObjectType(genClass)/])[/if]arguments.get([i/])[if (not isJDK50 and genParameter.isPrimitiveType()) ]).[genParameter.getPrimitiveValueFunction()/]()[/if][if (size > 1 and i < size) ], [/if][/for]);
+				return null;
+      [else]
+				return [if (not isJDK50 and genOperation.isPrimitiveType())]new [genOperation.getObjectType(genClass)/]([/if][genOperation.getName()/]([for (genParameter : GenParameter | genParameters)][if (not isJDK50 and genParameter.isPrimitiveType())]([/if][if (genParameter.getTypeGenDataType() = null or not genParameter.getTypeGenDataType().isObjectType() or genParameter.getRawType() <> genParameter.getType(genClass)) ]([genParameter.getObjectType(genClass)/])[/if]arguments.get([i - 1/])[if (not isJDK50 and genParameter.isPrimitiveType()) ]).[genParameter.getPrimitiveValueFunction()/]()[/if][if (i < size) ], [/if][/for])[if (not isJDK50 and genOperation.isPrimitiveType()) ])[/if];
+      [/if]
+    [/let]
+  [/let]
+[/for]
+  [/let]
+		}
+[if (genModel.minimalReflectiveMethods) ]
+		return super.eInvoke(operationID, arguments);
+[else]
+		return eDynamicInvoke(operationID, arguments);
+[/if]
+	}
+
+[/if]
+[if (not genClass.hasImplementedToStringGenOperation() and isImplementation and not genModel.reflectiveDelegation and not genModel.isDynamicDelegation() and not genClass.getToStringGenFeatures()->isEmpty()) ]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+  [if (genModel.useClassOverrideAnnotation()) ]
+	@Override
+  [/if]
+	public String toString() {
+		if (eIsProxy()) return super.toString();
+
+		StringBuffer result = new StringBuffer(super.toString());
+    [for (genFeature : GenFeature | genClass.getToStringGenFeatures())]
+      [if (i = 1)]
+		result.append(" ([genFeature.getName()/]: ");[genModel.getNonNLS()/]
+      [else]
+		result.append(", [genFeature.getName()/]: ");[genModel.getNonNLS()/]
+      [/if]
+      [if (genFeature.isUnsettable() and not genFeature.isListType()) ]
+        [if (genModel.isVirtualDelegation() and not genFeature.isPrimitiveType()) ]
+		if (eVirtualIsSet([genClass.getQualifiedFeatureID(genFeature)/][positiveOffsetCorrection/])) result.append(eVirtualGet([genClass.getQualifiedFeatureID(genFeature)/][positiveOffsetCorrection/])); else result.append("<unset>");[genModel.getNonNLS()/]
+        [else]
+          [if (genClass.isFlag(genFeature)) ]
+            [if (genFeature.isBooleanType()) ]
+		if ([if (genClass.isESetFlag(genFeature)) ]([genClass.getESetFlagsField(genFeature)/] & [genFeature.getUpperName()/]_ESETFLAG) != 0[else][genFeature.getUncapName()/]ESet[/if]) result.append(([genClass.getFlagsField(genFeature)/] & [genFeature.getUpperName()/]_EFLAG) != 0); else result.append("<unset>");[genModel.getNonNLS()/]
+            [else]
+		if ([if (genClass.isESetFlag(genFeature)) ]([genClass.getESetFlagsField(genFeature)/] & [genFeature.getUpperName()/]_ESETFLAG) != 0[else][genFeature.getUncapName()/]ESet[/if]) result.append([genFeature.getUpperName()/]_EFLAG_VALUES['['/]([genClass.getFlagsField(genFeature)/] & [genFeature.getUpperName()/]_EFLAG) >>> [genFeature.getUpperName()/]_EFLAG_OFFSET]); else result.append("<unset>");[genModel.getNonNLS()/]
+            [/if]
+          [else]
+		if ([if (genClass.isESetFlag(genFeature)) ]([genClass.getESetFlagsField(genFeature)/] & [genFeature.getUpperName()/]_ESETFLAG) != 0[else][genFeature.getUncapName()/]ESet[/if]) result.append([genFeature.getSafeName()/]); else result.append("<unset>");[genModel.getNonNLS()/]
+          [/if]
+        [/if]
+      [else]
+        [if (genModel.isVirtualDelegation() and not genFeature.isPrimitiveType()) ]
+		result.append(eVirtualGet([genClass.getQualifiedFeatureID(genFeature)/][positiveOffsetCorrection/][if (not genFeature.isListType() and not genFeature.isReferenceType())], [genFeature.getEDefault()/][/if]));
+        [else]
+          [if (genClass.isFlag(genFeature)) ]
+          [if (genFeature.isBooleanType()) ]
+		result.append(([genClass.getFlagsField(genFeature)/] & [genFeature.getUpperName()/]_EFLAG) != 0);
+          [else]
+		result.append([genFeature.getUpperName()/]_EFLAG_VALUES['['/]([genClass.getFlagsField(genFeature)/] & [genFeature.getUpperName()/]_EFLAG) >>> [genFeature.getUpperName()/]_EFLAG_OFFSET]);
+          [/if]
+          [else]
+		result.append([genFeature.getSafeName()/]);
+          [/if]
+        [/if]
+      [/if]
+    [/for]
+		result.append(')');
+		return result.toString();
+	}
+
+[/if]
+[if (isImplementation and genClass.isMapEntry())]
+[let keyFeature : GenFeature = genClass.getMapEntryKeyFeature()]
+[let valueFeature : GenFeature = genClass.getMapEntryValueFeature()]
+[let objectType : String = genModel.getImportedName('java.lang.Object')]
+[let keyType : String = if isJDK50 then keyFeature.getObjectType(genClass) else objectType endif]
+[let valueType : String = if isJDK50 then valueFeature.getObjectType(genClass) else objectType endif]
+[let eMapType : String = genModel.getImportedName('org.eclipse.emf.common.util.EMap') + (if isJDK50 then '<' + keyType + ', ' + valueType + '>' else '' endif)]
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+      [if (isGWT) ]
+	@[genModel.getImportedName('com.google.gwt.user.client.rpc.GwtTransient')/]
+      [/if]
+	protected int hash = -1;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public int getHash() {
+		if (hash == -1) {
+			[objectType/] theKey = getKey();
+			hash = (theKey == null ? 0 : theKey.hashCode());
+		}
+		return hash;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void setHash(int hash) {
+		this.hash = hash;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public [keyType/] getKey() {
+  [if (not isJDK50 and keyFeature.isPrimitiveType()) ]
+		return new [keyFeature.getObjectType(genClass)/](getTypedKey());
+  [else]
+		return getTypedKey();
+  [/if]
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public void setKey([keyType/] key) {
+  [if (keyFeature.isListType()) ]
+		getTypedKey().addAll([if (not genModel.useGenerics()) ]([genModel.getImportedName('java.util.Collection')/])[/if]key);
+  [else][if (isJDK50)]
+		setTypedKey(key);
+  [else][if (keyFeature.isPrimitiveType())]
+		setTypedKey((([keyFeature.getObjectType(genClass)/])key).[keyFeature.getPrimitiveValueFunction()/]());
+  [else]
+		setTypedKey(([keyFeature.getImportedType(genClass)/])key);
+  [/if][/if][/if]
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public [valueType/] getValue() {
+  [if (not isJDK50 and valueFeature.isPrimitiveType()) ]
+		return new [valueFeature.getObjectType(genClass)/](getTypedValue());
+  [else]
+		return getTypedValue();
+  [/if]
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public [valueType/] setValue([valueType/] value) {
+		[valueType/] oldValue = getValue();
+  [if (valueFeature.isListType()) ]
+		getTypedValue().clear();
+		getTypedValue().addAll([if (not genModel.useGenerics()) ]([genModel.getImportedName('java.util.Collection')/])[/if]value);
+  [else][if (isJDK50)]
+		setTypedValue(value);
+  [else][if (valueFeature.isPrimitiveType()) ]
+		setTypedValue((([valueFeature.getObjectType(genClass)/])value).[valueFeature.getPrimitiveValueFunction()/]());
+  [else]
+		setTypedValue(([valueFeature.getImportedType(genClass)/])value);
+  [/if][/if][/if]
+		return oldValue;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+  [if (genModel.useGenerics()) ]
+	@SuppressWarnings("unchecked")
+  [/if]
+	public [eMapType/] getEMap() {
+		[genModel.getImportedName('org.eclipse.emf.ecore.EObject')/] container = eContainer();
+		return container == null ? null : ([eMapType/])container.eGet(eContainmentFeature());
+	}
+
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/let]
+[/if]
+} //[if (isInterface)] [genClass.getInterfaceName()/][else][genClass.getClassName()/][/if]
+[/template]
+
+[query public classFilePath(genClass : GenClass, isInterface : Boolean, isImplementation : Boolean) : String
+	= genClass.getGenModel().extractSourceDirectory(genClass.getGenModel().modelDirectory) + '/' +
+		if isInterface then
+			genClass.getQualifiedInterfaceName().toPath()
+		else
+			genClass.getQualifiedClassName().toPath()
+		endif +
+		'.java' /]
+

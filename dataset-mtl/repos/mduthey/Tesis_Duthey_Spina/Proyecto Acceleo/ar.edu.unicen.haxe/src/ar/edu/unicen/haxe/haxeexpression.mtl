@@ -1,0 +1,225 @@
+[comment encoding = UTF-8 /]
+[module haxeexpression('http://haxe.unicen.edu.ar')]
+[import ar::edu::unicen::haxe::utils /]
+
+[template public generateExpression(expression : HaxeExpression)]
+[/template]
+
+[template public generateExpression(expression : HaxeAbstractMethodInvocation)]
+[generateMethodName(expression.method)/]([for (it : HaxeExpression |expression.arguments) separator(', ')][it.generateExpression()/][/for])
+[/template]
+
+[template public generateExpression(expression : HaxeMethodInvocation)] 
+[if (expression.expression->notEmpty())][generateExpression(expression.expression)/].[/if][generateMethodName(expression.method)/]([generateParameters(expression.arguments)/])
+[/template]
+
+[template public generateExpression(expression : HaxeSuperConstructorInvocation)]
+[if (expression.expression->notEmpty())][generateExpression(expression.expression)/].[/if]super([generateParameters(expression.arguments)/])
+[/template]
+ 
+[template  private generateParameters(arg : OrderedSet(HaxeExpression))]
+[for (it : HaxeExpression |arg) separator(', ')][it.generateExpression()/][/for]
+[/template]
+
+[template private generateMethodName(expression :HaxeAbstractOperation)]
+[/template]
+ 
+[template private generateMethodName(expression :HaxeOperation)]
+[expression.name/]
+[/template]
+
+[template private generateMethodName(expression :HaxeConstructor)]
+new [expression.constructedClass.name/]
+[/template]
+
+[template public generateExpression(expression : HaxeNumberLiteral)]
+[expression.value/]
+[/template]
+
+[template public generateExpression(expression : HaxeStringLiteral)]
+[expression.escapedValue/]
+[/template]
+
+[template public generateExpression(expression :HaxeSingleVariableAccess)]
+[if (expression.qualifier->notEmpty())][generateExpression(expression.qualifier)/].[/if][expression.variable.name/]
+[/template]
+
+[template public generateExpression(expression :HaxeAssignment)]
+[generateExpression(expression.leftSide)/] [expression.operator.eGet('literal')/] [generateExpression(expression.rightSide)/]
+[/template]
+
+[template public generateExpression(expression :HaxeClassifierAccess)]
+[expression.referencedTerminal.name/]
+[/template]
+
+[template public generateExpression(expression :HaxeThisExpression)]
+this
+[/template]
+
+[template public generateExpression(expression :HaxeNullLiteral)]
+null
+[/template]
+
+[template public generateExpression(expression :HaxeBooleanLiteral)]
+[expression.value/]
+[/template]
+
+[template public generateExpression(expression :HaxeInfixExpression)]
+[generateExpression(expression.leftSide)/] [expression.operator/] [generateExpression(expression.rightSide)/][if (expression.extendedSide->notEmpty())][for (it : HaxeExpression | expression.extendedSide)] [expression.operator/] [generateExpression(it)/][/for][/if]
+[/template]
+
+[template public generateExpression(expression :HaxePostfixExpression)]
+[generateExpression(expression.operand)/][if (expression.isIncrement)]++[else]--[/if]
+[/template]
+
+[template public generateExpression(expression :HaxePrefixExpression)]
+[expression.operator/][generateExpression(expression.operand)/]
+[/template]
+
+[template public generateExpression(expression :HaxeFieldAccess)]
+[generateExpression(expression.expression)/].[generateExpression(expression.field)/]
+[/template]
+ 
+[template public generateExpression(expression : HaxeCastingExpression)]
+cast([generateExpression(expression.expression)/],[generateExpression(expression.type)/])
+[/template]
+
+[template public generateExpression(expression : HaxeContinue)]
+continue
+[/template]
+
+[template public generateExpression(expression : HaxeBreak)]
+break
+[/template]
+
+[template public generateBlock(aHaxeBlock : HaxeBlock) post(trim())]
+{
+[for (it : HaxeExpression | aHaxeBlock.statements)]
+	[generateExpression(it)/]
+[/for]
+}
+[/template] 
+
+[template public generateBlock(exp :HaxeExpression)]
+[generateBlock(exp)/]
+[/template]
+
+
+[template public generateExpression(block :HaxeBlock)]
+[generateBlock(block)/]
+[/template]
+
+[template public generateExpression(expression : HaxeVariableDeclarationExpression)]
+var [for (x : HaxeVariableDeclarationGroup | expression.groups) separator (', ')][generateVarGroup(x)/][/for]
+[/template]
+
+[template public generateExpression(expression : HaxeExpressionStatement)]
+[generateExpression(expression.expression)/][if (not expression.expression.oclIsTypeOf(HaxeIfStatement))];[/if]
+[/template] 
+
+[template public generateExpression(expression : HaxeIfStatement)]
+if ([generateExpression(expression.expression)/])
+	[generateExpression(expression.thenStatement)/]
+[if (expression.elseStatement->notEmpty())] 
+else 
+	[generateExpression(expression.elseStatement)/]
+[/if]
+[/template] 
+
+[template private generateVarGroup(group : HaxeVariableDeclarationGroup)]
+[group.fragments.name->sep(',')/] : [typeAccessTemplate(group.type)/] [if (not group.initializer.oclIsUndefined())] = [generateExpression(group.initializer)/][/if]
+[/template]
+
+[template public generateExpression(expression :HaxeReturn)]
+return [generateExpression(expression.expression)/]
+[/template]
+
+[template public generateExpression(expression :HaxeWhileStatement)]
+while ([generateExpression(expression.expression)/])
+[generateExpression(expression.theBody)/]
+[/template]
+
+
+[template public generateExpression(expression :HaxeDoWhileStatement)]
+do 
+[generateExpression(expression.theBody)/]
+while ([generateExpression(expression.expression)/])
+[/template]
+
+[template public generateExpression(expression :HaxeForStatement)]
+for ([expression.parameter.name/] in [generateExpression(expression.expression)/])
+[generateExpression(expression.theBody)/]
+[/template]
+
+[template public generateExpression(expression :HaxeArrayAccess)]
+[generateExpression(expression.array)/][ '[' /][generateExpression(expression.index)/][ ']' /] 
+[/template]
+
+[template public generateExpression(expression :HaxeParenthizedExpression)]
+([generateExpression(expression.expression)/])
+[/template]
+
+[template public generateExpression(expression :HaxeTryExpression)]
+try [generateExpression(expression.theBody)/] [for (it : HaxeCatchClause | expression.catchClauses)]
+ 	[generateExpression(it)/]
+ [/for]
+[/template]
+
+[template public generateExpression(expression :HaxeCatchClause)]
+catch ([expression.exception.name/] : [typeAccessTemplate(expression.exception.type)/]) [generateExpression(expression.theBody)/] 
+[/template]
+
+[template public generateExpression(expression :HaxeThrowExpression)]
+throw [generateExpression(expression.expression)/] 
+[/template]
+
+[comment fix array creation .../]
+[template public generateExpression(expression :HaxeArrayCreation)]
+[comment generateExpression(expression.initializer) /]
+[if (not expression.initializer->oclIsUndefined() and expression.initializer->notEmpty() )][generateExpression(expression.initializer)/][else]null[/if]
+[/template]
+
+[template public generateExpression(expression :HaxeArrayInitializer)]
+[ '[' /][expression.expressions->collect(x|generateExpression(x))->sep(',')/][ ']' /]
+[/template]
+
+[template public generateExpression(expression :HaxeTernaryExpression)]
+[generateExpression(expression.expression)/] ? [generateExpression(expression.thenStatement)/] : [generateExpression(expression.elseExpression)/] 
+[/template]
+
+[template public generateExpression(expression :HaxeTypeCheckExpression)]
+( [expression.expression/] : [typeAccessTemplate(expression.type)/] ) 
+[/template]
+
+[template public generateExpression(expression :HaxeInExpression)]
+[expression.variable.name/] in [generateExpression(expression.expression)/]
+[/template]
+ 
+[template public generateExpression(expression :HaxeFunctionExpression)] 
+function ([comment parametersTemplate(expression.formalParameters)/]) 
+[/template]
+
+[template public generateExpression(expression :HaxeObjectDeclaration)] 
+{
+[for (it : HaxeFieldDeclaration | expression.fields)]
+	[name/] : [generateExpression(it.value)/]
+[/for]
+} 
+[/template]
+
+[template public generateExpression(expression :HaxeSwitch)] 
+switch ([generateExpression(expression.expression)/])
+{
+[for (it : HaxeCase | expression.cases)]
+[generateExpression(it)/]
+[/for]
+[if (not expression.default->oclIsUndefined())]
+
+[/if]
+}
+[/template]
+
+[template public generateExpression(expression :HaxeCase)] 
+case [expression.values->collect(z|generateExpression(z))->sep(',')/] : 
+[generateExpression(expression.expression)/]
+[/template] 

@@ -1,0 +1,93 @@
+[comment encoding = Cp1252 /]
+[**
+ * The documentation of the module.
+ */]
+[module SwaggerGeneratorModule('http://www.example.org/swaggerDSL')/]
+
+[**
+ * The documentation of the template.
+ * @param aSwagger
+ */]
+[template public SwaggerGeneratorModule(aSwagger : Swagger)]
+	
+	[comment @main /]
+	[file (aSwagger.infoTitle.concat('.json'), false, 'Cp1252')]
+{
+    "swagger": "[aSwagger.swagger/]",
+    "info": {
+        "title": "[aSwagger.infoTitle/]",
+        "description": "[aSwagger.infoDescription/]",
+        "version": "[aSwagger.infoVersion/]"
+    },
+    "host": "[aSwagger.host/]",
+    "schemes": ['['/]
+        "[aSwagger.schemes/]"
+    [']'/],
+    "basePath": "[aSwagger.basePath/]",
+	"consumes": ['['/]
+		"[aSwagger.consumes/]"
+	[']'/],
+    "produces": ['['/]
+        "[aSwagger.produces/]"
+    [']'/],
+    "paths": {
+		[for (p : Path | aSwagger.path)]
+        "[p.path/]": {
+            "[p.header.toString().toLower()/]": {
+				"summary": "[p.summary/]",
+				"description": "[p.description/]",
+				[for (pm : Parameters | p.parameters)]
+					[if (pm = p.parameters->first())] "parameters": ['['/] [/if]
+						{
+						"name": "[pm.name /]",
+						"in": "[pm._in /]",
+						"description": "[pm.description /]",
+						"required": [pm.required /],
+						"type": "[pm.type /]"
+					[if (pm = p.parameters->last())] }],[/if][if (pm <> p.parameters->last())]}, [/if] 
+
+				[/for]
+				"tags": ['['/]
+					[for (t : Tags | p.tags)]
+					"[t.tag/]"[if(t <> p.tags->last())], [/if]
+					[/for]
+				[']'/],
+				"responses": {
+					[for (r : Response | p.response)]
+					"[r.name/]": {
+						"description": "[r.description/]",
+						"schema": {
+							"type": "[r.schemaType/]",
+							"items": {
+								"$ref": "[r.schemaRef/]"
+							}
+						}
+					}[if (r <> p.response->last())], [/if]
+					[/for]
+				}
+			}
+		}[if (p <> aSwagger.path->last())], [/if]
+		[/for]
+    },
+	"definitions": {
+	[for (n: Definition | aSwagger.definition)]
+		"[n.name/]": {
+			"type": "[n.type/]"[if (n.type.strcmp('object') = 0)],
+			"properties": {
+				[for (p : Properties | n.properties)]
+					"[p.propertyName/]": {
+						"type": "[p.type/]"[if (p.type.strcmp('integer') = 0)],
+						"format": "int64"[/if]
+ 
+					}[if(p <> n.properties->last())], [/if]
+				[/for]
+			}
+			[/if]
+
+		}[if (n <> aSwagger.definition->last())], [/if]
+	[/for]
+	}
+	
+}	[/file]
+	
+[/template]

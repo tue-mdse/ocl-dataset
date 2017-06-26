@@ -1,0 +1,54 @@
+[comment encoding = UTF-8 /]
+[module generate_lidar('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import generate_system/]
+
+[template public generateLidar(aClass : Class, model : Model)]
+
+[file ('scripts/' + model.name + '/' + aClass.name + '.lua', false, 'UTF-8')]
+require "LuaCycabTK"
+require "LuaLidarSimulator"
+require "LuaLidarViewer"
+
+--Definition of class [aClass.name/]
+class '[aClass.name/]' (cycabtk.LidarSimulatorZBuffer)
+function [aClass.name/]:__init(name)
+	cycabtk.LidarSimulatorZBuffer.__init(self, name)
+	
+	self:SetRangeMax([getAttributeValue(aClass, 'range_max', 'LidarSystem', '25')/])
+	self:SetRangeMin([getAttributeValue(aClass, 'range_min', 'LidarSystem', '0.1')/])
+	self:SetRangeStep(0.001)
+	self:SetAngleMin([getAttributeValue(aClass, 'angle_min', 'LidarSystem', '-90')/])
+	self:SetAngleStep( (([getAttributeValue(aClass, 'angle_max', 'LidarSystem', '90')/]) - ([getAttributeValue(aClass, 'angle_min', 'LidarSystem', '-90')/])) / 180. )
+	self:SetNbMeasures(171)
+	self:SetNbLayers([getAttributeValue(aClass, 'nbLayers', 'LidarSystem', '1')/])
+	self:SetLayerAngleMin([getAttributeValue(aClass, 'layerAngleMin', 'LidarSystem', '0')/])
+	self:SetLayerAngleStep([getAttributeValue(aClass, 'layerAngleStep', 'LidarSystem', '0')/])
+	self:AddNoise([getAttributeValue(aClass, 'noise', 'LidarSystem', 'false')/])
+	self:SetSigmaNoise([getAttributeValue(aClass, 'sigmaNoise', 'LidarSystem', '0.')/])
+	self:SetActivationPeriod(1./[getAttributeValue(aClass, 'frequency', 'LidarSystem', '20.')/])
+	
+	[generateSystemCommon(aClass, model)/]
+	
+	self:Start()
+	
+	-- Set lidar viewer
+	self.viewer = cycabtk.LidarViewer( name..".viewer" )
+	self.viewer:AttachTo( name )
+	
+	-- Connectors
+	[for( connector: Port | getOutputPortsForElement(aClass) )]
+		[if ( isDataFlowPort(connector))]
+			[if(connector.type.name = 'LaserScan')]
+	require "LuaLidarRosInterface"
+	self.[connector.name/] = cycabtk.LidarRosInterface( name..".[connector.name/]" )
+	self:AddPostProcessing( name..".[connector.name/]")
+			[/if]
+	[comment][connector.name/] : [connector.type.name/][/comment]
+		[/if]
+	[/for]
+end
+[/file]
+[/template]

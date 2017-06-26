@@ -1,0 +1,85 @@
+[comment encoding = UTF-8 /]
+
+[comment] Module's Name [/comment]
+[module generate('http://www.eclipse.org/uml2/3.0.0/UML')/]
+ 
+[comment] Template: set of acceleo statement -> GENERATE ABS [/comment]
+
+[template public generate(aClass : Class)]
+[comment @main /]
+[file (aClass.name.concat('.abs'), false)] [comment output file /]
+[comment] Check Core ABS or Delta [/comment]
+[for (a : Stereotype | aClass.getAppliedStereotypes())]
+[if (a.name = 'absDelta')]
+[comment Check Delta Parameter /]
+[let props1:Sequence(Stereotype) = aClass.attribute.getAppliedStereotypes()->select(name = 'deltaParam')]
+[if (props1->size() > 0)]
+delta D[aClass.name/]([for (att: Property | aClass.attribute->select(getAppliedStereotypes()->exists(s: Stereotype |s.name='deltaParam'))) separator (', ')]
+[if (att.type.name = 'Integer')]Int[elseif(att.type.name = 'Boolean')]Bool[else] [att.type.name/] [/if] [att.name/][/for]);
+[else]
+delta D[aClass.name/];
+[/if]
+[/let]
+[for (as:Association | aClass.getAssociations()) ]
+	[for (p:Property | as.memberEnd) ]
+		[if (p.name.toUpperFirst() <> aClass.name)]
+uses M[p.name.toUpperFirst()/];
+
+[comment] Modified Class [/comment]
+[as.getAppliedStereotypes().name/] class C[p.name.toUpperFirst()/]{
+		[/if]
+	[/for]
+[/for]
+[comment] Modified Attributes[/comment]
+[for (p: Property | aClass.attribute)] 
+[for (s: Stereotype | p.getAppliedStereotypes() -> reject(name='deltaParam'))]  
+	[s.name/] [if (p.type.name = 'Integer')]Int[elseif(p.type.name = 'Boolean')]Bool[else] [p.type.name/] [/if] [p.name/];
+[/for][/for]
+[comment] Modified Methods [/comment]
+	[for (o: Operation | aClass.ownedOperation) separator('\n')]
+	[o.getAppliedStereotypes().name/] [if(o.type.oclIsUndefined())]Unit[elseif (o.type.name = 'Integer')]Int[elseif(o.type.name = 'Boolean')]Bool[else] [o.type.name/] [/if] [o.name/]([for (aParam : Parameter | o.ownedParameter) separator(', ') ? (aParam.direction <> ParameterDirectionKind::return)][if (aParam.type.name='Integer')]Int[elseif(o.type.name = 'Boolean')]Bool[else] [aParam.type.name/][/if] [aParam.name/][/for])  {
+     	  // TODO should be implemented
+     }
+[/for]
+}
+
+[else]
+module M[aClass.name/];
+//export <should be completed>;
+//import <should be completed>;
+
+interface [aClass.name/]{
+   [for (o: Operation | aClass.ownedOperation)]
+      [if(o.type.oclIsUndefined())]Unit[elseif (o.type.name = 'Integer')]Int[elseif(o.type.name = 'Boolean')]Bool[else][o.type.name/][/if] [o.name/]([for (aParam : Parameter | o.ownedParameter) separator(', ') ? (aParam.direction <> ParameterDirectionKind::return)][if (aParam.type.name='Integer')]Int[elseif(o.type.name = 'Boolean')]Bool[else] [aParam.type.name/][/if] [aParam.name/][/for]);
+   [/for]
+}
+
+[comment Check Class Parameter /]
+[let props1:Sequence(Stereotype) = aClass.attribute.getAppliedStereotypes()->select(name = 'classParam')]
+[if (props1->size() > 0)]
+class C[aClass.name.toUpperFirst()/]([for (att: Property | aClass.attribute->select(getAppliedStereotypes()->exists(s: Stereotype |s.name='classParam'))) separator (', ')]
+[if (att.type.name = 'Integer')]Int[elseif(att.type.name = 'Boolean')]Bool[else] [att.type.name/] [/if] [att.name/][/for]) implements [aClass.name.toUpperFirst()/]{
+[else]
+class C[aClass.name.toUpperFirst()/] implements [aClass.name.toUpperFirst()/]{
+[/if]
+[/let]
+[for (p: Property | aClass.attribute->reject(getAppliedStereotypes()->exists(s: Stereotype |s.name='classParam')))] 
+     [if (p.type.name = 'Integer')]Int[elseif(p.type.name = 'Boolean')]Bool[else][p.type.name/][/if] [p.name/];
+[/for]
+
+[for (o: Operation | aClass.ownedOperation) separator('\n')]
+     [if(o.type.oclIsUndefined())]Unit[elseif (o.type.name = 'Integer')]Int[elseif(o.type.name = 'Boolean')]Bool[else][o.type.name/] [/if] [o.name/]([for (aParam : Parameter | o.ownedParameter) separator(', ') ? (aParam.direction <> ParameterDirectionKind::return)][if (aParam.type.name='Integer')]Int[elseif(o.type.name = 'Boolean')]Bool[else] [aParam.type.name/][/if] [aParam.name/][/for])  {
+       // TODO should be implemented
+     } 
+[/for]
+}
+
+{
+//main method
+//TO DO should be implemented
+}
+
+[/if]
+[/for]
+[/file]
+[/template]

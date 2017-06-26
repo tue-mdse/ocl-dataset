@@ -1,0 +1,98 @@
+[comment encoding = UTF-8 /]
+[module generate_orocos_component_lua('http://www.eclipse.org/uml2/3.0.0/UML','http://Papyrus/RobotML/1')]
+[import org::eclipse::acceleo::module::OrocosGenerator::mmqueries::OrocosQueries/]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::GeneralQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::DataTypeQueries /]
+[import org::eclipse::robotml::generators::acceleo::mmqueries::ArchitectureQueries /]
+[import org::eclipse::acceleo::module::OrocosGenerator::main::generate_Datatype_file /]
+[import org::eclipse::acceleo::module::OrocosGenerator::main::generate_FSM /]
+
+[template public generateOrocosComponentLua(c : Class, root_model : Model)]
+[generate_Datatype_file(c, root_model)/]
+[for (b : Behavior | c.ownedBehavior )]
+	[if (b.isFSM())]
+	[let sm : StateMachine = b.oclAsType(StateMachine)]
+	[generateFSM(root_model, c,sm)/]
+	[/let]
+	[/if]
+[/for]
+
+
+[file ( 'src/'+c.name+'.lua', false, 'UTF-8')]
+[comment Library declaration/]----- Library -----
+require "rttlib"
+require "rttros"
+require "rfsm"
+require "rfsm_rtt"
+require "rfsmpp"
+
+[comment Variable declaration/]----- Init local variables -----
+[for (state : StateMachine | getStateMachines(c))]
+local [state.name/]
+[/for]
+
+[comment Port declaration/]----- Ports -----
+[let elt : Element = c.oclAsType(Element)]
+ 	[for (port : Port | getInputPortsForElement(elt))]
+[port.name/] = rtt.InputPort("[getLUAType(port.type)/]")			
+ 	[/for]
+  	[for (port : Port | getOutputPortsForElement(elt))]
+[port.name/] = rtt.OutputPort("[getLUAType(port.type)/]")		
+	[/for]
+[/let]
+[let elt : Element = c.oclAsType(Element)]
+	[for (port : Port | getAllPorts(elt))]
+rtt.getTC():addPort([port.name/], "[port.name/]", "A [getNameType(port.type)/] Port in Component [c.name/]");	
+	[/for]
+[/let]
+
+[comment Property declaration/]----- Property -----
+[let elt : Element = c.oclAsType(Element)]
+	[for (property : Property | getProperties(c, elt))]
+[if(isRobotMLDataType(root_model, type.name))]
+[property.name/] = rtt.Property("[getLUAType(property.type)/]");
+[else]
+[property.name/] = rtt.Property("[getNameType(property.type)/]");
+[/if]
+rtt.getTC():addProperty([property.name/], "[property.name/]", " A [getNameType(property.type)/] Port in Component [c.namespace.name.substitute(' ', '_')/] ")
+ 	[/for]
+ [/let]
+
+[comment Operation declaration/]----- Operation ----- 
+ 
+function configureHook()        
+	-----configure fsm-----
+	[for (state : StateMachine | getStateMachines(c))]
+	[state.name/] = rfsm.init(rfsm.load("[state.name/].lua"))
+	--~ [state.name/].dbg=rfsmpp.gen_dbgcolor()
+	[/for]
+    return true
+end
+ 
+function updateHook()
+    -----start fsm-----
+	[for (state : StateMachine | getStateMachines(c))]
+    rfsm.run([state.name/])
+	[/for]
+end
+
+function cleanupHook()
+    -----cleanup ports-----
+[let elt : Element = c.oclAsType(Element)]
+	[for (port : Port | getAllPorts(elt))]
+	rtt.getTC():removePort([port.name/]:info().name)
+	[/for]
+[/let]
+[let elt : Element = c.oclAsType(Element)]
+	[for (port : Port | getAllPorts(elt))]
+	[port.name/]:delete()	
+	[/for]
+[/let]
+end
+
+function stopHook()
+end
+
+[/file]
+
+[/template]

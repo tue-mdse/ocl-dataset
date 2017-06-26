@@ -1,0 +1,117 @@
+[comment encoding = UTF-8 /]
+[module GenerateKarelProgram('http://www.macjariel.org/karel/Karel')/]
+
+[import org::macjariel::karel::generator::templates::internal::Common /]
+[import org::macjariel::karel::generator::templates::internal::GenerateInitCommands/]
+[import org::macjariel::karel::generator::templates::internal::GenerateInfrastructure /]
+[import org::macjariel::karel::generator::templates::internal::GenerateUserCommand /]
+
+[comment  Template for generation of Karel infrastructure /]
+[template public generateProgram(p : Program)]
+	[comment @main /]
+	
+	[ p.generateKarel() /]	
+	[ p.generateLauncher() /]
+	[comment p.generateInfrastructure('KarelProject') /]
+	[ p.main.generateKarelProgram() /]
+	
+[/template]
+
+[template protected generateLauncher(p : Program)]
+	[file ('gen/karel/KarelProgramLauncher.java', false, 'UTF-8')]
+package gen.karel; 
+
+import org.macjariel.karel.core.api.*;
+import org.macjariel.karel.core.api.impl.*;
+
+import gen.karel.api.*;
+import gen.karel.api.impl.*;
+
+/**
+ * This is an example of KarelProgram
+ */
+public class KarelProgramLauncher {
+ 	public static void main(String args[ '[]' /]) {
+ 		// preparing the robot API 		
+ 		KarelTheRobot karel = new KarelTheRobotImpl(); 		
+ 		ExecutionEngine<KarelTheRobot> eEngine = SimpleExecutionEngine.getInstance();
+ 		eEngine.setKarel(karel);
+ 		 		
+ 		// Karel initialization
+ 		[if (p.initSection <> null)]
+ 			[for (cmd : InitCommand | p.initSection.initCommands)]
+ 				[generateInitCommand(cmd, 'eEngine') /] 			
+ 			[/for] 			
+ 		[/if] 		
+ 		 		
+ 		// create program instance
+ 		KarelProgram<KarelTheRobot> program = new KarelProgramImpl();
+ 		 		 
+ 		// start program execution
+ 		eEngine.execute(program); 			 		
+ 	}
+}
+	[/file]	
+[/template]
+
+[template protected generateKarel(p : Program)]
+	[generateKarelAPI(p) /]
+
+	[generateKarelImpl(p) /]	
+[/template]
+
+[template protected generateKarelAPI(p : Program)]
+[file ('gen/karel/api/KarelTheRobot.java', false, 'UTF-8')]
+package gen.karel.api;
+
+import org.macjariel.karel.core.api.Karel;
+
+public interface KarelTheRobot extends Karel {
+
+[for (uCmd : UserDefinedCommand | p.userDefinedCommands)]
+    /**
+     * User defined command [uCmd.name.toUpperFirst() /] 
+     */
+	[ userCommandMethodSignature(uCmd) /];
+[/for]
+}	
+[/file]	
+[/template]
+
+[template public generateKarelImpl(p : Program)]
+[file ('gen/karel/api/impl/KarelTheRobotImpl.java', false, 'UTF-8')]
+package gen.karel.api.impl;
+
+import gen.karel.api.KarelTheRobot;
+import org.macjariel.karel.core.api.impl.KarelImpl;
+
+public class KarelTheRobotImpl extends KarelImpl implements KarelTheRobot {
+
+[for (uCmd : UserDefinedCommand | p.userDefinedCommands)]
+	[ generateUserCommand(uCmd) /]
+[/for]
+}	
+[/file]	
+	
+[/template]
+
+
+[template public generateKarelProgram(program : Main)]
+[file ('gen/karel/api/impl/KarelProgramImpl.java', false, 'UTF-8')]
+package gen.karel.api.impl;
+
+import gen.karel.api.*;
+import org.macjariel.karel.core.api.*;
+
+public class KarelProgramImpl implements KarelProgram<KarelTheRobot> {
+
+	public void execute(ExecutionEngine<KarelTheRobot> engine) {
+		KarelTheRobot karel = engine.getKarel();
+		
+		// TODO put here checks for hitting the wall and 
+		[for (st : Statement | program.statements)][st.generateStatement('karel') /][/for]	
+	}
+}	
+[/file]	
+	
+[/template]

@@ -1,0 +1,123 @@
+[module CppOperations('http://www.eclipse.org/uml2/5.0.0/UML', 'http://www.eclipse.org/papyrus/C_Cpp/1', 'http://www.eclipse.org/uml2/5.0.0/UML/Profile/Standard')/]
+[import org::eclipse::papyrus::acceleo::GenUtils/]
+[import org::eclipse::papyrus::cpp::codegen::utils::CppGenUtils/]
+[import org::eclipse::papyrus::cpp::codegen::utils::Modifier/]
+[import org::eclipse::papyrus::cpp::codegen::acceleo::util::CppDocumentation/]
+[import org::eclipse::papyrus::cpp::codegen::acceleo::util::operation::CppParameter/]
+[import org::eclipse::papyrus::cpp::codegen::acceleo::util::CppTemplates/]
+
+
+[comment
+return a list of owned operations, since this is not supported directly on a classifier/]
+[query public getOwnedOperations(cl : Classifier) : Sequence(Operation) =
+	if (cl.oclIsKindOf(Class)) then
+		oclAsType(Class).ownedOperation
+	else
+		if (cl.oclIsKindOf(DataType)) then
+			oclAsType(DataType).ownedOperation
+		else
+			if (cl.oclIsKindOf(Interface)) then
+				oclAsType(Interface).ownedOperation
+			else
+				Sequence{}
+			endif
+		endif
+	endif
+/]
+
+[template public virtualTxt(operation : Operation)]
+[if((operation.interface <> null) or (operation.isAbstract) or (operation.hasStereotype(Virtual)))]virtual [/if]
+[/template]
+
+
+[template public virtualSuffix(operation : Operation)]
+[if((operation.interface <> null) or (operation.isAbstract))] = 0[/if]
+[/template]
+
+
+[query public isConsOrDestructor(operation : Operation) : Boolean =
+hasStereotype(standard::Create) or hasStereotype(standard::Destroy)
+/]
+
+[query public ConsDestructorOrVoid(operation : Operation) : String =
+if isConsOrDestructor() then
+	''
+else
+	'void '
+endif/]
+
+
+[query public destructor(operation : Operation) : String =
+if hasStereotype(standard::Destroy) and not operation.name.startsWith('~') then
+	'~'
+else
+	''
+endif/]
+
+[template public CppReturnSpec(operation : Operation)]
+[if (type = null) or isConsOrDestructor()][ConsDestructorOrVoid()/][else][returnResult().modConst()/] [type.cppQualifiedName()/][returnResult().modPtr()/][returnResult().modRef()/] [/if]
+[/template]
+
+
+[template public CppReturnSpec(behavior : Behavior)]
+[if (returnResult() = null)]void [else][returnResult().modConst()/] [returnResult().type.cppQualifiedName()/][returnResult().modPtr()/][returnResult().modRef()/] [/if]
+[/template]
+
+
+[template public InlineTxt(element : Element)]
+[if (hasStereotype(Inline))]inline [/if]
+[/template]
+
+
+[template public staticTxt(operation : Operation)]
+[if (isStatic)]static [/if]
+[/template]
+
+[template public CppOperationDeclaration(operation : Operation)]
+[CppOperationDoc()/]
+[InlineTxt()/][virtualTxt()/][staticTxt()/][CppReturnSpec()/][destructor()/][operation.name/]([CppOperationParameters(true)/])[modConst()/][virtualSuffix()/];
+[/template]
+
+[template public CppBehaviorDeclaration(behavior : Behavior)]
+[CppBehaviorDoc()/]
+[InlineTxt()/][CppReturnSpec()/][behavior.name/]([CppBehaviorParameters(true)/])[modConst()/];
+[/template]
+
+[template public CppConstInit(operation : Operation)]
+[if (hasStereotype(ConstInit) and hasStereotype(standard::Create))] : [getApplication(ConstInit).oclAsType(ConstInit).initialisation/][/if]
+[/template]
+
+
+[comment wrapper for native query (otherwise Acceleo does not indent properly)/]
+[template public getBodyInTemplate(operation : Operation, language : String)]
+[getBody(language).trim()/]
+[/template]
+
+
+[template public throws(operation: Operation)]
+[if (operation.raisedException->size() > 0)]
+throws [for (raisedException) separator(',')][name/][/for]
+[/if]
+[/template]
+
+
+[template public CppOperationImplementation(operation : Operation)]
+[CppOperationDoc()/]
+[if (operation.name = 'main')]
+[CppReturnSpec()/][operation.name/]([CppOperationParameters(false)/]) {
+	[getBody('C/C++')/]
+}
+[else]
+[templateSignature()/][InlineTxt()/][CppReturnSpec()/][operation.featuringClassifier.name/][templateShortSignature()/]::[destructor()/][operation.name/]([CppOperationParameters(false)/])[throws()/][modConst()/][CppConstInit()/] {
+	[getBodyInTemplate('C/C++')/]
+}
+[/if]
+[/template]
+
+
+[template public CppBehaviorImplementation(behavior : OpaqueBehavior)]
+[CppBehaviorDoc()/]
+[CppReturnSpec()/][behavior._context.name/]::[behavior.name/]([CppBehaviorParameters(false)/])[modConst()/] {
+	[getBodyFromOB('C/C++')/]
+}
+[/template]

@@ -1,0 +1,141 @@
+[comment encoding = UTF-8 /]
+[module poco('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import xismobile::pim::uml2::gen::windowsphone::common::xisMobileUtils /]
+[import xismobile::pim::uml2::gen::windowsphone::common::utils /]
+[import xismobile::pim::uml2::gen::windowsphone::services::services /]
+
+[template public generatePOCO(c : Class)]
+
+[file (c.getModel().name.toUpperFirst() + '/' + c.getModel().name.toUpperFirst() + '/Domain/' + c.name.toUpperFirst() + '.cs', false, 'UTF-8')]
+using System;
+using System.Collections.Generic;
+
+namespace [c.getModel().name.replace('-', '_').replace(' ', '').toUpperFirst()/].Domain
+{
+	public class [c.name.toUpperFirst()/][c.getExtensionAndImplementations()/] {
+
+		private String id;
+
+		public String Id
+        {
+            get
+            {
+                return id;
+            }
+            protected set
+            {
+                id = value;
+            }
+        }
+
+	[if (c.hasXisEntityAttributes())]
+		[c.generateAttributes()/]
+		[c.generateAssociationAttrs()/]
+		[c.generateNonArgConstructor()/]
+		[c.generateConstructorWithArgs()/]
+	[else]
+		[c.generateNonArgConstructor()/]
+		[writeTODO()/]
+	[/if]
+	}
+}
+[/file]
+[/template]
+
+[template private generateNonArgConstructor(c : Class)]
+public [c.name.toUpperFirst()/]() {
+	Id = Guid.NewGuid().ToString();
+}
+
+[/template]
+
+[template private generateConstructorWithArgs(c : Class)]
+public [c.name.toUpperFirst()/]([c.getXisAttributesForConstructor()/]) {
+	Id = Guid.NewGuid().ToString();
+	[for (p : Property | c.getXisEntityAttributes())]
+	[p.getXisEntityAttributeName().toUpperFirst()/] = [p.getXisEntityAttributeName().toLowerFirst()/];
+	[/for]
+}
+
+[/template]
+
+[template private getXisAttributesForConstructor(c : Class) post(trim())]
+[c.getXisEntityAttributes().getXisAttributeTypeAndName()->sep(', ')/]
+[/template]
+
+[template private getXisAttributeTypeAndName(p : Property)]
+[p.type.getPropertyType()/] [p.getXisEntityAttributeName().toLowerFirst()/]
+[/template]
+
+[template private generateAttributes(c : Class) post (trim())]
+// Auto-Impl Properties for trivial get and set
+[for (p : Property | c.getXisEntityAttributes())]
+public [p.type.getPropertyType()/] [p.getXisEntityAttributeName().toUpperFirst()/] { get; set; }
+[/for]
+[/template]
+
+[template private getExtension(c : Class)]
+[if (c.generalization->size() = 1)]
+ : [c.generalization.target.oclAsType(Class).name/]
+[/if]
+[/template]
+
+[template private getImplementations(c : Class)]
+[if (c.interfaceRealization->size() > 0)]
+ : [c.interfaceRealization.target.oclAsType(Interface).name->sep(', ')/]
+[/if]
+[/template]
+
+[template private generateAssociationAttrs(c : Class)]
+[for (a : Association | c.getXisEntityAssociations())]
+[let first : Property = a.memberEnd->at(1)]
+[let second : Property = a.memberEnd->at(2)]
+[if (not first.isNavigable() and not second.isNavigable() or
+first.isNavigable() and second.isNavigable())]
+	[if (a.endType->at(1).name = c.name)]
+[a.processAttr(2)/]
+	[else]
+[a.processAttr(1)/]
+	[/if]
+[elseif (first.isNavigable())]
+	[if (a.endType->at(1).name <> c.name)]
+[a.processAttr(1)/]
+	[/if]	
+[elseif (second.isNavigable())]
+	[if (a.endType->at(2).name <> c.name)]
+[a.processAttr(2)/]
+	[/if]
+[/if]
+[/let]
+[/let]
+[/for]
+[/template]
+
+[template private processAttr(a : Association, idx : Integer) post (trim())]
+[let p : Property = a.memberEnd->at(idx)]
+	[if (p.upperBound() = 1)]
+public [a.endType->at(idx).name.toUpperFirst()/] [p.getAssociationAttrName(a.endType->at(idx))/] { get; set; }
+	[elseif (p.upperBound() = -1)]
+public List<[a.endType->at(idx).name.toUpperFirst()/]> [p.getAssociationAttrName(a.endType->at(idx))/] { get; set; }
+	[/if]
+[/let]
+[/template]
+
+[template private getAssociationAttrName(p : Property, t : Type) post (trim())]
+[if (not p.name.oclIsUndefined())]
+[p.name.toUpperFirst()/]
+[else]
+[t.name.toUpperFirst()/]
+[/if]
+[/template]
+
+[template private getPropertyType(t : Type) post (trim())]
+[if (t.name.toLower() = 'boolean')]
+bool
+[elseif (t.name.toLower() = 'date' or t.name.toLower() = 'time')]
+DateTime
+[else]
+[t.name/]
+[/if]
+[/template]

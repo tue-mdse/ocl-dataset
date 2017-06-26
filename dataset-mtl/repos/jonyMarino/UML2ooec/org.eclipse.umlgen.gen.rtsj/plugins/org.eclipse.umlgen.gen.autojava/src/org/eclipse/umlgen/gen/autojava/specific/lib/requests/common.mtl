@@ -1,0 +1,101 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2012, 2014 CNES and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Cedric Notot (Obeo) - initial API and implementation
+[/comment]
+
+[module common('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::umlgen::gen::autojava::services::utilServices /]
+[import org::eclipse::umlgen::gen::autojava::services::umlServices /]
+[import org::eclipse::umlgen::gen::autojava::services::rtsjServices /]
+
+[comment return if the class is message /]
+[query public isMessage(aClass : Class) : Boolean = hasStereotype('RTSJ::Message') /]
+
+[query public getAllSignals(aClass : Class) : Sequence(Signal) = aClass.minimize(aClass.getSignals()->union(aClass.get('ownedPort')->filter(Port).get('provided')->filter(Interface).get('member')->filter(Reception).get('signal')->filter(Signal)->asSequence()))->filter(Signal) /]
+
+[comment return if the class needs buffer generation /]
+[query public needsBuffer(aClass : Class) : Boolean = getAsynchronousPorts()->notEmpty() /]
+
+[query public isNotSerialized(aProperty : Property) : Boolean = hasStereotype('RTSJ::NotSerialized') /]
+
+[comment return if the class is periodic /]
+[query public isPeriodic(aClass : Class) : Boolean = hasStereotype('RTSJ::Periodic') /]
+
+[comment return if the class is aperiodic /]
+[query public isAperiodic(aClass : Class) : Boolean = hasStereotype('RTSJ::Aperiodic') /]
+
+[comment return if the class is sporadic /]
+[query public isSporadic(aClass : Class) : Boolean = hasStereotype('RTSJ::Sporadic') /]
+
+[comment return if the interface is asynchronous /]
+[query public isAsynchronous(anInterface : Interface) : Boolean = hasStereotype('RTSJ::Asynchronous') /]
+
+[comment return if the class already a before operation /]
+[query public hasBeforeOperation(aClass : Class) : Boolean = get('ownedOperation')->filter(Operation)->select(name.equalsIgnoreCase('before'))->notEmpty()/]
+
+[comment return if the class already an after operation /]
+[query public hasAfterOperation(aClass : Class) : Boolean = get('ownedOperation')->filter(Operation)->select(name.equalsIgnoreCase('after'))->notEmpty()/]
+
+[query public isClassInfo(aClass : Class) : Boolean = hasStereotype('RTSJ::ClassInfo') /]
+
+[query public getPriorityCeiling(aClass : Class) : String = getStereotypeProperty('RTSJ::ClassInfo', 'priorityCeiling') /]
+
+[comment return if the class is background /]
+[query public isBackground(aClass : Class) : Boolean = hasStereotype('RTSJ::Background') /]
+
+[comment return if the class is exact buffer /]
+[query public isExactBuffer(aClass : Class) : Boolean = hasStereotype('RTSJ::ExactBuffer') /]
+
+[comment return if the class is lossy buffer /]
+[query public isLossyBuffer(aClass : Class) : Boolean = hasStereotype('RTSJ::LossyBuffer') /]
+
+[comment return if the class is synchronized /]
+[query public isSynchronized(aClass : Class) : Boolean = aClass.isClassInfo() and getStereotypeProperty('RTSJ::ClassInfo', 'synchronized') = 'true' /]
+
+[comment return if the class is aperiodic /]
+[query public isPseudoAperiodic(aClass : Class) : Boolean = isSporadic() and getStereotypeProperty('RTSJ::Sporadic', 'period') = '0'/]
+
+[query public getMonitorControl(aClass : Class) : String = getStereotypeProperty('RTSJ::ClassInfo', 'monitorControl') /]
+
+[comment return if the class is buffer info /]
+[query public isBufferInfo(aClass : Class) : Boolean = isExactBuffer() or isLossyBuffer() /]
+
+[comment return if the class is threadInfo /]
+[query public isThreadInfo(aClass : Class) : Boolean = isPeriodic() or isSporadic() or isAperiodic() or isBackground() /]
+
+[query public isThreadInfoStereotype(aStereotype : Stereotype) : Boolean = qualifiedName = 'RTSJ::Periodic' or qualifiedName = 'RTSJ::Aperiodic' or qualifiedName = 'RTSJ::Sporadic' or qualifiedName = 'RTSJ::Background' /]
+
+[query public isPortInfoStereotype(aStereotype : Stereotype) : Boolean = qualifiedName = 'RTSJ::PeriodicPort' or qualifiedName = 'RTSJ::BurstPort' or qualifiedName = 'RTSJ::SporadicPort' /]
+
+[query public isBufferInfoStereotype(aStereotype : Stereotype) : Boolean = qualifiedName = 'RTSJ::ExactBuffer' or qualifiedName = 'RTSJ::LossyBuffer' /]
+
+[query public isPortInfo(aPort : Port) : Boolean = isPeriodicPort() or isSporadicPort() or isBurstPort() /]
+
+[comment return all the provided and required interfaces of the port /]
+[query public getAllInterfaces(aPort : Port) : Sequence(Interface) = get('clientDependency')->filter(Dependency).get('supplier')->filter(Interface)->union(get('provided')->filter(Interface)) /]
+
+[query public isExecutionPerformance(anOperation : Operation) : Boolean = hasStereotype('RTSJ::ExecutionPerformance') /]
+
+[comment return if the method is methInfo /]
+[query public isMethInfo(anOperation : Operation) : Boolean = hasStereotype('RTSJ::MethInfo') /]
+
+[query protected getSignals(aClass : Class) : Sequence(Signal) = aClass.minimize(get('ownedPort')->filter(Port).get('provided')->filter(Interface).get('nestedClassifier')->asSequence())->filter(Signal) /]
+
+[query protected getAsynchronousPorts(aClass : Class) : Sequence(Port) = get('ownedPort')->filter(Port)->select(isPortAsynchronous()) /]
+
+[comment return if the port is periodic /]
+[query protected isPeriodicPort(aPort : Port) : Boolean = hasStereotype('RTSJ::PeriodicPort') /]
+
+[comment return if the port is sporadic /]
+[query protected isSporadicPort(aPort : Port) : Boolean = hasStereotype('RTSJ::SporadicPort') /]
+
+[comment return if the port is burst /]
+[query protected isBurstPort(aPort : Port) : Boolean = hasStereotype('RTSJ::BurstPort') /]

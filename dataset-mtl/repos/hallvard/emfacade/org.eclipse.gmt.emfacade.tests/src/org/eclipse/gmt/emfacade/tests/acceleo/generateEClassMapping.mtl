@@ -1,0 +1,118 @@
+[comment encoding = UTF-8 /]
+
+[module generateEClassMapping('http://org.eclipse.gmt.emfacade/model/emfacade.ecore', 'http://www.eclipse.org/emf/2002/Ecore', 'http://www.eclipse.org/xtext/common/JavaVMTypes')/]
+
+[import org::eclipse::gmt::emfacade::tests::util/]
+
+[import org::eclipse::gmt::emfacade::tests::generateFeatureMappingStrategy/]
+
+[import org::eclipse::gmt::emfacade::tests::GetStrategy1/]
+
+[template public generate(eClassMapping : EClassMapping)]
+	
+	[comment @main /]
+	
+	[let eClass : EClass = eClassMapping.eClass]
+	[let jClass : JvmGenericType = eClassMapping.jClass]
+	[let jClassNames : Set(String) = Set{fullName(jClass)}]
+		[file (binderClassName(eClassMapping.eClass) + '.java', false, 'UTF-8')]
+package org.eclipse.gmt.emfacade.tests.binders_gen;
+
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.emf.common.notify.Notification;
+import org.eclipse.gmt.emfacade.builder.AbstractBinder;
+import org.eclipse.gmt.emfacade.builder.IBinderContext;
+import org.eclipse.gmt.emfacade.builder.strategies.*;
+import org.eclipse.gmt.emfacade.tests.facademodel.*;
+
+[generateJClassImports(jClass)/]
+
+public [if eClass.abstract]abstract[/if] class [binderClassName(eClassMapping.eClass)/] <Model extends [eClass.name/], View extends [jClass.simpleName/]>	extends	[if eClassMapping.eClass.eSuperTypes->isEmpty()]AbstractBinder[else][binderClassName(eClass.eSuperTypes->at(1))/][/if]<Model, View> {
+
+	[if not eClass.abstract]
+	@Override
+	protected View createView(Model eObject, IBinderContext context) {
+		return (View) new [jClass.simpleName/]([generateConstructorArguments(eClassMapping)/]);
+	}
+	[/if]
+
+	[if eClassMapping.jElements->size() >= 1]
+	public void disposeView(Model eObject, View object, IBinderContext context) {
+		object.[eClassMapping.jElements->at(1).simpleName/]();		
+	}
+	[/if]
+
+	@Override
+	public void updateView(Model eObject, View object, EStructuralFeature feature, IBinderContext context) {
+	[for (featureMapping : EFeatureMapping | eClassMapping.featureMappings) separator ('else')]
+		if (feature == [eInstance(featureMapping.eFeature)/]()) {
+			if ([featureMapping.eFeature.name/]_Association.updateView(eObject[if featureMapping.eFeature.many].get[featureMapping.eFeature.name.toUpperFirst()/]()[/if], object, feature, [featureMappingJName(featureMapping)/].class, context)) {
+				return;
+			}
+		}
+	[/for]
+		super.updateView(eObject, object, feature, context);
+	}
+
+	[let manyMappings : OrderedSet(EFeatureMapping) = eClassMapping.featureMappings->select(mapping | mapping.eFeature.many)]
+		[if manyMappings->notEmpty()]
+	@Override
+	public void updateView(Model eObject, View object, Notification notification, IBinderContext context) {
+			[for (featureMapping : EFeatureMapping | manyMappings) separator ('else')]
+		if (notification.getFeature() == [eInstance(featureMapping.eFeature)/]()) {
+			if ([featureMapping.eFeature.name/]_Association.updateView(eObject[if featureMapping.eFeature.many].get[featureMapping.eFeature.name.toUpperFirst()/]()[/if], object, notification, [featureMappingJName(featureMapping)/].class, context)) {
+				return;
+			}
+		}
+			[/for]
+		super.updateView(eObject, object, notification, context);
+	}
+		[/if]
+	[/let]
+
+	@Override
+	public void disposeView([eClass.name/] eObject, [jClass.simpleName/] object, EObject child, Object childObject, EStructuralFeature feature, IBinderContext context) {
+		[for (featureMapping : EFeatureMapping | eClassMapping.featureMappings) separator ('else')]
+		if (feature == [eInstance(featureMapping.eFeature)/]()) {
+				[featureMapping.eFeature.name/]_Association.disposeView(
+				[if featureMapping.eFeature.many]
+			eObject.get[featureMapping.eFeature.name.toUpperFirst()/](), object, feature, ([featureMappingEName(featureMapping)/]) child, ([featureMappingJName(featureMapping)/]) childObject
+				[else]
+				object
+				[/if]
+			, context);
+			return;
+		}
+		[/for]
+		super.disposeView((Model) eObject, (View) object, child, childObject, feature, context);
+	}
+
+	[for (featureMapping : EFeatureMapping | eClassMapping.featureMappings)]
+	private Strategy[if featureMapping.eFeature.many]N[else]1[/if].StrategyImpl<[eClass.name/], [featureMappingEName(featureMapping)/], [jClass.simpleName/], [featureMappingJName(featureMapping)/]> [featureMapping.eFeature.name/]_Association
+	 = new [strategyClassName(featureMapping)/].Impl<[eClass.name/], [featureMappingEName(featureMapping)/], [jClass.simpleName/], [featureMappingJName(featureMapping)/]>(
+			[generateStrategyConstructorArguments(featureMapping, featureMapping.strategy)/]
+		);
+	[/for]
+}
+		[/file]
+		
+	[/let]
+	[/let]
+	[/let]
+	
+[/template]
+
+[query public superType(eClass : EClass) : EClass =
+	if eClass.eSuperTypes->isEmpty() then null else eClass.eSuperTypes->at(0) endif
+/]
+
+[template private generateConstructorArguments(eClassMapping : EClassMapping)]
+	[for (eFeature : EStructuralFeature | eClassMapping.constructorFeatures) separator (',')]
+		[if (eFeature.eType.oclIsKindOf(EDataType))]
+			eObject.get[eFeature.name.toUpperFirst()/]()
+		[else]
+			context.getObject(eObject.get[eFeature.name.toUpperFirst()/](), [eTypeJClassName(eFeature.eType)/].class, true)
+		[/if]
+	[/for]
+[/template]

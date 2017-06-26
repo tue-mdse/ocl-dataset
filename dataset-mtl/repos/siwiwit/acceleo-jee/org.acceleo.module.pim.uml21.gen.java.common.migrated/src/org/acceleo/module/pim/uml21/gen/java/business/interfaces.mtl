@@ -1,0 +1,82 @@
+[module interfaces('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import org::acceleo::module::pim::uml21::gen::java::common::common/]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure/]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+
+[comment][template private fullFilePath(interface:Interface)]
+[interface.pathToMainJava()/]/[interface.entityPackage().toPath()/]/[interface.name/].java
+[/template][/comment]
+
+
+[template public generateInterface(interface:Interface)]
+[comment This template is called by the main module file /]
+[file (interface.fullFilePath(interface.pathToMainJava(), interface.entityPackage().toPath(), interface.name.concat('.java')), false))]
+package [interface.entityPackage()/];
+
+/**
+[if (interface.ownedComment._body->notEmpty())]
+ * [interface.ownedComment._body.replaceAll('\n', '\n * ')/]
+[else]
+ * Warning: no comment in the model for interface [name/].
+[/if]
+ */
+public interface [interface.name/] {
+
+[comment  For each field declared in the model,
+    let's generate getter+setter /]
+[for (prop:Property|interface.itfAttributes())]
+    /**
+     * Returns [prop.name/].
+	[if (prop.ownedComment._body->notEmpty())]
+     * @return [ownedComment._body.replaceAll('\n', '\n     * ')/]
+	[else]
+     * @return Warning, no comment in the model.
+	[/if]
+     */
+    [prop.getterItfSignature()/];
+
+	[if (not (prop.isReadOnly) and not (prop.isDerived))]
+    /**
+     * Sets the [prop.name/].
+     * @param [prop.paramName()/]
+		[if (prop.ownedComment._body->notEmpty())]
+     *            [prop.ownedComment._body.replaceAll('\n', '\n     *            ')/]
+		[else]
+     *            Warning, no comment in the model.
+		[/if]
+     */
+    [prop.setterItfSignature()/];
+
+	[/if]
+[/for]
+[comment  For each operation declared in the model,
+    let's generate a method /]
+[for (oper:Operation|interface.ownedOperation)]
+
+    /**
+[if (oper.ownedComment._body->notEmpty())]
+     * [oper.ownedComment._body.replaceAll('\n', '\n     * ')/]
+[else]
+     * Warning, no comment in the model.
+[/if]
+[for (param:Parameter|oper.getRealParameters())]
+     * @param [param.paramName()/]
+[if (param.ownedComment._body->notEmpty())]
+     *            [param.ownedComment._body.replaceAll('\n', '\n     *            ')/]
+[else]
+     *            Warning, no comment in the model.
+[/if]
+[/for]
+     */
+    [oper.itfSignature()/];
+[/for]
+
+}
+
+[/file]
+[/template]
+
+
+
+

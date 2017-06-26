@@ -1,0 +1,41 @@
+[comment encoding = UTF-8 /]
+[module properties('http://www.eclipse.org/uml2/5.0.0/UML')]
+
+[import org::eclipse::umlgen::gen::embedded::c::commons::class]
+
+[template public generateProperty(p:Property) post(trim())]
+[if(p.type.oclIsKindOf(Class))]
+[if(p.aggregation <> AggregationKind::composite )]
+[generateAgregationProperty()/]
+[else]
+[generateCompositeProperty()/]
+[/if]
+
+[else]
+[p.type.name/] [p.name/]
+[/if]
+[/template]
+
+[template private generateAgregationProperty(p:Property) post(trim())]
+[if  (isAssociationOfSameType())] struct [p.type.name/][else]void[/if] * [if (hasMultipleFiniteInstances() or canHaveInfiniteInstances())]*[/if][p.name/]
+[/template]
+
+[query private isAssociationOfSameType (p : Property) : Boolean = p.class.entireClassesHierarchechy()->exists(c|c.name=p.type.name)/]
+
+[template private generateCompositeProperty(p:Property) post(trim())]
+[if( canBeInstanceableInCompileTime() and isAssociationOfSameType())]
+struct [p.type.name/] [p.name/] [generateFiniteMultiplicity()/]
+[else]
+[if  (isAssociationOfSameType())]struct [p.type.name/][else]void[/if] * [if (canHaveInfiniteInstances())]*[/if][p.name/] [generateFiniteMultiplicity()/]
+[/if]
+[/template]
+
+[query private canHaveInfiniteInstances (p : Property) : Boolean = p.upper=-1/]
+
+[template private generateFiniteMultiplicity (p : Property) ]
+[if (hasMultipleFiniteInstances())]['['/][p.upper/][']'/][/if]
+[/template]
+
+[query private hasMultipleFiniteInstances (p : Property) : Boolean = p.upper>1 and p.upper <> -1/]
+
+[query private canBeInstanceableInCompileTime (p : Property) : Boolean = p.upper<>-1 and p.lower<>0/]

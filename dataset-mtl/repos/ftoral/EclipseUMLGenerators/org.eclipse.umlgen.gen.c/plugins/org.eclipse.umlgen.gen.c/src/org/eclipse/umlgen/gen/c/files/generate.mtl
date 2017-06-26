@@ -1,0 +1,49 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2010, 2014 Obeo and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Mikael Barbero (Obeo) - initial API and implementation
+ *     Fabien Toral (CS Information Systems) - Circular dependencies and other corrections for PolarSys migration
+[/comment]
+[module generate('http://www.eclipse.org/uml2/4.0.0/UML', 'http://www.eclipse.org/emf/2002/Ecore')/]
+[import org::eclipse::umlgen::gen::c::files::hfile /]
+[import org::eclipse::umlgen::gen::c::files::cfile /]
+[import org::eclipse::umlgen::gen::c::files::common /]
+
+[template public main(e : Classifier) ? (ancestors(Package)->exists(p | p.qualifiedName = getSourcePackageName()))]
+[comment @main /]
+[if (oclIsTypeOf(Interface))]
+[genHFile()/]
+[elseif (oclIsTypeOf(Class) and visibility = VisibilityKind::private)]
+[oclAsType(Class).genCFile()/]
+[elseif (oclIsTypeOf(Class) and visibility = VisibilityKind::public)]
+[oclAsType(Class).genCFile()/]
+[oclAsType(Class).genHFile()/]
+[/if]
+[/template]
+
+[template private genCFile(e : Class)]
+[file (e.cFileName(), false, e.eContainer(Model).getCharset())]
+[e.cfile()/]
+[/file]
+[/template]
+
+[template private genHFile(e : Classifier)]
+[file (e.hFileName(), false, e.eContainer(Model).getCharset())]
+[e.hfile()/]
+[/file]
+[/template]
+
+[comment]Gets the project charset to apply during the genration. 
+This information is stored at the root level within a dedicated annotation[/comment]
+[query private getCharset(e : Model) : String = 
+	if e.getAnnotation('PROJECT_CHARSET')->notEmpty() 
+		then e.getAnnotation('PROJECT_CHARSET')->any(true)
+		else 'UTF-8'
+	endif
+/]

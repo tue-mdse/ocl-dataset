@@ -1,0 +1,165 @@
+[comment encoding = UTF-8 /]
+[module generate('http://www.sb.net/statemachine/dsl/Stm')]
+[import net::sb::statemachine::generator::services::utility /]
+[import net::sb::statemachine::generator::services::configuration /]
+[import net::sb::statemachine::generator::main::statemachine /]
+
+[template public generateElement(aStateMachine : Statemachine)]
+[comment @main/]
+[commandsInterfaceTemplate(aStateMachine)/]
+[contextInterfaceTemplate(aStateMachine)/]
+[guardsInterfaceTemplate(aStateMachine)/]
+[stateMachineInterfaceTemplate(aStateMachine)/]
+[if (isGenerateAdapter())]
+[stateMachineListenerInterfaceTemplate(aStateMachine)/]
+[/if]
+[if (isGenerateUtils())]
+[stateMachineUtilsTemplate(aStateMachine)/]
+[/if]
+[stateMachineTemplate(aStateMachine)/]
+[/template]
+
+[template public commandsInterfaceTemplate (aStateMachine : Statemachine) ]
+[file (getFilePath(getPackage(), 'ICommands'), false, 'UTF-8')]
+/**
+* This code is generated
+*/
+package [getPackage()/];
+
+public interface ICommands {
+[for (command : Command | aStateMachine.commands)]
+	void [command.name/](IContext context);
+[/for]
+}
+[/file]
+[/template]
+
+[template public contextInterfaceTemplate (aStateMachine : Statemachine) ]
+[file (getFilePath(getPackage(), 'IContext'), false, 'UTF-8')]
+/**
+* This code is generated
+*/
+package [getPackage()/];
+
+public interface IContext {
+}
+[/file]
+[/template]
+
+[template public guardsInterfaceTemplate (aStateMachine : Statemachine) ]
+[file (getFilePath(getPackage(), 'IGuards'), false, 'UTF-8')]
+/**
+* This code is generated
+*/
+package [getPackage()/];
+
+public interface IGuards {
+[for (guard : Guard | aStateMachine.guards)]
+	boolean [guard.name/](IContext context[for (parameter : Parameter | guard.parameters)], [parameter.type/] [parameter.name/][/for]);
+[/for]
+}
+[/file]
+[/template]
+
+
+[template public stateMachineInterfaceTemplate (aStateMachine : Statemachine) ]
+[file (getFilePath(getPackage(), 'IStateMachine'), false, 'UTF-8')]
+/**
+* This code is generated
+*/
+package [getPackage()/];
+
+public interface IStateMachine {
+	// Events
+[for (event : Event | aStateMachine.events)]
+	public static int [event.eventName()/] = [event.eventID()/];
+[/for]
+	
+	// States
+	public static int NOT_STARTED = -1;
+[generateState(aStateMachine.states)/]
+
+	void start();
+	
+	int getState();
+	
+	int getStartingState();
+	
+	/** Post an event that will be run asynchronously.<br>
+	 * Context may be null
+	 */
+	void postEvent(int event, IContext context);
+	
+	[if (isGenerateAdapter())]
+	void addStateMachineListener(IStateMachineListener listener);
+	void removeStateMachineListener(IStateMachineListener listener);
+	[/if]
+}
+[/file]
+[/template]
+
+[template private generateState (states : Collection(State)) ]
+[for (state : State | states)]
+	public static int [state.stateName()/] = [state.stateID()/];
+[generateState(state.states)/][/for]
+[/template]
+
+[template public stateMachineListenerInterfaceTemplate (aStateMachine : Statemachine) ]
+[file (getFilePath(getPackage(), 'IStateMachineListener'), false, 'UTF-8')]
+/**
+* This code is generated
+*/
+package [getPackage()/];
+
+
+public interface IStateMachineListener {
+	void onSelfEvent(IStateMachine stateMachine, int event, IContext context);
+	void onStateExited(IStateMachine stateMachine, int event, IContext context);
+	void onStateEntered(IStateMachine stateMachine, int event, IContext context);
+}
+[/file]
+[/template]
+
+[template public stateMachineUtilsTemplate (aStateMachine : Statemachine) ]
+[file (getFilePath(getPackage(), 'StateMachineUtils'), false, 'UTF-8')]
+/**
+* This code is generated
+*/
+package [getPackage()/];
+
+public final class StateMachineUtils {
+	
+	public static String eventToString(int event) {
+		switch(event) {
+			default:  return "";
+[for (event : Event | aStateMachine.events)]
+			case IStateMachine.[event.eventName()/]: return "[event.name/]";
+[/for]
+		}
+	}
+	
+	public static int stringToEvent(String value) {
+[for (event : Event | aStateMachine.events)]
+		if (value.equals("[event.name/]")) return IStateMachine.[event.eventName()/];
+[/for]
+		return -1;
+	}
+	
+	public static String stateToString(int state) {
+		switch(state) {
+			default:  return "";
+[for (state : State | aStateMachine.getAllStates())]
+			case IStateMachine.[state.stateName()/]: return "[state.stateName()/]";
+[/for]
+		}
+	}
+
+	public static int stringToState(String value) {
+[for (state : State | aStateMachine.getAllStates())]
+		if (value.equals("[state.stateName()/]")) return IStateMachine.[state.stateName()/];
+[/for]
+		return -1; 
+	}
+}
+[/file]
+[/template]

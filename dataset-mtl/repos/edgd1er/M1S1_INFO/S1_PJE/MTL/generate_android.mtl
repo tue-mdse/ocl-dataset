@@ -1,0 +1,101 @@
+[comment encoding = UTF-8 /]
+[module generate('http:///uiandroid.ecore', 'http:///uiandroid/DataTypes.ecore')]
+
+
+[comment ========================================================
+traitement de la racine UIAndroid
+(génère un fichier séparé pour chaque Layout)
+/]
+[template public generateElement(ui : UIAndroid)]
+[comment @main/]
+[for(layout : Layout | ui.layouts)]
+[treatLayout(layout)/]
+[/for]
+[/template]
+
+[comment traitement d'un Layout =================================/]
+[template public treatLayout(layout : Layout)]
+[file(layout.name.concat('.xml'), false, 'UTF-8')]
+<?xml version="1.0" encoding="utf-8"?>
+[treatView(root)/]
+[/file]
+[/template]
+
+[comment traitement d'une View ==================================/]
+[template public treatView(view : View)]
+ERREUR, View non reconnu !
+[/template]
+
+[template public treatLayoutParam(lp : LayoutParam)]
+android:layout_[lp.name/]="[lp.value/]"
+[/template]
+
+[template public treatViewAttributes(view : View)]
+[comment: traitement des layoutParams /]
+[comment faut-il traiter de la sorte TOUS les attributs ?/]
+[for(lp : LayoutParam | view.layoutParams)]
+[treatLayoutParam(lp)/]
+[/for]
+[comment: traitement des autres attributs /]
+[if (view.id<>null)]
+android:id="[view.id/]"
+[/if]
+[if (view.onClick<>null)]
+android:onClick="[view.onClick/]"
+[/if]
+[if (view.clickable<>null)]
+android:clickable="[view.clickable/]"
+[/if]
+[/template]
+
+[comment traitement d'un ViewGroup ===============================/]
+[template public treatViewGroup(vg : ViewGroup)]
+[comment traite son contenu récursivement /]
+[for(view : View | vg.content)]
+  [treatView(view)/]
+[/for]
+[/template]
+
+[template public treatViewGroupAttributes(vg : ViewGroup)]
+[treatViewAttributes(vg)/]
+[/template]
+
+
+[comment traitement d'un LinearLayout=============================/]
+[template public treatView(ll : LinearLayout)]
+<LinearLayout
+  [treatLinearLayoutAttributes(ll)/]
+>
+  [treatViewGroup(ll)/]
+</LinearLayout>
+[/template]
+
+[template public treatLinearLayoutAttributes(ll : LinearLayout)]
+[treatViewGroupAttributes(ll)/]
+android:orientation="[ll.orientation/]"
+[/template]
+
+[comment traitement d'un TextView =================================/]
+[template public treatView(tv : TextView)]
+<TextView
+  [treatTextViewAttributes(tv)/]
+/>
+[/template]
+
+[template public treatTextViewAttributes(tv : TextView)]
+[treatViewAttributes(tv)/]
+[if (tv.text<>null)]
+android:text="[tv.text/]"
+[/if]
+[/template]
+
+[comment traitement d'un Button ===================================/]
+[template public treatView(bt : Button)]
+<Button>
+  [treatButtonAttributes(bt)/]
+/>
+[/template]
+
+[template public treatButtonAttributes(bt : Button)]
+[treatTextViewAttributes(bt)/]
+[/template]

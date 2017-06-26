@@ -1,0 +1,86 @@
+[comment encoding = UTF-8 /]
+[comment]
+/*****************************************************************************
+ * Copyright (c) 2013 INTEMPORA S.A.
+ *
+ * This software is a computer program whose purpose is to transform RobotML models
+ * into RTMaps diagrams and RTMaps components via source code generation techniques.
+ * 
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *  Nicolas DU LAC (INTEMPORA) - Initial API and implementation
+ *
+ *****************************************************************************/
+[/comment]
+[module generate_rtmaps_component_hpp('http://www.eclipse.org/uml2/3.0.0/UML', 'http://Papyrus/RobotML/1')]
+
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::ArchitectureQueries /]
+[import org::eclipse::papyrus::robotml::generators::common::mmqueries::DataTypeQueries /]
+[import org::eclipse::papyrus::robotml::generators::intempora::rtmaps::RTMapsDataTypeQueries /]
+
+
+[template public generateRTMapsComponentHpp(c : Class, root_model : Model)]
+[file ('user_sdk/' + root_model.name + '.u/local_interfaces/maps_' + c.name + '.h', false, 'UTF-8')]
+#ifndef __MAPS_[c.name/]_HPP__
+#define __MAPS_[c.name/]_HPP__
+
+#include "[root_model.name/]/[root_model.name/]_datatypes_all.h"
+#include "robotml/maps_robotml_datatype_filters.h"
+#include "[root_model.name/]/[root_model.name/]_datatype_filters.h"
+#include "maps.hpp"
+
+// [protected ('Additional includes')]
+// [/protected]
+
+// [protected ('Default max output vector size')]
+#define DEFAULT_OUTPUT_MAX_VECTOR_SIZE 1024
+// [/protected]
+
+class MAPS[c.name/] : public MAPSComponent
+{
+	// Use standard header definition macro
+	MAPS_COMPONENT_STANDARD_HEADER_CODE(MAPS[c.name/])
+// 	[protected ('Overloaded methods declarations (Dynamic, Set...)')]
+// 	[/protected]
+private :
+	// Place here your specific methods and attributes
+[let elt : Element = c.oclAsType(Element)]
+	[if (getInputPortsForElement(elt)->size() > 0)]	
+	int 		_nb_inputs;
+	MAPSInput** _inputs;
+
+		[for (port : Port | getInputPortsForElement(elt))]
+	void [port.type.name/]_Received_on_[port.name/]_InPort([port.type.name/]* data_in, int count, MAPSTimestamp t);
+		[/for]
+	[/if]
+	
+
+	[for (port : Port | getOutputPortsForElement(elt))]
+		[if (isPrimitiveType(port.type) = false)]
+	MAPSList<[port.type.name/]*> _[port.name/]_buffers;
+		[/if]
+	[/for]
+
+	[for (port : Port | getOutputPortsForElement(elt))]
+		void Output_[port.name/](MAPSTimestamp t);
+	[/for]
+
+	[if (getOutputPortsForElement(elt)->size() > 0)]
+	//As we may allocate output buffers "by hand", we need to handle de-allocation as well
+	//so we need to overload the FreeBuffers method.
+	void FreeBuffers();
+	[/if]
+[/let]
+
+// 	[protected ('Additional members and methods')]
+// 	[/protected]
+};
+
+#endif //__MAPS_[c.name/]_HPP__
+[/file]
+
+[/template]

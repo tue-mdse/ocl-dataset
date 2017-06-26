@@ -1,0 +1,34 @@
+[comment encoding = UTF-8 /]
+[**
+ * The documentation of the module generateAlloy.
+ */]
+[module generateAlloy('http://www.eclipse.org/emf/2002/Ecore')]
+
+[**
+ * The documentation of the template generateAlloy.
+ * @param anEPackage
+ */]
+[template public generateAlloy(ePackage : EPackage)]
+[comment @main/]
+[file (ePackage.name.concat('.als'), false, 'UTF-8')]
+[for (class : EClass | ePackage.getEClasses())]
+[if (class.abstract)]abstract [/if]sig New[class.name/][if (class.eSuperTypes -> size() > 0)] extends [for (sup : EClass | class.eSuperTypes)]New[sup.name/][if (sup <> class.eSuperTypes->last())],[/if][/for][/if] {
+	[for (ref : EReference | class.eReferences)]
+	[ref.name/] : [if (ref.upperBound = 1)]lone[elseif (ref.lowerBound > 0 and ref.many)]some[elseif (ref.lowerBound = 0 and ref.many)]set[/if] New[ref.eType.name/][if (ref <> class.eReferences->last())],[/if]
+	[/for]
+}
+[/for]
+
+[for (class : EClass | ePackage.getConcreteEClasses())]
+enum Changing[class.name/] {}
+[/for]
+
+[for (class : EClass | ePackage.getConcreteEClasses())]
+enum Fix[class.name/] {}
+[/for]
+
+[/file]
+[/template]
+
+[query public getEClasses(ePackage : EPackage) : OrderedSet(EClass) = ePackage.eClassifiers->filter(EClass)->asOrderedSet()->sortedBy(c | c.name)->sortedBy(c | c.eSuperTypes->size())->sortedBy(c | not c.abstract)/]
+[query public getConcreteEClasses(ePackage : EPackage) : Set(EClass) = ePackage.getEClasses()->select(c | not c.abstract)->asOrderedSet()->sortedBy(c | c.name) /]

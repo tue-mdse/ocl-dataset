@@ -1,0 +1,92 @@
+[comment encoding = UTF-8
+ *******************************************************************************
+ * Copyright (c) 2008-2009 Obeo.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Obeo - initial API and implementation
+ *******************************************************************************
+ /]
+[module multivaluededitorSWTImpl('http://www.eclipse.org/emf/eef/views/1.0.0', 'http://www.eclipse.org/emf/eef/components/1.0.0', 'http://www.eclipse.org/emf/2002/Ecore') extends org::eclipse::emf::eef::codegen::widgets::api::widgetSWTImpl/]
+
+[import org::eclipse::emf::eef::codegen::services::common /]
+[import org::eclipse::emf::eef::codegen::services::naming /]
+[import org::eclipse::emf::eef::codegen::services::viewCommon /]
+[import org::eclipse::emf::eef::codegen::services::imports/]
+
+[template public manageImports(widget : Widget, pec : PropertiesEditionComponent, view : View, basePackage : String) overrides manageImports ? (widget.name = 'MultiValuedEditor')]
+[pec.addImports(Sequence{
+	'org.eclipse.emf.common.util.BasicEList',
+	'org.eclipse.emf.edit.ui.provider.AdapterFactoryLabelProvider',
+	'org.eclipse.emf.eef.runtime.impl.notify.PropertiesEditionEvent',
+	'org.eclipse.emf.eef.runtime.ui.utils.EditingUtils',
+	'org.eclipse.emf.eef.runtime.ui.widgets.SWTUtils',
+	'org.eclipse.emf.eef.runtime.ui.widgets.EEFFeatureEditorDialog',
+	'org.eclipse.jface.window.Window',
+	'org.eclipse.swt.events.SelectionAdapter',
+	'org.eclipse.swt.events.SelectionEvent',
+	'org.eclipse.swt.SWT',
+	'org.eclipse.swt.widgets.Composite',
+	'org.eclipse.swt.layout.GridData'})/]
+[/template]
+
+[template public widgetDeclaration(editor : ElementEditor) overrides widgetDeclaration ? (editor.representation.name = 'MultiValuedEditor')]
+	protected [include('org.eclipse.swt.widgets.Text')/] [editor.elementEditorName()/];
+	protected [include('org.eclipse.swt.widgets.Button')/] edit[editor.name.toJavaClassifier().disambiguation('view')/];
+	protected [include('org.eclipse.emf.common.util.EList')/] [editor.elementEditorName()/]List;
+[/template]
+
+[template public implementation(editor : ElementEditor) overrides implementation ? (editor.representation.name = 'MultiValuedEditor')]
+return create[editor.name.toJavaClassifier()/]MultiValuedEditor(parent);
+[/template]
+
+[template public additionalImplementation(editor : ElementEditor, pec : PropertiesEditionComponent, inputPEC: PropertiesEditionComponent) overrides additionalImplementation ? (editor.representation.name = 'MultiValuedEditor')]
+	protected Composite create[editor.name.toJavaClassifier()/]MultiValuedEditor(Composite parent) {
+		[editor.elementEditorName()/] = SWTUtils.createScrollableText(parent, SWT.BORDER | SWT.READ_ONLY);
+		GridData [editor.elementEditorName()/]Data = new GridData(GridData.FILL_HORIZONTAL);
+		[editor.elementEditorName()/]Data.horizontalSpan = 2;
+		[editor.elementEditorName()/].setLayoutData([editor.elementEditorName()/]Data);
+		EditingUtils.setID([editor.elementEditorName()/], [editor.editorID()/]);
+		EditingUtils.setEEFtype([editor.elementEditorName()/], "eef::[editor.representation.name/]::field"); //$NON-NLS-1$
+		edit[editor.name.toJavaClassifier()/] = new Button(parent, SWT.NONE);
+		[if (editor.readOnly)]
+		edit[editor.name.toJavaClassifier()/].setEnabled(false);
+		[/if]
+		edit[editor.name.toJavaClassifier()/].setText(getDescription([editor.editorID()/], [editor.owningViewsRepository().messagesProvider()/].[editor.editorKey(editor.owningView())/]));
+		GridData edit[editor.name.toJavaClassifier()/]Data = new GridData();
+		edit[editor.name.toJavaClassifier()/].setLayoutData(edit[editor.name.toJavaClassifier()/]Data);
+		edit[editor.name.toJavaClassifier()/].addSelectionListener(new SelectionAdapter() {
+
+			/**
+			 * {@inheritDoc}
+			 * 
+			 * @see org.eclipse.swt.events.SelectionAdapter#widgetSelected(org.eclipse.swt.events.SelectionEvent)
+			 */
+			public void widgetSelected(SelectionEvent e) {
+				EEFFeatureEditorDialog dialog = new EEFFeatureEditorDialog(
+						[editor.elementEditorName()/].getShell(), "[pec.pecModelClass()/]", new AdapterFactoryLabelProvider(adapterFactory), //$NON-NLS-1$
+						[editor.elementEditorName()/]List, [editor.involvedPropertiesEditionElement().metamodelGetter()/].getEType(), null,
+						false, true, 
+						null, null);
+				if (dialog.open() == Window.OK) {
+					[editor.elementEditorName()/]List = dialog.getResult();
+					if ([editor.elementEditorName()/]List == null) {
+						[editor.elementEditorName()/]List = new BasicEList();
+					}
+					[editor.elementEditorName()/].setText([editor.elementEditorName()/]List.toString());
+					propertiesEditionComponent.firePropertiesChanged(new PropertiesEditionEvent([editor.editionPart()/].this, [editor.editorID()/], PropertiesEditionEvent.COMMIT, PropertiesEditionEvent.SET, null, new BasicEList([editor.elementEditorName()/]List)));
+					setHasChanged(true);
+				}
+			}
+		});
+		EditingUtils.setID(edit[editor.name.toJavaClassifier()/], [editor.editorID()/]);
+		EditingUtils.setEEFtype(edit[editor.name.toJavaClassifier()/], "eef::[editor.representation.name/]::browsebutton"); //$NON-NLS-1$
+		// [protected ('for create'.concat(editor.name.toJavaClassifier()).concat('MultiValuedEditor'))]
+
+		// [/protected]
+		return parent;
+	}
+[/template]

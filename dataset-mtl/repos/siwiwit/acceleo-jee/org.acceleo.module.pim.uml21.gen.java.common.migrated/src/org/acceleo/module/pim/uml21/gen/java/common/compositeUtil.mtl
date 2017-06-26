@@ -1,0 +1,36 @@
+[comment encoding = UTF-8 /]
+[module compositeUtil('http://www.eclipse.org/uml2/3.0.0/UML')]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+
+[query public getPrimaryTypeName(anEntity: Class) : String =
+anEntity.getPrimaryTypeName(false)
+/]
+
+[query public getPrimaryTypeName(anEntity: Class, isPrimaryTypeWrapper : Boolean) : String = 
+if (anEntity.getPKAttribute()->size()=0) then
+	if(isPrimaryTypeWrapper) then
+		anEntity.defaultPKTypeWrapper()
+	else
+		anEntity.defaultPKType()
+	endif
+else 
+	if (anEntity.getPKAttribute()->size()=1) then
+		if(anEntity.getPKAttribute()->asSequence()->first().class->notEmpty()) then 
+			if (anEntity.getPKAttribute()->asSequence()->first().type->asSequence()->first().oclIsTypeOf(PrimitiveType)) then
+				anEntity.getPKAttribute()->asSequence()->first().type->asSequence()->first().oclAsType(PrimitiveType).convertToJavaWrapperType()
+			else
+				anEntity.getPKAttribute()->asSequence()->first().class->asSequence()->first().convertToJavaType()
+			endif
+		else
+			if(isPrimaryTypeWrapper) then
+				anEntity.defaultPKTypeWrapper()
+			else
+				anEntity.defaultPKType()
+			endif
+		endif
+	else
+		anEntity.getCompositeKeyClass().name
+	endif
+endif
+/]

@@ -1,0 +1,213 @@
+[comment]
+/*
+ *  TOPPERS/A-RTEGEN
+ *      Automotive Runtime Environment Generator
+ *
+ *  Copyright (C) 2013-2016 by Eiwa System Management, Inc., JAPAN
+ *
+ *  上記著作権者は，以下の(1)〜(4)の条件を満たす場合に限り，本ソフトウェ
+ *  ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
+ *  変・再配布（以下，利用と呼ぶ）することを無償で許諾する．
+ *  (1) 本ソフトウェアをソースコードの形で利用する場合には，上記の著作
+ *      権表示，この利用条件および下記の無保証規定が，そのままの形でソー
+ *      スコード中に含まれていること．
+ *  (2) 本ソフトウェアを，ライブラリ形式など，他のソフトウェア開発に使
+ *      用できる形で再配布する場合には，再配布に伴うドキュメント（利用
+ *      者マニュアルなど）に，上記の著作権表示，この利用条件および下記
+ *      の無保証規定を掲載すること．
+ *  (3) 本ソフトウェアを，機器に組み込むなど，他のソフトウェア開発に使
+ *      用できない形で再配布する場合には，次のいずれかの条件を満たすこ
+ *      と．
+ *    (a) 再配布に伴うドキュメント（利用者マニュアルなど）に，上記の著
+ *        作権表示，この利用条件および下記の無保証規定を掲載すること．
+ *    (b) 再配布の形態を，別に定める方法によって，TOPPERSプロジェクトに
+ *        報告すること．
+ *  (4) 本ソフトウェアの利用により直接的または間接的に生じるいかなる損
+ *      害からも，上記著作権者およびTOPPERSプロジェクトを免責すること．
+ *      また，本ソフトウェアのユーザまたはエンドユーザからのいかなる理
+ *      由に基づく請求からも，上記著作権者およびTOPPERSプロジェクトを
+ *      免責すること．
+ *
+ *  本ソフトウェアは，AUTOSAR（AUTomotive Open System ARchitecture）仕
+ *  様に基づいている．上記の許諾は，AUTOSARの知的財産権を許諾するもので
+ *  はない．AUTOSARは，AUTOSAR仕様に基づいたソフトウェアを商用目的で利
+ *  用する者に対して，AUTOSARパートナーになることを求めている．
+ *
+ *  本ソフトウェアは，無保証で提供されているものである．上記著作権者お
+ *  よびTOPPERSプロジェクトは，本ソフトウェアに関して，特定の使用目的
+ *  に対する適合性も含めて，いかなる保証も行わない．また，本ソフトウェ
+ *  アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
+ *  の責任を負わない．
+ * 
+ *  $Id: operationUtil.mtl 19918 2016-01-08 06:05:46Z hiroki.kitagawa $
+ */
+[/comment]
+[comment encoding = UTF-8 /]
+[module operationUtil('http://nces.is.nagoya-u.ac.jp/a-rte/rte/module')]
+
+[import jp::ac::nagoya_u::is::nces::a_rte::codegen::rte::common::symbolUtil /]
+
+[template public genLocalVariableDeclarations(aFunction : Function) post (trim())]
+[for (aVariable : LocalVariable | aFunction.localVariable)]
+	[aVariable.genLocalVariableDeclaration()/]
+[/for]
+[/template]
+
+[template public genLocalVariableInitializations(aFunction : Function) post (trim())]
+[for (aVariable : LocalVariable | aFunction.localVariable)]
+	[aVariable.genLocalVariableInitialization()/]
+[/for]
+[/template]
+
+[template private genLocalVariableDeclaration(aLocalVariable : LocalVariable) post (trim())]
+[if (aLocalVariable.type.oclIsKindOf(ArrayType))]
+	[aLocalVariable.type.genTypePartOfVariableDeclaration()/] *[aLocalVariable.symbolName/];
+[else]
+	[aLocalVariable.type.genTypePartOfVariableDeclaration()/] [aLocalVariable.symbolName/]; [if (aLocalVariable.type.oclIsKindOf(UnionType))]/* MISRA RULE 18.4 VIOLATION : It is safe because the union data is not used at the same time */[/if]
+[/if]
+[/template]
+
+[template private genLocalVariableInitialization(aLocalVariable : LocalVariable) post (trim())]
+[let aInitValueConstant : Constant = aLocalVariable.initValueConstant]
+	[aLocalVariable.genSymbolAccess()/] = [aInitValueConstant.genSymbolAccess()/];
+[/let]
+[/template]
+
+[template public genCsArgAccess(aValue : Value) post (trim())]
+[if (not aValue.oclIsUndefined())]
+	[aValue.genDoCsArgAccess()/]
+[/if]
+[/template]
+
+[template private genDoCsArgAccess(aValue : Value) /]
+
+[template private genDoCsArgAccess(aValue : Constant) post (trim())]
+[aValue.symbolName/]
+[/template]
+
+[template private genDoCsArgAccess(aValue : Variable) post (trim())]
+[aValue.symbolName/]
+[/template]
+
+[template private genDoCsArgAccess(aValue : GlobalVariable) post (trim())]
+[if ((aValue.type.oclIsTypeOf(ArrayType)) or (aValue.type.oclIsTypeOf(RedefinitionArrayType)))]
+	[aValue.symbolName/]
+[else]
+	&[aValue.symbolName/]
+[/if]
+[/template]
+
+[template public genSymbolAccess(aValue : Value) post (trim())]
+[if (not aValue.oclIsUndefined())]
+	[aValue.genDoSymbolAccess()/]
+[/if]
+[/template]
+
+[template public genValueAccess(aValue : Value) post (trim())]
+[if (not aValue.oclIsUndefined())]
+	[aValue.genDoValueAccess()/]
+[/if]
+[/template]
+
+[template public genPointerAccess(aValue : Value) post (trim())]
+[if (not aValue.oclIsUndefined())]
+	[aValue.genDoPointerAccess()/]
+[else]
+	NULL_PTR
+[/if]
+[/template]
+
+[template public genMemberAccess(aValue : Value, member : String) post (trim())]
+[if (not aValue.oclIsUndefined())]
+	[aValue.genDoMemberAccess(member)/]
+[/if]
+[/template]
+
+[template private genDoSymbolAccess(aValue : Value) /]
+
+[template private genDoSymbolAccess(aValue : Variable) post (trim())]
+[aValue.symbolName/]
+[/template]
+
+[template private genDoSymbolAccess(aValue : VariableMember) post (trim())]
+[aValue.parent.genDoMemberAccess(aValue.symbolName)/]
+[/template]
+
+[template private genDoSymbolAccess(aValue : Constant) post (trim())]
+[aValue.symbolName/]
+[/template]
+
+[template private genDoValueAccess(aValue : Value)/]
+
+[template private genDoValueAccess(aValue : Parameter) post (trim())]
+[if (aValue.passType = ParameterPassTypeEnum::value)]
+	[aValue.symbolName/]
+[else]
+	[if (aValue.type.oclIsKindOf(StructType))]
+		[aValue.symbolName/]
+	[elseif (aValue.type.oclIsKindOf(PrimitiveType))]
+		(*[aValue.symbolName/])
+	[elseif (aValue.type.oclIsKindOf(PointerType))]
+		(*[aValue.symbolName/])
+	[else]
+		[aValue.symbolName/]
+	[/if]
+[/if]
+[/template]
+
+[template private genDoValueAccess(aValue : Variable) post (trim())]
+[aValue.symbolName/]
+[/template]
+
+[template private genDoValueAccess(aValue : VariableMember) post (trim())]
+[aValue.parent.genDoMemberAccess(aValue.symbolName)/]
+[/template]
+
+[template private genDoValueAccess(aValue : Constant) post (trim())]
+[aValue.symbolName/]
+[/template]
+
+[template private genDoPointerAccess(aValue : Value) /]
+
+[template private genDoPointerAccess(aValue : Parameter) post (trim())]
+[if (aValue.passType = ParameterPassTypeEnum::value)]
+	&[aValue.symbolName/]
+[else]
+	[aValue.symbolName/]
+[/if]
+[/template]
+
+[template private genDoPointerAccess(aValue : Variable) post (trim())]
+[if (aValue.type.oclIsKindOf(ArrayType))]
+[aValue.symbolName/]
+[else]
+(&[aValue.symbolName/])
+[/if]
+[/template]
+
+[template private genDoPointerAccess(aValue : VariableMember) post (trim())]
+(&[aValue.parent.genDoMemberAccess(aValue.symbolName)/])
+[/template]
+
+[template private genDoPointerAccess(aValue : Constant) post (trim())]
+[aValue.symbolName/]
+[/template]
+
+[template private genDoMemberAccess(aValue : Value, member : String) /]
+
+[template private genDoMemberAccess(aValue : Parameter, member : String) post (trim())]
+[if (aValue.passType = ParameterPassTypeEnum::value)]
+	[aValue.symbolName/].[member/]
+[else]
+	[aValue.symbolName/]->[member/]
+[/if]
+[/template]
+
+[template private genDoMemberAccess(aValue : Variable, member : String) post (trim())]
+[aValue.symbolName/].[member/]
+[/template]
+
+[template private genDoMemberAccess(aValue : Constant, member : String) post (trim())]
+[aValue.symbolName/]
+[/template]
+

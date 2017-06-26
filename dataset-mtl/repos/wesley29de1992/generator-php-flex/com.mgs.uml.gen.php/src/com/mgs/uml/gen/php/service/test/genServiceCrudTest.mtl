@@ -1,0 +1,140 @@
+[comment encoding = UTF-8 /]
+[module genServiceCrudTest('http://www.eclipse.org/uml2/3.0.0/UML')/]
+[import com::mgs::uml::gen::php::service::genCRUD /]
+[import com::mgs::uml::common::services /]
+[import com::mgs::uml::gen::php::sql::sqlUtils /]
+[import com::mgs::uml::common::profileUtils /]
+[import com::mgs::uml::common::umlUtils /]
+[import com::mgs::uml::gen::php::common::phpUtils /]
+
+
+[template public genServiceCrudTest(c : Class) ? (profile_isEntity())]
+	
+[comment @main /]
+[file ('test/services/' + c.genServiceCrudName() + 'Test.php', false, 'UTF-8')]
+<?php
+
+class [c.genServiceCrudName()/]Test extends ServiceTestCase {
+
+	[c.genTestCreate()/]
+	[c.genTestRetrieve()/]
+	[c.genTestUpdate()/]
+	[c.genTestDelete()/]
+	
+	[c.genTestHierarchy()/]
+
+	// [protected ('additions')]
+	// Place all additionnal tests here.
+	// [/protected]
+}
+
+?>
+[/file]
+	
+[/template]
+
+[template public genTestHierarchy(c : Class)]
+[if (c.hasBaseClass())]
+public function testHierarchy(){
+[for (b : Class | c.baseClasses()->union(c->asSequence()))]
+	$service = new [b.genServiceCrudName()/]();
+	$service->create(new [b.genNameVO()/]());
+[/for]
+	$service = new [c.rootClass().genServiceCrudName()/]();
+	$voFound = $service->retrieveAll();
+	$this->assertTrue(is_array($voFound), "object is not an array");
+	$numExpected = [c.baseClasses()->size() + 1/];
+	$numFound = count($voFound);
+	$this->assertTrue($numFound == $numExpected, "array doesn't contains $numExpected elements but $numFound");
+	foreach($voFound as $element){
+		$this->assertTrue($element != null, "null object");
+	}
+}
+	
+[/if]
+[/template]
+
+[template public genTestCreate(c : Class)]
+public function testCreate(){
+	$service = new [c.genServiceCrudName()/]();
+	$voToCreate = new [c.genNameVO()/]();
+	$voCreated = $service->create($voToCreate);
+	$this->assertTrue($voCreated != null, "object is null");
+	$this->assertTrue($voCreated->id > 0, "id failure");
+}
+[/template]
+
+[template public genTestRetrieve(c : Class)]
+public function testRetrieveAll_whenEmpty(){
+	$service = new [c.genServiceCrudName()/]();
+	$voFound = $service->retrieveAll();
+	$this->assertTrue(is_array($voFound), "object is not an array");
+	$this->assertTrue(count($voFound) == 0, "array is not empty");
+}
+public function testRetrieveAll_whenPopulated(){
+	$service = new [c.genServiceCrudName()/]();
+	$service->create(new [c.genNameVO()/]());
+	$service->create(new [c.genNameVO()/]());
+	$service->create(new [c.genNameVO()/]());
+	$voFound = $service->retrieveAll();
+	$this->assertTrue(is_array($voFound), "object is not an array");
+	$this->assertTrue(count($voFound) == 3, "array doesn't contains 3 elements");
+}
+public function testRetrieveById_whenNotExists(){
+	$service = new [c.genServiceCrudName()/]();
+	$voCreated = $service->create(new [c.genNameVO()/]());
+	$voFound = $service->retrieveById($voCreated->id + 1);
+	$this->assertTrue($voFound == null, "object is not null");
+}
+public function testRetrieveById_whenExists(){
+	$service = new [c.genServiceCrudName()/]();
+	$voCreated = $service->create(new [c.genNameVO()/]());
+	$voFound = $service->retrieveById($voCreated->id);
+	$this->assertTrue($voFound != null, "object is null");
+	$this->assertTrue($voFound->id == $voCreated->id, "id doesn't match");
+}
+[for (p : Property | c.simplePrimitiveAttributes()) ? (isUnique)]
+public function testRetrieveBy[p.name.toUpperFirst()/](){
+	$value = [p.php_genTestValue()/];
+	$voCreated = new [c.genNameVO()/]();
+	$voCreated->[p.genNameVO()/] = $value;
+	$service = new [c.genServiceCrudName()/]();
+	$voCreated = $service->create($voCreated);
+	$voFound = $service->retrieveBy[p.name.toUpperFirst()/]($value);
+	$this->assertTrue($voFound != null, "object is null");
+}
+[/for]			
+[/template]
+
+[template public genTestUpdate(c : Class)]
+public function testUpdate_notExists(){
+	$service = new [c.genServiceCrudName()/]();
+	$voToUpdate = new [c.genNameVO()/]();
+	$voToUpdate->id = 1;
+	$service->update($voToUpdate);
+}
+public function testUpdate_exists(){
+	$service = new [c.genServiceCrudName()/]();
+	$voToCreate = new [c.genNameVO()/]();
+	$voCreated = $service->create($voToCreate);
+	$service->update($voCreated);
+}
+[/template]
+
+[template public genTestDelete(c : Class)]
+public function testDelete_notExists(){
+	$service = new [c.genServiceCrudName()/]();
+	$voToDelete = new [c.genNameVO()/]();
+	$voToDelete->id = 1;
+	$service->delete($voToDelete);
+}
+public function testDelete_exists(){
+	$service = new [c.genServiceCrudName()/]();
+	$voToCreate = new [c.genNameVO()/]();
+	$voCreated = $service->create($voToCreate);
+	$service->delete($voCreated);
+	$voFound = $service->retrieveById($voCreated->id);
+	$this->assertTrue($voFound == null, "object is not null");
+}
+
+[/template]

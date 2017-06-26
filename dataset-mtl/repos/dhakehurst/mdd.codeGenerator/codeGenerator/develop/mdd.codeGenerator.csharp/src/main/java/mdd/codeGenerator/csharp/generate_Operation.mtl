@@ -1,0 +1,77 @@
+[comment encoding = UTF-8 /]
+[comment ****************************************************************
+* Copyright (c) 2013 - 2014 Dr David H. Akehurst.
+* All rights reserved. This program and the accompanying materials
+* are made available under the terms of the Eclipse Public License v1.0
+* and is available at http://www.eclipse.org/legal/epl-v10.html
+*
+* Contributors:
+* 
+************************************************************************* /]
+[module generate_Operation('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import mdd::codeGenerator::common::utils /]
+[import mdd::codeGenerator::csharp::utils_csharp /]
+[import mdd::codeGenerator::csharp::generate_Behaviour /]
+[import mdd::codeGenerator::csharp::generate_Classifier /]
+
+
+[template public gen_Constructor(op : Operation)]
+/// <summary> Constructor Description </summary>
+public [op.name/]([op.gen_Parameters()/]) {
+  __createParts();
+  __createLinks();
+  [op.generateBody()/]
+}
+[/template]
+
+[template public generateSignature(op : Operation)]
+[op.returnTypeName()/] [op.nonKeyWordName()/][op.genericParams()/]([op.gen_Parameters()/])[op.opConstraints()/]
+[/template]
+
+[template public generate(op : Operation)]
+/// <summary> Operation Description </summary>
+[(if op.isStatic then 'static' else '' endif)/] public [op.returnTypeName()/] [op.nonKeyWordName()/]([op.gen_Parameters()/]) {
+  [op.generateBody()/]
+}
+[/template]
+
+[template public gen_Parameters(op : Operation)]
+[for (p : Parameter | op.ownedParameter->reject(p2|p2.direction = ParameterDirectionKind::return)) separator (',')]
+[p.typeName()/] [p.name/][/for]
+[/template]
+
+[template public generateArguments(op : Operation)]
+[for (p : Parameter | op.ownedParameter->reject(p2|p2.direction = ParameterDirectionKind::return)) separator (',')]
+[p.name/][/for]
+[/template]
+
+[template public genericParams(op : Operation)]
+[if op.ownedTemplateSignature.oclIsUndefined()][else]
+<[op.ownedTemplateSignature.ownedParameter.ownedParameteredElement.oclAsType(NamedElement).name/]>[/if]
+[/template]
+
+[query public opConstraints(arg : Operation) : String =
+if arg.ownedTemplateSignature.oclIsUndefined() then
+  ''
+else
+  let
+    tp:Classifier = arg.ownedTemplateSignature.ownedParameter.ownedParameteredElement->any(true).oclAsType(Classifier)
+  in
+    if tp.general()->isEmpty() then
+      '/* no template constraints */'
+    else
+      ' where '+tp.name+ ' : ' + tp.opConstraintName()
+    endif
+endif
+/]
+
+
+[query public opConstraintName(arg : Classifier) : String =
+ if arg.general()->any(true).name = 'BitString' then
+ 	'struct, '+arg.general()->any(true).fullName()
+ else
+	arg.general()->any(true).fullName()
+ endif
+/]
+

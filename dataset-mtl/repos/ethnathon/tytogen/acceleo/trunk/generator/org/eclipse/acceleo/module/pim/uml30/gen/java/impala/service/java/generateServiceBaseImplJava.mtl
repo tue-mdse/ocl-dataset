@@ -1,0 +1,314 @@
+[comment encoding = UTF-8 /]
+[module generateServiceBaseImplJava('http://www.eclipse.org/uml2/3.0.0/UML') extends org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::generateJavaClass/]
+[import org::acceleo::module::pim::uml21::gen::java::common::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::service::common::servicePathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::java::javaclass /]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::structureUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::stringUtil /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common /]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::service::common::serviceCommon /]
+
+[template public generateServiceBaseImplJava(aClass : Class)]
+[aClass.generateJavaClass()/]
+[/template]
+
+[template private generateJavaClass(aService : Class) overrides generateJavaClass]
+	[file (aService.getModel().generateProjectFolder().concat(aService.getModel().pathToGeneratedMainJava()).concat('/').concat(aService.generateJavaPackagePath()).concat('/').concat(aService.name.toUpperFirst()).concat('BaseImpl.java'), false, 'UTF-8')]
+package [aService.generateJavaPackage()/];
+// [protected ('imports')] 
+
+import java.io.Serializable;
+[aService.generateImports()/]
+
+[comment][if (aService.getMultiplicity()->notEmpty())]
+	[for (aMultiplicityElement:MultiplicityElement | aService.getMultiplicity())]
+		[if (aMultiplicityElement.oclIsTypeOf(Type))]
+			[if (aService.generateJavaPackage() <> aMultiplicityElement.oclAsType(Type).generateJavaPackage())]
+import [aMultiplicityElement.oclAsType(Type).generateJavaPackage()/].[aMultiplicityElement.oclAsType(Type).name/];
+			[/if]
+		[/if]		
+	[/for]
+[/if][/comment]
+[if (not (aService.superClass->isEmpty()))]
+	[if (aService.generateJavaPackage() <> aService.superClass->asSequence()->first().generateJavaPackage())]
+import [aService.superClass.generateJavaPackage()/].[aService.superClass.name/];
+	[/if]
+[/if]
+[for (aDaoClass : Class | aService.getRelatedDaos())]
+	[if (aService.generateJavaPackage() <> aDaoClass.generateJavaPackage())]
+import [aDaoClass.generateJavaPackage()/].[aDaoClass.name/]Dao;
+	[/if]
+[/for]
+// [/protected]
+
+/**
+[if (aService.ownedComment._body->size() > 0)]
+ * [aService.ownedComment._body.replaceAll('\n', '\n * ')/]
+[else]
+ * Warning: no comment in the model for interface [name/].
+[/if]
+ */
+public abstract class [aService.name/]BaseImpl implements [aService.name/] {
+
+    /**
+     * serialVersionUID is used for serialization.
+     */
+    private static final long serialVersionUID = 1L;
+
+
+[for (prop:Property|aService.classAttributes())]
+    /**
+     * Field [prop.name/].
+     */
+    protected [prop.convertToJavaType()/] [prop.name/];
+
+[/for]
+[for (aDaoClass:Class|aService.getRelatedDaos())]
+    /**
+     * Field [aDaoClass.name.toLowerFirst()/]Dao.
+     */
+    protected [aDaoClass.name/]Dao [aDaoClass.name.toLowerFirst()/]Dao;
+
+[/for]
+    /**
+     * Default constructor.
+     */
+    public [aService.name/]BaseImpl() {
+        super();
+[for (prop:Property|aService.classAttributes())]
+	[if (prop.upper <> 1)]
+		[if (prop.isOrdered)]
+		        [prop.name/] = new ArrayList<[prop.type.name/]>();
+		[else]
+		        [prop.name/] = new HashSet<[prop.type.name/]>();
+		[/if]
+	[/if]
+[/for]
+    }
+
+[let props : Sequence(Property) = aService.classAttributes()]
+	[if (props->size() > 0)]
+
+    /**
+     * Constructor with all parameters initialized.
+		[for (prop:Property|props)]
+     * @param [prop.paramName()/]
+			[if (prop.ownedComment._body->size() > 0)]
+     *            [prop.ownedComment._body.replaceAll('n', '\n     *            ')/]
+			[else]
+     *            Warning, no comment in the model.
+			[/if]
+		[/for]
+     */
+    public [aService.name/]BaseImpl([aService.classAttributes().asParameter()->sep(', ')/]) {
+		[for (prop:Property|props)]
+        this.[prop.name/] = [prop.paramName()/];
+		[/for]
+    }
+	[/if]
+	[for (prop:Property|props)]
+    /**
+     * Returns [name/].
+		[if (prop.ownedComment._body->size() > 0)]
+     * @return [prop.ownedComment._body.replaceAll('\n', '\n     * ')/]
+		[else]
+     * @return Warning, no comment in the model.
+		[/if]
+     */
+    [prop.getterSignature()/] {
+		[if (prop.isDerived)]
+        // [protected ('getter')] 
+		// of derived [prop.name/] attribute
+		// TODO Logic to calculate [prop.name/]
+        return this.[prop.name/];
+        // [/protected]
+		[else]
+        return [prop.name/];
+		[/if]
+    }
+
+		[if (not (prop.isReadOnly) and not (prop.isDerived))]
+    /**
+     * Sets a value to parameter [prop.name/].
+     * @param [prop.paramName()/]
+			[if (prop.ownedComment._body->size() > 0)]
+     *            [prop.ownedComment._body.replaceAll('\n', '\n     *            ')/]
+			[else]
+     *            Warning, no comment in the model.
+			[/if]
+     */
+    [prop.setterSignature()/] {
+        this.[prop.name/] = [prop.paramName()/];
+    }
+		[/if]
+
+		[if (upper = -1 or upper > 1)]
+    /**
+     * Adds a [name/] to the [name/] Collection.
+			[if (opposite <> null)]
+     * Birectionnal association : add the current [aService.name/] instance to
+     * the given [name/] parameter.
+			[/if]
+     * @param [name/]Elt Element to add
+     */
+    public void add[prop.name.toUpperFirst()/](final [prop.type.convertToJavaType()/] [prop.name/]Elt) {
+        [prop.name/].add([prop.name/]Elt);
+			[if (prop.opposite <> null)]
+				[if (prop.opposite.upper = 1)]
+        [prop.name/]Elt.set[prop.opposite.name.toUpperFirst()/](this);
+				[else]
+        [prop.name/]Elt.get[prop.opposite.name.toUpperFirst()/]().add(this);
+				[/if]
+			[/if]
+    }
+
+    /**
+     * Removes a [prop.name/] from the [prop.name/] Collection.
+			[if (prop.opposite <> null)]
+     * Birectionnal association : remove the current [aService.name/] instance
+     * from the given [prop.name/] parameter.
+			[/if]
+     * @param [prop.name/]Elt Element to remove
+     */
+    public void remove[prop.name.toUpperFirst()/](final [prop.type.convertToJavaType()/] [prop.name/]Elt) {
+        [prop.name/].remove([prop.name/]Elt);
+			[if (prop.opposite <> null)]
+				[if (prop.opposite.upper = 1)]
+        [prop.name/]Elt.set[prop.opposite.name.toUpperFirst()/](null);
+				[else]
+        [prop.name/]Elt.get[prop.opposite.name.toUpperFirst()/]().remove(this);
+				[/if]
+			[/if]
+    }
+		[/if]
+	[/for]
+	[for (aDaoClass : Class | aService.getRelatedDaos())]
+		[if (aService.generateJavaPackage() <> aDaoClass.generateJavaPackage())]
+	public [aDaoClass.name/]Dao get[aDaoClass.name/]Dao() {
+		return this.[aDaoClass.name.toLowerFirst()/]Dao;
+	}
+
+	public void set[aDaoClass.name/]Dao([aDaoClass.name/]Dao the[aDaoClass.name/]Dao) {
+		this.[aDaoClass.name.toLowerFirst()/]Dao = the[aDaoClass.name/]Dao;
+	}
+		[/if]
+	[/for]
+
+[/let]
+
+
+
+[if (aService.interfaceRealization->notEmpty())]
+	[for (interface:Interface|aService.interfaceRealization.target->filter(Interface))]
+    /* Implementation of interface [aService.name/]: start */
+		[for (prop:Property|interface.itfAttributes())] 
+			[if (aService.attribute->select(name = prop.name)->notEmpty())]
+
+    /**
+     * Implementation of [interface.name/]'s [prop.name/] getter.
+				[if (prop.ownedComment._body->size() > 0)]
+     * @return [prop.ownedComment._body.replaceAll('\n', '\n     * ')/]
+				[else]
+     * @return Warning, no comment in the model.
+				[/if]
+     * @see [interface.name/].[prop.getterName()/]
+     */
+    [prop.getterSignature()/] {
+        // [protected ('extra getter')] 
+		// for getter of <%name%>  ['['/]DO NOT REMOVE[']'/]
+        // TODO Implement me !
+        throw new UnsupportedOperationException("Method not yet implemented");
+        // [/protected] 
+    }
+
+    /**
+     * Implementation of [interface.name/]'s [prop.name/] setter.
+     * @param [prop.paramName()/]
+				[if (prop.ownedComment._body->size() > 0)]
+     *            [prop.ownedComment._body.replaceAll('\n', '\n     *            ')/]
+				[else]
+     *            Warning, no comment in the model.
+				[/if]
+     * @see [interface.name/].[prop.setterName()/]
+     */
+    [prop.setterSignature()/] {
+        // [protected ('setter')] 
+		// for getter of <%name%>  ['['/]DO NOT REMOVE[']'/]
+        // TODO Implement me !
+        throw new UnsupportedOperationException("Method not yet implemented");
+        // [/protected] for setter of [prop.name/] ['['/]DO NOT REMOVE[']'/]
+    }
+
+			[/if]
+
+		[/for]
+    /* Implementation of interface [name/]: end */
+
+	[/for]
+[/if]
+
+}
+
+	[/file]
+[/template]
+
+
+[comment][query public isSupperAsEntity(aService : Class) : Boolean = 
+aService.superClass->notEmpty() and aService.superClass->asSequence()->first().hasStereotype('Entity')/][/comment]
+
+
+[template public extensions(aService:Class)]
+[if (not (aService.superClass->isEmpty()))] extends [aService.superClass.name/][/if]
+[/template]
+
+
+[template public asParameter(property:Property) ]
+[property.convertToJavaType()/] [property.paramName()/]
+[/template]
+
+
+[template public implementedInterfaces(aService:Class)]
+[aService.interfaceRealization.target->filter(Interface).name->sep(', ')/]
+[/template]
+
+
+
+[query public getOtherPKProperties(aService : Class) : Set(Property) =
+if(aService.interfaceRealization->notEmpty()and 
+	aService.interfaceRealization.target->notEmpty() and
+	aService.interfaceRealization.target->filter(Interface)->notEmpty() and
+	aService.interfaceRealization.target->filter(Interface)->select(isEntity())->notEmpty() and
+	aService.interfaceRealization.target->filter(Interface)->select(isEntity())
+		->asSequence()->first().attribute->notEmpty()) then   
+	aService.interfaceRealization.target->filter(Interface)->select(isEntity())
+		->asSequence()->first().attribute->select(isPK())
+else
+	Set{}
+endif
+/]
+
+[comment][template public generateFinderParamArray(aFinderOperation : Operation) post (trim())]
+new Object['['/][']'/]{[aFinderOperation.ownedParameter.name->sep(', ')/]}
+[/template]
+
+[template public generateQLSampleTemplate(aParameter : Parameter, prefix : String) post (trim())]
+[prefix/].aParameter = ?
+[/template]
+
+[template public generateFinderQLSample(aFinderOperation : Operation)]
+from [aFinderOperation.owner.oclAsType(Class).name/] [aFinderOperation.owner.oclAsType(Class).name.toLowerFirst()/] where [aFinderOperation.ownedParameter.generateQLSampleTemplate(aFinderOperation.owner.oclAsType(Class).name.toLowerFirst())->sep(' and ')/]
+[/template]
+
+
+[query public getFinderMethodeName(aFinderOperation : Operation) : String = 
+if(aFinderOperation.name.toLowerFirst().startsWith('find')) then
+aFinderOperation.name.toLowerFirst()
+else
+'find'.concat(aFinderOperation.name.toUpperFirst())
+endif 
+/][/comment]

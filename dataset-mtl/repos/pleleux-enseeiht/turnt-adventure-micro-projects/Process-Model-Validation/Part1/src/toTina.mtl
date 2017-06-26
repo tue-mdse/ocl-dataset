@@ -1,0 +1,36 @@
+[comment encoding = UTF-8 /]
+[module toTina('http://PetriNet')]
+
+[comment Generation de la syntaxe NET à partir d'un modèle de processus /]
+
+[template public toTina(petri : PetriNet)]
+[comment @main/]
+[file (petri.name.concat('.net'), false, 'UTF-8')]
+[for (tr : Transition | petri.nodes->getTRs())]
+	tr [tr.name/] [if (tr.min_time = -1)][']w'/][else]['['/][tr.min_time/][/if][','/][if (tr.max_time = -1)]['w['/][else][tr.max_time/][']'/][/if][for (ic : Arc | tr.incomings->asOrderedSet())] [ic.source.name/][if (ic.weight<>0)][ic.getArcKind()/][ic.weight/][/if][/for] -> [for (oc : Arc | tr.outgoings->asOrderedSet())] [oc.target.name/][if (oc.weight<>0)][oc.getArcKind()/][oc.weight/][/if][/for]
+[/for]
+[for (pl : Place | petri.nodes->getPLs())]
+	pl [pl.name/] ([pl.marking/])
+[/for]
+	net [petri.name/]
+[/file]
+[/template]
+
+[query public getTRs(elements : OrderedSet(Node)) : OrderedSet(Transition) = 
+	elements->select( e | e.oclIsTypeOf(Transition) )
+		->collect( e | e.oclAsType(Transition) )
+		->asOrderedSet()
+/]
+
+[query public getPLs(elements : OrderedSet(Node)) : OrderedSet(Place) = 
+	elements->select( e | e.oclIsTypeOf(Place) )
+		->collect( e | e.oclAsType(Place) )
+		->asOrderedSet()
+/]
+
+[template public getArcKind(arc : Arc)]
+[if (arc.kind = ArcKind :: normal)]
+*[elseif (arc.kind = ArcKind :: read_arc)]
+?[elseif (arc.kind = ArcKind :: inhibitor)]
+?-[/if]
+[/template]

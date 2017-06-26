@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="statesml" nsURI="http://www.big.tuwien.ac.at/statesml" nsPrefix="statesml">
+  <eAnnotations source="http://www.eclipse.org/OCL/Import">
+    <details key="ecore" value="http://www.eclipse.org/emf/2002/Ecore"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="invocationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="settingDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EClass" name="SystemUnit" eSuperTypes="#//NamedElement #//BehavioredElement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="attributes" upperBound="-1"
+        eType="#//Attribute" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Attribute" eSuperTypes="#//TypedElement #//NamedElement"/>
+  <eClassifiers xsi:type="ecore:EClass" name="TypedElement" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="type" lowerBound="1" eType="#//DataType"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DataType" eSuperTypes="#//BehavioredElement #//NamedElement"/>
+  <eClassifiers xsi:type="ecore:EClass" name="NamedElement" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Function" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="AtMostOneReturnParameter"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="AtMostOneReturnParameter" value="self.parameters->select(p |&#xA;&#x9;&#x9;&#x9;&#x9;p.direction = ParameterDirectionKind::RETURN)->size() &lt;= 1"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parameters" upperBound="-1"
+        eType="#//Parameter" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Parameter" eSuperTypes="#//NamedElement #//TypedElement">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="direction" lowerBound="1"
+        eType="#//ParameterDirectionKind"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="StateSystem" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="AttributeSpecificationValidAttribute OneInitialState MaxOneTerminalState NoIncomingEdgeForInitalState OneOutgoingEdgeForInitalState OneIncomingEdgeForTerminalState NoOutgoingEdgeForTerminalState"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="AttributeSpecificationValidAttribute" value="self.attributes->union(self.systemUnit.attributes)->includesAll(self.processibleEvents->selectByKind(ChangeEvent).changeExpression.booleanFunctionCall.parameters.valueSpecification->selectByKind(AttributeValueSpecification).attribute)"/>
+      <details key="OneInitialState" value="self.nodes->selectByKind(State)->select(s | s.initial)->size() = 1"/>
+      <details key="MaxOneTerminalState" value="self.nodes->selectByKind(State)->select(s | s.terminal)->size() &lt;= 1"/>
+      <details key="NoIncomingEdgeForInitalState" value="self.edges.target->selectByKind(State)->select(s | s.initial)->size() = 0"/>
+      <details key="OneOutgoingEdgeForInitalState" value="self.edges.source->selectByKind(State)->select(s | s.initial)->size() = 1"/>
+      <details key="OneIncomingEdgeForTerminalState" value="self.nodes->selectByType(State)->select(s |&#xA;&#x9;&#x9;&#x9;&#x9;s.terminal)->size() = 0 or self.edges.target->selectByType(State)->select(s | s.terminal)->size() = 1"/>
+      <details key="NoOutgoingEdgeForTerminalState" value="self.edges.source->selectByKind(State)->select(s | s.terminal)->size() = 0"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="nodes" upperBound="-1"
+        eType="#//Node" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="edges" upperBound="-1"
+        eType="#//Edge" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="processibleEvents" upperBound="-1"
+        eType="#//Event" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="systemUnit" lowerBound="1"
+        eType="#//SystemUnit"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="attributes" upperBound="-1"
+        eType="#//Attribute" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Node" abstract="true" eSuperTypes="#//NamedElement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="outgoingEdges" upperBound="-1"
+        eType="#//Edge" derived="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="derivation" value="self.oclContainer.oclAsType(StateSystem).edges->select(e | e.source = self)"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="incomingEdges" upperBound="-1"
+        eType="#//Edge" derived="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+        <details key="derivation" value="self.oclContainer.oclAsType(StateSystem).edges->select(e | e.target = self)"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Edge" eSuperTypes="#//NamedElement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1"
+        eType="#//Node"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" lowerBound="1"
+        eType="#//Node"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SelectionDivergence" eSuperTypes="#//Node">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="OneIncomingEdge AtLeastTwoOutgoingEdges SuccessorTransitionMustDefineTrigger OutgoingEdgeTargetIsValid"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="OneIncomingEdge" value="self.incomingEdges->size() = 1"/>
+      <details key="AtLeastTwoOutgoingEdges" value="self.outgoingEdges->size() >= 2"/>
+      <details key="SuccessorTransitionMustDefineTrigger" value="self.outgoingEdges.target->selectByType(Transition)->select(t |&#xA;&#x9;&#x9;&#x9;t.trigger.oclIsUndefined())->size() &lt;= 1"/>
+      <details key="OutgoingEdgeTargetIsValid" value="self.outgoingEdges.target->forAll(t | t.oclIsTypeOf(Transition))"/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SelectionConvergence" eSuperTypes="#//Node">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="AtLeastTwoIncomingEdges OneOutgoingEdge OutgoingEdgeTargetIsValid"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="AtLeastTwoIncomingEdges" value="self.incomingEdges->size() >= 2"/>
+      <details key="OneOutgoingEdge" value="self.outgoingEdges->size() = 1"/>
+      <details key="OutgoingEdgeTargetIsValid" value="self.outgoingEdges.target->forAll(t | t.oclIsTypeOf(State))"/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="State" eSuperTypes="#//Node">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="StateTypeIsValid NoActionsForIntialOrTerminalState RegularStateEdgesAreValid OutgoingEdgeTargetIsValid"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="StateTypeIsValid" value="not (self.terminal and self.initial)"/>
+      <details key="NoActionsForIntialOrTerminalState" value="not (self.initial or self.terminal) or self.actionSequence->isEmpty()"/>
+      <details key="RegularStateEdgesAreValid" value="(self.initial or self.terminal) or (self.incomingEdges->size() = 1 and self.outgoingEdges->size() = 1)"/>
+      <details key="OutgoingEdgeTargetIsValid" value="self.outgoingEdges.target->forAll(t |&#xA;&#x9;&#x9;&#x9;t.oclIsTypeOf(Transition) or t.oclIsTypeOf(SelectionDivergence))"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="actionSequence" upperBound="-1"
+        eType="#//FunctionCall" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="initial" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="terminal" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Transition" eSuperTypes="#//Node">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="OneIncomingEdge OneOutgoingEdge OutgoingEdgeTargetIsValid"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="OneIncomingEdge" value="self.incomingEdges->size() = 1"/>
+      <details key="OneOutgoingEdge" value="self.outgoingEdges->size() = 1"/>
+      <details key="OutgoingEdgeTargetIsValid" value="self.outgoingEdges.target->forAll(t |&#xA;&#x9;&#x9;&#x9;t.oclIsTypeOf(State) or t.oclIsTypeOf(SelectionConvergence))"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="trigger" eType="#//Trigger"
+        containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="FunctionCall">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="OneParameterValueForEachDefinedParameter"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="OneParameterValueForEachDefinedParameter" value="self.parameters.parameter->includesAll(self.function.parameters->select(p |&#xA;&#x9;&#x9;&#x9;&#x9;p.direction = ParameterDirectionKind::IN))"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="function" lowerBound="1"
+        eType="#//Function"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parameters" upperBound="-1"
+        eType="#//ParameterValue" containment="true" eOpposite="#//ParameterValue/functionCall"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ParameterValue">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="FunctionCallParameterValid"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="FunctionCallParameterValid" value="self.functionCall.function.parameters->includes(self.parameter)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="valueSpecification" lowerBound="1"
+        eType="#//ValueSpecification" containment="true" eOpposite="#//ValueSpecification/parameterValue"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parameter" lowerBound="1"
+        eType="#//Parameter"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="functionCall" lowerBound="1"
+        eType="#//FunctionCall" changeable="false" eOpposite="#//FunctionCall/parameters"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ValueSpecification" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parameterValue" lowerBound="1"
+        eType="#//ParameterValue" changeable="false" eOpposite="#//ParameterValue/valueSpecification"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="IntegerValueSpecification" eSuperTypes="#//ValueSpecification">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="BooleanValueSpecification" eSuperTypes="#//ValueSpecification">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AttributeValueSpecification" eSuperTypes="#//ValueSpecification">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="AttributeSpecificationValidType"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="AttributeSpecificationValidType" value="self.attribute.type = self.parameterValue.parameter.type"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="attribute" lowerBound="1"
+        eType="#//Attribute"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Trigger">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="event" lowerBound="1" eType="#//Event"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Event" abstract="true" eSuperTypes="#//NamedElement"/>
+  <eClassifiers xsi:type="ecore:EClass" name="ChangeEvent" eSuperTypes="#//Event">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="changeExpression" lowerBound="1"
+        eType="#//ChangeExpression" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ChangeExpression">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="HasBooleanReturnParameter"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore/OCL/Pivot">
+      <details key="HasBooleanReturnParameter" value="self.booleanFunctionCall.function.parameters->exists(p |&#xA;&#x9;&#x9;&#x9;p.direction = ParameterDirectionKind::RETURN and p.type.name = 'Boolean')"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="booleanFunctionCall" lowerBound="1"
+        eType="#//FunctionCall" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="BehavioredElement" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="functions" upperBound="-1"
+        eType="#//Function" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="StringValueSpecification" eSuperTypes="#//ValueSpecification">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ParameterDirectionKind">
+    <eLiterals name="IN"/>
+    <eLiterals name="RETURN" value="1"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SystemUnitLibrary" eSuperTypes="#//NamedElement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="units" upperBound="-1"
+        eType="#//SystemUnit" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DataTypeLibrary" eSuperTypes="#//NamedElement">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="types" upperBound="-1"
+        eType="#//DataType" containment="true"/>
+  </eClassifiers>
+</ecore:EPackage>

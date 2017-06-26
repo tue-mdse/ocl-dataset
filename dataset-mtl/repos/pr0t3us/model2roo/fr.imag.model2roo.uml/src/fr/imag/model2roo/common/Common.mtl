@@ -1,0 +1,310 @@
+[comment encoding = UTF-8 /]
+[**
+ * Copyright 2012 jccastrejon
+ * 
+ * This file is part of Model2Roo.
+ * Model2Roo is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ * 
+ * Model2Roo is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with Model2Roo.  If not, see <http://www.gnu.org/licenses/>.
+ */]
+[module Common('http://www.eclipse.org/uml2/3.0.0/UML')]
+
+[**
+ * Ouputs the value of a stereotype's property, associated to the specified element.
+ * @param property Property name.
+ * @param prefix Prefix to output before the property's value.
+ * @param stereotypeName Name of the stereotype to which the property is associated.
+ * @param element Element to which the stereotype has been applied.
+ */]
+[template public getPropertyValue(property : String, prefix : String, stereotypeName : String, element : Element) post(trim())]
+  [if element.getAppliedStereotype(stereotypeName)->notEmpty()]
+    [let stereotype : Stereotype = element.getAppliedStereotype(stereotypeName)]
+      [if element.getValue(stereotype, property).oclIsTypeOf(EnumerationLiteral)]
+        [element.getValue(stereotype, property).oclAsType(EnumerationLiteral).name.getValidValue(prefix)/]
+      [else]
+        [element.getValue(stereotype, property).toString().getValidValue(prefix)/]
+      [/if]
+    [/let]
+  [else]
+    [property.getDefaultValue().getValidValue(prefix)/]
+  [/if]
+[/template]
+
+[**
+ * Output a property value (only if it's not empty).
+ * @param value Property's value.
+ * @param prefix Prefix to output before the property's value.
+ */]
+[template public getValidValue(value : String, prefix : String) post(trim())]
+  [if(value.size() > 0 and not value.startsWith('_'))]
+    [prefix/][value/] [/if]
+[/template]
+
+[**
+ * Output the Spring Roo details associated to the specified UML element.
+ * @param element UML element.
+ */]
+[template public getRooDetails(element : Element) post(trim())]
+[for (stereotype : Stereotype | element.getAppliedStereotypes())]
+  [if stereotype.getProfile().name.startsWith('roo')]
+    [comment] Properties defined by this stereotype and also the inherited ones [/comment]
+    [stereotype.ownedMember.getRooDetail(stereotype, element)/] [stereotype.inheritedMember.getRooDetail(stereotype, element)/] [/if]
+[/for]
+[/template]
+
+[**
+ * Output the Spring Roo details associated to the specified UML element and stereotype.
+ * @param properties Stereotype properties.
+ * @param stereotype UML stereotype.
+ * @param element UML element.
+ */]
+[template public getRooDetail(properties : NamedElement, stereotype : Stereotype, element : Element)]
+    [for (property : NamedElement | properties)]
+      [if not property.name.contains('_')]
+      [let hasMapping : String = property.name.hasMapping()]
+        [comment] If the property has a mapping, it probably requires another command (Entities commands)[/comment]
+        [if hasMapping <> 'true'] 
+          [let value : String = property.name.getPropertyValue('', stereotype.qualifiedName, element)]
+            [if not value.trim().startsWith('_')]
+              [property.name.getPropertyValue('--' + property.name + ' ', stereotype.qualifiedName, element)/] [/if]
+          [/let]
+        [/if]
+      [/let]
+      [/if]
+    [/for]
+[/template]
+
+[**
+ * Decide whether the specified key doesn't require to output a value.
+ * @param key Key.
+ */]
+[template public requiresNoValue(key : String) post(trim())]
+[if key.getPropertiesWithoutValue().size() = 0] false [else] true [/if]
+[/template]
+
+[**
+ * Get the properties for which no value should be output.
+ * @param key Key.
+ */]
+[template public getPropertiesWithoutValue(key : String) post(trim())]
+  [if key = 'seleniumTest'] true [/if]
+[/template]
+
+[**
+ * Decide whether the specified key requires a default value or not.
+ * @param key Key.
+ */]
+[template public requiresDefaultValue(key : String) post(trim())]
+[if key.getDefaultValue().size() = 0] false [else] true [/if]
+[/template]
+
+[**
+ * Get the default value associated to the particular key.
+ * @param key Key.
+ */]
+[template public getDefaultValue(key : String) post(trim())]
+    [if key = 'topLevelPackage'] com.model2roo
+    [else] [if key = 'persistenceProvider'] HIBERNATE
+    [else] [if key = 'persistenceDatabase'] HYPERSONIC_IN_MEMORY
+    [else] [if key = 'controllersAll'] --package ~.web
+    [/if] [/if] [/if] [/if]
+[/template]
+
+[**
+ * Generates commands associated to the specified element, stereotype and entity.
+ * @param element UML element.
+ * @param stereotype UML stereotype.
+ * @param entity UML entity name.
+ */]
+[template public generateModelCommands(element : Element, stereotype : Stereotype, entity : String) post(trim())]
+[let groups : Set(String) = Set{'logging', 'webLanguages', 'finders', 'controller', 'selenium', 'dod', 'testMock', 'testIntegration'}]
+  [for (group : String | groups)]
+    [element.generateModelCommand(stereotype, group, entity)/]
+  [/for]
+[/let]
+[/template]
+
+[**
+ * Generates commands associated to the specified element, stereotype and entity, that begin with the specified prefix.
+ * @param element UML element.
+ * @param stereotype UML stereotype.
+ * @param prefix Prefix of the commands to be generated.
+ * @param entity UML entity name.
+ */]
+[template public generateModelCommand(element : Element, stereotype : Stereotype, prefix : String, entity : String) post(trim())]
+[for (property : Property | stereotype.attribute)]
+  [if property.name.startsWith(prefix)]
+    [let value : String = property.name.getPropertyValue('', stereotype.qualifiedName, element)]
+    [let requiresDefault : String = property.name.requiresDefaultValue()]
+    [let requiresNoValue : String = property.name.requiresNoValue()]
+    [let contextMapping : String = property.name.getContextMapping(entity)]
+    [let hasMapping : String = property.name.hasMapping()]
+
+    [if hasMapping = 'true']
+      [comment] Property without value [/comment]
+      [if value.oclIsUndefined() or value.size() = 0] 
+        [if requiresDefault = 'true'] [property.name.getMapping()/] [property.name.getDefaultValue()/] [contextMapping/] [/if]
+
+      [comment] Property with multiple values [/comment]
+      [else] [if value.contains(',')] 
+        [for (singleValue : String | value.tokenize(','))]
+          [property.name.getMapping()/] [singleValue.trim()/] [contextMapping/]
+        [/for]
+
+      [comment] Special commands that doesn't output its property value [/comment]
+      [else] [if requiresNoValue = 'true']
+             [property.name.getMapping()/] [contextMapping/]
+
+      [comment] Special commands that can output a default value [/comment]
+      [else] [if requiresDefault = 'true'] 
+             [if value = 'true'] [property.name.getMapping()/] [property.name.getDefaultValue()/] [contextMapping/] [/if]
+
+      [comment] Property with single value [/comment]
+      [else] [property.name.getMapping()/] [value/] [contextMapping/]
+      [/if] [/if] [/if] [/if]
+    [/if]
+    [/let] [/let] [/let] [/let] [/let]
+  [/if]
+[/for]
+[/template]
+
+[**
+ * Decide whether the specified key has a Spring Roo command mapping or not.
+ * @param element key Key.
+ */]
+[template public hasMapping(key : String) post(trim())]
+[if key.getMapping().size() = 0] false [else] true [/if]
+[/template]
+
+[**
+ * Get the Spring Roo context mapping associated to the specified key.
+ * @param element key Key.
+ * @param entity UML entity name.
+ */]
+[template public getContextMapping(key : String, entity : String) post(trim())]
+[if not key.getContext().oclIsUndefined()]
+  [key.getContext().replaceAll('<entity>', entity)/]
+[/if]
+[/template]
+
+[**
+ * Get the Spring Roo command mapping associated to the specified key.
+ * @param element key Key.
+ */]
+[template public getMapping(key : String) post(trim())]
+[if key = 'controllersAll'] web mvc all
+[else] [if key = 'findersAll'] web mvc finder all
+[else] [if key = 'persistenceProvider'] --provider
+[else] [if key = 'persistenceDatabase'] --database
+[else] [if key = 'persistenceApplicationId'] --applicationId
+[else] [if key = 'persistenceJndiDataSource'] --jndiDataSource
+[else] [if key = 'persistenceDatabaseName'] --databaseName
+[else] [if key = 'persistenceUserName'] --userName
+[else] [if key = 'persistencePassword'] --password
+[else] [if key = 'seleniumTest'] selenium test --controller
+[else] [if key = 'seleniumName'] --name
+[else] [if key = 'seleniumServerUrl'] --serverUrl
+[else] [if key = 'finders'] finder add --finderName
+[else] [if key = 'loggingLevel'] logging setup --level
+[else] [if key = 'webLanguages'] web mvc language --code
+[/if] [/if] [/if] [/if] [/if] [/if] [/if]
+[/if] [/if] [/if] [/if] [/if] [/if] [/if] [/if]
+[/template]
+
+[**
+ * Get the Spring Roo context associated to the specified key.
+ * @param element key Key.
+ */]
+[template public getContext(key : String) post(trim())]
+[if key = 'seleniumTest'] ~.web.<entity>Controller
+[else] [if key = 'finders'] --class ~.domain.<entity>
+[/if] [/if]
+[/template]
+
+
+[**
+ * Generate the properties of a particular UML class.
+ * @param aClass UML class.
+ * @param targetClass UML class to associate the properties
+ */]
+[template public generateEntityProperties(aClass : Class, targetClass : Class) post(trim())]
+[for (anElement: Element | aClass.ownedElement)]
+  [if anElement.oclIsTypeOf(Property)]
+    [comment] Properties that belong to an association are generated as references (other module) [/comment]
+    [if anElement.oclAsType(Property).association.oclIsUndefined()]
+      [anElement.oclAsType(Property).generateEntityProperty()/] --class ~.domain.[targetClass.name/]
+    [/if]
+  [/if]
+[/for]
+[/template]
+
+[**
+ * Generate the Spring Roo commands associated to a particular class property.
+ * @param property Class property.
+ */]
+[template private generateEntityProperty(property : Property) post(trim())]
+[if not property.name.contains('_')] 
+field [property.type.getRooType(property)/] --fieldName [property.name/] [property.type.handleEnumerationProperty()/] [property.getRooDetails()/]
+[/if]
+[/template]
+
+[**
+ * Generate the Spring Roo type for the specified class property.
+ * @param type UML type.
+ * @param property Class property.
+ */]
+[template private getRooType(type : Type, property : Property) post(trim())]
+  [if type.oclIsUndefined()] [type.getUndefinedType(property)/]
+  [else] [if type.oclIsTypeOf(Enumeration)] enum
+  [else] [if type.name = 'String'] string
+  [else] [if type.name = 'Boolean'] boolean
+  [else] [if type.name = 'Integer'] number --type java.lang.Integer
+  [else] [if type.name = 'UnlimitedNatural'] number --type java.lang.Long
+  [else] string
+  [/if] [/if] [/if] [/if] [/if] [/if]
+[/template]
+
+[**
+ * Add the required properties to handle properties that reference an enumeration.
+ * @param type UML type.
+ */]
+[template private handleEnumerationProperty(type : Type) post(trim())]
+  [if type.oclIsTypeOf(Enumeration)] --type ~.domain.[type.name/] [/if]
+[/template]
+
+[**
+ * Get the Spring Roo type for a property with an unspecified UML primitive type.
+ * @param type UML type.
+ * @param property Class property.
+ */]
+[template private getUndefinedType(type : Type, property : Property) post(trim())]
+[if not property.getAppliedStereotype('rooStructure::RooFieldDate').oclIsUndefined()] date --type java.util.Date
+[else] [if not property.getAppliedStereotype('rooStructure::RooFieldFile').oclIsUndefined()] file
+[else] [if property.getValue(property.getAppliedStereotype('rooStructure::RooFieldNumber'), '_numberType').oclIsInvalid()] string
+[else] [property.getValue(property.getAppliedStereotype('rooStructure::RooFieldNumber'), '_numberType').oclAsType(EnumerationLiteral).name.getRooNumberType()/]
+[/if] [/if] [/if]
+[/template]
+
+[**
+ * Get the Spring Roo number type for a numeric type.
+ * @param type Numeric type.
+ */]
+[template private getRooNumberType(type : String) post(trim())]
+  [if type = 'Byte'] number --type java.lang.Byte
+  [else] [if type = 'Float'] number --type java.lang.Float
+  [else] [if type = 'Short'] number --type java.lang.Short
+  [else] [if type = 'Long'] number --type java.lang.Long
+  [else] [if type = 'Integer'] number --type java.lang.Integer
+  [else] [if type = 'Double'] number --type java.lang.Double
+  [else] string
+  [/if] [/if] [/if] [/if] [/if] [/if]
+[/template]

@@ -1,0 +1,95 @@
+MainModel : http://simplepdl
+
+
+context Process
+inv nameIsDefined: -- is the name of process correct?
+    if  self.name.oclIsUndefined() then
+	false
+    else
+	self.name <> ''
+    endif
+
+
+inv containmentConsistency:
+  let elements : Set(ProcessElement) = self.processElements in
+    let wds: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(WorkDefinition)) in
+      let wss: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(WorkSequence)) in
+		let ris: Set(ProcessElement) = elements->select( e | e.oclIsTypeOf(RessourceInstance)) in
+        -- WS linked to a process WD are elements of this process
+        wds->forAll(wd: ProcessElement |
+            elements->includesAll(wd.oclAsType(WorkDefinition).linksToPredecessors)
+            and elements->includesAll(wd.oclAsType(WorkDefinition).linksToSuccessors)
+			and elements->includesAll(wd.oclAsType(WorkDefinition).linksToRessources))
+        -- source and target of a process WS are elements of this process
+        and wss->forAll(ws: ProcessElement |
+            elements->includes(ws.oclAsType(WorkSequence).predecessor)
+            and elements->includes(ws.oclAsType(WorkSequence).successor))
+		and ris->forAll(ws: ProcessElement |
+            elements->includes(ws.oclAsType(RessourceInstance).type)
+			and elements->includes(ws.oclAsType(RessourceInstance).activity))
+
+-- Invariant vérifiant si toutes les activités ont un nom unique
+inv activitiesNamesAreDifferent:
+	-- Création d'un set contenant toutes les instances de type ProcessElement appartenant au Process
+	let elements : Set(ProcessElement) = self.processElements in
+		-- Création d'un set contenant toutes les instances de type WorkDefinition contenues dans le set précédent
+    	let wds: Set(ProcessElement) = elements->select(e | e.oclIsTypeOf(WorkDefinition)) in
+			-- Produit cartésien sur les éléments du set précédent
+			wds->forAll(wd1, wd2: ProcessElement |
+				-- si les deux wd sont différents
+				if wd1 <> wd2 then
+					-- alors on teste que leur nom sont différents
+					wd1.oclAsType(WorkDefinition).name <> wd2.oclAsType(WorkDefinition).name
+				else
+					-- sinon, on fait remonter un vrai (pour ignorer ce cas)
+					true
+				endif
+			)
+
+-- Invariant vérifiant si toutes les ressources ont un nom unique
+inv resourcesNamesAreDifferent:
+	let elements : Set(ProcessElement) = self.processElements in
+    	let rds: Set(ProcessElement) = elements->select(e | e.oclIsTypeOf(RessourceDefinition)) in
+			rds->forAll(rd1, rd2: ProcessElement |
+				if rd1 <> rd2 then
+					rd1.oclAsType(RessourceDefinition).name <> rd2.oclAsType(RessourceDefinition).name
+				else
+					true
+				endif
+			)
+
+
+-- Invariant vérifiant si les activités ont un nom d'au moins un caractère
+inv activityNameSize:
+	-- Création d'un set contenant toutes les instances de type ProcessElement appartenant au Process
+	let elements : Set(ProcessElement) = self.processElements in
+		-- Création d'un set contenant toutes les instances de type WorkDefinition contenues dans le set précédent
+    	let wds: Set(ProcessElement) = elements->select(e | e.oclIsTypeOf(WorkDefinition)) in
+			-- On vérifié si tous les noms de toutes les wd ont une taille supérieure à 0
+			wds->forAll(wd: ProcessElement | wd.oclAsType(WorkDefinition).name.size() > 0)
+
+
+-- Invariant vérifiant si le précédesseur d'une WorkSequence est différents de son successeur (réflexivité)
+inv reflexiveDependence:
+	let elements : Set(ProcessElement) = self.processElements in
+    	let wss: Set(ProcessElement) = elements->select(e | e.oclIsTypeOf(WorkSequence)) in
+			wss->forAll(ws: ProcessElement | ws.oclAsType(WorkSequence).predecessor <> ws.oclAsType(WorkSequence).successor)
+
+
+context RessourceInstance
+inv ressourceCheck:
+	if self.instances <= self.type.number then
+		true
+	else
+		false
+	endif
+
+
+context WorkDefinition
+inv timeCheck1:
+	self.max_time < self.min_time implies
+		false
+
+context WorkSequence
+inv timeCheck2:
+	self.predecessor.min_time <= self.successor.max_time

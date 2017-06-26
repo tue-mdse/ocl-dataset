@@ -1,0 +1,74 @@
+[comment encoding = UTF-8 /]
+[comment]
+ * Copyright (c) 2015 Spacebel SA.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ * 
+ * Contributors:
+ *     Johan Hardy (Spacebel) - initial API and implementation
+[/comment]
+[module structure('http://www.eclipse.org/uml2/5.0.0/UML')/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::namedelement/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::property/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::constraint/]
+[import org::eclipse::umlgen::gen::embedded::c::services::configuration/]
+[import org::eclipse::umlgen::gen::embedded::c::services::queries/]
+[import org::eclipse::umlgen::gen::embedded::c::commons::datatype/]
+
+[template private genMultiplicity(p : uml::Property) ? (not(isArrray())) post(trim())]
+[if (p.upper <> '*' and p.upperBound() > 1)]
+['['/][p.upper/][']'/]
+[/if]
+[/template]
+
+[template private genAttribute(p : uml::Property) ? (hasAttribute())]
+ __attribute__ [p.getAttribute()/]
+[/template]
+
+[template private genArrayField(p : uml::Property) post(trim())]
+[if ownedComment->notEmpty()]/*! [ownedComment.format('', false, ' * ', 120)/] */[/if]
+[type.name/][genPointer().trim()/] [name/]['['/][getMultiplicity()/][']'/][genAttribute()/];
+[/template]
+
+[template private genSimpleField(p : uml::Property) post(trim())]
+[if ownedComment->notEmpty()]/*! [ownedComment.format('', false, ' * ', 120)/] */[/if]
+[if (isVolatile())]volatile [/if][if (isStruct())]struct [/if][type.name/][genPointer().trim()/] [name/][genMultiplicity()/][genAttribute()/];
+[/template]
+
+[template public genFields(p : uml::Property) post(trim())]
+[if (p.isArrray())]
+[p.genArrayField()/]
+[else]
+[p.genSimpleField()/]
+[/if]
+[/template]
+
+[template private genAttribute(d : uml::DataType) ? (hasAttribute())]
+__attribute__ [d.getAttribute()/] 
+[/template]
+
+[template public genStruct(d : uml::DataType)]
+[if ownedComment->notEmpty()]
+/*! 
+ * [ownedComment.format('\x5cbrief ', false, ' *        ', 120)/]
+[if (isTraceabilityEnabled())]
+[if (d.isConstrained(getModel().getAllConstraints()))]
+ *
+ * <b>Requirements traceability</b>
+ [d.getRequirementList('*     ')/]
+[/if]
+[/if]
+ */
+[/if]
+typedef [if d.isUnion()]union [else]struct [/if][d.genAttribute()/][d.name/]
+{
+[let seq : Sequence(uml::NamedElement) = ownedAttribute->asSequence()]
+[for (n : uml::NamedElement | seq->orderByContents())]
+    [n.oclAsType(uml::Property).genFields()/]
+[/for]
+[/let]
+} [d.name/];
+
+[/template]

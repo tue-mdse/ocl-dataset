@@ -1,0 +1,60 @@
+[comment encoding = UTF-8 /]
+[**
+ * 負責產生applicationcontext.xml檔案。
+ */]
+[module templateApplicationcontextXml('http://www.eclipse.org/uml2/4.0.0/UML')]
+
+[import idv::hsiehpinghan::acceleo::utility::propertyUtility /]
+
+[comment]---------------------------public---------------------------[/comment]
+[template public templateApplicationcontextXml(anOclAny : OclAny)]
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="[templateXsiSchemaLocation() /]">
+	<context:annotation-config/>
+	<context:component-scan base-package="[queryProperty('main', 'basePackage') /]"/>
+
+	[if (queryProperty('spring', 'propertiesfileLocations') <> '')]
+	[templatepropertyPlaceholderConfigurerSection() /]
+	[/if]
+
+
+
+</beans>
+[/template]
+
+
+[comment]--------------------------protected-------------------------[/comment]
+
+
+[comment]---------------------------private--------------------------[/comment]
+[**
+ * 產生xsi:schemaLocation字串。
+ * @param anOclAny
+ */]
+[template private templateXsiSchemaLocation(anOclAny : OclAny) post(self.trim())]
+[let aInteger : Integer = queryProperty('spring', 'version').lastIndex('.')]
+	[let aString : String = queryProperty('spring', 'version').substring(1, aInteger - 1)]
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-[aString /].xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-[aString /].xsd
+	[/let]
+[/let]
+[/template]
+
+[**
+ * 產生propertyPlaceholderConfigurerSection。
+ * @param anOclAny
+ */]
+[template private templatepropertyPlaceholderConfigurerSection(anOclAny : OclAny) post(self.trim())]
+<bean class="[queryProperty('spring', 'propertyPlaceholderConfigurerClass') /]">
+	<property name="locations">
+		<list>
+	[for (aString : String | queryProperty('spring', 'propertiesfileLocations').tokenize(','))]
+			<value>[aString /]</value>
+	[/for]
+		</list>
+	</property>
+</bean>
+[/template]

@@ -1,0 +1,278 @@
+[comment encoding = UTF-8 /]
+[module generateDtoJava('http://www.eclipse.org/uml2/3.0.0/UML') extends org::acceleo::module::pim::uml21::gen::java::business::entitydto]
+[import org::acceleo::module::pim::uml21::gen::java::common::common/]
+[import org::acceleo::module::pim::uml21::gen::java::common::requests/]
+[import org::acceleo::module::pim::uml21::gen::java::common::specifics/]
+[import org::acceleo::module::pim::uml21::gen::java::common::dataTypes/]
+[import org::acceleo::module::pim::uml21::gen::java::common::structure/]
+[import org::acceleo::module::pim::uml21::services::uml2services /]
+[import org::acceleo::module::pim::uml21::services::stringservice /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::dto::common::dtoPathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::pathUtil /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::requests /]
+[import org::acceleo::module::pim::uml21::gen::java::spring::common /]
+[import org::eclipse::acceleo::module::pim::uml30::gen::java::impala::common::entityUtil /]
+
+[template public generateDtoJava(aClass : Class)]
+[file (aClass.getModel().generateProjectFolder().concat(aClass.getModel().pathToGeneratedMainJava()).concat('/').concat(aClass.generateJavaPackagePath()).concat('/').concat(aClass.name).concat('.java'), false, 'UTF-8')]
+	[aClass.genEntityDto()/]
+[/file]
+[/template]
+
+[template public genEntityDto(aClass:Class) overrides genEntityDto ]
+package [aClass.generateJavaPackage()/];
+//[protected ('for imports')]
+import java.io.Serializable;
+[aClass.generateImports()/]
+//[/protected]
+
+/**
+[if (aClass.ownedComment._body->size() > 0)]
+ * [aClass.ownedComment._body.replaceAll('\n', '\n * ')/]
+[else]
+ * Warning: no comment in the model for interface [aClass.name/].
+[/if]
+ */
+public class [aClass.name.toUpperFirst()/][aClass.extensions()/] implements Serializable[if (aClass.interfaceRealization->notEmpty())], [aClass.implementedInterfaces()/][/if] {
+
+    /**
+     * serialVersionUID is used for serialization.
+     */
+    private static final long serialVersionUID = 1L;
+
+[for (prop:Property|aClass.classAttributes())]
+    /**
+     * Field [prop.name.toLowerFirst()/].
+     */
+    protected [prop.convertToJavaDtoType()/] [prop.name.toLowerFirst()/];
+
+[/for]
+    /**
+     * Default constructor.
+     */
+    public [aClass.name.toUpperFirst()/]() {
+        super();
+[for (prop:Property|aClass.classAttributes())]
+	[if (prop.upper <> 1)]
+		[if (prop.isOrdered)]
+        this.[prop.name/] = new ArrayList<[prop.type.convertToJavaDtoType()/]>();
+		[else]
+        this.[prop.name/] = new HashSet<[prop.type.convertToJavaDtoType()/]>();
+		[/if]
+	[/if]
+[/for]
+    }
+
+[if (aClass.classAttributes()->notEmpty())]
+
+    /**
+     * Constructor with all parameters initialized.
+	[for (prop:Property|aClass.classAttributes())]
+     * @param [prop.paramName()/]
+		[if (prop.ownedComment._body->notEmpty())]
+     *            [prop.ownedComment._body.replaceAll('\n', '\n     *            ')/]
+		[else]
+     *            Warning, no comment in the model.
+		[/if]
+	[/for]
+     */
+    public [aClass.name.toUpperFirst()/]([aClass.classAttributes().asParameter()->sep(', ')/]) {
+	[for (prop:Property|aClass.classAttributes())]
+        this.[prop.name/] = [prop.name/];
+	[/for]
+    }    
+[/if]
+
+[for (prop:Property|aClass.classAttributes())]
+    /**
+     * Returns [prop.name/].
+	[if (prop.ownedComment._body->notEmpty())]
+     * @return [ownedComment._body.replaceAll('\n', '\n     * ')/]
+	[else]
+     * @return Warning, no comment in the model.
+	[/if]
+     */
+    [prop.getterDtoSignature()/] {
+	[if (prop.isDerived)]
+		// [protected ('attribute')]
+        // of derived [prop.name/] attribute 
+        // TODO Logic to calculate [prop.name/]
+        return [prop.name/];
+        // 
+		//[/protected]
+	[else]
+        return [prop.name/];
+	[/if]
+    }
+
+	[if (not (prop.isReadOnly) and not (prop.isDerived))]
+    /**
+     * Sets a value to parameter [name/].
+     * @param [prop.paramName()/]
+		[if (prop.ownedComment._body->notEmpty())]
+     *            [prop.ownedComment._body.replaceAll('\n', '\n     *            ')/]
+		[else]
+     *            Warning, no comment in the model.
+		[/if]
+     */
+    [prop.setterDtoSignature()/] {
+        this.[prop.name/] = [prop.paramName()/];
+    }
+	[/if]
+
+	[if (prop.upper = -1 or prop.upper > 1)]
+    /**
+     * Adds a [prop.name/] to the [prop.name/] Collection.
+		[if (prop.opposite <> null)]
+     * Bidirectionnal association : add the current [class.name/] instance to
+     * the given [prop.name/] parameter.
+		[/if]
+     * @param [prop.name/]Elt Element to add
+     */
+    public void add[prop.name.toUpperFirst()/](final [prop.type.convertToJavaDtoType()/] [prop.name/]Elt) {
+        [prop.name/].add([prop.name/]Elt);
+		[if (prop.opposite <> null)]
+			[if (prop.opposite.upper = 1)]
+        [prop.name/]Elt.set[prop.opposite.name.toUpperFirst()/](this);
+			[else]
+        [prop.name/]Elt.get[opposite.name.toUpperFirst()/]().add(this);
+			[/if]
+		[/if]
+    }
+
+    /**
+     * Removes a [prop.name/] from the [prop.name/] Collection.
+		[if (prop.opposite <> null)]
+     * Bidirectionnal association : remove the current [class.name/] instance
+     * from the given [name/] parameter.
+		[/if]
+     * @param [prop.name/]Elt Element to remove
+     */
+    public void remove[prop.name.toUpperFirst()/](final [prop.type.convertToJavaType()/] [prop.name/]Elt) {
+        [prop.name/].remove([prop.name/]Elt);
+		[if (prop.opposite <> null)]
+			[if (prop.opposite.upper = 1)]
+        [prop.name/]Elt.set[prop.opposite.name.toUpperFirst()/](null);
+			[else]
+        [prop.name/]Elt.get[prop.opposite.name.toUpperFirst()/]().remove(this);
+			[/if]
+		[/if]
+    }
+	[/if]
+[/for]
+
+[if (aClass.interfaceRealization->notEmpty())]
+	[for (interface:Interface|aClass.interfaceRealization.target->filter(Interface))]
+    /* Implementation of interface [name/]: start */
+		[for (prop:Property|interface.itfAttributes()->select(not (isPK())))]
+			[if (interface.attribute->select(name = prop.name)->notEmpty())]
+    /**
+     * Implementation of [interface.name/]'s [prop.name/] getter.
+				[if (prop.ownedComment._body->notEmpty())]
+     * @return [prop.ownedComment._body.replaceAll('\n', '\n     * ')/]
+				[else]
+     * @return Warning, no comment in the model.
+				[/if]
+     * @see [interface.name/].[prop.getterName()/]
+     */
+    [prop.getterSignature()/] {
+        // [protected ('getter')]  
+		//for getter of [prop.name/] ['['/]DO NOT REMOVE[']'/]      
+		// TODO Implement me !
+        throw new UnsupportedOperationException("Method not yet implemented");
+        // [/protected] for getter of [prop.name/] ['['/]DO NOT REMOVE[']'/]
+    }
+
+    /**
+     * Implementation of [interface.name/]'s [prop.name/] setter.
+     * @param [prop.paramName()/]
+				[if (prop.ownedComment._body->notEmpty())]
+     *            [prop.ownedComment._body.replaceAll('\n', '\n     *            ')/]
+				[else]
+     *            Warning, no comment in the model.
+				[/if]
+     * @see [interface.name/].[prop.setterName()/]
+     */
+    [prop.setterSignature()/] {
+        // [protected ('setter')] 
+		//for setter of [prop.name/] ['['/]DO NOT REMOVE[']'/]
+        // TODO Implement me !
+        throw new UnsupportedOperationException("Method not yet implemented");
+        // [/protected] for setter of [prop.name/] ['['/]DO NOT REMOVE[']'/]
+    }
+
+			[/if]
+
+		[/for]
+    /* Implementation of interface [interface.name/]: end */
+
+	[/for]
+[/if]
+    /**
+     * Equality test based on attributes values.
+     * @param other Value to compare
+     * @return Returns true if and only if given object is an instance of
+     */
+    @Override
+    public boolean equals(final Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof [name/])) {
+            return false;
+        }
+        final [name/] castedOther = ([name/]) other;
+[for (prop:Property|aClass.classAttributes()->select(not (isPK())))]
+	[if (prop.type.isJavaPrimitiveType())]
+        if ([prop.name/] != castedOther.get[prop.name.toUpperFirst()/]()) {
+            return false;
+        }
+	[else]
+        if (([prop.name/] == null && castedOther.get[prop.name.toUpperFirst()/]() != null) 
+             || ([prop.name/] != null && ![prop.name/].equals(
+                castedOther.get[prop.name.toUpperFirst()/]()))) {
+           return false;
+        }
+	[/if]
+[/for]
+        return true;
+    }
+
+    /**
+     * HashTable code based on attributes hashcodes.
+     * @return Returns hash value
+     */
+    @Override
+    public int hashCode() {
+        int result = 0;
+	[for (prop:Property|aClass.ownedAttribute)]
+		[if (prop.type.name = 'Boolean' or prop.type.name = 'boolean')]
+            if ([prop.name/]) {
+                result++;
+            }
+		[elseif (prop.type.name = 'Integer' or prop.type.name = 'int' or 
+					prop.type.name = 'Long' or prop.type.name = 'long' or 
+					prop.type.name = 'Short' or prop.type.name = 'short')]
+            result = Long.valueOf(29 * result + this.[prop.name/]).intValue();
+		[elseif (prop.type.name = 'Float' or prop.type.name = 'Double')]
+            if (this.[prop.name/] != null) {
+                result = (int) (29 * result +[ prop.name/].hashCode());
+            }
+		[else]
+            if (this.[prop.name/] != null) {
+                result = 29 * result + this.[prop.name/].hashCode();
+            }
+		[/if]
+	[/for]
+        
+        return result;
+    }
+
+[comment  N.B. It is mandatory to have identical lines for start and end user code !!! /]    
+	// [protected ('private Method')] 
+	// TODO Remove this line and add your private methods here
+    // [/protected] for private methods
+
+}
+
+[/template]
